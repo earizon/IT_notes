@@ -1,0 +1,110 @@
+******************************                                                    * *********
+PROTOC + gRPC INSTALLATION                                                        * COMPILING
+******************************                                                    * *********
+                                                                                  * 
+STEP 1: ProtoC installation:                                                      * +-----------------------------------------------------------------------
+STEP 1: ProtoC installation:                                                      * |NodeJS: COMMENTED SHELL EXAMPLE TO GENERATE JS PROTOBUF & gRPC SERVICE:
+Unpack protoc-3.x...x86_64.zip                                                    * |
+from  https://github.com/google/protobuf/releases to /opt/protoc                  * |  #!/bin/sh
+$ sudo ln -s /opt/protoc/include/google/protobuf /usr/include/google/protobuf     * |  set -e # script option. Abort on first error.
+$ sudo ln -s /opt/protoc/bin/protoc              /usr/bin/protoc                  * |
+                                                                                  * |  PROTOC=/opt/protoc_v3/bin/protoc # <- PATH to protoc compiler executable
+STEP 2: Install grpc-tools: REF: http://www.grpc.io/blog/installation             * |  OUT_DIR="./src/lib/protobuf"
+Here’s how to install the gRPC runtime today in all our supported languages:      * |
+                                                                                  * |  if [ ! -d ${OUT_DIR} ]; then mkdir -p ${OUT_DIR} ; fi
+   +-----------+-------------------+-------                                       * |
+   |Language   |Platform           |Command                                       * |  # protoc fails if relative path is provided. (2017-01)
+   +-----------+-------------------+--------------------------------------------- * |  GRPC_NODE_PLUGIN=/usr/local/lib/node_modules/grpc-tools/bin/grpc_node_plugin
+   |Node.js    |Linux, Mac, Windows|npm install -g grpc                           * |
+   |           |                   |(installs the grpc_node_plugin @              * |  ${PROTOC} \
+   |           |                   |/usr/(local/)lib/node_modules/grpc-tools/bin )* |         --proto_path=../project_proto_definition/            # <- Path to search *proto for
+   +-----------+-------------------+--------------------------------------------- * |         --js_out=import_style=commonjs,binary:${OUT_DIR} \   # <- JS protobuf output path
+   |Python     |Linux, Mac, Windows|pip install grpcio                            * |         \
+   +-----------+-------------------+--------------------------------------------- * |         --grpc_out=${OUT_DIR} \                              # <- gRPC (services) output path
+   |Ruby       |Linux, Mac, Windows|gem install grpc                              * |         --plugin=protoc-gen-grpc=${GRPC_NODE_PLUGIN} \       # <- gRPC service related
+   +-----------+-------------------+--------------------------------------------- * |         file1.proto
+   |PHP        |Linux, Mac, Windows|pecl install grpc-beta                        * +---------------------------------------------------------------------------------------------------
+   +-----------+-------------------+--------------------------------------------- * | JAVA: 
+   |Go         |Linux, Mac, Windows|go get google.golang.org/grpc                 * | REF: https://github.com/grpc/grpc-java/blob/master/README.md 
+   +-----------+-------------------+--------------------------------------------- * | Java Gradle protobuf conf:                                       | Java Gradle+grpc conf:
+   |Objective-C|Mac                |Runtime source fetched automatically          * |                                                                  | 
+   |           |                   |from Github by Cocoapods                      * | apply plugin: 'java'                                             | non-Android
+   +-----------+-------------------+--------------------------------------------- * | apply plugin: 'com.google.protobuf'                              | 
+   |C#         |Windows            |Install gRPC NuGet package from your IDE      * |                                                                  |     compile 'io.grpc:grpc-netty:1.0.1'
+   |           |                   |(Visual Studio, Monodevelop, Xamarin Studio)  * | buildscript {                                                    |     compile 'io.grpc:grpc-protobuf:1.0.1'
+   +-----------+-------------------+--------------------------------------------- * |   repositories {                                                 |     compile 'io.grpc:grpc-stub:1.0.1'
+   |Java       |Linux, Mac, Windows|Use our Maven and Gradle plugins that         * |     mavenCentral()                                               | 
+   |           |                   |provide gRPC with statically linked boringssl * |   }                                                              | Android:
+   +-----------+-------------------+--------------------------------------------- * |   dependencies {                                                 |     compile 'io.grpc:grpc-okhttp:1.0.1'
+   |C++        |Linux, Mac, Windows|Currently requires manual build and install   * |     classpath 'com.google.protobuf:protobuf-gradle-plugin:0.8.0' |     compile 'io.grpc:grpc-protobuf-lite:1.0.1'
+   +-----------+-------------------+--------------------------------------------- * |   }                                                              |     compile 'io.grpc:grpc-stub:1.0.1'
+*********************************************************************************** |
+************************************                                              * | }
+gPRC PROTOBUF EXCEPTION HANDLING                                                  * | 
+************************************                                              * | protobuf {
+                                                                                  * |   protoc {
+C&P FROM: http://stackoverflow.com/questions/38810657/exception-handling-in-grpc  * |     artifact = "com.google.protobuf:protoc:3.1.0"
+"""                                                                               * |   }
+  Q: I have a server written in Java and client written in PHP.                   * |   plugins {
+ How can client catch exception from server if anything goes wrong?               * |     grpc {
+ I can't find anything about exception handling in gRPC documentation.            * |       artifact = 'io.grpc:protoc-gen-grpc-java:1.0.1'
+                                                                                  * |     }
+  A: For handled exceptions, call responseObserver.onError(). If you pass in a    * |   }
+  StatusRuntimeException or StatusException (generally created via                * |   generateProtoTasks {
+  status.asRuntimeException()) the status code and description will be            * |     all()*.plugins {
+  communicated to the client.                                                     * |       grpc {}
+                                                                                  * |     }
+   Unhandled exceptions within a callback will cancel the RPC and will continue   * |   }
+propagating the exception (generally leading in an UncaughtExceptionHandler being * | }
+  called for the executor).                                                       * +---------------------------------------------------------------------------------------------------
+"""
+
+******************************
+JAVA SERVER IMPLEMENTATION {{{
+******************************
+Service proto Implementation:
+         service RouteGuide {
+           rpc GetFeature(Point) returns (Feature) {}
+           rpc ListFeatures(Rectangle) returns (stream Feature) {}
+           rpc RecordRoute(stream Point) returns (RouteSummary) {}
+           rpc RouteChat(stream RouteNote) returns (stream RouteNote) {}
+         }
+
+public class RouteGuideServer {
+  ... initialization code ...
+---------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------
+   private static class RouteGuideService extends RouteGuideGrpc.RouteGuideImplBase {
+       ...
+       +---------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------
+       |    SINGLE RESPONSE                                                                                |  STREAM RESPONSE
+       |    // single Request / single Response                                                            |  // Single Request / Stream Response
+       |    @Override                                                                                      |  @Override
+SINGLE |    public void getFeature(Point request, StreamObserver<Feature> responseObserver) {              |  public void listFeatures(Rectangle request, StreamObserver<Feature> responseObserver) {
+REQUEST|      responseObserver.onNext(_checkFeature(request)); /* Single onNext iteration. */              |   for (Feature feature : features) { ...  responseObserver.onNext(feature); }
+       |      responseObserver.onCompleted(); /* <- ends inmediatelly */                                   |   /* ^ one onNext for each feature found (streaming response) */ 
+       |    }                                                                                              |   responseObserver.onCompleted();
+       |                                                                                                   |  }
+       |                                                                                                   |   
+       +---------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------
+       |                                                                                                   |   
+       |    // Stream Request / Stream Response                                                            |  // Stream Request / Stream Response
+STREAM |    @Override                                                                                      |  @Override
+REQUEST|    public StreamObserver<Point> recordRoute(final StreamObserver<RouteSummary> responseObserver) {|  public StreamObserver<RouteNote> routeChat(final StreamObserver<RouteNote> responseObserver) {
+       |      return new StreamObserver<Point>() {                                                         |    return new StreamObserver<RouteNote>() {
+       |        @Override                                                                                  |      @Override public void onNext(RouteNote note) {
+       |        public void onNext(Point point) { ... }                                                    |        for (RouteNote prevNote : notes.toArray(new RouteNote[0])) {
+       |                                                                                                   |          responseObserver.onNext(prevNote);
+       |        @Override                                                                                  |        }
+       |        public void onError(Throwable t) { logger.log(Level.WARNING, "recordRoute cancelled"); }   |        ...
+       |                                                                                                   |      }
+       |        @Override                                                                                  |
+       |        public void onCompleted() {                                                                |      @Override
+       |          long seconds = NANOSECONDS.toSeconds(System.nanoTime() - startTime);                     |      public void onError(Throwable t) { logger.log(Level.WARNING, "routeChat cancelled"); }
+       |          responseObserver.onNext(RouteSummary.newBuilder().setPointCount(pointCount)              |
+       |              .setFeatureCount(featureCount).setDistance(distance)                                 |      // Do not complete until received onCompleted for peer
+       |              .setElapsedTime((int) seconds).build());                                             |      @Override public void onCompleted() { responseObserver.onCompleted(); }
+       |          responseObserver.onCompleted(); // <- End stream (Single response)                       |    };
+       |        }                                                                                          |  }
+       |      };
+       |    }
+}}}

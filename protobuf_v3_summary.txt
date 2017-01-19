@@ -1,0 +1,169 @@
+syntax = "proto3";
+
+// REF: https://developers.google.com/protocol-buffers/docs/proto3 2017/01/11
+
+//********************************************
+// PACAKAGE (Optional). Prevent name clashes
+//********************************************
+package foo.bar; // Generates apropiate namespace / package for different languages
+
+//********************************************
+// (COMMON) OPTIONS
+//********************************************
+option java_package = "foo.bar.project1";
+option java_outer_classname = "Ponycopter"; // Defaults to camelcase filename 
+option optimize_for = CODE_SIZE; // SPEED, CODE_SIZE, or LITE_RUNTIME
+//***********
+// IMPORTING 
+//***********
+import "myproject/other_protos.proto";
+
+message SearchRequest { // This is a comment
+  //*****************
+  // RESERVING FIELDS
+  //*****************
+  reserved 4, 13 to 15;
+  reserved "foo", "bar";
+
+  string query           = 1;
+  int32  page_number     = 2;
+  //*****************
+  // DEPRECATED FIELD
+  //*****************
+  int32  result_per_page = 3; [deprecated=true];
+  repeated string label  = 5; 
+
+  //*****************
+  // USING ENUMS:
+  //*****************
+  // enums can be defined within message definition
+  // or outside => can be reused in other message defin.
+  // enums type declared in one message can be reused also as MessageType.EnumType.
+  enum Corpus {
+    option allow_alias = true;
+    UNIVERSAL = 0; GLOBAL = 0; WEB = 1; IMAGES = 2; LOCAL = 3; NEWS = 4;
+  } // First is the default and must be equal to 0
+  Corpus corpus = 6;
+
+  //*****************
+  // INTERNAL MESSAGES
+  //*****************
+  message User {
+    string sessionID = 1;
+  }
+
+  //********************************
+  // REPEATED (Defaults to singular)
+  //********************************
+  repeated User currentUser = 7;
+
+  //********************************
+  // ONEOF ("union" in C/C++)
+  // discourages. Can cause null/undefined errors
+  //********************************
+  oneof test_oneof { // <-- Can NOT be repeated
+    string name = 8;
+    SubMessage sub_message = 9;
+  }
+
+  //********************************
+  // MAPS
+  //********************************
+  map<string /*or integral*/, Project> projects = 10;
+  // Backward compatible with:
+  // message MapFieldEntry { string key = 1; Project value = 2; }
+  // repeated MapFieldEntry projects = 10;
+
+}
+
+Assigning Tags
+tags with values in the range 1 - 15 take one byte to encode, including the identifying number and field's type .
+
+* singular: zero or one
+* repeated: zero or more (order will be preserved, defaults to empty, ussually empty list)
+
+For enums, default value is first defined enum value, which MUST be 0.
+For message fields, the field is not set. Its exact value is language-dependent.
+
+Scalar Value Types: bool(warn:default false), (u|s|)int(32|64), double, (s)fixed(32|64),bytes(default empty bytes),  string(default to empty string),
+
+
+For Java, a .java file with a class is generated for each message type, as well as a special Builder classes for creating message class instances.
+For JavaNano, the compiler output is similar to Java but there are no Builder classes.
+
+"Redirecting" an import. In the old proto we will use something like:
+    import public "new.proto";
+
+SPECIAL TYPES:
+**********
+ANY TYPE:
+**********
+ Any allows to use (embedded type) messages without having .proto defs.
+    import "google/protobuf/any.proto";
+    
+    message ErrorStatus {
+      ...
+      google.protobuf.Any details = 2;
+    }
+
+**********
+TIMESTAMP
+**********
+(https://github.com/google/protobuf/blob/master/src/)google/protobuf/timestamp.proto
+  A Timestamp represents a point in time independent of any time zone
+  or calendar, represented as seconds and fractions of seconds at
+  nanosecond resolution in UTC Epoch time. It is encoded using the
+  Proleptic Gregorian Calendar which extends the Gregorian calendar
+  backwards to year one. It is encoded assuming all minutes are 60
+  seconds long, i.e. leap seconds are "smeared" so that no leap second
+  table is needed for interpretation. Range is from
+  0001-01-01T00:00:00Z to 9999-12-31T23:59:59.999999999Z.
+  By restricting to that range, we ensure that we can convert to
+  and from  RFC 3339 date strings.
+  See [https://www.ietf.org/rfc/rfc3339.txt](https://www.ietf.org/rfc/rfc3339.txt).
+    Example Java Usage:
+        long millis = System.currentTimeMillis();
+        Timestamp timestamp = Timestamp.newBuilder().setSeconds(millis / 1000)
+            .setNanos((int) ((millis % 1000) * 1000000)).build();
+
+**********
+DURATION
+**********
+(https://github.com/google/protobuf/blob/master/src)/google/protobuf/duration.proto
+  A Duration represents a signed, fixed-length span of time represented
+  as a count of seconds and fractions of seconds at nanosecond
+  resolution. It is independent of any calendar and concepts like "day"
+  or "month". It is related to Timestamp in that the difference between
+  two Timestamp values is a Duration and it can be added or subtracted
+  from a Timestamp. Range is approximately +-10,000 years.
+___________________________________________________
+*******************
+DEFINING SERVICES
+*******************
+
+service SearchService {
+  rpc Search (SearchRequest) returns (SearchResponse);
+}
+___________________________________________________
+*******************
+JSON MAPPING TODO:
+*******************
+___________________________________________________
+*******
+OPTIONS
+*******
+Complete list of Options:
+https://github.com/google/protobuf/blob/master/src/google/protobuf/descriptor.proto
+options types: file-level | message-level | field-level
+
+*****************
+PROTOC Execution
+*****************
+  protoc --proto_path=IMPORT_PATH --cpp_out=DST_DIR --java_out=DST_DIR --python_out=DST_DIR --go_out=DST_DIR --ruby_out=DST_DIR --javanano_out=DST_DIR --objc_out=DST_DIR --csharp_out=DST_DIR path/to/file.proto
+
+DST_DIR can be a ".zip" or ".jar" archive.
+
+    You must provide one or more .proto files as input. Multiple .proto files can be specified at once. Although the files are named relative to the current directory, each file must reside in one of the IMPORT_PATHs so that the compiler can determine its canonical name. 
+
+Except as otherwise noted, the content of this page is licensed under the Creative Commons Attribution 3.0 License, and code samples are licensed under the Apache 2.0 License. For details, see our Site Policies. Java is a registered trademark of Oracle and/or its affiliates.
+

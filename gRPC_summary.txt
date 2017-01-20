@@ -60,9 +60,9 @@ propagating the exception (generally leading in an UncaughtExceptionHandler bein
 """
 
 ******************************
-JAVA SERVER IMPLEMENTATION {{{
+JAVA IMPLEMENTATION {{{
 ******************************
-Service proto Implementation:
+SERVICE/SERVER PROTO IMPLEMENTATION SUMMARY: {{{
          service RouteGuide {
            rpc GetFeature(Point) returns (Feature) {}
            rpc ListFeatures(Rectangle) returns (stream Feature) {}
@@ -70,10 +70,10 @@ Service proto Implementation:
            rpc RouteChat(stream RouteNote) returns (stream RouteNote) {}
          }
 
-public class RouteGuideServer {
+public class RouteGuideServer 
   ... initialization code ...
 ---------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------
-   private static class RouteGuideService extends RouteGuideGrpc.RouteGuideImplBase {
+   private static class RouteGuideService extends RouteGuideGrpc.RouteGuideImplBase
        ...
        +---------------------------------------------------------------------------------------------------+---------------------------------------------------------------------------------------------
        |    SINGLE RESPONSE                                                                                |  STREAM RESPONSE
@@ -107,4 +107,44 @@ REQUEST|    public StreamObserver<Point> recordRoute(final StreamObserver<RouteS
        |        }                                                                                          |  }
        |      };
        |    }
+}}}
+
+CLIENT PROTO IMPLEMENTATION SUMMARY: {{{
+       +-------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------
+       | SINGLE RESPONSE                                                                                 | STREAM RESPONSE
+-------+-------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------
+SINGLE | feature = blockingStub.getFeature(Point.newBuilder().....build());                              | Rectangle request = Rectangle.newBuilder()....build();
+REQUEST|                                                                                                 | Iterator<Feature> features = blockingStub.listFeatures(request);
+       |                                                                                                 | 
+-------+-------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------
+       |                                                                                                 |
+STREAM | public void recordRoute(List<Feature> features, int numPoints) throws InterruptedException {    | public void routeChat() throws InterruptedException {
+REQUEST|   // NOTE: java.util.concurrent.CountDownLatch details removed                                  |   // *************************************************************
+       |                                                                                                 |   // rpc RouteChat(stream RouteNote) returns (stream RouteNote) {}
+       |   // STEP 1. SETUP RESPONSE OBSERVER                                                            |   // *************************************************************
+       |   StreamObserver<RouteSummary> responseObserver = new StreamObserver<RouteSummary>() {          |   final CountDownLatch finishLatch = new CountDownLatch(1);
+       |     @Override public void onNext(RouteSummary summary) { info... summary.get*()); }             |   StreamObserver<RouteNote> requestObserver =
+       |     @Override public void onError/*RPC failed*/(Throwable t){log ... Status.fromThrowable(t););}|       asyncStub.routeChat(new StreamObserver<RouteNote>() {
+       |     @Override public void onCompleted(){ finishLatch.countDown(); }                             |         @Override public void onNext(RouteNote note) { info"Got message ... "; }
+       |   };                                                                                            |         @Override public void onError(Throwable t) { warn ... Status.fromThrowable(t);}
+       |                                                                                                 |         @Override public void onCompleted() { finishLatch.countDown(); }
+       |   // STEP 2. SETUP REQUEST OBSERVER                                                             |       });
+       |   StreamObserver<Point> requestObserver = asyncStub.recordRoute(responseObserver);              |
+-------+-------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------
+       |   try {                                                                                         |                                           try {
+       |     for (int i = 0; i < numPoints; ++i) {                                                       |   RouteNote[] requests = {newNote(...), newNote .. };
+       |       requestObserver.onNext(point); // <-- push new point to request stream                    |   for (RouteNote request : requests) {
+       |       if (finishLatch.getCount() == 0 /* RPC completed|failed before end of request stream */) {|     requestObserver.onNext(request); // <- Sen Message
+       |         return; // Sending further requests won't error, but they will just be thrown away.     |   }
+       |       }                                                                                         |                                           } catch (RuntimeException e) {
+       |     }                                                                                           |   requestObserver.onError/*Cancel RPC*/(e); throw e;
+       |   } catch (RuntimeException e) { requestObserver.onError(e) /* Cancel RPC */; throw e; }        |   requestObserver.onCompleted(); // Mark the end of requests
+       |   requestObserver.onCompleted(); // Mark the end of requests                                    |   finishLatch.await(1, TimeUnit.MINUTES); // Receiving happens asynchronously
+       |                                                                                                 | }
+       |   // Receiving happens asynchronously                                                           |
+       |   finishLatch.await(1, /*java.util.concurrent.*/TimeUnit.MINUTES);                              |
+       | }
+}}}
+
+
 }}}

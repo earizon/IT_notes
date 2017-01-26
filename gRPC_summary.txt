@@ -203,4 +203,38 @@ var services = require('..._grpc_pb');
  +--------+-----------------------------------------------------------+------------------------------------------------------------+
 }}}
 
+CLIENT PROTO IMPLEMENTATION SUMMARY: {{{
++--------+---------------------------------------------------+---------------------------------------------------
+|        |          SINGLE RESPONSE                          | STREAM RESPONSE
++--------+---------------------------------------------------+---------------------------------------------------
+|        | function featureCallback(error, feature) {        | function runListFeatures(callback) {
+|        |   if (error) { .... ;  return; }                  |   var call = client.listFeatures(rect);
+|SINGLE  |   var latitude = feature.getLocation()....        |   call.on('data', function(feature) {
+|REQUEST |   ...                                             |       /* do whatever with feature object */
+|        |   next();                                         |   });
+|        | }                                                 |   call.on('end', callback);
+|        | client.getFeature(point1, featureCallback);       | }
+|        |                                                   |
++--------+---------------------------------------------------+---------------------------------------------------
+|        |                                                   |
+|        | // STEP 1. Create a call.write(able) object       | function runRouteChat(callback) {
+|        | var call = client.recordRoute(                    |   // STEP 1. create call.write(able) object with onData notifier
+|        |   function(error, stats /*<- server response*/) { |   var call = client.routeChat(); 
+|STREAM  |     if (error) { ...;  return; }                  |   call.on('data', function(note /*response from stream*/) {
+|REQUEST |     /* Do whatever with stats response */         |       // STEP 2. callback for stream response object received
+|        |   }                                               |       // do whatever with note response
+|        | );                                                |   });
+|        | // STEP 2. Write to stream                        |   // STEP 3. Setup onEnd
+|        | for ("location in ddbb") {                        |   call.on('end', callback);
+|        |    call.write(location);                          | 
+|        | }                                                 |   // STEP 4. Write to request stream
+|        |                                                   |   for ("note in note_ddbb") {
+|        |                                                   |     var noteMsg = new messages.RouteNote().setXXX..;
+|        |                                                   |     call.write(noteMsg);
+|        |                                                   |   }
+|        |                                                   |   call.end();
+|        |                                                   | }
++--------+---------------------------------------------------+---------------------------------------------------
+}}}
+
 }}}

@@ -110,6 +110,22 @@ REQUEST|    public StreamObserver<Point> recordRoute(final StreamObserver<RouteS
 }}}
 
 CLIENT PROTO IMPLEMENTATION SUMMARY: {{{
+  REF: https://github.com/grpc/grpc/blob/master/examples/node/static_codegen/route_guide/route_guide_server.js
+  +---------------------+
+  |Initialization code: |
+  +---------------------+-----------------------------+-------------------------------------------------+
+  | function getServer() {                            | if (require.main === module) {                  |
+  |   var server = new grpc.Server();                 |   var routeServer = getServer();                |
+  |   server.addService(services.RouteGuideService, { |   routeServer.bind('0.0.0.0:50051',             |
+  |     getFeature: getFeature,                       |       grpc.ServerCredentials.createInsecure()); |
+  |     listFeatures: listFeatures,                   |   ...                                           |
+  |     recordRoute: recordRoute,                     |   routeServer.start();                          |
+  |     routeChat: routeChat                          | });                                             |
+  |   });                                             | exports.getServer = getServer;                  |
+  |   return server;                                  |                                                 |
+  | }                                                 |                                                 |
+  +---------------------------------------------------+-------------------------------------------------+
+
        +-------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------
        | SINGLE RESPONSE                                                                                 | STREAM RESPONSE
 -------+-------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------
@@ -118,7 +134,7 @@ REQUEST|                                                                        
        |                                                                                                 | 
 -------+-------------------------------------------------------------------------------------------------+-----------------------------------------------------------------------
        |                                                                                                 |
-STREAM | public void recordRoute(List<Feature> features, int numPoints) throws InterruptedException {    | public void routeChat() throws InterruptedException {
+STREAM | public void recordRoute(List<Feature> features, int numPoints) throws InterruptedException      | public void routeChat() throws InterruptedException {
 REQUEST|   // NOTE: java.util.concurrent.CountDownLatch details removed                                  |   // *************************************************************
        |                                                                                                 |   // rpc RouteChat(stream RouteNote) returns (stream RouteNote) {}
        |   // STEP 1. SETUP RESPONSE OBSERVER                                                            |   // *************************************************************
@@ -146,5 +162,45 @@ REQUEST|   // NOTE: java.util.concurrent.CountDownLatch details removed         
        | }
 }}}
 
+
+}}}
+
+
+
+******************************
+NODE.JS IMPLEMENTATION {{{
+******************************
+SERVICE/SERVER PROTO IMPLEMENTATION SUMMARY: {{{
+// REF: https://github.com/grpc/grpc/blob/master/examples/node/static_codegen/route_guide/route_guide_server.js
+
+var messages = require('..._pb');
+var services = require('..._grpc_pb');
+
+ +--------+-----------------------------------------------------------+------------------------------------------------------------+
+ |        |  SINGLE RESPONSE                                          | STREAM RESPONSE                                            |
+ +--------+-----------------------------------------------------------+------------------------------------------------------------+
+ |        |  function getFeature/* single request/response */         | function listFeatures/* single request/stream response */  |
+ |REQUEST |    (call, callback /*Response callback*/) {               |   (call/* call.request == Rectangle (lo, hi) */) {         |
+ |        |    callback(null, feature ); // <- write response         |   _.each(feature_list, function(feature) {                 |
+ |        |  }                                                        |     if ("feature OK") {                                    |
+ |        |                                                           |       call.write(feature); // <-- write to response stream |
+ |        |                                                           |     }                                                      |
+ |        |                                                           |   });                                                      |
+ |        |                                                           |   call.end(); // <-- end stream                            |
+ |        |                                                           | }                                                          |
+ |        |                                                           |                                                            |
+ +--------+-----------------------------------------------------------+------------------------------------------------------------+
+ |        |                                                           |                                                            |
+ |STREAM  |  function recordRoute /*stream request, single response*/ | function routeChat /* stream request, stream response */   |
+ |REQUEST |    (call /* <- stream */, callback) {                     |   (call /* <- stream. NOTE: no callback*/) {               |
+ |        |    call.on('data', function(point) { ... });              |   call.on('data', function(note) {                         |
+ |        |    call.on('end', function() {                            |     _.each(internal_data, function(note) {                 |
+ |        |      var summary = new messages.RouteSummary().set...;    |       call.write(note); // <- write to response stream     |
+ |        |      callback(null, summary);                             |     });                                                    |
+ |        |    });                                                    |   });                                                      |
+ |        |  }                                                        |   call.on('end', function() { call.end(); });              |
+ |        |                                                           | }                                                          |
+ +--------+-----------------------------------------------------------+------------------------------------------------------------+
+}}}
 
 }}}

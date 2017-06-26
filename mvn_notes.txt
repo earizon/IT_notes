@@ -1,0 +1,73 @@
+DEFINITIONS:                                                           || mvn dependency:analyze list two things:
+Goal: - unit of work. A goal accepts configuration                     || 1) Dependencies used but not declared. 
+      properties (parameters) to customize its run-time behavior       ||    If found in the parent pom, there is no 
+      Ex: Compiler:compile defines a set of parameters to specify      ||    problem when compiling, but must be 
+          target JDK version or switching on/off compiler optimizations||    included at runtime on the server.
+      - An ordered list of goals can be attached to a lifecycle phase. || 
+      Ex: mvn package is equivalent to:                                || 2) Dependencies declared but not used for 
+          resources:resources > compiler:compile >                     ||    the scope provided (compile, provided…). 
+           resources:testResources >  compiler:testCompile >           ||    They can be in the parent pom too.
+            surefire:test jar:jar                                      ||    Noneless, can be needed at runtime. 
+-----------------------------------------------------------------------++---------------------------------------------------------------------
+MAVEN DEFAULT LIFECYCLE:                                               || .../parent/pom.xml              | .../parent/child1/pom.xml
+process-resources -> compile -> process-classes ->                     || ----------------------------------+---------------------------------
+  process-test-resources -> test-compile -> test ->                    || <modelVersion>4.0.0             | <parent>
+    prepare-package -> package -> install                              || </modelVersion>                 |   <groupId>...</groupId>
+-----------------------------------------------------------            || <groupId>....</groupId>         |   <artifactId>parent</artifactId>
+mvn dependency:tree                                                    || <artifactId>parent</artifactId> |   <version>1</version>
+mvn clean install                                                      || <version>0.1.0</version>        |   <relativePath>
+   will "exec" clean>compile>test>package>install                      || <packaging>pom</packaging>      |      ../pom.xml</relativePath>
+mvn clean deploy                                                       ||                                 | </parent>
+   will "exec"  clean>   ...>install corporate repo                    ||                                 | <dependecies>
+-----------------------------------------------------------            || <modules>                       |   <dependency>
+Common options:                                                        ||   <module>../child1</module>    |     <groupId>...</groupId>
+ –U  Force library (download) update                                   ||   <module>../child2</module>    |     <artifactId>...</artifactId>
+ –P xxx Execute profile xxx                                            || </modules>                      |   </dependency>...
+ –o offline mode. Search deps in local repo.                           ||                                 | </dependecies>
+-----------------------------------------------------------            || <dependencyManagement>          |
+help:active-profiles   : List (project|user|global)                    ||   <dependencies>                |
+                        active profile for the build                   ||   <dependency>                  |
+help:effective-pom     : Displays effective POM for                    ||     <groupId>...</groupId>      |
+                          current build                                ||     <artifactId>...</artifactId>| no need to repeat version/scope
+help:effective-settings: Prints calculated settings for project        ||     <version>X.Y.Z</version>    | in childs
+help:describe groupId artifactId: Describes attributes for plugin      ||     <scope>compile</scope>    <-| compile | provided
+                                                                       ||   </dependency>...              |
+                                                                       ||   <dependencies>                | 
+                                                                       || </dependencyManagement>              
+-----------------------------------------------------------------------++-------------------------------------------------------------------
+Q: What exactly is a Maven Snapshot and why do we need it?             || POM BEST PRACTICES:
+A: A snapshot version is one that has not been released.               || Ref: http://geertschuring.wordpress.com/2011/02/23/maven-best-practices/
+   The idea is that before a "1.0" release is done, there exists       || 1. Replace references like ${artifactId} or ${pom.artifactId} with new
+   a 1.0-SNAPSHOT. That version is what might become 1.0. It's         ||    ${project.artifactId} syntax. This syntax follows the XML document
+   basically "1.0 under development". This might be close to a real    ||    structure, making it easy to remember and predict the value that the
+   1.0 release, or pretty far (right after the 0.9 release, for ex.)   ||    reference will result in.
+                                                                       || 2. Try to avoid using inherited properties. Developers can easily forget
+ The difference between a "real" version and a snapshot version is     ||    that a certain property is used by a child POM and change the value
+ that snapshots might get updates.  That means that downloading        ||    breaking the build in an unexpected place. Secondly, its quite annoying
+ 1.0-SNAPSHOT today might give a different file than downloading it    ||    not to be able to easily lookup a property without having to find
+ yesterday or tomorrow.                                                ||    and examine the parent POM.
+                                                                       || 3. Use the dependency management section of the parent pom to define
+ Usually, snapshot dependencies should only exist during development   ||    all dependency versions, but do not set a scope here so that all
+ and no released version (i.e. no non-snapshot) should have a          ||    dependencies have scope compile by default.
+ dependency on a snapshot version                                      || 4. Use properties to define the dependency versions. This way you can
+  <repository>                                                         ||    get an overview of all versions quickly.
+      ...                                                              || 5. Use the pluginmanagement section of parent pom to define versions for
+      <snapshots>                                                      ||    *all* plugins that your build uses, even standard maven plugins like
+          <enabled>true</enabled>                                      ||    maven-compile-plugin and maven-source-plugin. This way your build will
+          <updatePolicy>                                               ||    not suddenly behave differently when a new version of a plugin is released.
+            always|daily(default)|                                     || 6. When using a parent POM not located in the directory directly above
+            "X"minutes|never                                           ||    the current POM define an empty relativePath element in your parent section.
+          </updatePolicy>                                              || 7. Use the dependency plugin to check your project for both unnecessary 
+      </snapshots>                                                     ||    dependencies and undeclared-but-used-none-the-less dependencies. 
+  </repository>                                                        ||    The goal is called ‘analyze’, so run the following command on the 
+                                                                       ||    console: “mvn dependency:analyze
+                                                                       || 8. Make sure the pom files contain all the repository references needed
+                                                                       ||    to download all dependencies. If you want to use a local repository
+                                                                       ||    instead of downloadin strait from the internet then use the maven
+                                                                       ||    settings file to define mirrors for the individual repositories that
+                                                                       ||    are defined in the poms.
+                                                                       || 9. If you use Nexus, then do not create repository groups containing both
+                                                                       ||    hosted and proxied repositories. This will dramaticly reduce the 
+                                                                       ||    responsiveness because Nexus will check the remote locations of the
+                                                                       ||    proxied repositories even if a hosted repository contains the requested
+                                                                       ||    artifact.  

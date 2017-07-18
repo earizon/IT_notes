@@ -101,7 +101,9 @@ th[header_delimit]{background-color:#000000; color:#FFFFFF; font-size:2em; }
   <td topic         ><a href="https://interledger.org/">interledger.org</a> </td>
   <td summary       >open protocol suite for sending payments across different ledgers.
                      The open architecture and minimal protocol enable interoperability for any value transfer system.
-                      Interledger is not tied to any one company, blockchain, or currency.
+                      Interledger is not tied to any one company, blockchain, or currency.<br/>
+                     <a href="https://www.slideshare.net/Interledger/interledger-workshop-berlin-1-june-2017/120">
+                     Interledger Presentation @ Workshop Berlin</a>
   </td>
   <td documentation >
                      <ul>
@@ -123,12 +125,25 @@ th[header_delimit]{background-color:#000000; color:#FFFFFF; font-size:2em; }
                      <li><a href="https://github.com/interledgerjs/">NodeJS Ref.Impl. @Github</a><br></li>
                      </ul>
   </td>
-  <td testing/CI    >&nbsp;</td>
+  <td testing/CI    ><a href='https://lists.w3.org/Archives/Public/public-interledger/2017Jul/0024.html'>e-mail Michiel de Jong</a>
+                     """
+                     As discussed in the last community call, we started building a testnet. You
+                     can now choose whether you want your node's home ledger to be part of the
+                     live network (prefix `g.`) or of the testnet (prefix `test.`). We ask
+                     everybody who runs a connector to situate their connector firmly on one
+                     side of that divide, so either you connect only between `g.` ledgers, or
+                     you connect only between `test.` ledgers. We'll probably add a feature in
+                     ilp-kit to make it impossible to violate that rule from the admin UI, but
+                     if you run a home-grown connector implementation, or edit your server
+                     config via ssh, then please apply that rule manually.
+                     """
+</td>
   <td deployment    >&nbsp;</td>
 </tr }>
 <tr  name="ilp-address" {>
-  <td topic         >ILP Unique Account<br>Addressing</td>
-  <td summary       >ILP addresses provide a way to route payments to their intended destination
+  <td topic         >ILP Address </td>
+  <td summary       >Destination Address(accounts) and Address Prefixes(ledgers,groups of accounts,..) provide
+                     a way to route payments to their intended destination
                      through a recursive series of hops, including any number of ILP Connectors. 
                      (This happens after the payment is set up on by a higher-level payment setup protocol such as SPSP.)
                      Addresses are not meant to be user-facing, but allow several ASCII characters for easy debugging.
@@ -153,6 +168,7 @@ th[header_delimit]{background-color:#000000; color:#FFFFFF; font-size:2em; }
   <td development   >
                      <ul>
                      <li><a href="https://github.com/interledgerjs/five-bells-shared/blob/master/schemas/IlpAddress.json">(Outdated)IlpAddress.json</a><span TODO>Is new schema defined anywhere in JS code?</span></li>
+                     <hr/>
                      <li><a href="https://github.com/interledger/java-ilp-core/blob/development/src/main/java/org/interledger/InterledgerAddress.java">InterledgerAddress.java</a></li>
                      </ul>
 </td>
@@ -161,7 +177,20 @@ th[header_delimit]{background-color:#000000; color:#FFFFFF; font-size:2em; }
 </tr }>
 <tr name="ilp-protocol" {>
   <td topic         >ILP Protocol</td>
-  <td summary       > Pre-payment setup AND  ILP payment</td>
+  <td summary       > 
+<pre xxsmall>
+               INTERLEDGER ARCHITECTURE    "versus"    INTERNET ARCHITECTURE
+-------------+---------------------------------+-----------------------------+
+Application  | SPSP  HTTP-ILP   PAYTORRENT     |    HTTP SMTP NNTP NTP RTP   |
+-------------+---------------------------------|-----------------------------|
+Transport    | IPR    PSK    PSKD-ECDH         |         TCP   UDP           |
+-------------+---------------------------------|-----------------------------|
+Interledger  |        ILP                      |            IP               |
+-------------+---------------------------------|-----------------------------|
+Ledger       | Blockchains Banks MobileMoney   |  WiFi  BLuetooth  Ethernet  |
+-------------+---------------------------------+-----------------------------+
+</pre>
+  </td>
   <td documentation >
                     <ul> 
                     <li><a href='https://github.com/interledger/rfcs/blob/master/0003-interledger-protocol/0003-interledger-protocol.md'>RFC</a></li>
@@ -183,7 +212,15 @@ th[header_delimit]{background-color:#000000; color:#FFFFFF; font-size:2em; }
 <tr name="ilp-packet" {>
   <td topic         >ILP Packet</td>
 
-  <td summary       >&nbsp;</td>
+  <td summary       >
+<pre xsmall>
+{
+  account: "g.us.usd.chase.bob.car",
+  amount : "10",
+  data   : "SGVsbG8...."
+}
+</pre>
+  </td>
   <td documentation >
                     <ul>
                     <li><a href='https://github.com/interledger/rfcs/blob/master/0003-interledger-protocol/0003-interledger-protocol.md'>RFC</a> ILP Payment Packet Format Section)</li>
@@ -309,17 +346,61 @@ th[header_delimit]{background-color:#000000; color:#FFFFFF; font-size:2em; }
   <td testing/CI    >&nbsp;</td>
   <td deployment    >&nbsp;</td>
 </tr }>
-
+<tr {>
+  <td topic         >Liquidity Curves</td>
+  <td summary       >L.C.  describe the relationship between input and output amount
+                     for a given path between a pair of ledgers.<br/>
+                     The curve is expressed as a series of points given as coordinates 
+                     of the form <inputAmount, outputAmount>. If a sender sends 'inputAmount'
+                     units to the connector, the recipient will receive 'outputAmount'.<br/>
+                     It may represent the liquidity through a single connector, 
+                     or multiple liquidity curves can be combined into one to represent 
+                     the liquidity through a given path of connectors.<br/>
+                     Points are ordered by inputAmount. The inputAmount is strictly increasing
+                     from point to point. The outputAmount is monotonically increasing, 
+                     meaning each successively point must have an equal or greater outputAmount.<br/>
+                     The first point represents the minimum amount that can be transacted, while
+                     the final point represents the maximum amount that can be transacted.<br/>
+                     If a query does not match a point exactly, implementations MUST use linear
+                     interpolation. When querying by outputAmount, if multiple points match
+                     exactly, the lowest inputAmount of any of these points MUST be returned.
+  </td>
+  <td documentation >
+                     <ul>
+                     <li> <a href="https://github.com/interledger/rfcs/blob/master/asn1/InterledgerTypes.asn">ASN.1 bin.def.</a></li>
+                     </ul>
+  </td>
+  <td development   ></td>
+  <td testing/CI    >&nbsp;</td>
+  <td deployment    >&nbsp;</td>
+</tr }>
 <tr name="ilp-routing" {>
   <td topic         >Routing</td>
-  <td summary       >Everything related to route payments between connectors</td>
+  <td summary       >
+                     Connectors maintain a routing table of ILP addresses. Routing is a recursive lookup 
+                     through the routing tables of any number of connectors. When a connector receives a query,
+                     it finds the longest prefix match for the queried address. Then, it follows one of the
+                     following cases:
+                     <ul>
+                     <li>
+                     If the matching address is marked for local delivery, the connector prepares a transfer
+                       to that address in one of the ledgers connected to it.
+                     The connector maps the ILP address to an account within the ledger. (This is the base case.)
+                     </li>
+                     <li>
+                     If the matching address is marked as forwarded delivery, it has the address of another 
+                     connector associated with it in the routing table. The connector makes a routing lookup on 
+                     the connector associated with the address. (This is the recursive case.)
+                     </li>
+                     </ul>
+</td>
   <td documentation >
                      <ul>
                      <li><a href='https://docs.google.com/document/d/1ifGKVnWcg3MIEbGou4mgZMVKo3ldeFB1WAKvdsQPios/edit'>Initial Doc</a> from the ILP Routing Working Group explaining the current status, current issues, open questions, possible scenarios (connecting crypto-currencies, friend-to-friend network, payments for retails goods, micropayments, ...) </li>
                      <li><a href='https://github.com/interledger/rfcs/blob/master/0010-connector-to-connector-protocol/0010-connector-to-connector-protocol.md'>RFC-0010 Connector to Connector protocol</a> describes de protocol to interchange data between connectors</li>
                      <li><a href='https://github.com/interledgerjs/five-bells-shared/tree/master/schemas/Routes.json'>five-bells-shared/schemas/Routes.json</a></li>
                      <li><a href='https://github.com/interledgerjs/ilp-connector/tree/master/schemas/RoutingUpdate.json'>five-bells-shared/schemas/RoutingUpdate.json</a></li>
-                     <li><a href='https://github.com/interledger/rfcs/tree/master/asn1/InterledgerQuotingProtocol.asn'>Liquidity Curve</a></li>
+                     <li><a href='https://github.com/interledger/rfcs/tree/master/asn1/InterledgerQuotingProtocol.asn'>ASN.1 bin.def.</a></li>
                      <li><a href='https://gist.github.com/justmoon/a59fd43958ce421c8b4a88d5143c718b#route-broadcast-example'>(Stefan Thomas gist) Route Broadcast Example</a></li>
                      </ul>
   </td>
@@ -692,7 +773,9 @@ node debug bin/api.js
   <td summary       >bootstrapping project in an effort to get<br>real-money moving on the Interledger.<br>It also includes a wallet/front-end to the ledger,<br>as well as utilities to and</td>
   <td documentation ><a href="https://github.com/interledgerjs/ilp-kit/wiki">WiKi</a> ,</td>
   <td development   ><a href="https://github.com/interledgerjs/ilp-kit">Github</a></td>
-  <td testing/CI    >&nbsp;</td>
+  <td testing/CI    >
+                     <a href="https://lists.w3.org/Archives/Public/public-interledger/2017Jul/0024.html">1</a>
+  </td>
   <td deployment    >
                      - <a href='https://github.com/interledgerjs/ilp-kit/blob/master/Dockerfile'>Dockerfile</a>
                      - <a href='https://connector.land/'>https://connector.land,<a>  List of up-and-running connectors<br/>

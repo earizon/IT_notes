@@ -1,8 +1,14 @@
 #!/bin/bash 
 
+# Example script to launch a remote TigerVNC X Server and the i3 window manager.
+# - TigerVNC (http://TigerVNC.org) includes Xrandr extensions for resizing the screen and some other goodies.
+# - i3 (https://i3wm.org) is an (excelent) tiling window manager. 
+#     Follow i3 manual to configure $HOME/.i3/config keyboard short-cuts
+
 # PREREQUESITES {
-#    $ sudo apt-get install openbox lxpanel lxde
+#    $ sudo apt-get install openbox lxpanel lxde i3wm
 # }
+
 
 LISTENING_PORT=5901
 CONST_BASE_PORT=5900

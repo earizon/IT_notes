@@ -38,13 +38,3 @@ EOF
 
 chmod a+x ${HOME}/.vnc/xstartup
 
-### echo "Launching openbox ... "
-### /usr/bin/openbox  1>>${LOG} 2>&1 &
-### sleep 1
-### 
-### echo "Launching lxpanel ... "
-### /usr/bin/lxpanel --profile LXDE 1>>${LOG} 2>&1 &
-### 
-### echo "Launching pcmanfm ... "
-### /usr/bin/pcmanfm --desktop --profile LXDE 1>>${LOG} 2>&1 &
-

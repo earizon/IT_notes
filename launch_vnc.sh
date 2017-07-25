@@ -9,6 +9,7 @@ CONST_BASE_PORT=5900
 DISPLAY_NUMBER=$(( $LISTENING_PORT - $CONST_BASE_PORT ))
 export DISPLAY=":${DISPLAY_NUMBER}"
 echo "DISPLAY: $DISPLAY"
+export LC_MESSAGES=en_US.UTF-8
 
 LOG="/tmp/vncserver.${LISTENING_PORT}.log"
 echo "" > $LOG
@@ -16,23 +17,26 @@ echo "Logs redirected to $LOG"
 # TYPICAL VALUES FOR GEOMETRY: GEOMETRY:=2560x1440 ,  1920x1200, 1920x1080 
 GEOMETRY=2560x1440
 
-VNCSERVER_OPTS=""
-  VNCSERVER_OPTS="$VNCSERVER_OPTS $DISPLAY"
-  VNCSERVER_OPTS="$VNCSERVER_OPTS -name $LISTENING_PORT  "
-  VNCSERVER_OPTS="$VNCSERVER_OPTS -depth 24 "
-  VNCSERVER_OPTS="$VNCSERVER_OPTS -geometry ${GEOMETRY} "
-# VNCSERVER_OPTS="$VNCSERVER_OPTS -nevershared"
+  TIGERVNC_SERVER_OPTS=""
+# TIGERVNC_SERVER_OPTS="$TIGERVNC_SERVER_OPTS -audit 3" # audit level
+  TIGERVNC_SERVER_OPTS="$TIGERVNC_SERVER_OPTS -ac"      # disable access control restrictions
+  TIGERVNC_SERVER_OPTS="$TIGERVNC_SERVER_OPTS -name $LISTENING_PORT  "
+  TIGERVNC_SERVER_OPTS="$TIGERVNC_SERVER_OPTS -depth 24 "
+  TIGERVNC_SERVER_OPTS="$TIGERVNC_SERVER_OPTS -geometry ${GEOMETRY} "
+  TIGERVNC_SERVER_OPTS="$TIGERVNC_SERVER_OPTS -passwd /home/earizon/.vnc/passwd"
+  TIGERVNC_SERVER_OPTS="$TIGERVNC_SERVER_OPTS -nevershared"
+# TIGERVNC_SERVER_OPTS="$TIGERVNC_SERVER_OPTS -verbose 3"
+ 
 
-vncserver ${VNCSERVER_OPTS} 1>>${LOG} 2>&1 &
+rm .vnc/li305-230*.log -f
+vncserver ${TIGERVNC_SERVER_OPTS} 1>>${LOG} 2>&1 &
 
-echo "Waiting for vncserver "
-while true ; do 
-    netstat -ntlp 2>/dev/null | grep -q $LISTENING_PORT && break
-    sleep 1; echo -n "."
-done
+cat << EOF > ${HOME}/.vnc/xstartup
+#/bin/sh
+/usr/bin/i3  1>>${LOG} 2>&1
+EOF
 
-### echo "Launching i3 ... "
-    /usr/bin/i3  1>>${LOG} 2>&1 &
+chmod a+x ${HOME}/.vnc/xstartup
 
 ### echo "Launching openbox ... "
 ### /usr/bin/openbox  1>>${LOG} 2>&1 &

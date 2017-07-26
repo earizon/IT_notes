@@ -35,12 +35,14 @@ GEOMETRY=2560x1440
  
 
 rm .vnc/li305-230*.log -f
-vncserver ${TIGERVNC_SERVER_OPTS} 1>>${LOG} 2>&1 &
 
 cat << EOF > ${HOME}/.vnc/xstartup
 #/bin/sh
 /usr/bin/i3  1>>${LOG} 2>&1
 EOF
-
 chmod a+x ${HOME}/.vnc/xstartup
+
+vncserver ${TIGERVNC_SERVER_OPTS} 1>>${LOG} 2>&1 &
+
+
 

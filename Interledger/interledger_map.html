@@ -111,6 +111,8 @@ th[header_delimit]{background-color:#000000; color:#FFFFFF; font-size:2em; }
                      <li><a href="https://www.slideshare.net/Interledger/interledger-workshop-berlin-1-june-2017/120">Interledger Presentation @ Workshop Berlin</a></li>
                      <li><a href="https://github.com/interledger/rfcs">RFCs</a></li>
                      <li><a href="https://github.com/interledger/rfcs/issues">RFCs issues</a></li>
+                     <li><a href="https://github.com/interledger/rfcs/pull/266">ILP as Settlement vs Clearing System</a> and design implications</li>
+
                      <li>CryptoCond_Escrow&nbsp; <a href="https://gist.github.com/justmoon/e68a2fb39f6217ad43a05df63c766912">1</a>,<a href="https://lists.w3.org/Archives/Public/public-interledger/2016Jul/0017.html">2</a>,<a href="https://lists.w3.org/Archives/Public/public-interledger/2016May/0032.html">3</a></li>
                      <li><a href="https://lists.w3.org/Archives/Public/public-interledger/">W3C_ILP_MailingList,</a> </li>
                      <li><a href="https://lists.w3.org/Archives/Public/public-interledger/">public-interledger@w3 mailing list</a></li>
@@ -239,6 +241,40 @@ Ledger       | Blockchains Banks MobileMoney   |  WiFi  BLuetooth  Ethernet  |
                     <ul>
                     <li><a href='https://github.com/interledger/rfcs/blob/master/0003-interledger-protocol/0003-interledger-protocol.md'>RFC</a> ILP Payment Packet Format Section)</li>
                     <li><a href='https://github.com/interledger/rfcs/blob/master/asn1/GenericPacket.asn'>GenericPacket ASN1 Binary</a></li>
+                     <li>
+                         <a href='https://github.com/interledger/rfcs/pull/264'>PR 264 Reduce CLP to the French Five</a>
+<pre xxxsmall>note Adrian Hope: """I believe there is a layering issue in the set of generic packets that is making this harder than it should be. If you look at this list, the only packet that is relayed, unchanged, between nodes is the InterledgerProtocolPayment.
+    {1 InterledgerProtocolPayment}       | {2 QuoteLiquidityRequest} |
+    {3 QuoteLiquidityResponse}           | {4 QuoteBySourceAmountRequest} |
+    {5 QuoteBySourceAmountResponse}      | {6 QuoteByDestinationAmountRequest} |
+    {7 QuoteByDestinationAmountResponse} | {8 InterledgerProtocolError}
+This suggests that the InterledgerProtocolPayment should exist one layer higher in the stack and be encapsulated in a packet that is passed from node to node like the others.
+We should remove InterledgerProtocolPayment and add TransferRequest, SuccessfulTransferResponse and FailedTransferResponse defined as follows:
+TransferRequest ::= SEQUENCE { transferId ..., amount ..., executionCondition ..., expiresAt ..., packet InterledgerProtocolPayment }
+SuccessfulTransferResponse ::= SEQUENCE { transferId UInt128, fulfillment UInt256 }
+FailedTransferResponse ::= SEQUENCE { transferId UInt128, reason InterledgerProtocolError }
+
+It's not clear if the ILQP requests can ever have an ILP Error response so let's assume that is only used in response to a transfer request.
+
+Therefor the new set of Generic Packets are:
+    [TransferRequest, SuccessfulTransferResponse, FailedTransferResponse, 
+     QuoteLiquidityRequest, QuoteLiquidityResponse, 
+     QuoteBySourceAmountRequest, QuoteBySourceAmountResponse,
+     QuoteByDestinationAmountRequest, QuoteByDestinationAmountResponse ]
+This is the protocol layer that exists below ILP, the messages exchanged directly between nodes (connectors, senders and receivers).
+
+**** The transfer request encapsulates the InterledgerProtocolPayment (often referred to as the ILP Packet) along with the other required data for a transfer (expiry, condition etc). ****
+Note that *Request and *Response at this layer imply the logical flow not the message flow (which is captured in the next layer down, the CommonMessageProtocol). For example, a TransferRequest may be carried in a RequestMessage and the ResponseMessage may simply carry an Ack.
+ Then the SuccessfulTransferResponse is returned, carried in a RequestMessage envelope, because it is initiated from the upstream node.
+
+The CommonMessageProtocol could then be reduced to:
+Ack ::= SEQUENCE { ...  }
+RequestMessage ::= SEQUENCE { ...  }
+ResponseMessage ::= SEQUENCE { ... }
+
+
+</pre>
+                     </li>
 
                     </ul>
   </td>
@@ -287,10 +323,10 @@ Ledger       | Blockchains Banks MobileMoney   |  WiFi  BLuetooth  Ethernet  |
      <th  deployment   >deployment</th>
 </tr }>
 <tr name="transport" {>
-  <td topic         >Transport?</td>
+  <td topic         >Transport</td>
   <td summary       >
-                     Where is this lib. used exactly?<br/>
-                     How does it matches the RFCs<br/>
+                     Transport in ILP refers to protocols used to transport needed data (crypto-conditions) used by upper ILP layer protocols<br/>
+                     <br/>
   </td>
   <td documentation ></td>
   <td development   >
@@ -720,16 +756,21 @@ node debug bin/api.js
                      developed for the five-bells ledger.
   </td>
   <td documentation >
-                     - <a href="https://github.com/mDuo13/rfcs/tree/five_bells_ledger_api/0012-five-bells-ledger-api">RFC Complete Draft</a> and
-                       <a href="https://github.com/interledger/rfcs/pull/237">Pull Request</a><br/>
-                     - <a href="https://github.com/mDuo13/rfcs/blob/five_bells_ledger_api/0012-five-bells-ledger-api/5BL-transfer-states.png">Transfer proposed->prepated->executed|rejected state diagram</a>
-                     - decimal_digits: a hint for GUIs, the conventionally 
-                       displayed number of decimal places for a given asset.<br/>
-                     - Precision: number of digits in a number.<br/>
-                     - Scale: number of digits to the right of the decimal point in a number.<br/>
-                     Example 1: 123.45 has a precision of 5 and a scale of 2<br/>
-                     Example 2: a USD ledger might use a precision of 15 and a scale of 6 
-                                and 2 decimal_digits
+                     <ul>
+                     <li><a href="https://github.com/mDuo13/rfcs/tree/five_bells_ledger_api/0012-five-bells-ledger-api">RFC Complete Draft</a> and <a href="https://github.com/interledger/rfcs/pull/237">Pull Request</a><br/> </li>
+                     <li><a href="https://github.com/mDuo13/rfcs/tree/five_bells_ledger_api/0012-five-bells-ledger-api">RFC Complete Draft</a> and <a href="https://github.com/mDuo13/rfcs/blob/five_bells_ledger_api/0012-five-bells-ledger-api/5BL-transfer-states.png">Transfer proposed->prepated->executed|rejected state diagram</a></li>
+                     <li>
+<pre>
+- decimal_digits: a hint for GUIs, the conventionally 
+  displayed number of decimal places for a given asset.<br/>
+- Precision: number of digits in a number.<br/>
+- Scale: number of digits to the right of the decimal point in a number.<br/>
+Example 1: 123.45 has a precision of 5 and a scale of 2<br/>
+Example 2: a USD ledger might use a precision of 15 and a scale of 6 and 2 decimal_digits
+</pre>
+                     </li>
+                     <li><a href='https://github.com/interledger/rfcs/pull/264'>Reduce CLP to the French Five</a></li>
+                     </ul>
   </td>
   <td development   ><a href="https://github.com/interledger/rfcs/issues">Issues</a></td>
   <td testing/CI    >&nbsp;</td>
@@ -823,9 +864,28 @@ node debug bin/api.js
 </tr }>
 <tr name="ilp-plugin-virtual" {>
   <td topic         >ilp-plugin-virtual</td>
-  <td summary       >Virtual plugin to offer partial support for existing<br>ledgers NOT supporting ILP. <br>Notice that while connectors and connectors <br>plugins are for the most part stateless, this <br>plugin keeps internal state to offer the functionality<br>required for the protocol (Usually this state ought<br>to be on the the ILP-enabled ledger)</td>
+  <td summary       >Virtual plugin to offer partial support for existing<br>ledgers NOT supporting ILP. <br>Notice that while connectors and connectors <br>plugins are for the most part stateless, this <br>plugin keeps internal state to offer the functionality<br>required for the protocol (Usually this state ought<br>to be on the the ILP-enabled ledger).<br/>
+   Q: how can I be sure a peer is not sending me fake money?<br/>
+   A: That depends on the type of plugin you peer over. If you use plugin-virtual (the default plugin in ILP Kit), then you simply trust your peer to eventually settle its dept with you. Alternatively, you can use other plugins that require less trust in your peer, like ilp-plugin-bitcoin-paychan. This plugin tracks the debt with your peer on the bitcoin blockchain.<br/>
+  </td>
   <td documentation >&nbsp;</td>
   <td development   ><a href="https://github.com/interledgerjs/ilp-plugin-virtual">GitHub</a></td>
+  <td testing/CI    >&nbsp;</td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+<tr {>
+  <td topic         >NodeJS ILP-Plugin-payment-channel-framework</td>
+  <td summary       >
+                     ILP virtual ledger plugin for directly transacting connectors, 
+                     including a framework for attaching on-ledger settlement mechanisms.
+</td>
+  <td documentation >From <a href='https://github.com/interledger/rfcs/pull/263'>RFC PR263</a>:
+<pre xxsmall>
+Any ledger protocol author can definitely fork CLP, or design something completely different from scratch.
+However, as we've found writing ledger plugins, it's much easier to use something like the payment channel framework than implement everything yourself. That framework will be changed to use the CLP as the base protocol and allow individual plugins to add custom messages (in the same way you can add custom RPC methods now) and custom data to existing messages (in the same way you can add custom arguments to existing RPC calls now). The benefit of allowing for multiple plugin types is that we don't have to standardize this layer. But as we've seen from experience it's way easier to implement plugins if you can reuse something like that framework that does 80% of the work for you (and avoids common gotchas).
+</pre>
+</td>
+  <td development   ><a href='https://github.com/interledgerjs/ilp-plugin-payment-channel-framework'>GitHub</a></td>
   <td testing/CI    >&nbsp;</td>
   <td deployment    >&nbsp;</td>
 </tr }>
@@ -968,7 +1028,7 @@ CONNECTOR_PORT=400
   <td topic         >Ethereum</td>
   <td summary       ></td>
   <td documentation >&nbsp;</td>
-  <td development   ><a href="https://github.com/sharafian/ilp-plugin-ethereum">Sharafian Ethereum</a> JS Plugin</td>
+  <td development   ><a href="https://github.com/sharafian/ilp-plugin-ethereum">Sharafian Ethereum</a> JS connector Plugin</td>
   <td testing/CI    >&nbsp;</td>
   <td deployment    >&nbsp;</td>
 </tr }>
@@ -977,7 +1037,7 @@ CONNECTOR_PORT=400
   <td topic         >XRP</td>
   <td summary       ></td>
   <td documentation >&nbsp;</td>
-  <td development   ><a href="https://github.com/ripple/ilp-plugin-xrp-escrow/">Ripple XRP</a> JS Plugin</td>
+  <td development   ><a href="https://github.com/ripple/ilp-plugin-xrp-escrow/">Ripple XRP</a> JS connector Plugin</td>
   <td testing/CI    >&nbsp;</td>
   <td deployment    >&nbsp;</td>
 </tr }>
@@ -987,7 +1047,16 @@ CONNECTOR_PORT=400
   <td topic         >BTC/LTC/ZCASH</td>
   <td summary       ></td>
   <td documentation >&nbsp;</td>
-  <td development   ><a href="https://github.com/interledgerjs/ilp-plugin-bitcoin-paychan">Bitcoin/LiteCoin/Zcash</a> JS plugin</td>
+  <td development   ><a href="https://github.com/interledgerjs/ilp-plugin-bitcoin-paychan">Bitcoin/LiteCoin/Zcash</a> JS connector plugin</td>
+  <td testing/CI    >&nbsp;</td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+
+<tr {>
+  <td topic         >XPR</td>
+  <td summary       >Initial Java Support for XPR Blockchain</td>
+  <td documentation >&nbsp;</td>
+  <td development   ><a href="https://github.com/ripple/ripple-lib-java">github.com/ripple/ripple-lib-java</a> XRP client </td>
   <td testing/CI    >&nbsp;</td>
   <td deployment    >&nbsp;</td>
 </tr }>

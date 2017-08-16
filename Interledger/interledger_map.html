@@ -102,6 +102,9 @@ th[header_delimit]{background-color:#000000; color:#FFFFFF; font-size:2em; }
   <td summary       >open protocol suite for sending payments across different ledgers.
                      The open architecture and minimal protocol enable interoperability for any value transfer system.
                       Interledger is not tied to any one company, blockchain, or currency.<br/>
+                     Note: In ILP ledgers do still keep in charge of double-entry bookkeeping. 
+                     Interledger is used to synchronize transfers (sets of debits and credits) 
+                     across multiple ledgers
   </td>
   <td documentation >
                      <ul>
@@ -114,8 +117,7 @@ th[header_delimit]{background-color:#000000; color:#FFFFFF; font-size:2em; }
                      <li><a href="https://github.com/interledger/rfcs/pull/266">ILP as Settlement vs Clearing System</a> and design implications</li>
 
                      <li>CryptoCond_Escrow&nbsp; <a href="https://gist.github.com/justmoon/e68a2fb39f6217ad43a05df63c766912">1</a>,<a href="https://lists.w3.org/Archives/Public/public-interledger/2016Jul/0017.html">2</a>,<a href="https://lists.w3.org/Archives/Public/public-interledger/2016May/0032.html">3</a></li>
-                     <li><a href="https://lists.w3.org/Archives/Public/public-interledger/">W3C_ILP_MailingList,</a> </li>
-                     <li><a href="https://lists.w3.org/Archives/Public/public-interledger/">public-interledger@w3 mailing list</a></li>
+                     <li><a href="https://lists.w3.org/Archives/Public/public-interledger/">public-interledger@W3C mailing list</a></li>
                      <li><a href="https://interledger.org/community.html">Community</a></li>
                      <li>(Biweekly) Remote meeting connections:<br/>
                        <a href="https://bluejeans.com/795795755">https://bluejeans.com/795795755</a> (Windows/Android/iPhone)<br/>
@@ -399,6 +401,73 @@ ResponseMessage ::= SEQUENCE { ... }
   <td testing/CI    >&nbsp;</td>
   <td deployment    >&nbsp;</td>
 </tr }>
+
+<tr {>
+  <td topic         >Atomic payments in ILP</td>
+  <td summary       >How atomic payments (distributed safe-ACID) relate to ILP</td>
+  <td documentation >See (Re:) Atomic Payments thread in w3c list started by Ryan Fugger
+     <a href='https://lists.w3.org/Archives/Public/public-interledger/2017Jun/thread.html'>June</a>, <a href='https://lists.w3.org/Archives/Public/public-interledger/2017Aug/thread.html'>August</a>
+  Extracted from Stefan Thomas <a href='https://lists.w3.org/Archives/Public/public-interledger/2017Jun/0040.html'>reply</a>:
+<span xxsmall>
+ I would say that we haven't abandoned the ideal insofar as
+we still want any many payments as possible to be atomic as much as
+possible. However, I would argue that we cannot assume that atomic mode
+will always be available.<br/>
+
+In atomic mode, all participants along the payment chain have to have full
+unconditional trust in the notary. Since the set of all possible paths
+contains all possible combinations of participants, that means that in
+order to be able to use atomic mode all of the time, there must be at least
+one notary that is trusted by all people in the world. Otherwise, we may
+run into situations where a liquidity path is available, but no valid
+notary can be selected.<br/>
+
+It is possible to use multiple notaries in a payment, but that actually
+doesn't make the trust problem easier and arguably makes it harder... 
+then we now need all participants to trust notaries such that none 
+of the notaries they trust would ever collude with any other notary they trust.
+<br/>
+...
+<b>It is possible to use atomic mode in the context of a universal mode
+payment. Any number of participants can decide to make the transfer between
+them subsidiary to some notary. If all the participants do that,
+congratulations, the payment is fully atomic.<br/>
+
+SO THE IDEA IS TO DEFAULT TO UNIVERSAL MODE AND USE ATOMIC WHERE POSSIBLE</b>
+Ripple is currently building a proprietary network for banks that uses
+atomic mode internally and universal mode externally.<br/>
+
+...XRP Atomic Mode Autodetection (XAMA). The idea is to allow participants in 
+a payment to detect that XRP is used as one of the hops and then defer to
+the outcome of the XRP transaction instead of using their own timeouts, 
+effectively making the XRP Ledger a de-facto notary.
+ This can be generalized as a defer-right and defer-left behavior.
+ Any neighboring pair of participants (:= sender|receiver|connector) can
+- by mutual agreement - decide to defer the outcome of their
+transfer to whatever the outcome on the ledger right of them or the ledger
+left of them.<br/>
+</span>
+and from Adrian-Hope <a href='https://lists.w3.org/Archives/Public/public-interledger/2017Jun/0059.html'>reply</a>:
+<span>
+In my experience to date, it's most often people familiar with existing
+payment systems that want atomic mode. I think that in time <b>we'll find that
+complete end to end atomicity comes at a cost that is not justified for a
+lot of payments.</b><br/>
+
+<b>... There are operational costs that must be covered but ... the cost to 
+move the bytes from A to B to make a payment is certainly nowhere
+near the 1% and up that most payments cost to send.</b><br/>
+
+<b>In a world where ILP is a foundational layer ...  it's still possible
+ for someone to send a payment at almost zero cost if they accept the 
+ associated risks.</b>
+</span>
+  </td>
+  <td development   ></td>
+  <td testing/CI    >&nbsp;</td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+
 <tr {>
   <td topic         >Liquidity Curves</td>
   <td summary       >L.C.  describe the relationship between input and output amount
@@ -423,7 +492,12 @@ ResponseMessage ::= SEQUENCE { ... }
                      <li> <a href="https://github.com/interledger/rfcs/blob/master/asn1/InterledgerTypes.asn">ASN.1 bin.def.</a></li>
                      </ul>
   </td>
-  <td development   ></td>
+  <td development   >
+                     <ul>
+                         <li> <a href="https://github.com/interledger/java-ilp-core/pull/68">PR 68. feat>java-ilp-core: support liquidity quotes</a></li>
+                         <li> <a href="https://github.com/interledger/java-ilp-core/issues/70">java-ilp-core Issue: Use Java Money ExchangeRate instead of LiquidityCurve</a></li>
+                     </ul>
+  </td>
   <td testing/CI    >&nbsp;</td>
   <td deployment    >&nbsp;</td>
 </tr }>
@@ -435,8 +509,7 @@ ResponseMessage ::= SEQUENCE { ... }
                      it finds the longest prefix match for the queried address. Then, it follows one of the
                      following cases:
                      <ul>
-                     <li>
-                     If the matching address is marked for local delivery, the connector prepares a transfer
+                     <li>If the matching address is marked for local delivery, the connector prepares a transfer
                        to that address in one of the ledgers connected to it.
                      The connector maps the ILP address to an account within the ledger. (This is the base case.)
                      </li>
@@ -444,6 +517,11 @@ ResponseMessage ::= SEQUENCE { ... }
                      If the matching address is marked as forwarded delivery, it has the address of another 
                      connector associated with it in the routing table. The connector makes a routing lookup on 
                      the connector associated with the address. (This is the recursive case.)
+                     </li>
+                     <li>From <a href='https://lists.w3.org/Archives/Public/public-interledger/2017Jun/0058.html'>M.L.</a>:
+                       Connectors can keep track of all of the payments they are a part of and
+                       their positions in different currencies. The reference implementation has a
+                       way to configure it to do this
                      </li>
                      </ul>
 </td>
@@ -832,7 +910,11 @@ Example 2: a USD ledger might use a precision of 15 and a scale of 6 and 2 decim
 <tr name="ilp-connector" {>
   <td topic         >ilp-connector</td>
   <td summary       >Ripple reference JS implementation of<br>ILP Connectorg</td>
-  <td documentation ><a href="https://interledger.org/js-ilp-connector/apidoc/">API</a></td>
+  <td documentation >
+                     <ul>
+                     <li> <a href="https://interledger.org/js-ilp-connector/apidoc/">API</a></li>
+                     </ul>
+  </td>
   <td development   >
                      <ul>
                      <li><a href="https://github.com/interledgerjs/ilp-connector">GitHub</a>  </li>
@@ -880,10 +962,10 @@ Example 2: a USD ledger might use a precision of 15 and a scale of 6 and 2 decim
                      including a framework for attaching on-ledger settlement mechanisms.
 </td>
   <td documentation >From <a href='https://github.com/interledger/rfcs/pull/263'>RFC PR263</a>:
-<pre xxsmall>
+<p xxsmall>
 Any ledger protocol author can definitely fork CLP, or design something completely different from scratch.
 However, as we've found writing ledger plugins, it's much easier to use something like the payment channel framework than implement everything yourself. That framework will be changed to use the CLP as the base protocol and allow individual plugins to add custom messages (in the same way you can add custom RPC methods now) and custom data to existing messages (in the same way you can add custom arguments to existing RPC calls now). The benefit of allowing for multiple plugin types is that we don't have to standardize this layer. But as we've seen from experience it's way easier to implement plugins if you can reuse something like that framework that does 80% of the work for you (and avoids common gotchas).
-</pre>
+</p>
 </td>
   <td development   ><a href='https://github.com/interledgerjs/ilp-plugin-payment-channel-framework'>GitHub</a></td>
   <td testing/CI    >&nbsp;</td>
@@ -1079,8 +1161,7 @@ CONNECTOR_PORT=400
    - Optimistic vs Universal
      - https://lists.w3.org/Archives/Public/public-interledger/2017Jun/0033.html 
 
-   - Atomic payments
-     https://lists.w3.org/Archives/Public/public-interledger/2017Jun/0035.html 
+
 
    - Is CCP (Conector to Connector protocol the same that Virtual-Plugin?)
      From https://lists.w3.org/Archives/Public/public-interledger/2016Dec/0000.html

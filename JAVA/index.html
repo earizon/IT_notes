@@ -684,6 +684,179 @@ public class TestAPI<JSONArray> {
   </td>
 </tr }>
 
+<tr {>
+  <td topic >
+     Cocurrent
+  </td>
+  <td summa >
+     <ul>
+     <li TODO>java.util.concurrent</li>
+     <li>In the Java language, each object may be used as a monitor. Methods requiring mutual exclusion must be explicitly marked with the synchronized keyword. Blocks of code may also be marked by synchronized.<br/>
+Rather than having explicit condition variables, each monitor (i.e. object) is equipped with a single wait queue in addition to its entrance queue. All waiting is done on this single wait queue and all notify and notifyAll operations apply to this queue.</li>
+     <pre>
+             enter         
+               |           
+ +---+-------- | --+       
+ |  notified   v   |       
+ | ----->          |       
+ |                 |       
+ | O |         O   |       
+ | O |         O   |       
+ | O +--------   --+--+    
+ | O |                |    
+ |   |                |    
+ |  <-- wait   O      |    
+ |   |      (Running  |    
+ +---+       thread)  |    
+     |                |    
+     |                |    
+     |     leave      |    
+     |        |       |    
+     +------- | ------+    
+              v            
+     </pre>
+
+     <li>
+     <a href='https://github.com/google/guava/wiki/ListenableFutureExplained'>REF: ListenableFuture Explained</a><br/>
+      Concurrency is a hard problem, but it is significantly simplified by working with powerful and simple abstractions. To simplify matters, Guava extends the Future interface of the JDK with ListenableFuture.<br/>
+      <i>"""We strongly advise that you always use ListenableFuture instead of Future in all of your code, because:<br/>
+    Most Futures methods require it.<br/>
+    It's easier than changing to ListenableFuture later.<br/>
+    Providers of utility methods won't need to provide Future and ListenableFuture variants of their methods.<br/>
+       """</i>
+     </li>
+     </ul>
+  </td>
+  <td col1  >
+  </td>
+  <td col2  >
+  </td>
+</tr }>
+
+<tr {>
+  <td topic >Async code</td>
+  <td summa >
+     <ul>
+     <li>
+     <pre>
+ +------------+ |               [[Executor]]
+ |[[Runnable]]| |                   ^
+ |------------| |                   |
+ |+run()      | |           [[ExecutorService]]
+ +------------+ |                   ^
+       ^        |        +----------+--------------+
+       |        |        |                         |
+ +------------+ | AbstractExecutorService  [[ScheduledExecutorService]]
+ |   Thread   | |        ^                         ^
+ |------------| | ThreadPoolExecutor               |
+ |+run()      | |        ^                         |
+ |+start()    | | ScheduledThreadPoolExecutor -----+
+ |+sleep()    | |
+ |....        | |
+ |------------| |
+ +------------+ |
+     </pre>
+     </li>
+     <li>
+     ExecutorService(Thread Pool): managed collection of threads available to execute tasks.<br/>
+     To use a thread pool, you can use an implementation of the interface ExecutorService, such as ThreadPoolExecutor or ScheduledThreadPoolExecutor. However, more convenient factory methods are provided in the Executors class as follows:<br/>
+     Using thread pool:
+     <ol>
+       <li>Write worker thread class implementing <<Runnable>> run()</li>
+       <li>STEP 2: Create ExecutorService using:
+         <pre>
+Executors.newSingleThreadExecutor()
+Executors.newFixedThreadPool(int numThreads)
+Executors.newCachedThreadPool(): <-- unbounded pool, with automatic reclamation
+Executors.newSingleThreadScheduledExecutor()
+Executors.newScheduledThreadPool(int size)
+         </pre>
+       </li>
+       <li>Use executor(Service)Instance.execute(/*Runnable */workerThreadInstance) to add a Runnable task to thread pool. Executes task at some time in the future in a new thread, in a thread pool, or in the calling thread, depending on the implementation of Executor</li>
+     </ol>
+     <pre>
+ [[java.util.concurrent.ExecutorService]]
+ + public     void      shutdown(); // Initiates orderly shutdown of pool
+ + public <T> Future<T> submit(Callable<T> task); // schedule callable task for execution
+     </pre>
+     </li>
+     <li><a href='https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/CompletableFuture.html'>CompletableFuture (Java 8+)</a><br/>
+       A Future that may be explicitly completed (setting its value and status), and may be used as a CompletionStage, supporting dependent functions and actions that trigger upon its completion.<br/>
+       When two or more threads attempt to complete, completeExceptionally, or cancel a CompletableFuture, only one of them succeeds.<br/>
+     </li>
+     <li>
+     <pre>
+[[ java.util.concurrent.Callable&lt;V> ]]
+   +public V call()  (vs run() in Runnable)
+   similar to a Runnable, but allows to return a result/Exception to the thread triggering the Callable
+   returns a result of type &lt;V>, or throws an exception if unable to do so.
+  
+[[ Future&lt;V> ]] 
+   +V get()           // blocks waiting for result
+   +V get(long timeout, TimeUnit unit)
+   +boolean cancel(boolean mayInterruptIfRunning)
+   +boolean isCancelled()
+   +boolean isDone()  // return true if this task completed
+     </pre>
+     </li>
+     </ul>
+  </td>
+  <td col1  >
+     <pre xsmall>
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+
+public class ThreadPoolTest {
+
+   public static void main(String[] args) {
+      ExecutorService pool = Executors.newFixedThreadPool(10);
+      MyWorker[] workers = new MyWorker[numWorkers];
+      for (int i = 0; i &lt; numWorkers; ++i) pool.execute(new MyWorker(i+1));
+      pool.shutdown();
+   }
+}
+     </pre>
+
+     <pre xsmall>
+import java.util.concurrent.Callable;
+import java.util.concurrent.*;
+
+public class CallableThreadPoolTest {
+
+    public class MyCallableWorkerThread implements Callable&lt;String> {
+       MyCallableWorkerThread(int workerNumber) { ... }
+       public String call() { 
+          Thread.sleep((int)(Math.random() * 1000));
+          return "worker " + workerNumber;
+       }
+    }
+
+   public static void main(String[] args) {
+      int numWorkers = 10;
+      ExecutorService pool = Executors.newCachedThreadPool();
+      MyCallableWorkerThread workers[] = new MyCallableWorkerThread[numWorkers];
+      Future                 futures[] = new Future                [numWorkers];
+
+      for (int i = 0; i &lt; numWorkers; ++i) {
+         workers[i] = new MyCallableWorkerThread(i + 1);
+         futures[i] = pool.submit(workers[i]);
+      }
+      for (int i = 0; i &lt; numWorkers; ++i) {
+                                 try {
+            System.out.println(futures[i].get() + " ended");
+                                 } catch (InterruptedException ex) {
+            ex.printStackTrace();
+                                 } catch (ExecutionException ex) {
+            ex.printStackTrace();
+                                 }
+      }
+   }
+}
+     </pre>
+  </td>
+  <td col2  >
+  </td>
+</tr }>
 
 </table>
 </body>

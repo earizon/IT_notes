@@ -858,7 +858,219 @@ public class CallableThreadPoolTest {
   </td>
 </tr }>
 
+
+<tr {>
+  <td topic >[QA] Checker framework</td>
+  <td summa >
+     <ul>
+     <li>
+     <a href='https://blogs.oracle.com/java-platform-group/entry/java_8_s_new_type'>REF: Oracle Java 8 new Type Annotations</a>
+Java SE 8 allows type annotations anywhere that a type is used. Previously, annotations were only allowed on definitions. 
+The Checker Framework provides a few Type Annotations that could benefit both library and application developers, such as:
+<pre>
+@NonNull: compiler can determine cases where a code path might receive a null.
+
+@ReadOnly: compiler will flag any attempt to change the object.
+
+@Regex – compile-time verification that a String intended to be used 
+    as a regular expression is a properly formatted regular expression.
+
+@Tainted and @Untainted: Identity types of data that should not be used
+    together, such as remote user input being used in system commands, 
+    or sensitive information in log streams.
+
+@m – Units of measure ensures that numbers used for measuring objects 
+    are used and compared correctly, or have undergone the proper unit
+    conversion.
+
+</pre>
+     </li>
+     <li TODO >installation process:<br/>
+    Download the Checker Framework distribution: https://checkerframework.org/checker-framework-2.1.8.zip. <br/>
+    Configure your IDE, build system, or command shell to include the Checker Framework on the classpath. Choose the appropriate section of Chapter 30 for javac (Section 30.1), Ant (Section 30.2), Maven (Section 30.3), Gradle (Section 30.4), IntelliJ IDEA (Section 30.6), Eclipse (Section 30.7), or tIDE (Section 30.8).<br/>
+Option 1: Add directory .../checker-framework-2.1.8/checker/bin to your path, before any other directory that contains a javac executable.<li>
+     <li>The Nullness Checker supports several annotations that specify method behavior. <br/>
+       These are declaration annotations, not type annotations:<br/>
+       they apply to the method itself rather than to some particular type.<br/>
+       @RequiresNonNull (precondition): annotated method expects the specified variables to be non-null when the method is invoked.<br/>
+       @EnsuresNonNull (postcondition): the given expressions are non-null after the method returns;<br/>
+       @EnsuresNonNullIf: if annotated method returns true|false, then the given expressions are non-null.<br/>
+<li>
+     <li>The Lock Checker prevents certain concurrency errors by enforcing a locking discipline. A locking discipline indicates which locks must be held when a given operation occurs. You express the locking discipline by declaring a variable’s type to have the qualifier @GuardedBy("lockexpr"). This indicates that the variable’s value may be dereferenced only if the given lock is held.<li>
+     <li>@GuardedBy(exprSet): If a variable x has type @GuardedBy("expr"), then a thread may dereference the value referred to by x only when the thread holds the lock that expr currently evaluates to. It can list multiple expressions, as in @GuardedBy({"expr1", "expr2"}), in which case the dereference is permitted only if the thread holds all the locks.<li>
+     <li>Method pre-conditions and post-conditions<br/>
+@Holding(String[] locks): All the given lock expressions are held at the method call site.<br/>
+@EnsuresLockHeld(String[] locks): The given lock expressions are locked upon method return if the method terminates successfully. This is useful for annotating a method that acquires a lock such as ReentrantLock.lock().<br/>
+@EnsuresLockHeldIf(String[] locks, boolean result): If the annotated method returns the given boolean value (true or false), the given lock expressions are locked upon method return if the method terminates successfully. This is useful for annotating a method that conditionally acquires a lock. See Section 6.4.4 for examples.<li>
+     <li>Side effect specifications<br/>
+@LockingFree: The method does not acquire or release locks, directly or indirectly. The method is not synchronized, it contains no synchronized blocks, it contains no calls to lock or unlock methods, and it contains no calls to methods that are not themselves @LockingFree. <br/>
+    Since @SideEffectFree implies @LockingFree, if both are applicable then you only need to write @SideEffectFree.<br/>
+@ReleasesNoLocks: The method maintains a strictly nondecreasing lock hold count on the current thread for any locks that were held prior to the method call. The method might acquire locks but then release them, or might acquire locks but not release them (in which case it should also be annotated with @EnsuresLockHeld or @EnsuresLockHeldIf).<br/>
+    This is the default for methods being type-checked that have no @LockingFree, @MayReleaseLocks, @SideEffectFree, or @Pure annotation.<br/>
+<li>
+     <li>The Format String Checker prevents use of incorrect format strings in format methods such as System.out.printf and String.format. Ej:
+     <pre xxsmall>
+void printFloatAndInt(@Format({FLOAT, INT}) String fs) {
+        System.out.printf(fs, 3.1415, 42);
+    }
+     </pre>
+<li>
+     <li>Here are the examples of errors that the I18n Format Checker detects at compile time
+     <pre xxsmall>
+// Warning: the second argument is missing.
+MessageFormat.format("{0} {1}", 3.1415);
+// String argument cannot be formatted as Time type.
+MessageFormat.format("{0, time}", "my string");
+// Invalid format string: unknown format type: thyme.
+MessageFormat.format("{0, thyme}", new Date());
+// Invalid format string: missing the right brace.
+MessageFormat.format("{0", new Date());
+// Invalid format string: the argument index is not an integer.
+MessageFormat.format("{0.2, time}", new Date());
+// Invalid format string: "#.#.#" subformat is invalid.
+MessageFormat.format("{0, number, #.#.#}", 3.1415);<li>
+     </pre>
+     <li>The Property File Checker ensures that a property file or resource bundle (both of which act like maps from keys to values) is only accessed with valid keys. Accesses without a valid key either return null or a default value, which can lead to a NullPointerException or hard-to-trace behavior. The Property File Checker (Section 12.1) ensures that the used keys are found in the corresponding property file or resource bundle.<li>
+     <li>One of the most prevalent GUI-related bugs is invalid UI update or invalid thread access: accessing the UI directly from a background thread.
+
+Most GUI frameworks (including Android, AWT, Swing, and SWT) create a single distinguished thread — the UI event thread — that handles all GUI events and updates. To keep the interface responsive, any expensive computation should be offloaded to background threads (also called worker threads). If a background thread accesses a UI element such as a JPanel (by calling a JPanel method or reading/writing a field of JPanel), the GUI framework raises an exception that terminates the program. To fix the bug, the background thread should send a request to the UI thread to perform the access on its behalf.
+
+It is difficult for a programmer to remember which methods may be called on which thread(s). The GUI Effect Checker solves this problem. The programmer annotates each method to indicate whether:
+
+    It accesses no UI elements (and may run on any thread); such a method is said to have the “safe effect”.
+    It may access UI elements (and must run on the UI thread); such a method is said to have the “UI effect”. 
+<li>
+     <li>The following kind of (physical) UNIT annotations are defined:
+     <pre xsmall>
+@Acceleration @Angle @Area @Current @Length @Luminance @Mass
+@Speed @Substance @Temperature @Time
+
+For each kind of unit, the corresponding SI unit of measurement is defined:
+
+For @Acceleration: Meter Per Second Square @mPERs2
+For @Angle: Radians @radians, and the derived unit Degrees @degrees
+For @Area: the derived units square millimeters @mm2, square meters @m2, and square kilometers @km2
+For @Current: Ampere @A
+For @Length: Meters @m and the derived units millimeters @mm and kilometers @km
+For @Luminance: Candela @cd
+For @Mass: kilograms @kg and the derived unit grams @g
+For @Speed: meters per second @mPERs and kilometers per hour @kmPERh
+For @Substance: Mole @mol
+For @Temperature: Kelvin @K and the derived unit Celsius @C
+For @Time: seconds @s and the derived units minutes @min and hours @h 
+     </pre>
+<li>
+     <li>The Signedness Checker guarantees that signed and unsigned values are not mixed together in a computation. In addition, it prohibits meaningless operations, such as division on an unsigned value.
+@Unsigned  @Signed
+<li>
+     <li>A type alias or typedef is a type that shares the same representation as another type but is conceptually distinct from it. For example, some strings in your program may be street addresses; others may be passwords; and so on. You wish to indicate, for each string, which one it is, and to avoid mixing up the different types of strings. Likewise, you could distinguish integers that are offsets from those that are absolute values.<li>
+     <li>SPARTA is a security toolset aimed at preventing malware from appearing in an app store. SPARTA provides an information-flow type-checker that is customized to Android but can also be applied to other domains. The SPARTA toolset is available from https://checkerframework.org/sparta/. The paper “Collaborative verification of information flow for a high-assurance app store” appeared in CCS 2014.<li>
+     </ul>
+  </td>
+  <td col1  >
+     <pre>
+@NonNull List<String>
+
+List<@NonNull String> 
+
+@Regex String validation = "(Java|JDK) [7,8]"
+
+private String getInput(String parameterName){
+ final String retval = @Tainted request.getParameter(parameterName);
+ return retval;
+} 
+
+private void runCommand(@Untainted String… commands){
+ // the previously tainted String must be validated before being passed in here.
+ ProcessBuilder processBuilder = new ProcessBuilder(command);
+ Process process = processBuilder.start();
+}
+     </pre>
+  </td>
+  <td col2  >
+  </td>
+</tr }>
+
+
+<tr {>
+  <td topic >[QA] Eclipse Static Code Analasys</td>
+  <td summa >
+     <pre xxsmall>
+Eclipse -> Properties -> Java -> Compiler -> Errors/Warnings -> Null analysis:
+  Null pointer access
+  Potential null pointer access
+  Redundant null check:
+    x Include 'assert' in null analysis
+    x Enable annotation-based null analysis
+      Violation of null specification
+      Conflict between null annotations an null inference
+      Unchecked conversion from non-annotated type to @NonNull type
+      Problems detected by pessimistic analysis fro free type variables
+      Unsafe "@Nonnull" interpretation of the free type variable from library
+      Redundant null anotation:
+      "@NonNull" parametere not annotated in overriding method
+      Missing "@NonNullByDefault" annotation on package
+      x Use default annotations for null specifications (configure)
+      x Inherit null annotations
+      x Enable syntatic null analisys for fields
+  x Treat above errors like fatal compile erros (make compiled code not executable) 
+     </pre>
+  </td>
+  <td col1  >
+  </td>
+  <td col2  >
+  </td>
+</tr }>
+
+
+
+<tr {>
+  <td topic >Java Cryptographic API (JCA)</td>
+  <td summa >
+     <ul>
+     <li></li>
+     <li></li>
+     <li></li>
+     </ul>
+  </td>
+  <td col1  >
+     <pre xxsmall>
+     </pre>
+  </td>
+  <td col2  >
+  </td>
+</tr }>
+
 </table>
 </body>
 
+<!--
+-------------------------------------------------
+TODO:
+-  Weak reference:
+- http://picodotdev.github.io/blog-bitix/ , http://elblogdepicodev.blogspot.com.es/
+- java.util.concurrent.Future
+- Annotations
+-------------------------------------------------
+https://www.youtube.com/channel/UCyhuNcrGetIRY9SdD92Uigw
+-------------------------------------------------
+https://www.youtube.com/channel/UCyhuNcrGetIRY9SdD92Uigw
+-------------------------------------------------
+JVM:
+JamVM is a new Java Virtual Machine conforming to the JVM specification edition 2 (blue book). It is extremely small - stripped on PowerPC ~110K, Intel 80K. However, unlike other small VMs it supports the full spec, inc. object finalisation and JNI.
+-------------------------------------------------
+http://teavm.org/
+"https://en.wikipedia.org/wiki/Java_virtual_machine#Compilation_to_JavaScript
+
+""Main JVM bytecode to JavaScript compilers are TeaVM,[20] the compiler contained in Dragome Web SDK,[21] Bck2Brwsr,[22] and j2js-compiler.[23]"""
+-------------------------------------------------
+FAQ About Java generics
+-------------------------------------------------
+OpenJDK at Mercurial:
+http://hg.openjdk.java.net/jdk8/jdk8/jdk/file/687fd7c7986d/src/share
+-------------------------------------------------
+TODO: Google Guice
+http://www.theserverside.com/feature/Spring-vs-Guice-The-Clash-of-the-IOC-Containers
+""" Although Spring provides many benefits, it was created in a pre-Java-5 world. The Guice framework takes DI to the next level, leveraging the full power of Java typing, especially annotations and generics"""
+-->
 </html>

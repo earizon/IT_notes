@@ -73,7 +73,7 @@ function onPageLoaded() {
 </head>
 <!--
 ROW TEMPLATE:
-<tr {>
+&lt;tr {>
   <td topic >topic</td> 
   <td summa >
      <ul>
@@ -122,16 +122,36 @@ ROW TEMPLATE:
   <td topic >Corda M14.0</td>
   <td summa >
      <ul>
+       <li><a href='https://github.com/corda/corda/tree/master/core/src/main/kotlin/net/corda/core'>Corda Core@Github</a></li>
        <li><a href='https://docs.corda.net/key-concepts.html'>REF: Key Concepts</a></li>
        <li>
-           <a href='https://docs.corda.net/running-the-demos.html#irs-demo' >irs-demo</a><br/>
-           <a href='https://docs.corda.net/running-the-demos.html#simm-demo'>simm-demo</a><br/>
+           <a href='https://docs.corda.net/running-the-demos.html#irs-demo' >Asset Trading(irs-demo)</a><br/>
+           <a href='https://docs.corda.net/running-the-demos.html#simm-demo'>SIMM and Portfolio Demo(aka the Initial Margin Agreement Demo)</a><br/>
        </li>
      </ul>
   </td>
   <td col1  >
+     <ul>
+       <li><a href='https://docs.corda.net/api-core-types.html'>API Core Types</a>
+         <pre>
+- SecureHash.SHA256 and utility methods to create/parse/... them
+- mathematical utilities (interpolators and classes for working with splines)
+- NamedByHash and UniqueIdentifier( == 128 bit Java UUID random number + arbitrary string)
+- (Anonymous)Party classes represent participating network entities containing (set of) keys
+- AuthenticatedObject: represents an object (like a command) and the list of associated signers
+- CompositeKey: tree data structure to provide Multi-signature support
+- Date support: interfaces and classes for use by contracts which deal with dates 
+     (especially in the context of deadlines).  and terms such as "overnight", "T+3", etc.
+  Tenor models the interval before a deadline, such as 3 days, etc.
+  DateRollConvention describes how deadlines are modified to take into account bank holidays
+  ...modifying normal working days
+  -  BusinessCalendar class models these calendars of business holidays 
+         </pre>
+       </li>
+     </ul>
   </td>
-  <td col2  ></td>
+  <td col2  >
+  </td>
   <td col3  ></td>
 </tr }>
 <!-- ************************************** -->
@@ -141,14 +161,20 @@ ROW TEMPLATE:
      <ul>
  
        <li>CorDapps are installed at the level of the individual node, rather than on the network itself.</li>
+       <li>Each CorDapp allows a node to handle new business processes by defining new
+           flows on the node (started by the node owner) conduct the process of negotiating
+           a specific ledger update with other nodes on the network
+       </li>
        <li>CorDapp developers will usually define:
          <pre>
-         - States     implementing &lt;&lt;ContractState>>
-         - Contracts  implementing &lt;&lt;Contract>>
-         - Flows      implementing &lt;&lt;FlowLogic>>
+         - States     
+
+         - Contracts  implementing <a href='https://docs.corda.net/api-contracts.html'>&lt;&lt;Contract>></a>
+         - Flows      implementing <a href='https://docs.corda.net/api-flows.html'>&lt;&lt;FlowLogic>></a>
          - Web APIs
          - Services
-         </pre></li>
+         </pre>
+       </li>
        <li>Your CorDapp may need to define two types of plugins:
          <pre>
          - CordaPluginRegistry subclasses that can overwrite:
@@ -252,7 +278,7 @@ ROW TEMPLATE:
 
 <!-- ************************************** -->
 <tr {>
-  <td topic >STATES</td>
+  <td topic >CONTRACT STATES</td>
   <td summa >
     <ul>
       <li>Can contain arbitrary data, allowing them to represent facts of any kind (stocks, bonds, loans, KYC data, identity information...).</li>
@@ -262,14 +288,33 @@ ROW TEMPLATE:
        <li>Each node on the network maintains a vault: a database where it tracks all the current and historic states that it is aware of, and which it considers to be relevant to itself</li>
      </ul>
   </td>
-  <td col1  >
+  <td col1  >Implement <a href='https://docs.corda.net/api-states.html'>&lt;&lt;ContractState>></a> or (optimal) sub-interfaces:<br/>
+    <a href='https://github.com/corda/corda/blob/master/core/src/main/kotlin/net/corda/core/contracts/Structures.kt'>contracts/Structures.kt</a>
+
     <pre xsmall  >
 @CordaSerializable
 interface ContractState {
     val contract: Contract
     val participants: List<AbstractParty>
 }
+          ----------------------------------------
+          object with constant identity over time 
+          (facts evolving over time)
+          interface LinearState : ContractState {
+              val linearId: UniqueIdentifier
+          }
+          ----------------------------------------
+          fungible asset with an owner
+          interface OwnableState : ContractState {
+              val owner: AbstractParty
+              fun withNewOwner(newOwner: AbstractParty): CommandAndState
+          }
+          ----------------------------------------
+              &lt;&lt;FungibleAsset>> (TODO: Inherits from OwnableState?)
+              represent assets that are fungible, countable and issued by a specific party
+              (eg. Cash.State and CommodityContract.State in the Corda finance module)
     </pre>
+    <br/>
 </td>
   <td col2  >Every ContractState can implement the QueryableState interface if 
      it wishes to be inserted into the node’s local database and accessible using SQL.
@@ -281,6 +326,109 @@ interface QueryableState : ContractState {
     </pre>
   </td>
   <td col3  ></td>
+</tr }>
+<!-- ************************************** -->
+<tr {>
+  <td topic >STATE PERSISTENCE (VAULTS)</td> 
+  <td summa >
+
+     <ul>
+       <li>Nodes have an internal SchemaService which decides what to persist and what not by selecting the MappedSchema to use.
+          <pre xxxsmall>
+interface SchemaService {
+    data class SchemaOptions(val databaseSchema: String? = null, val tablePrefix: String? = null)    
+    val schemaOptions: Map<MappedSchema, SchemaOptions>
+    fun selectSchemas(state: ContractState): Iterable<MappedSchema>
+    fun generateMappedObject(state: ContractState, schema: MappedSchema): PersistentState
+}
+
+open class MappedSchema(schemaFamily: Class<*>,
+                        val version: Int,
+                        val mappedTypes: Iterable<Class<*>>) {
+    val name: String = schemaFamily.name
+    override fun toString(): String = "${this.javaClass.simpleName}(name=$name, version=$version)"
+}
+          </pre>
+</li>
+     </ul>
+  </td>
+  <td col1 >
+     <ul>
+       <li><a href="https://docs.corda.net/api-vault-query.html">API VAULT Query</a></li>
+       <li>The majority of query requirements can be satisfied by using the Vault Query API,
+           which is exposed via the VaultQueryService for use directly by flows. (See also helper methods)
+           <pre  xsmall>
+    Vault.Page, use for returning results, object contains:
+     *  1. states as a List of <StateAndRef> (page number and size defined by [PageSpecification])
+     *  2. states metadata as a List of [Vault.StateMetadata] held in the Vault States table.
+     *  3. total number of results available if [PageSpecification] supplied (otherwise returns -1)
+     *  4. status types used in this query: UNCONSUMED, CONSUMED, ALL
+     *  5. other results (aggregate functions with/without using value groups)
+     */
+    One-time-query                             |  Stream (snapshot + Observable stream) query
+    -------------------------------------------+---------------------------------------------
+    fun <T : ContractState> _queryBy(          |  fun <T : ContractState> _trackBy(
+        criteria: QueryCriteria /*filters*/,   |      criteria: QueryCriteria /* filters */,
+        paging: PageSpecification,             |      paging: PageSpecification,
+        sorting: Sort,                         |      sorting: Sort,
+        contractType: Class<out T>):           |      contractType: Class<out T>): 
+      Vault.Page<T>                            |        DataFeed<
+                                               |            Vault.Page<T> /*"snapshot"*/,
+                                               |             Vault.Update /* Observable */>
+              </pre>
+       </li>
+       <li>&lt;&lt;QueryCriteria>> provides mechanisms for specifying filtering,
+           including (AND, OR), (LESS|GREATER)_(THAN|THAN_OR_EQUAL), (NOT_)EQUAL,
+           (NOT_)LIKE, (IS_|NOT_)NULL,  (NOT_)IN,  Standard SQL-92 aggregate functs
+           (SUM, AVG, MIN, MAX, COUNT)
+       </li>
+       <li>There are four implementations of this interface which CAN BE CHAINED TOGETHER to define advanced filters.
+        <pre xsmall>
+VaultQueryCriteria: filter on attributes within the Vault states table:
+   - status (UNCONSUMED, CONSUMED)
+   - state reference(s)
+   - contract state type(s)
+   - notaries
+   - soft locked states
+   - timestamps (RECORDED, CONSUMED)
+
+FungibleAssetQueryCriteria: filter on    |  LinearStateQueryCriteria: filter on attributes 
+attributes defined in FungibleAsset      |  defined in &lt;&lt;LinearState>> and &lt;&lt;DealState>>
+contract state:                          |  contract state
+   - participants(s)                     |     - participant(s)
+   - owner(s)                            |     - linearId(s)
+   - quantity                            |     - dealRef(s)
+   - issuer party(s) and/or reference(s) |
+
+VaultCustomQueryCriteria:  provides the means to specify one or many arbitrary expressions on attributes 
+   defined by a custom contract state that implements its own schema. 
+   See the Builder object in QueryCriteriaUtils for a complete specification of the DSL.
+         </pre>
+       </li>
+     </ul>
+  </td>  
+  <td col2  >
+     <ul>
+       <li>custom query example:
+       <pre>
+val generalCriteria = VaultQueryCriteria(Vault.StateStatus.ALL)
+
+val results = builder {
+    val currencyIndex = PersistentCashState::currency.equal(USD.currencyCode)
+    val quantityIndex = PersistentCashState::pennies.greaterThanOrEqual(10L)
+
+    val customCriteria1 = VaultCustomQueryCriteria(currencyIndex)
+    val customCriteria2 = VaultCustomQueryCriteria(quantityIndex)
+
+    val criteria = generalCriteria.and(customCriteria1.and(customCriteria2))
+    vaultQuerySvc.queryBy<Cash.State>(criteria)
+}
+       </pre>
+       </li>
+     </ul>
+  </td>
+  <td >
+  </td>
 </tr }>
 <!-- ************************************** -->
 <tr {>
@@ -327,7 +475,7 @@ interface Contract {
 
       - It is signed by the required parties
          </pre>
-</li>
+       </li>
        <li>A transaction can contain any number of inputs and outputs of any type:<br/>
      - They can include many different state types (e.g. both cash and bonds)<br/>
      - They can be issuances (have zero inputs) or exits (have zero outputs)<br/>
@@ -373,7 +521,9 @@ interface Contract {
      </ul>
   </td>
   <td col1  >
-     LedgerTransaction example:
+     <ul>
+     <li> <a href='https://docs.corda.net/api-transactions.html'>Transaction API</a> </li>
+     <li> LedgerTransaction example:
      <pre xxsmall>
 @CordaSerializable
 class LedgerTransaction(
@@ -392,6 +542,8 @@ class LedgerTransaction(
     ...
 }
      </pre>
+     </li>
+     </ul>
 </td>
   <td col2  >requireThat-DSL Example (replacing throw IllegalArgumentException...):<br/>
      <pre xxsmall>
@@ -592,32 +744,21 @@ class XContract : Contract {
 </table>
 </body>
 <!--
-TODO:(?)
-   @CordaSerializable
-   data class AuthenticatedObject<out T : Any>(
-       val signers: List<PublicKey>,
-       /** If any public keys were recognised, the looked up institutions are available here */
-       val signingParties: List<Party>, // signer’s identities, if known
-       val value: T // object being signed (a command, in this case)
-   )
+TODO: Identity Services
 
-Nodes have an internal SchemaService which decides what to persist and what not by selecting the MappedSchema to use.
+TODO: RPC HowTo {  
+   Example VaultQueryBy by RPC: (https://docs.corda.net/api-vault-query.html)
 
-interface SchemaService {
-    data class SchemaOptions(val databaseSchema: String? = null, val tablePrefix: String? = null)    
-    val schemaOptions: Map<MappedSchema, SchemaOptions>
-    fun selectSchemas(state: ContractState): Iterable<MappedSchema>
-    fun generateMappedObject(state: ContractState, schema: MappedSchema): PersistentState
+   @RPCReturnsObservables
+   fun <T : ContractState> vaultQueryBy(
+       criteria: QueryCriteria, paging: PageSpecification, sorting: Sort, contractType: Class<out T>): Vault.Page<T>
+
+   @RPCReturnsObservables
+   fun <T : ContractState> vaultTrackBy(
+       criteria: QueryCriteria, paging: PageSpecification, sorting: Sort,
+       contractType: Class<out T>): DataFeed<Vault.Page<T>, Vault.Update>
 }
-
-open class MappedSchema(schemaFamily: Class<*>,
-                        val version: Int,
-                        val mappedTypes: Iterable<Class<*>>) {
-    val name: String = schemaFamily.name
-    override fun toString(): String = "${this.javaClass.simpleName}(name=$name, version=$version)"
-}
-
-
+ 
 -->
 
 </html>

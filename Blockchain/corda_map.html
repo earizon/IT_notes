@@ -73,7 +73,7 @@ function onPageLoaded() {
 </head>
 <!--
 ROW TEMPLATE:
-&lt;tr {>
+<tr {>
   <td topic >topic</td> 
   <td summa >
      <ul>
@@ -331,25 +331,8 @@ interface QueryableState : ContractState {
 <tr {>
   <td topic >STATE PERSISTENCE (VAULTS)</td> 
   <td summa >
-
      <ul>
-       <li>Nodes have an internal SchemaService which decides what to persist and what not by selecting the MappedSchema to use.
-          <pre xxxsmall>
-interface SchemaService {
-    data class SchemaOptions(val databaseSchema: String? = null, val tablePrefix: String? = null)    
-    val schemaOptions: Map<MappedSchema, SchemaOptions>
-    fun selectSchemas(state: ContractState): Iterable<MappedSchema>
-    fun generateMappedObject(state: ContractState, schema: MappedSchema): PersistentState
-}
 
-open class MappedSchema(schemaFamily: Class<*>,
-                        val version: Int,
-                        val mappedTypes: Iterable<Class<*>>) {
-    val name: String = schemaFamily.name
-    override fun toString(): String = "${this.javaClass.simpleName}(name=$name, version=$version)"
-}
-          </pre>
-</li>
      </ul>
   </td>
   <td col1 >
@@ -367,13 +350,13 @@ open class MappedSchema(schemaFamily: Class<*>,
      */
     One-time-query                             |  Stream (snapshot + Observable stream) query
     -------------------------------------------+---------------------------------------------
-    fun <T : ContractState> _queryBy(          |  fun <T : ContractState> _trackBy(
+    fun &lt;T : ContractState> _queryBy(          |  fun &lt;T : ContractState> _trackBy(
         criteria: QueryCriteria /*filters*/,   |      criteria: QueryCriteria /* filters */,
         paging: PageSpecification,             |      paging: PageSpecification,
         sorting: Sort,                         |      sorting: Sort,
-        contractType: Class<out T>):           |      contractType: Class<out T>): 
-      Vault.Page<T>                            |        DataFeed<
-                                               |            Vault.Page<T> /*"snapshot"*/,
+        contractType: Class&lt;out T>):           |      contractType: Class&lt;out T>): 
+      Vault.Page&lt;T>                            |        DataFeed&lt;
+                                               |            Vault.Page&lt;T> /*"snapshot"*/,
                                                |             Vault.Update /* Observable */>
               </pre>
        </li>
@@ -424,6 +407,96 @@ val results = builder {
     vaultQuerySvc.queryBy<Cash.State>(criteria)
 }
        </pre>
+       <li>Example 2. Query for all unconsumed states (simplest query possible):
+       <pre xxsmall>
+(UNCOSUMED STATE BY DEFAULT)
+----------------------------------------------------------------
+val sortAttribute = SortAttribute.Standard(Sort.CommonStateAttribute.STATE_REF_TXN_ID)
+----------------------------------------------------------------
+// recorded in time interval:
+val timeIntervalFilter = TimeCondition(
+        QueryCriteria.TimeInstantType.RECORDED,
+        ColumnPredicate.Between(TODAY, TODAY.plus(30, ChronoUnit.DAYS)) )
+----------------------------------------------------------------
+VaultQueryCriteria FILTER:
+  // state reference list:          | // set of contract state:              | // by notary:                             | // by recorded time  interval
+  val criteria = VaultQueryCriteria | val criteria = VaultQueryCriteria      | val criteria = VaultQueryCriteria         | val criteria = VaultQueryCriteria
+      (                             |    (                                   |    (                                      |     (
+       stateRefs = listOf(          |     contractStateTypes = setOf(        |     notaryName = listOf(CASH_NOTARY.name) |      timeCondition = timeIntervalFilter
+               stateRefs.first(),   |                Cash.State::class.java, |    )                                      |     )
+               stateRefs.last()  )  |                DealState::class.java)
+      )                             |    )
+
+----------------------------------------------------------------
+LinearStateQueryCriteria FILTER:
+// (unconsumed states) + set of participants:
+val criteria = LinearStateQueryCriteria
+    (
+      participants = listOf(MEGA_CORP, MINI_CORP)
+    )
+----------------------------------------------------------------
+Reading query results:
+   val results = vaultQuerySvc.queryBy<DummyLinearContract.State> (
+                 criteria, 
+                 Sort(setOf(
+                            Sort.SortColumn(sortAttribute, Sort.Direction.ASC)
+                      ) ),
+                 paging = PageSpecification(DEFAULT_PAGE_NUM, 10)
+               )
+   val states   = result.states
+   val metadata = result.statesMetadata
+       </pre>
+       </li>
+       <li>LinearState and DealState queries using LinearStateQueryCriteria example:
+       <pre>
+val linearIds = issuedStates.states.map
+        { it.state.data.linearId }.toList()
+val       vaultCriteria = VaultQueryCriteria(status = Vault.StateStatus.ALL)
+val linearStateCriteria = LinearStateQueryCriteria
+    (
+     status = Vault.StateStatus.ALL,  // CONSUMED & UNCOSUMED
+     linearId = listOf(linearIds.first(), linearIds.last())
+     dealRef = listOf("456", "789"), // by deals references:
+     participants = parties,
+    )
+val results = vaultQuerySvc.queryBy<LinearState>(
+         linearStateCriteria and vaultCriteria  )
+       </pre>
+       </li>
+       <li>
+       <pre xxsmall>
+FungibleAssetQueryCriteria
+
+val fungibleAssetCriteria = FungibleAssetQueryCriteria(
+    quantity = builder { greaterThan(2500L) }, // filter by minimum quantity
+    issuerPartyName = listOf(BOC),
+)
+// Cash.State inherits from <FungibleAsset<*>>
+val results = vaultQuerySvc.queryBy<Cash.State>(fungibleAssetCriteria)
+----------------------------------------------------------------------
+AGGREGATE FUNCTION
+
+  AGGREGATIONS ON CASH USING VARIOUS FUNCTIONS                              | AGGREGATIONS ON CASH GROUPED BY CURRENCY FOR VARIOUS FUNCTIONS:
+  --------------------------------------------------------------------------+----------------------------------------------------------------
+  val sum = builder { CashSchemaV1.PersistentCashState::pennies.sum() }     | val sum = builder { CashSchemaV1.PersistentCashState::
+  val sumCriteria = VaultCustomQueryCriteria(sum)                           |     pennies.sum(groupByColumns = listOf(CashSchemaV1.PersistentCashState::currency)) }
+                                                                            | val sumCriteria = VaultCustomQueryCriteria(sum)
+  val count = builder { CashSchemaV1.PersistentCashState::pennies.count() } | 
+  val countCriteria = VaultCustomQueryCriteria(count)                       | val max = builder { CashSchemaV1.PersistentCashState::
+                                                                            |     pennies.max(groupByColumns = listOf(CashSchemaV1.PersistentCashState::currency)) }
+  val max = builder { CashSchemaV1.PersistentCashState::pennies.max() }     | val maxCriteria = VaultCustomQueryCriteria(max)
+  val maxCriteria = VaultCustomQueryCriteria(max)                           | 
+                                                                            | val min = builder { CashSchemaV1.PersistentCashState::
+  val min = builder { CashSchemaV1.PersistentCashState::pennies.min() }     |     pennies.min(groupByColumns = listOf(CashSchemaV1.PersistentCashState::currency)) }
+  val minCriteria = VaultCustomQueryCriteria(min)                           | val minCriteria = VaultCustomQueryCriteria(min)
+                                                                            | 
+  val avg = builder { CashSchemaV1.PersistentCashState::pennies.avg() }     | val avg = builder { CashSchemaV1.PersistentCashState::
+  val avgCriteria = VaultCustomQueryCriteria(avg)                           |     pennies.avg(groupByColumns = listOf(CashSchemaV1.PersistentCashState::currency)) }
+                                                                            | val avgCriteria = VaultCustomQueryCriteria(avg)
+  val results = vaultQuerySvc.queryBy<FungibleAsset<*>>(
+                             sumCriteria .and(countCriteria) .and(maxCriteria) .and(minCriteria) .and(avgCriteria) )
+  val (snapshot, updates)  = vaultQuerySvc.trackBy/* stream/observable queries */<FungibleAsset>(...) 
+       </pre>
        </li>
      </ul>
   </td>
@@ -431,6 +504,65 @@ val results = builder {
   </td>
 </tr }>
 <!-- ************************************** -->
+<tr {>
+  <td topic >PERSISTENCE (TODO)</td> 
+  <td summa >
+     <ul>
+       <li>Corda offers developers the option to expose all or some part of a 
+           contract state to an Object Relational Mapping (ORM) tool to be persisted
+           in a RDBMS. The purpose of this is to assist vault development by effectively
+           indexing persisted contract states held in the vault for the purpose of running
+           queries over them and to allow relational joins between Corda data and private
+           data local to the organisation owning a node.
+       </li>
+       <li>Nodes have an internal SchemaService which decides what to persist and
+           what not by selecting the MappedSchema to use.
+          <pre xxxsmall>
+interface SchemaService {
+    data class SchemaOptions(val databaseSchema: String? = null, val tablePrefix: String? = null)    
+    val schemaOptions: Map<MappedSchema, SchemaOptions>
+    fun selectSchemas(state: ContractState): Iterable<MappedSchema>
+    fun generateMappedObject(state: ContractState, schema: MappedSchema): PersistentState
+}
+
+open class MappedSchema(schemaFamily: Class<*>,
+                        val version: Int,
+                        val mappedTypes: Iterable<Class<*>>) {
+    val name: String = schemaFamily.name
+    override fun toString(): String = "${this.javaClass.simpleName}(name=$name, version=$version)"
+}
+          </pre>
+      </li>
+       <li> </li>
+       <li> </li>
+       <li> </li>
+     </ul>
+  </td>
+  <td col1 >
+     <ul>
+       <li><a href='https://docs.corda.net/api-persistence.html'>API</a></li>
+       <li> </li>
+       <li> </li>
+     </ul>
+  </td>  
+  <td col2  >
+  Ex.1:
+     <pre xxsmall>
+     ...
+     </pre>
+  </td>
+  <td >
+     <table subtable1>
+     <tr subtable1>
+       <td subtable1></td>
+       <td subtable1></td>
+       <td subtable1></td>
+     </tr>
+     </table>
+  </td>
+</tr }>
+<!-- ************************************** -->
+
 <tr {>
   <td topic >CONTRACTS</td>
   <td summa >
@@ -440,19 +572,50 @@ val results = builder {
        <li>Contract execution is deterministic and its acceptance of a transaction is based on the transaction's contents alone. A contract should either always accept or always reject a given transaction. Can not depend on the validation date or other contextual info.</li>
      </ul>
   </td>
-  <td col1  >All Corda contracts are JVM classes th implement the next interface:
-    <pre xsmall>
+  <td col1  >
+     <ul>
+       <li><a href='https://docs.corda.net/api-contracts.html'>API</a></li>
+       <li>All Corda contracts are JVM classes th implement the next interface:
+         <pre xsmall>
 <b>package net.corda.core.contracts.Contract</b>
 @CordaSerializable
 interface Contract {
     @Throws(IllegalArgumentException::class)
-    fun verify(tx: LedgerTransaction)
+    fun verify(tx: LedgerTransaction <a href='https://docs.corda.net/api-transactions.html'>/*TX with all signatures*/</a>)   
 
     val legalContractReference: SecureHash
 }
-    </pre>
+         </pre>
+       </li>
+     </ul>
 </td>
-  <td col2  ></td>
+  <td col2  >Example contract using requireSingleCommand() helper method to extract commands:
+     <pre xxsmall>
+class XContract : Contract {
+   interface Commands : CommandData {
+       class Issue : TypeOnlyCommandData(), Commands
+       class Transfer : TypeOnlyCommandData(), Commands
+   }
+
+   override fun verify(tx: LedgerTransaction) {
+       val command = tx.commands.<b>requireSingleCommand</b><Commands>()
+
+       when (command.value) {
+           is Commands.Issue -> {
+               // Issuance verification logic.
+           }
+           is Commands.Transfer -> {
+               // Transfer verification logic.
+           }
+       }
+   }
+   override val legalContractReference: SecureHash = 
+       SecureHash.sha256("X contract hash")
+}
+     </pre>
+
+
+ </td>
   <td col3  ></td>
 </tr }>
 <!-- ************************************** -->
@@ -514,16 +677,49 @@ interface Contract {
            - WireTransaction, an immutable transaction<br/>
            - SignedTransaction, an immutable transaction with 1+ associated signatures<br/>
            - LedgerTransaction, a transaction that can be checked for validity
-         <pre>
-         val txBuilder: TransactionBuilder = TransactionBuilder(General, specificNotary)
-         <pre>
+       </li>
+       <li>Building a new transaction:
+         <pre xxsmall>
+// Create a TransactionBuilder
+val txBuilder: TransactionBuilder = TransactionBuilder(General, specificNotary)
+// Creating the inputs (Refs. to previous outputs)
+val ourStateAndRef: StateAndRef<DummyState> = serviceHub.toStateAndRef<DummyState>(ourStateRef)
+val ourStateRef: StateRef = StateRef(SecureHash.sha256("DummyTransactionHash"), 0)
+// Creating the Outputs
+val ourOutput: DummyState = DummyState()
+val ourOtherOutput: DummyState = ourOutput.copy(magicNumber = 77)
+
+// Creating the command
+val ourPubKey: PublicKey = serviceHub.legalIdentityKey
+val counterpartyPubKey: PublicKey = counterparty.owningKey
+val commandData: DummyContract.Commands.Create = DummyContract.Commands.Create()
+val requiredSigners: List<PublicKey> = listOf(ourPubKey, counterpartyPubKey)
+val ourCommand: Command<DummyContract.Commands.Create> = Command(commandData, requiredSigners)
+
+// Adding attachements
+val ourAttachment: SecureHash = SecureHash.sha256("DummyAttachment")
+
+// Specifying TimeWindow
+val ourTimeWindow: TimeWindow = TimeWindow.between(Instant.MIN, Instant.MAX)
+val ourAfter: TimeWindow = TimeWindow.fromOnly(Instant.MIN)
+val ourBefore: TimeWindow = TimeWindow.untilOnly(Instant.MAX)
+
+txBuilder.withItems( ourStateAndRef, ourOutput, ourCommand, ourTimeWindow)
+
+// Finally sign the transaction with legar identity key. :
+val onceSignedTx: SignedTransaction = serviceHub.signInitialTransaction(txBuilder) 
+// Alternatively choose other key:
+val otherKey: PublicKey = serviceHub.keyManagementService.freshKey()
+val onceSignedTx2: SignedTransaction = serviceHub.signInitialTransaction(txBuilder, otherKey)
+
+         </pre>
        </li>
      </ul>
   </td>
   <td col1  >
      <ul>
      <li> <a href='https://docs.corda.net/api-transactions.html'>Transaction API</a> </li>
-     <li> LedgerTransaction example:
+     <li> LedgerTransaction sent to Contract::verify(...):
      <pre xxsmall>
 @CordaSerializable
 class LedgerTransaction(
@@ -560,33 +756,7 @@ requireThat {
 
 
 </td>
-  <td col3  >requireSingleCommand() helper method to extract commands:
-     <pre xxsmall>
-class XContract : Contract {
-   interface Commands : CommandData {
-       class Issue : TypeOnlyCommandData(), Commands
-       class Transfer : TypeOnlyCommandData(), Commands
-   }
-
-   override fun verify(tx: LedgerTransaction) {
-       val command = tx.commands.<b>requireSingleCommand</b><Commands>()
-
-       when (command.value) {
-           is Commands.Issue -> {
-               // Issuance verification logic.
-           }
-           is Commands.Transfer -> {
-               // Transfer verification logic.
-           }
-       }
-   }
-   override val legalContractReference: SecureHash = 
-       SecureHash.sha256("X contract hash")
-}
-     </pre>
-
-
- </td>
+  <td col3  ></td>
 </tr }>
 
 <!-- ************************************** -->
@@ -607,9 +777,132 @@ class XContract : Contract {
       at any time using an RPC call. The flow abstracts all the
       networking, I/O and concurrency issues away from the node owner.</li>
        <li>Flows may last days, across node restarts and even upgrades.</li>
+       <li>Flow Initiator: Builds new TX (choose notary), signs,
+           verify (run its contract), gather counterparty's signature, finalize TX:<br/>
+           Finalize: -> Send TX to notary -> Wait for notarised TX -> Record locally ->
+           Store states in the vault -> Send TX to counterparty for recording
+       </li>
+       <li>Responder:<br/>
+         Verify signatures and contract -> Signs -> send signature back ->
+         wait for notarised TX -> record locally -> store states in vault
+       </li>
+
      </ul>
   </td>
-  <td col1  ></td>
+  <td col1 >
+     <ul>
+       <li><a href='https://docs.corda.net/api-flows.html'>Flows API</a></li>
+       <li><a href='https://docs.corda.net/api-service-hub.html'>Service Hub API</a>(Accesible inside the FlowLogic::call())
+         <pre xxsmall>
+networkMapCache      : Provides information on other nodes on the network
+identityService      : Allows to resolve anonymous identities 
+                       to well-known identities
+attachments          : Gives access to the node's attachments
+validatedTransactions: Gives access to the TX stored in the node
+vaultService         : Stores node's current and historic states
+keyManagementService : Manages signing TXs and generating public keys
+myInfo               : Other information about the node
+clock                : Provides access to node's internal time+date
+  
+Additional, ServiceHub exposes the following properties:
+  
+loadState             : resolve a StateRef into a TransactionState
+toStateAndRef         : resolve a StateRef into a StateAndRef
+signInitialTransaction: signs TransactionBuilder -> SignedTransaction
+createSignature       : create signature to a SignedTransaction
+addSignature          : add signatures   to a SignedTransaction
+
+legalIdentityKey      : node's legal identity key
+notaryIdentityKey     : notary identity key
+         </pre>
+</li>
+
+       <li>
+       <pre xxsmall>
+Additionally, any flow that is started by a SchedulableState must be annotated with the  annotation.
+-----------------------------------------------+----------------------------------
+@SchedulableFlow   &lt;- If started by an      |
+                         SchedulableState      |
+@InitiatingFlow    &lt;- Indicates that can be | @InitiatedBy &lt;- Indicates that responds to messages
+                         started "manually"    |
+@StartableByRPC    &lt;- Add RPC control.      | 
+class Initiator(val arg1: Boolean,             | class Responder(val otherParty: Party):
+                val arg2: Int,                 |     FlowLogic<Unit>() { ... }
+                val counterparty: Party):      |
+    FlowLogic<SignedTransaction>() {           |
+                                               |
+      @Suspendable &lt;- serializable+restart.
+      override fun call() {
+        val NMC = serviceHub.networkMapCache
+        val x500Name = X500Name("CN=NodeA,O=NodeA,L=London,C=UK")
+        // Retrieve counterparties legal identities {
+        val namedCounterparty: Party? = NMC.getNodeByLegalName       (x500Name   )?.legalIdentity
+        val keyedCounterparty: Party? = NMC.getNodeByLegalIdentityKey(dummyPubKey)?.legalIdentity
+        val firstCounterparty: Party  = NMC.partyNodes[0]                          .legalIdentity
+        // }
+        // find nodes providing a specific service (regulator, oracle, ...)
+        val regulator: Party = NMC.getNodesWithService(ServiceType.regulator)[0].legalIdentity
+        
+        val packet2: UntrustworthyData<Boolean> = 
+                   sendAndReceive<Boolean>(regulator /*counterparty*/, "payload")
+        val boolean: Boolean = packet2.unwrap { untrustedData -> ...  return checkedAndTrustedData }
+      }
+    }
+-----------------------------------------------+----------------------------------
+       </pre>
+       </li>
+       <li>BUILT-IN SUBFLOWS ("BUILDING BLOCKS"):
+         <pre xxsmall>
+  | SubFlow                  | should be used to 
+  +--------------------------+-------------------
+  | CollectSignaturesFlow    | collect TXs required signatures
+  | SignTransactionFlow      | 
+  | FinalityFlow             | notarise and record a transaction
+  | ResolveTransactionsFlow  | verify inputs chain to TX 
+  | ContractUpgradeFlow      | change a state's contract
+  | NotaryChangeFlow         | change a state's notary
+         </pre>
+         Example ussage:
+         <pre xxsmall>
+(Initiator)Party starts CollectSignatures Subflow   | Counterparty
+----------------------------------------------------+--------------------------------------------------------------------------------
+val fullySignedTx: SignedTransaction =              | 
+    subFlow(                                        | val counterParty_SignTransactionFlow: SignTransactionFlow = 
+      CollectSignaturesFlow(                        |     object : SignTransactionFlow(counterparty) {
+        twiceSignedTx,                              |     override 
+        SIGS_GATHERING.childProgressTracker()       |     fun checkTransaction(stx: SignedTransaction) = requireThat {
+      )                                             |       ... checking ...
+    )                                               |       if (stx_has_dependencies)
+                                                    |         subFlow(ResolveTransactionsFlow(twiceSignedTx, counterparty))
+                                                    | 
+                                                    |       subFlow(ResolveTransactionsFlow(setOf(ourStateRef.txhash), counterparty))
+                                                    | 
+                                                    |       val outputState = stx.tx.outputsOfType<DummyState>().single()
+                                                    |       assert(outputState.magicNumber == 777)
+                                                    |     }
+                                                    | }
+                                                    | subFlow(counterParty_SignTransactionFlow)
+----------------------------------------------------+--------------------------------------------------------------------------------
+
+val additionalParties: Set<Party> = setOf(regulator) 
+val notarisedTx1: SignedTransaction = 
+    subFlow(
+      FinalityFlow(               // &lt;- Finalizing Flow
+        listOf(fullySignedTx),
+        additionalParties /*optional*/,
+        FINALISATION.childProgressTracker())
+    ).single()
+         <pre xxsmall>
+       </li>
+       <li>ProgressTracker :allows to see the flow's progress visually in our node's CRaSH shell.
+           ID_OTHER_NODES->SENDING_AND_RECEIVING_DATA->EXTRACTING_VAULT_STATES->OTHER_TX_COMPONENTS
+           ->TX_BUILDING->TX_SIGNING->TX_VERIFICATION->SIGS_GATHERING->VERIFYING_SIGS->FINALISATION
+         <pre>
+         progressTracker.currentStep = ...
+         </pre>
+       </li>
+     </ul>
+  </td>  
   <td col2  ></td>
   <td col3  ></td>
 </tr }>
@@ -691,8 +984,8 @@ class XContract : Contract {
   <td col2  ></td>
   <td col3  ></td>
 </tr }>
-<!-- ************************************** -->
 
+<!-- ************************************** -->
 <tr {>
   <td topic >NODES</td>
   <td summa >

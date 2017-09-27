@@ -2,9 +2,9 @@
 
 # REF: https://github.com/jpmorganchase/quorum/blob/master/docs/running.md
 
-. GENESIS_SJON_INPUT
+. GENESIS_JSON_INPUT
 
-cat <<EOF > genesis.json
+cat <<EOF_GENESIS_JSON > genesis.json
 
 {
   "alloc": {
@@ -33,3 +33,4 @@ cat <<EOF > genesis.json
   "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
   "timestamp": "0x00"
 }
+EOF_GENESIS_JSON

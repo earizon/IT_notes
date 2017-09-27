@@ -34,3 +34,6 @@ cat <<EOF_GENESIS_JSON > genesis.json
   "timestamp": "0x00"
 }
 EOF_GENESIS_JSON
+
+# Note: Once created initialize geth with command:
+# $ geth init genesis.json

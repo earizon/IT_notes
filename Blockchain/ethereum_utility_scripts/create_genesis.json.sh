@@ -21,7 +21,7 @@ cat <<EOF_GENESIS_JSON > genesis.json
     },
     "0x${MAKER_01}"   : { "balance": "1000000000000000000000000000" },
     "0x${SIGNER_01}"  : { "balance": "1000000000000000000000000000" },
-    "0x${OBSERVER_01}": { "balance": "1000000000000000000000000000" },
+    "0x${OBSERVER_01}": { "balance": "1000000000000000000000000000" }
   },
   "coinbase": "0x0000000000000000000000000000000000000000",
   "config": { "homesteadBlock": 0 },

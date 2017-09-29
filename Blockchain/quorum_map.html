@@ -297,6 +297,51 @@ root@7cb755d39893:/quorum-examples/examples/7nodes# ./stop.sh
   </td>
 </tr }>
 
+
+<tr {>
+  <td topic >Raft-based consensus</td> 
+  <td summa >
+   geth --raft 
+     <ul>
+       <li> REF : https://github.com/jpmorganchase/quorum/blob/master/raft/doc.md</li>
+
+       <li> Ethereum p2p transport layer: communicate TXs<br/>
+            Raft: communicate blocks.  </li>
+
+       <li>Minting frequency:mint blocks <= 50ms  (configurable via the --raftblocktime)</li>
+       <li>RAFT TRANSPORT LAYER:<br/>
+           We communicate blocks over the HTTP transport layer built in to etcd Raft. <br/>
+           Quorum raft transport default TCP port: 50400 ( --raftport newPort )
+       </li>
+     </ul>
+
+  </td>
+  <td col1 >
+     <ul>
+       <li>static-nodes.json: required, <br/>
+           - list of initial nodes in the cluster <br/>
+           - the order of the enodes in the static-nodes.json file
+             *NEEDS TO BE THE SAME ACROSS ALL PEERS*
+           - ID URIs must include a raftport querystring parameter specifying 
+             the raft port for each peer: e.g. enode://abcd@127.0.0.1:30400?raftport=50400
+           - To remove a node from the cluster attach to a JS console and issue:
+             <pre>
+raft.removePeer(raftIdx /* 1-indexed index in the static peer list */)
+             </pre>
+           - To add a node to the cluster:<br/>
+             STEP 1: attach to a JS console and issue:
+             <pre>
+raft.addPeer("enode://abcd@127.0.0.1:30400?raftport=50400")
+             </pre>
+             STEP 2: start the new geth node with the flag --raftjoinexisting RAFTID 
+             in addition to --raft
+       </li>
+     </ul>
+  </td>  
+  <td col2  >
+  </td>
+</tr }>
+
 <tr {>
   <td topic >Constellation</td>
   <td summa >
@@ -306,12 +351,143 @@ root@7cb755d39893:/quorum-examples/examples/7nodes# ./stop.sh
   <td col1  >
     <ul>
       <li><a href='https://github.com/jpmorganchase/constellation'>GitHub</a></li>
+      <li>Ussage:
+       <p> REF: <a href='https://github.com/jpmorganchase/quorum/blob/master/private/constellation/node.go'>constellation/node.go API</a> (more info comming soon)</p>
+         <pre xxxsmall {>
+package constellation
+import ( "bytes" "encoding/base64" "encoding/json" "errors" "fmt" "github.com/tv42/httpunix" "io" "io/ioutil" "net/http" "os" "os/exec" "time")
+
+// **** STRUCTS ****
+type SendRequest struct {             | type SendResponse struct {        | type Client struct {          | func NewClient(publicKeyPath string, nodeSocketPath string)
+    Payload string   `json:"payload"` |     Key string `json:"key"`       |     httpClient   *http.Client |     (*Client, error) {
+    From    string   `json:"from"`    | }                                 |     publicKey    [32]byte     |     b64PublicKey, err := ioutil.ReadFile(publicKeyPath)
+    To      []string `json:"to"`      |                                   |     b64PublicKey string       |     if err != nil { return nil, err }
+}                                     |                                   | }                             |     return &Client{
+--------------------------------------+-----------------------------------+                               |         httpClient:   unixClient(nodeSocketPath),
+type ReceiveRequest struct {          | type ReceiveResponse struct {                                     |         b64PublicKey: string(b64PublicKey),
+    Key string `json:"key"`           |     Payload string `json:"payload"`                               |     }, nil
+    To  string `json:"to"`            | }                                                                 | }
+}
+
+
+func launchNode(cfgPath string) (*exec.Cmd, error) {     | func unixTransport(socketPath string) *httpunix.Transport { | func RunNode(cfgPath, nodeSocketPath string) error {
+    cmd := exec.Command("constellation-node", cfgPath)   |     t := &httpunix.Transport{                               |     // launchNode(cfgPath)
+    stderr, err := cmd.StderrPipe()                      |         DialTimeout:           1 * time.Second,             |     c := unixClient(nodeSocketPath)
+    if err != nil {                                      |         RequestTimeout:        5 * time.Second,             |     res, err := c.Get("http+unix://c/upcheck")
+        return nil, err                                  |         ResponseHeaderTimeout: 5 * time.Second,             |     if err != nil {
+    }                                                    |     }                                                       |         return err
+    go io.Copy(os.Stderr, stderr)                        |     t.RegisterLocation("c", socketPath)                     |     }
+    if err := cmd.Start(); err != nil {                  |     return t                                                |     if res.StatusCode == 200 {
+        return nil, err                                  | }                                                           |         return nil
+    }                                                    |                                                             |     }
+    time.Sleep(100 * time.Millisecond)                   |                                                             |     return errors.New("Constellation Node API "
+    return cmd, nil                                      | func unixClient(socketPath string) *http.Client {           |           " did not respond to upcheck request")
+}                                                        |     return &http.Client{                                    | }
+                                                         |         Transport: unixTransport(socketPath),
+                                                         |     }
+                                                         | }
+
+
+func (c *Client) do(path string, apiReq interface{}) (*http.Response, error) {
+    buf := new(bytes.Buffer)
+    err := json.NewEncoder(buf).Encode(apiReq)
+    if err != nil { return nil, err }
+    req, err := http.NewRequest("POST", "http+unix://c/"+path, buf)
+    if err != nil { return nil, err }
+    req.Header.Set("Content-Type", "application/json")
+    res, err := c.httpClient.Do(req)
+    if err == nil && res.StatusCode != 200 {
+        return nil, fmt.Errorf("Non-200 status code: %+v", res)
+    }
+    return res, err
+}
+
+
+
+func (c *Client) ReceivePayload(key []byte) ([]byte, error) {    | func (c *Client) SendPayload(pl []byte, b64From string, b64To []string)
+    b64Key := base64.StdEncoding.EncodeToString(key)             |    ([]byte, error) {
+    req := &ReceiveRequest{                                      |     var from string
+        Key: b64Key,                                             |     if b64From == "" { from = c.b64PublicKey } else { from = b64From }
+        To:  c.b64PublicKey,                                     |     req := &SendRequest{
+    }                                                            |         Payload: base64.StdEncoding.EncodeToString(pl),
+    res, err := c.do("receive", req)                             |         From:    from,
+    if err != nil {                                              |         To:      b64To,
+        return nil, err                                          |     }
+    }                                                            |     res, err := c.do("send", req)
+    defer res.Body.Close()                                       |     if err != nil { return nil, err }
+    rres := new(ReceiveResponse)                                 |     defer res.Body.Close()
+    err = json.NewDecoder(res.Body).Decode(rres)                 |     sres := new(SendResponse)
+    if err != nil {                                              |     err = json.NewDecoder(res.Body).Decode(sres)
+        return nil, err                                          |     if err != nil { return nil, err }
+    }                                                            |     key, err := base64.StdEncoding.DecodeString(sres.Key)
+    pl, err := base64.StdEncoding.DecodeString(rres.Payload)     |     if err != nil { return nil, err }
+    if err != nil {                                              |     return key, nil
+        return nil, err                                          | }
+    }
+    return pl, nil
+}
+         </pre }>
+      </li>
     </ul>
   </td>
   <td col2  >
     <ul>
-      <li>Installation instructions @<a href='https://github.com/jpmorganchase/constellation'>GitHub</a></li>
-      <li>Binaries available at: <a href='https://github.com/jpmorganchase/constellation/releases'>https://github.com/jpmorganchase/constellation/releases</a>
+      <li>
+        Installation instructions <a href='https://github.com/jpmorganchase/constellation'>GitHub</a>
+        (sort of outdated, there are some recent dockerfile in the github repository)
+      </li>
+      <li>Binaries available at: <a href='https://github.com/jpmorganchase/constellation/releases'>https://github.com/jpmorganchase/constellation/releases</a> </li>
+      <li>example configuration <a href='https://raw.githubusercontent.com/jpmorganchase/constellation/master/sample.conf'>sample.conf</a>:
+        <pre xxxsmall { >
+# Externally accessible URL for this node (this is what's advertised)
+url = "http://127.0.0.1:9001/"
+
+# Port to listen on for the public API
+port = 9001
+
+# Socket file to use for the private API / IPC
+socket = "foo.ipc"
+
+# Initial (not necessarily complete) list of other nodes in the network.
+# Constellation will automatically connect to other nodes not in this list
+# that are advertised by the nodes below, thus these can be considered the
+# "boot nodes."
+othernodes = ["http://127.0.0.1:9000/"]
+
+# The set of public keys this node will host
+publickeys = ["foo.pub"]
+
+# The corresponding set of private keys
+privatekeys = ["foo.key"]
+
+# Optional comma-separated list of paths to public keys to add as recipients
+# for every transaction sent through this node, e.g. for backup purposes.
+# These keys must be advertised by some Constellation node on the network, i.e.
+# be in a node's publickeys/privatekeys lists.
+# alwayssendto = []
+
+# Optional file containing the passwords to unlock the given privatekeys
+# (one password per line -- add an empty line if one key isn't locked.)
+# passwords = "passwords"
+
+# Where to store payloads and related information
+storage = "data"
+
+# Optional IP whitelist for the public API. If unspecified/empty,
+# connections from all sources will be allowed (but the private API remains
+# accessible only via the IPC socket above.) To allow connections from
+# localhost when a whitelist is defined, e.g. when running multiple
+# Constellation nodes on the same machine, add "127.0.0.1" and "::1" to
+# this list.
+# ipwhitelist = ["10.0.0.1", "2001:0db8:85a3:0000:0000:8a2e:0370:7334"]
+
+# Verbosity level (each level includes all prior levels)
+#   - 0: Only fatal errors
+#   - 1: Warnings
+#   - 2: Informational messages
+#   - 3: Debug messages
+verbosity = 1
+        </pre } >
       </li>
     </ul>
 
@@ -665,29 +841,6 @@ Loop:
 </tr }>
 
 <tr {>
-  <td topic >Alastria</td> 
-  <td summa >
-     <ul>
-       <li><a href='https://alastria.io/'>https://alastria.io/</a></li>
-<!--
-       <li> </li>
-       <li> </li>
--->
-     </ul>
-
-  </td>
-  <td col1 >
-     <ul>
-       <li> </li>
-       <li> </li>
-       <li> </li>
-     </ul>
-  </td>  
-  <td col2  >
-  </td>
-</tr }>
-
-<tr {>
   <td topic >Transaction Processing</td> 
   <td summa >
      <ul>
@@ -867,7 +1020,12 @@ REF: https://github.com/jpmorganchase/quorum/blob/master/raft/doc.md
 - faster blocktimes (milliseconds vs seconds)
 - absence of forking: 
 - Compared with QuorumChain, does NOT "unnecessarily" create empty blocks
-_____________________________________________________
+
+
+_________________________________
+Youtube Video: Raspeberry Pi java sending telemetry data to quorum.
+https://www.youtube.com/watch?v=64kMWxTaXw8
+___________________________________________________
 
 -->
 </html>

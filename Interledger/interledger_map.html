@@ -1,5 +1,7 @@
 <!DOCTYPE html>
 <html>
+   <meta charset="UTF-8">
+   <title>Interledger Map</title>
 <!--
  Q:Note what the attribute { and } do:
  A:Those attributes are ignored by the browser but are helpful to fold/unfold text in some
@@ -51,6 +53,21 @@ var zoomDivDOM
 function onZoomDivDoubleClick() { zoomDivDOM.innerHTML = ''; }
 function onTDDoubleClick()      { zoomDivDOM.innerHTML = "('Esc' to close)<br/>" + this.innerHTML; }
 
+function removeToLeftMarginInPre() {
+  // TODO:(0) Not working
+  // nodeList = document.querySelectorAll('pre')
+  // for (idx in nodeList) { 
+  //   var node = nodeList[idx]
+  //   var html = node.innerHTML
+  //   var pattern = html.match(/^\s*[|]/)
+  //   var regEx = new RegExp(pattern, "")
+  //   console.log(html)
+  //   node.innerHTML = html.replace(regEx,''))
+  //    
+  // }
+}
+
+
 function onPageLoaded() {
   zoomDivDOM = document.getElementById('zoomDiv')
   zoomDivDOM.addEventListener('dblclick',onZoomDivDoubleClick, false)
@@ -69,18 +86,21 @@ function onPageLoaded() {
      nodeList[idx].addEventListener('dblclick',onTDDoubleClick, false)
   }
   setTimeout(onZoomDivDoubleClick, 3000);
+  removeToLeftMarginInPre();
 }
 </script>
 <style>
+pre { background-color:#EEEEEE; outline:1px dotted grey; }
 *[TODO]         { color:red; font-weight: bold; }
 *[TODO]:before  { content: "TODO:"; }
 *[xxxsmall]{ font-size:0.1rem; }
-*[xxsmall] { font-size:0.3rem; }
+* xxsmall] { font-size:0.3rem; }
 *[xsmall]  { font-size:0.7rem; }
+*[small]   { font-size:0.9rem; }
 ul { margin-left: 1.0em; padding-left: 0rem; }
-#zoomDiv *[xxxsmall]{ font-size:1rem; } 
-#zoomDiv *[ xxsmall]{ font-size:1rem; }
-#zoomDiv *[  xsmall]{ font-size:1rem; }
+#zoomDiv [xxxsmall] , #zoomDiv * [xxxsmall]{ font-size:1rem; } 
+#zoomdiv [xxsmall]  , #zoomdiv * [xxsmall] { font-size:1rem; }
+#zoomdiv [xsmall]   , #zoomDiv * [xsmall]  { font-size:1rem; }
 
 body      { font-family:sans-serif; }
 #zoomDiv  { 
@@ -359,24 +379,37 @@ END                                       |                                     
                     <li><a href='https://github.com/interledger/rfcs/blob/master/asn1/InterledgerPacket.asn'>InterledgerPacket ASN1 Definition</a></li>
                     <li>
                          <a href='https://github.com/interledger/rfcs/pull/264'>PR 264 Reduce CLP to the French Five</a>
-<pre xxxsmall>note Adrian Hope: """I believe there is a layering issue in the set of generic packets that is making this harder than it should be. If you look at this list, the only packet that is relayed, unchanged, between nodes is the InterledgerProtocolPayment.
+<p small>note Adrian Hope: """I believe there is a layering issue in the set of generic packets that is making this harder than it should be. If you look at this list, the only packet that is relayed, unchanged, between nodes is the InterledgerProtocolPayment.</p>
+<pre xsmall>
     {1 InterledgerProtocolPayment}       | {2 QuoteLiquidityRequest} |
     {3 QuoteLiquidityResponse}           | {4 QuoteBySourceAmountRequest} |
     {5 QuoteBySourceAmountResponse}      | {6 QuoteByDestinationAmountRequest} |
     {7 QuoteByDestinationAmountResponse} | {8 InterledgerProtocolError}
-This suggests that the InterledgerProtocolPayment should exist one layer higher in the stack and be encapsulated in a packet that is passed from node to node like the others.
-We should remove InterledgerProtocolPayment and add TransferRequest, SuccessfulTransferResponse and FailedTransferResponse defined as follows:
-TransferRequest ::= SEQUENCE { transferId ..., amount ..., executionCondition ..., expiresAt ..., packet InterledgerProtocolPayment }
-SuccessfulTransferResponse ::= SEQUENCE { transferId UInt128, fulfillment UInt256 }
-FailedTransferResponse ::= SEQUENCE { transferId UInt128, reason InterledgerProtocolError }
+</pre>
+<p small>This suggests that the InterledgerProtocolPayment should exist one layer higher in the stack and be encapsulated in a packet that is passed from node to node like the others.
+We should remove InterledgerProtocolPayment and add TransferRequest, SuccessfulTransferResponse and FailedTransferResponse defined as follows:</p>
+<pre xxxsmall>
+TransferRequest ::= SEQUENCE { 
+    transferId ..., 
+    amount ..., executionCondition ...,
+    expiresAt ...,
+    packet InterledgerProtocolPayment }
+SuccessfulTransferResponse ::= 
+  SEQUENCE { transferId UInt128, fulfillment UInt256 }
+FailedTransferResponse ::= 
+  SEQUENCE { transferId UInt128, reason InterledgerProtocolError }
+</pre>
 
-It's not clear if the ILQP requests can ever have an ILP Error response so let's assume that is only used in response to a transfer request.
+<p smmall>It's not clear if the ILQP requests can ever have an ILP Error response so let's assume that is only used in response to a transfer request.
 
-Therefor the new set of Generic Packets are:
+Therefor the new set of Generic Packets are:</p>
+<pre xxxsmall>
     [TransferRequest, SuccessfulTransferResponse, FailedTransferResponse, 
      QuoteLiquidityRequest, QuoteLiquidityResponse, 
      QuoteBySourceAmountRequest, QuoteBySourceAmountResponse,
      QuoteByDestinationAmountRequest, QuoteByDestinationAmountResponse ]
+</pre>
+<p small>
 This is the protocol layer that exists below ILP, the messages exchanged directly between nodes (connectors, senders and receivers).
 
 **** The transfer request encapsulates the InterledgerProtocolPayment (often referred to as the ILP Packet) along with the other required data for a transfer (expiry, condition etc). ****
@@ -384,9 +417,12 @@ Note that *Request and *Response at this layer imply the logical flow not the me
  Then the SuccessfulTransferResponse is returned, carried in a RequestMessage envelope, because it is initiated from the upstream node.
 
 The CommonMessageProtocol could then be reduced to:
+</p>
+<pre small>
 Ack ::= SEQUENCE { ...  }
 RequestMessage ::= SEQUENCE { ...  }
 ResponseMessage ::= SEQUENCE { ... }
+</pre>
 
 
 </pre>
@@ -477,7 +513,7 @@ ResponseMessage ::= SEQUENCE { ... }
   <td documentation >See (Re:) Atomic Payments thread in w3c list started by Ryan Fugger
      <a href='https://lists.w3.org/Archives/Public/public-interledger/2017Jun/thread.html'>June</a>, <a href='https://lists.w3.org/Archives/Public/public-interledger/2017Aug/thread.html'>August</a>
   Extracted from Stefan Thomas <a href='https://lists.w3.org/Archives/Public/public-interledger/2017Jun/0040.html'>reply</a>:
-<span xxsmall>
+     <div xxxsmall>
  I would say that we haven't abandoned the ideal insofar as
 we still want any many payments as possible to be atomic as much as
 possible. However, I would argue that we cannot assume that atomic mode
@@ -502,7 +538,9 @@ payment. Any number of participants can decide to make the transfer between
 them subsidiary to some notary. If all the participants do that,
 congratulations, the payment is fully atomic.<br/>
 
-SO THE IDEA IS TO DEFAULT TO UNIVERSAL MODE AND USE ATOMIC WHERE POSSIBLE</b>
+SO THE IDEA IS TO DEFAULT TO UNIVERSAL MODE AND USE ATOMIC WHERE POSSIBLE
+</b>
+
 Ripple is currently building a proprietary network for banks that uses
 atomic mode internally and universal mode externally.<br/>
 
@@ -515,9 +553,10 @@ effectively making the XRP Ledger a de-facto notary.
 - by mutual agreement - decide to defer the outcome of their
 transfer to whatever the outcome on the ledger right of them or the ledger
 left of them.<br/>
-</span>
+    </div>
+    
 and from Adrian-Hope <a href='https://lists.w3.org/Archives/Public/public-interledger/2017Jun/0059.html'>reply</a>:
-<div xxsmall>
+    <div xxxsmall>
 In my experience to date, it's most often people familiar with existing
 payment systems that want atomic mode. I think that in time <b>we'll find that
 complete end to end atomicity comes at a cost that is not justified for a
@@ -530,7 +569,7 @@ near the 1% and up that most payments cost to send.</b><br/>
 <b>In a world where ILP is a foundational layer ...  it's still possible
  for someone to send a payment at almost zero cost if they accept the 
  associated risks.</b>
-</div>
+    </div>
 
 About New ILP architecture <a href='https://lists.w3.org/Archives/Public/public-interledger/2017Aug/0018.html'>From Adrian Hope</a>
 <div xxsmall>
@@ -567,98 +606,258 @@ the fulfillment and some notary signature.</p>
 
 <tr {>
   <td topic         >Liquidity Curves</td>
-  <td summary       >C&P From ASN.1 comment. L.C.  describe the relationship between input and output amount
-                     for a given path between a pair of ledgers.<br/>
-                     The curve is expressed as a series of points given as coordinates 
-                     of the form <inputAmount, outputAmount>. If a sender sends 'inputAmount'
-                     units to the connector, the recipient will receive 'outputAmount'.<br/>
-                     It may represent the liquidity through a single connector, 
-                     or multiple liquidity curves can be combined into one to represent 
-                     the liquidity through a given path of connectors.<br/>
-                     Points are ordered by inputAmount. The inputAmount is strictly increasing
-                     from point to point. The outputAmount is monotonically increasing, 
-                     meaning each successively point must have an equal or greater outputAmount.<br/>
-                     The first point represents the minimum amount that can be transacted, while
-                     the final point represents the maximum amount that can be transacted.<br/>
-                     If a query does not match a point exactly, implementations MUST use linear
-                     interpolation. When querying by outputAmount, if multiple points match
-                     exactly, the lowest inputAmount of any of these points MUST be returned.
+  <td summary       >
+     C&P From ASN.1 comment. L.C.  describe the relationship between input and output amount
+     for a given path between a pair of ledgers.<br/>
+     The curve is expressed as a series of points given as coordinates 
+     of the form <inputAmount, outputAmount>. If a sender sends 'inputAmount'
+     units to the connector, the recipient will receive 'outputAmount'.<br/>
+     It may represent the liquidity through a single connector, 
+     or multiple liquidity curves can be combined into one to represent 
+     the liquidity through a given path of connectors.<br/>
+     Points are ordered by inputAmount. The inputAmount is strictly increasing
+     from point to point. The outputAmount is monotonically increasing, 
+     meaning each successively point must have an equal or greater outputAmount.<br/>
+     The first point represents the minimum amount that can be transacted, while
+     the final point represents the maximum amount that can be transacted.<br/>
+     If a query does not match a point exactly, implementations MUST use linear
+     interpolation. When querying by outputAmount, if multiple points match
+     exactly, the lowest inputAmount of any of these points MUST be returned.
+     <pre>
+ │             P3   Curve=[P1,P2,P3]
+ │    P2 p p p                     
+ │   p              p: Interpolated
+ │  p   
+ │ P1
+ └───────────────
+     </pre>
   </td>
   <td documentation >
-                     <ul>
-                     <li> <a href="https://github.com/interledger/rfcs/blob/master/asn1/InterledgerTypes.asn">ASN.1 bin.def.</a></li>
-                     </ul>
+    <ul>
+    <li> <a href="https://github.com/interledger/rfcs/blob/master/asn1/InterledgerTypes.asn">ASN.1 bin.def.</a></li>
+    </ul>
   </td>
   <td development   >
-                     <ul>
-                         <li> <a href="https://github.com/interledgerjs/ilp-routing/blob/master/src/lib/liquidity-curve.js">JS LiquidityCurve class @ ilp-routing</a></li>
-                         <li> <a href="https://github.com/interledgerjs/ilp-routing/blob/master/test/liquidity-curve.test.js">JS liquitidy-curver.tests.js @ ilp-routing</a></li>
-                         <hr/>
-                         <li> <a href="https://github.com/interledger/java-ilp-core/pull/68">PR 68. feat>java-ilp-core: support liquidity quotes</a></li>
-                         <li> <a href="https://github.com/interledger/java-ilp-core/issues/70">java-ilp-core Issue: Use Java Money ExchangeRate instead of LiquidityCurve</a></li>
-                     </ul>
+    <ul>
+        <li> <a href="https://github.com/interledgerjs/ilp-routing/blob/master/src/lib/liquidity-curve.js">JS LiquidityCurve class @ ilp-routing/src/lib/liquidity-curve.js</a>
+<pre>
+
+class LiquidityCurve
+  this.data /* array 16 * N ("buffer") */
+  this.points /* array (x,y) */// strictly increasing
+  ----------------------
+  amountAt (xVal) 
+  amountReverse (yVal)
+
+  simplify (maxPoints) 
+  combine (curve) 
+  join (curve)
+
+  shiftX (_dx)
+  shiftY (_dy)
+
+  toBuffer () = this.data
+
+</pre>
+        </li>
+        <li> <a href="https://github.com/interledgerjs/ilp-routing/blob/master/test/liquidity-curve.test.js">JS liquitidy-curver.tests.js @ ilp-routing</a></li>
+        <hr/>
+        <li> <a href="https://github.com/interledger/java-ilp-core/pull/68">PR 68. feat>java-ilp-core: support liquidity quotes</a></li>
+        <li> <a href="https://github.com/interledger/java-ilp-core/issues/70">java-ilp-core Issue: Use Java Money ExchangeRate instead of LiquidityCurve</a></li>
+        </ul>
   </td>
   <td testing/CI    >&nbsp;</td>
   <td deployment    >&nbsp;</td>
 </tr }>
 <tr name="ilp-routing" {>
-  <td topic         >Routing</td>
+  <td topic         ><a href='https://github.com/interledgerjs/ilp-routing/'>Routing</a></td>
   <td summary       >
-                     Connectors maintain a routing table of ILP addresses. Routing is a recursive lookup 
-                     through the routing tables of any number of connectors. When a connector receives a query,
-                     it finds the longest prefix match for the queried address. Then, it follows one of the
-                     following cases:
-                     <ul>
-                     <li>If the matching address is marked for local delivery, the connector prepares a transfer
-                       to that address in one of the ledgers connected to it.
-                     The connector maps the ILP address to an account within the ledger. (This is the base case.)
-                     </li>
-                     <li>
-                     If the matching address is marked as forwarded delivery, it has the address of another 
-                     connector associated with it in the routing table. The connector makes a routing lookup on 
-                     the connector associated with the address. (This is the recursive case.)
-                     </li>
-                     <li>From <a href='https://lists.w3.org/Archives/Public/public-interledger/2017Jun/0058.html'>M.L.</a>:
-                       Connectors can keep track of all of the payments they are a part of and
-                       their positions in different currencies. The reference implementation has a
-                       way to configure it to do this
-                     </li>
-                     </ul>
-</td>
+     Connectors maintain a routing table of ILP addresses. Routing is a recursive lookup 
+     through the routing tables of any number of connectors. When a connector receives a query,
+     it finds the longest prefix match for the queried address. Then, it follows one of the
+     following cases:
+     <ul>
+     <li>If the matching address is marked for local delivery, the connector prepares a transfer
+       to that address in one of the ledgers connected to it.
+     The connector maps the ILP address to an account within the ledger. (This is the base case.)
+     </li>
+     <li>
+     If the matching address is marked as forwarded delivery, it has the address of another 
+     connector associated with it in the routing table. The connector makes a routing lookup on 
+     the connector associated with the address. (This is the recursive case.)
+     </li>
+     <li>From <a href='https://lists.w3.org/Archives/Public/public-interledger/2017Jun/0058.html'>M.L.</a>:
+       Connectors can keep track of all of the payments they are a part of and
+       their positions in different currencies. The reference implementation has a
+       way to configure it to do this
+     </li>
+     <li>Example simple routing table (defined in env. variable):
+       <pre {>
+export ROUTES=[
+    {
+     "targetPrefix": "", // match any route
+     "connectorLedger": "ilpdemo.red."
+     "connectorAccount": "ilpdemo.red.connie"
+    },
+    {
+      "targetPrefix": "usd.", // match dolars
+      "connectorLedger": "example.other."
+      "connectorAccount": "example.other.connector"
+     }
+]
+       </pre>
+     </li>
+     </ul>
+  </td>
   <td documentation >
-                     <ul>
-                     <li><a href='https://docs.google.com/document/d/1ifGKVnWcg3MIEbGou4mgZMVKo3ldeFB1WAKvdsQPios/edit'>Initial Doc</a> from the ILP Routing Working Group explaining the current status, current issues, open questions, possible scenarios (connecting crypto-currencies, friend-to-friend network, payments for retails goods, micropayments, ...) </li>
-                     <li><a href='https://github.com/interledger/rfcs/blob/master/0010-connector-to-connector-protocol/0010-connector-to-connector-protocol.md'>RFC-0010 Connector to Connector protocol</a> describes de protocol to interchange data between connectors</li>
-                     <li><a href='https://github.com/interledgerjs/five-bells-shared/tree/master/schemas/Routes.json'>five-bells-shared/schemas/Routes.json</a></li>
-                     <li><a href='https://github.com/interledgerjs/ilp-connector/tree/master/schemas/RoutingUpdate.json'>five-bells-shared/schemas/RoutingUpdate.json</a></li>
-                     <li><a href='https://github.com/interledger/rfcs/tree/master/asn1/InterledgerQuotingProtocol.asn'>ASN.1 bin.def.</a></li>
-                     <li><a href='https://gist.github.com/justmoon/a59fd43958ce421c8b4a88d5143c718b#route-broadcast-example'>(Stefan Thomas gist) Route Broadcast Example</a></li>
-                     </ul>
+     <ul>
+     <li><a href='https://docs.google.com/document/d/1ifGKVnWcg3MIEbGou4mgZMVKo3ldeFB1WAKvdsQPios/edit'>Initial Doc</a> from the ILP Routing Working Group explaining the current status, current issues, open questions, possible scenarios (connecting crypto-currencies, friend-to-friend network, payments for retails goods, micropayments, ...) </li>
+     <li><a href='https://github.com/interledger/rfcs/blob/master/0010-connector-to-connector-protocol/0010-connector-to-connector-protocol.md'>RFC-0010 Connector to Connector protocol</a> describes de protocol to interchange data between connectors</li>
+     <li><a href='https://github.com/interledgerjs/five-bells-shared/tree/master/schemas/Routes.json'>five-bells-shared/schemas/Routes.json</a></li>
+     <li><a href='https://github.com/interledgerjs/ilp-connector/tree/master/schemas/RoutingUpdate.json'>five-bells-shared/schemas/RoutingUpdate.json</a></li>
+     <li><a href='https://github.com/interledger/rfcs/tree/master/asn1/InterledgerQuotingProtocol.asn'>ASN.1 bin.def.</a></li>
+     <li><a href='https://gist.github.com/justmoon/a59fd43958ce421c8b4a88d5143c718b#route-broadcast-example'>(Stefan Thomas gist) Route Broadcast Example</a></li>
+     </ul>
   </td>
   <td development   >
-                     <ul>
-                     <li><a href='https://github.com/interledgerjs/ilp-routing/blob/master/src/lib/route.js'>class Route @ ilp-routing/src/lib/route.js</a> and
-                         <a href='https://github.com/interledgerjs/ilp-routing/blob/master/test/route.test.js'>related tests</a>
-                     </li>
-                     <li><a href='https://github.com/interledgerjs/ilp-routing/blob/master/src/lib/routing-table.js'>class RoutingTable @ ilp-routing/src/lib/routing-table.js</a> and
-                         <a href='https://github.com/interledgerjs/ilp-routing/blob/master/test/routing-table.test.js'>related tests</a>
-                     </li>
-                     <li><a href='https://github.com/interledgerjs/ilp-routing/blob/master/src/lib/routing-tables.js'>class RoutingTables @ ilp-routing/src/lib/routing-tables.js</a> and
-                         <a href='https://github.com/interledgerjs/ilp-routing/blob/master/test/routing-tables.test.js'>related tests</a>
-                     </li>
+     <ul>
+     <li><a href='https://github.com/interledgerjs/ilp-routing/blob/master/src/lib/route.js'>class Route @ ilp-routing/src/lib/route.js</a> 
+         <pre>
+class Route:
+  this.curve LiquidityCurve
 
+  this.sourceLedger  // through which an incoming route enters this connector
+  this.nextLedger    // to which this connector should forward payments
+  this.destinationLedger // last ledger on this route (defaults to nextLedger)
 
+  // if targetPrefix specified, destinations matching it
+  // will follow this route rather than destinations
+  // matching 'destinationLedger'
+  // See interledgerjs/ilp-routing/issues/49
+  this.targetPrefix 
+  this.minMessageWindow
+  this.expiresAt
+  this.additionalInfo
+  this.isLocal
+  this.sourceAccount
+  this.destinationAccount
 
-                     <li><a href='https://github.com/interledgerjs/ilp-connector/blob/master/src/lib/route-broadcaster.js'>route-broadcaster.js @ ilp-connector</a> and
-                         <a href='https://github.com/interledgerjs/ilp-connector/blob/master/test/routeBroadcasterSpec.js'>tests</a>
-                     </li>
-                     <li><a href='https://github.com/interledgerjs/ilp-connector/blob/master/src/lib/route-builder.js'>route-builder.js</a></li>
-                     <li><a href='https://github.com/interledgerjs/ilp-connector/blob/master/src/lib/routing-tables.js'>routing-tables.js</a> and
-                         <a href='https://github.com/interledgerjs/ilp-connector/blob/master/test/routingTablesSpec.js'>tests</a>
-                     </li>
-                     <li><a href='https://github.com/interledgerjs/ilp-routing'>library to calculate routes and r.tables</a></li>
-                     <hr/>
-                     </ul>
+  this.addedDuringEpoch
+  this.paths // array of path arrays
+----  METHODS ------------
+  amountAt (x)
+  amountReverse (y)
+  getPoints ()
+
+  // for path:
+  //   localLedger -> trustLine -> dstnLedger 
+  //   =>  this.paths === [ [] ], path_length 2
+  // for path:
+  //    localLedger -> trustLine -> anotherTL -> dstnLedger 
+  // has this.paths === [ ['anotherTrustLine'] ] and path length 3
+  maxPathLength () 
+
+  combine (alternateRoute)
+  join (tailRoute, expiryDuration, addedDuringEpoch)
+
+  shiftX (dx)
+  shiftY (dy)
+  simplify (maxPoints)
+
+  isExpired ()
+  bumpExpiration (holdDown /*mSecs*/)
+  toJSON () 
+         </pre>
+         and
+         <a href='https://github.com/interledgerjs/ilp-routing/blob/master/test/route.test.js'>related tests</a>
+     </li>
+     <li>
+       <a href='https://github.com/interledgerjs/ilp-routing/blob/master/src/lib/routing-table.js'>ilp-routing src/lib/routing-table.js</a>
+        <pre small { >
+class RoutingTable 
+  this.destinations = PrefixMap
+          &lt;destination, /routes*/Map &lt;hop, route>>()
+  -----------------------------
+  addRoute    (destination, nextHop, route)
+  removeRoute (destination, nextHop)
+
+  // destinationAddress = ['g','us','bank1',...]
+  // Compute shortest prefix that uniquely matches the target 
+  // or destinationAddress if no matches
+  getAppliesToPrefix (routePrefix, destinationAddress) {IlpAddress} 
+
+  findBestHopForSourceAmount (destination, sourceAmount) 
+
+  findBestHopForDestinationAmount (destination, destinationAmount)
+        </pre } >
+        and
+        <a href='https://github.com/interledgerjs/ilp-routing/blob/master/test/routing-table.test.js'>related tests</a>
+     </li>
+     <li><a href='https://github.com/interledgerjs/ilp-routing/blob/master/src/lib/routing-tables.js'>ilp-routing src/lib/routing-tables.js</a> (not to be confused with similar filename <a href='https://github.com/interledgerjs/ilp-connector/blob/master/src/lib/routing-tables.js'>ilp-connector src/lib/routing-tables.js</a>)
+         <pre {>
+// A next hop of PAIR distinguishes a local pair A→B
+//  from a complex route that just happens to be local,
+// i.e. when A→C & C→B are local pairs.
+const PAIR = 'PAIR'
+
+class RoutingTables :
+  this.currentEpoch 
+  this.expiryDuration /*millisecs*/
+  this.sources // PrefixMap{srcLedger: RoutingTable}
+  this.localAccounts Map {"ledger": accountURI }
+  this.addLocalRoutes(localRoutes)
+  --- methods --------
+  incrementEpoch ()
+
+  // Each local route should include the optional
+  // `destinationAccount` parameter.
+  addLocalRoutes (_localRoutes)
+
+  removeLedger (ledger)
+
+  // Given a `route` B→C, create a route A→C for
+  // each source ledger A with a local route to B.
+  addRoute (_route, noExpire)
+
+  _addRouteFromSource (tableFromA, ledgerA,
+                       routeFromBToC, noExpire) 
+
+  _removeRoute (ledgerB, ledgerC, connectorFromBToC)
+
+  removeExpiredRoutes ()
+
+  bumpConnector (connectorAccount, holdDownTime) 
+
+  invalidateConnector (connectorAccount)
+
+  invalidateConnectorsRoutesTo (connectorAccount, ledger)
+
+  eachSource (fn)
+
+  // function(routeFromAToB, ledgerA, ledgerB, nextHop)
+  eachRoute (fn)
+
+  toJSON ( /*int*/ maxPoints) Routes
+
+  getLocalPairRoute (sourceLedger, nextLedger)
+
+  findBestHopForSourceAmount (sourceAddress, finalAddress, sourceAmount)
+
+  findBestHopForDestinationAmount (sourceAddress, finalAddress, finalAmount)
+         </pre }>
+         and
+         <a href='https://github.com/interledgerjs/ilp-routing/blob/master/test/routing-tables.test.js'>related tests</a>
+     </li>
+     <li><a href='https://github.com/interledgerjs/ilp-connector/blob/master/src/lib/route-broadcaster.js'>route-broadcaster.js @ ilp-connector</a> and
+         <a href='https://github.com/interledgerjs/ilp-connector/blob/master/test/routeBroadcasterSpec.js'>tests</a>
+     </li>
+     <li><a href='https://github.com/interledgerjs/ilp-connector/blob/master/src/lib/route-builder.js'>route-builder.js</a></li>
+     <li><a href='https://github.com/interledgerjs/ilp-connector/blob/master/src/lib/routing-tables.js'>routing-tables.js</a> and
+         <a href='https://github.com/interledgerjs/ilp-connector/blob/master/test/routingTablesSpec.js'>tests</a>
+     </li>
+     <li><a href='https://github.com/interledgerjs/ilp-routing'>library to calculate routes and r.tables</a></li>
+     <hr/>
+     </ul>
   </td>
   <td testing/CI    >
  Testting on Testnet<br/>:
@@ -797,7 +996,11 @@ CLP + [ 'setup', 'vouch', 'ilp'*1, 'info', 'balance' ]
      <li><a href='https://github.com/interledger/rfcs/blob/master/asn1/CommonLedgerProtocol.asn'>ASN 1</a></li>
      </ul>
   </td>
-  <td development   ></td>
+  <td development   >
+<ul>
+     <li><a href='https://github.com/interledgerjs/btp-toolbox'>BTP-toolbox</a> for building and debugging with the BTP</li>
+</ul>
+  </td>
   <td testing/CI    >&nbsp;</td>
   <td deployment    >&nbsp;</td>
 </tr }>
@@ -845,7 +1048,7 @@ CLP + [ 'setup', 'vouch', 'ilp'*1, 'info', 'balance' ]
                          <a href='https://github.com/interledgerjs/ilp/blob/master/src/lib/ipr.js'>@src/lib/ipr.js</a></li>
                      <li>
                        <a href='https://github.com/interledger/java-ilp-core/blob/development/src/test/java/org/interledger/ipr/InterledgerPaymentRequestEndToEndTest.java'>Java PSK End-to-end test</a>
-                       <pre xxsmall>
+                       <pre xxxsmall>
 ----------------------------------------------------------------------------+-------------------------------------------------------------------
                 SENDER                                                      |                    RECEIVER
 ----------------------------------------------------------------------------+-------------------------------------------------------------------
@@ -1338,13 +1541,14 @@ const receiver = new FiveBellsLedgerPlugin({
   <td summary       >Ripple reference JS implementation of<br>ILP Connectorg</td>
   <td documentation >
                      <ul>
-                     <li> <a href="https://interledger.org/js-ilp-connector/apidoc/">API</a></li>
+                     <li> </li>
                      </ul>
   </td>
   <td development   >
                      <ul>
                      <li><a href="https://github.com/interledgerjs/ilp-connector">GitHub</a>  </li>
                      <li><a href="https://github.com/interledgerjs/ilp-connector/blob/master/src/lib/route-builder.js">RouteBuilder</a> </li>
+                     <li><hr/></li>
                      </ul>
   </td>
   <td testing/CI    >npm test</td>
@@ -1497,7 +1701,8 @@ CONNECTOR_PORT=400
     --------------------------------------------------------------------
     CodecContext context = CodecContextFactory.interledger();
     context.write(ipr, outputStream);
-    InterledgerPaymentRequest decodedIpr = context.read(InterledgerPaymentRequest.class, asn1OerPaymentBytes);
+    InterledgerPaymentRequest decodedIpr = context.read(
+     InterledgerPaymentRequest.class, asn1OerPaymentBytes);
     --------------------------------------------------------------------
      </pre>
   </td }>
@@ -1556,35 +1761,39 @@ CONNECTOR_PORT=400
 </tr }>
 <tr {>
   <td topic         ><a href='https://github.com/interledger/interledger/wiki/Interledger-over-XRP'>ILP over XRP</a>(Ripple "XRP" Network)</td>
-  <td summary       >Ripple Network is a real-time international gross settlement system 
-                     (<a href='http://treasurytoday.com/2004/12/gross-and-net-settlement-systems'>gross vs net settlement system compared</a>),
-                     used for currency exchange and money transfer network. <br/>
-                     Ripple is based on the idea "secure, instant and nearly free global financial transactions of any size with no chargebacks." 
-                     The Ripple protocol enables the instant and direct transfer of money between two parties. As such the protocol can
-                     circumnavigate the fees and wait times of the traditional correspondent banking system.
+  <td summary       >
+    <p>
+    Ripple Network is a real-time international gross settlement system 
+    (<a href='http://treasurytoday.com/2004/12/gross-and-net-settlement-systems'>gross vs net settlement system compared</a>),
+    used for currency exchange and money transfer network. <br/>
+    Ripple is based on the idea "secure, instant and nearly free global financial transactions of any size with no chargebacks." 
+    The Ripple protocol enables the instant and direct transfer of money between two parties. As such the protocol can
+    circumnavigate the fees and wait times of the traditional correspondent banking system.
+    </p>
 
-                     Ripple relies on a common shared ledger that has its contents decided on by consensus, and which is a distributed
-                     database storing information about all Ripple accounts. <br/>
-                     
-
-    <li></li>
+    <p>
+    Ripple relies on a common shared ledger that has its contents decided on by consensus, and which is a distributed
+    database storing information about all Ripple accounts.
+    </p>
   </td>
-  <td documentation ></td>
-  <td development   ><a href="https://github.com/ripple/ilp-plugin-xrp-escrow/">Ripple XRP</a> JS connector Plugin</td>
+  <td documentation >
+    <ul>
+      <li><a href="https://ripple.com/build/rippleapi/">Ripple API</a></li>
+    </ul>
+  </td>
+  <td development   >
+    <ul>
+      <li><a href="https://github.com/sublimator?utf8=%E2%9C%93&tab=repositories&q=&type=source&language=">Sublimator repos</a> including Java Ripple client</li>
+    </ul>
+  </td>
   <td testing/CI    >&nbsp;</td>
   <td deployment    >&nbsp;</td>
-
-    
 </tr }>
 
 
 <tr {>
   <td topic         ><a href='https://github.com/interledger/interledger/wiki/Interledger-over-ETH'>Ethereum</a></td>
-  <td summary       >
-  </td>
-   
-
-
+  <td summary       > </td>
   <td documentation >&nbsp;</td>
   <td development   ><a href="https://github.com/sharafian/ilp-plugin-ethereum">Sharafian Ethereum</a> JS connector Plugin</td>
   <td testing/CI    >&nbsp;</td>
@@ -1778,9 +1987,19 @@ interledgerjs/btp-toolbox#2
 
 http://dev.lightning.community/overview/
 
-
-New implementations are encouraged to natively support BTP and can run alongside a ledger adaptor such as Frog in the BTP Toolbox which can load ledger plugins as required and wrap these in a BTP interface.
+New implementations are encouraged to natively support BTP and can run alongside a ledger adaptor 
+such as Frog in the BTP Toolbox which can load ledger plugins as required and wrap
+these in a BTP interface.
 ________________________
 
+BI-DIRECTIONAL DVP or PVP settlements:
+  - https://en.wikipedia.org/wiki/Delivery_versus_payment (DVP)
+
+  - PVP: Payment versus Payment:
+    FROM https://www.ecb.europa.eu/home/glossary/html/glossp.en.html
+
+    """ A mechanism which ensures that the final transfer of a 
+        payment in one currency occurs if - and only if - the final transfer
+        of a payment in another currency or currencies takes place. """
 -->
 </html>

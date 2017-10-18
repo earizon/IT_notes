@@ -3,6 +3,7 @@
    <meta charset="UTF-8">
    <title>NodeJS ILP-Connector map</title>
 <style>
+pre { background-color:#FFFFFA; outline:1px dotted grey; }
 *[TODO]         { color:red; font-weight: bold; }
 *[TODO]:before  { content: "TODO:"; }
 *[xxxsmall]{ font-size:0.1rem; }
@@ -11,8 +12,8 @@
 ul { margin-left: 1.0em; padding-left: 0rem; }
 body      { font-family:sans-serif; padding: 0; margin: 0; }
 #zoomDiv *[xxxsmall]{ font-size:1rem; }
-#zoomDiv *[ xxsmall]{ font-size:1rem; }
-#zoomDiv *[  xsmall]{ font-size:1rem; }
+#zoomDiv *[xxsmall] { font-size:1rem; }
+#zoomDiv *[xsmall]  { font-size:1rem; }
 #zoomDiv  { 
    position:fixed; top:1%; left:1%; width:auto; height:auto;
    max-height: 98%; max-width: 98%; overflow: auto;
@@ -90,6 +91,147 @@ ROW TEMPLATE:
 <div id='zoomDiv'>Hint: double-click on cell to zoom!!</div>
 <br/> <br/> <br/> <br/>
 <table>
+
+<tr header_delimit } {>
+  <td colspan=3 ><a href='https://github.com/interledgerjs/ilp-connector/tree/master/src/lib'>lib</a></td>
+
+</tr>
+<tr {>
+  <td col1 >
+    <a href='https://github.com/interledgerjs/ilp-connector/blob/master/src/lib/ledgers.js'>src/lib/ledgers.js</a><br/>
+     <pre>
+const PLUGIN_EVENTS = [
+  'incoming_transfer', 'incoming_prepare', 
+  'outgoing_fulfill' , 'outgoing_cancel'  , 'outgoing_reject'
+]
+
+class /*export*/ Ledgers extends EventEmitter
+    // properties
+    this.pluginList
+    this.plugins // { prefix ⇒ LedgerPlugin }
+    this.tables = routingTables
+    this._config
+    this._pairs // TradingPairs
+    this._ledgers = new Map() // { prefix }
+    this.requestHandler = co.wrap(this._requestHandler.bind(this))
+    this._relayEvents = {}
+    // methods--------------
+    connect (options) // For each plugin in pluginList connect
+    add (ledgerPrefix, creds, tradesTo, tradesFrom)
+    getPlugin (ledgerPrefix) 
+    getPlugins () { return this.pluginList }
+    remove (ledgerPrefix)
+    * _requestHandler (requestMessage)
+    registerInternalRequestHandler (requestHandler)
+    registerExternalRequestHandler (requestHandler) 
+    addPlugin (prefix, plugin) 
+    removePlugin (prefix) 
+
+     </pre>
+  </td>  
+  <td col2  >
+    <a href='https://github.com/interledgerjs/ilp-connector/blob/master/src/lib/trading-pairs.js'>src/lib/trading-pairs.js</a><br/>
+     <pre>
+class /*export*/ TradingPairs
+  this._sources // 
+      {  from1 /*USD@red.ilpdemo*/ :
+            Set(
+               to1_1 /*EUR@blue.ilpdemo.*/ ,
+               to1_2 /*XRP@example.virtual. ...,) ,
+         from2 :
+            Set(
+               to2_1 /*EUR@blue.ilpdemo.*/ ,
+               to2_2 /*XRP@example.virtual. ...,) ,
+      }
+  this._pairsCache //
+  // ----------------
+  addPairs (pair_list /* pair =[from,to]*/)
+  add (from, to)
+  removeAll (id) /* remove any matching from/to */
+  empty()
+  toArray ()
+     </pre>
+  </td>
+  <td col3 >
+    <a href='https://github.com/interledgerjs/ilp-connector/blob/master/src/lib/executeSourceTransfer.js'>src/lib/executeSourceTransfer.js</a><br/>
+Add (exec)fulfillment to src_transfer and submit to src_ledger<br/>
+(ERRORS, RETRIES AND TIMEOUTS LOGIC REMOVED)
+     <pre>
+function * /*exported*/ executeSourceTransfer (
+     destinationTransfer, fulfillment, ledgers, backend, config) {
+  const noteToSelf = destinationTransfer.noteToSelf || {}
+  const sourceTransferLedger = noteToSelf.source_transfer_ledger
+  const sourceTransferID = noteToSelf.source_transfer_id
+  const sourceTransferAmount = noteToSelf.source_transfer_amount
+
+  const plugin = ledgers.getPlugin(sourceTransferLedger)
+
+  const fulfillPromise = function (retry, number) {
+    return Promise.resolve(
+      plugin.fulfillCondition(sourceTransferID, fulfillment))
+      .then(function () {
+        backend.submitPayment({
+          source_ledger: sourceTransferLedger,
+          source_amount: sourceTransferAmount,
+          destination_ledger: destinationTransfer.ledger,
+          destination_amount: destinationTransfer.amount
+        })
+      })
+   }
+}
+     </pre>
+  </td>
+</tr }>
+
+<tr {>
+  <td col1 >
+     <p>
+       <a href='https://github.com/interledgerjs/ilp-connector/blob/master/src/lib/message-router.js'>src/lib/message-router.js</a>
+     </p>
+     <p>See Related RFC:
+       <a href='https://github.com/interledger/rfcs/blob/master/0010-connector-to-connector-protocol/0010-connector-to-connector-protocol.md'>
+       0010-connector-to-connector-protocol.md</a>
+     </p>
+     (ERRORS, ASYNC CODE REMOVED, USING "PSEUDO-CODE")
+     <pre {>
+class /*export*/ MessageRouter (opts) {
+  this.config 
+  this.ledgers 
+  this.routingTables 
+  this.routeBroadcaster
+  this.routeBuilder 
+  this.ledgers.registerInternalRequestHandler(this.handleRequest.bind(this))
+  --------------------------------------------------------------------------
+  // PROCESS INCOMING MESSAGE. (EITHER ILQP or NEW_ROUTES).
+  // REPLY MESSAGE TO SENDER IF APPLICABLE
+  function handleRequest (request /*req. Message*/)
+
+  function _handleRequestByPacket (packet, sender) =
+    switch (TYPE_ILQP = packet[0]) {
+      LIQUIDITY_REQUEST:
+          routeBuilder.quoteLiquidity(packetData)
+      BY_SOURCE_REQUEST:
+          routeBuilder.quoteBySource(packetData)
+      BY_DESTINATION_REQUEST:
+          routeBuilder.quoteByDestination(packetData)
+    }
+
+  // UPDATE LOCAL ROUTING TABLE WITH ROUTES IN PAYLOAD
+  function receiveRoutes (payload /* new routes */, sender)
+}
+     </pre }>
+  </td>  
+  <td col2  >
+     <pre>
+     </pre>
+  </td>
+  <td col3 >
+     <pre>
+     </pre>
+  </td>
+</tr }>
+
+
 <tr header_delimit {>
   <td colspan=3 >src/lib/config.js</td>
 </tr>
@@ -298,70 +440,6 @@ class FiveBellsLedger extends EventEmitter2
 </tr }>
 </tr>
 
-<tr header_delimit } {>
-  <td colspan=3 >lib</td>
-</tr>
-<tr {>
-  <td col1 >
-     src/lib/ledgers.js
-     <pre>
-const PLUGIN_EVENTS = [
-  'incoming_transfer', 'incoming_prepare', 
-  'outgoing_fulfill' , 'outgoing_cancel'  , 'outgoing_reject'
-]
-
-class /*export*/ Ledgers extends EventEmitter
-    // properties
-    this.pluginList
-    this.plugins // { prefix ⇒ LedgerPlugin }
-    this.tables = routingTables
-    this._config
-    this._pairs // TradingPairs
-    this._ledgers = new Map() // { prefix }
-    this.requestHandler = co.wrap(this._requestHandler.bind(this))
-    this._relayEvents = {}
-    // methods--------------
-    connect (options) // For each plugin in pluginList connect
-    add (ledgerPrefix, creds, tradesTo, tradesFrom)
-    getPlugin (ledgerPrefix) 
-    getPlugins () { return this.pluginList }
-    remove (ledgerPrefix)
-    * _requestHandler (requestMessage)
-    registerInternalRequestHandler (requestHandler)
-    registerExternalRequestHandler (requestHandler) 
-    addPlugin (prefix, plugin) 
-    removePlugin (prefix) 
-
-     </pre>
-  </td>  
-  <td col2  >
-     src/lib/trading-pairs.js
-     <pre>
-class /*export*/ TradingPairs
-  this._sources // 
-      {  from1 /*USD@red.ilpdemo*/ :
-            Set(
-               to1_1 /*EUR@blue.ilpdemo.*/ ,
-               to1_2 /*XRP@example.virtual. ...,) ,
-         from2 :
-            Set(
-               to2_1 /*EUR@blue.ilpdemo.*/ ,
-               to2_2 /*XRP@example.virtual. ...,) ,
-      }
-  this._pairsCache //
-  // ----------------
-  addPairs (pair_list /* pair =[from,to]*/)
-  add (from, to)
-  removeAll (id) /* remove any matching from/to */
-  empty()
-  toArray ()
-     </pre>
-  </td>
-  <td col3 >
-     <pre>
-     </pre>
-  </td>
-</tr }>
 
 <tr header_delimit } >
   <td colspan=3 ></td>
@@ -404,9 +482,9 @@ REF: http://www.alanflavell.org.uk/unicode/unidata25.html
 -->
 
 <!--
-config.js:
-https://github.com/interledgerjs/ilp-connector/blob/master/src/lib/config.js
-
+TODO: 
+connector-protocol.md
+    this.routingTables.bumpConnector(sender, holdDownTime)
 -->
 </html>
  

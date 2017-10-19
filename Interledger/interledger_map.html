@@ -63,9 +63,8 @@ function onTDDoubleClick()      { zoomDivDOM.innerHTML =
    + "<span style='color:blue;' onClick=\"zoomDivLft = !zoomDivLft; zoomDivDOM.style.left      = zoomDivLft ? '1%'  : '69%'\">[Horz]</span> " 
    + "<span style='color:blue;' onClick=\"zoomDivTop = !zoomDivTop; zoomDivDOM.style.top       = zoomDivTop ? '1%'  : '69%'\">[Vert]</span> " 
    + " <br/> " 
-   + this.innerHTML; }
-
-
+   + this.innerHTML; 
+}
 
 function removeToLeftMarginInPre() {
   // TODO:(0) Not working
@@ -117,7 +116,7 @@ ul { margin-left: 1.0em; padding-left: 0rem; }
 #zoomdiv [xsmall]   , #zoomDiv * [xsmall]  , #zoomDiv * * [xsmall]  , #zoomDiv * * * [xsmall]  { font-size:1em; }
 #zoomdiv [small]    , #zoomDiv * [small]   , #zoomDiv * * [small]   , #zoomDiv * * * [small]   { font-size:1em; }
 
-body      { font-family:sans-serif; }
+body      { font-family:sans-serif; font-size:16px; padding: 0; margin: 0; }
 #zoomDiv  { 
    position:fixed; top:1%; left:1%; width:auto; height:auto;
    max-height: 98%; max-width: 98%; overflow: auto;
@@ -135,12 +134,12 @@ td {
    vertical-align: top;
    outline: 1px solid grey; 
 }
-td[topic]         ,th[topic]         {background-color:#FFFFFF; min-width:10%; max-width:10%; font-size: 1rem;}
-td[summary]       ,th[summary]       {background-color:#FAFAFA; min-width:30%; max-width:30%; }
-td[documentation] ,th[documentation] {background-color:#FFFFFF; min-width:20%; max-width:20%; }
-td[development]   ,th[development]   {background-color:#FAFAFA; min-width:20%; max-width:20%; }
+td[topic]         ,th[topic]         {background-color:#FFFFFF; min-width: 7%; max-width: 7%; font-size: 1rem;}
+td[summary]       ,th[summary]       {background-color:#FAFAFA; min-width:25%; max-width:25%; }
+td[documentation] ,th[documentation] {background-color:#FFFFFF; min-width:25%; max-width:25%; }
+td[development]   ,th[development]   {background-color:#FAFAFA; min-width:25%; max-width:25%; }
 td[testing/CI]    ,th[testing/CI]    {background-color:#FFFFFF; min-width:10%; max-width:10%; }
-td[deployment]    ,th[deployment]    {background-color:#FAFAFA; min-width:10%; max-width:10%; }
+td[deployment]    ,th[deployment]    {background-color:#FAFAFA; min-width: 8%; max-width: 8%; }
 th[header_delimit]{background-color:#000000; color:#FFFFFF; font-size:2em; }
 div[subtable1] { max-width: 95%; overflow: auto; padding:0; margin: 0;}
 </style>
@@ -397,37 +396,26 @@ END                                       |                                     
                     <li><a href='https://github.com/interledger/rfcs/blob/master/asn1/InterledgerPacket.asn'>InterledgerPacket ASN1 Definition</a></li>
                     <li>
                          <a href='https://github.com/interledger/rfcs/pull/264'>PR 264 Reduce CLP to the French Five</a>
-<p small>note Adrian Hope: """I believe there is a layering issue in the set of generic packets that is making this harder than it should be. If you look at this list, the only packet that is relayed, unchanged, between nodes is the InterledgerProtocolPayment.</p>
-<pre xsmall>
-    {1 InterledgerProtocolPayment}       | {2 QuoteLiquidityRequest} |
-    {3 QuoteLiquidityResponse}           | {4 QuoteBySourceAmountRequest} |
-    {5 QuoteBySourceAmountResponse}      | {6 QuoteByDestinationAmountRequest} |
-    {7 QuoteByDestinationAmountResponse} | {8 InterledgerProtocolError}
-</pre>
-<p small>This suggests that the InterledgerProtocolPayment should exist one layer higher in the stack and be encapsulated in a packet that is passed from node to node like the others.
+<p small>note Adrian Hope: """I believe there is a layering issue in the set of generic packets that is making this harder than it should be. If you look at this list, the only packet that is relayed, unchanged, between nodes is the InterledgerProtocolPayment. This suggests that the InterledgerProtocolPayment should exist one layer higher in the stack and be encapsulated in a packet that is passed from node to node like the others.
 We should remove InterledgerProtocolPayment and add TransferRequest, SuccessfulTransferResponse and FailedTransferResponse defined as follows:</p>
-<pre xxxsmall>
+<pre small>
 TransferRequest ::= SEQUENCE { 
     transferId ..., 
     amount ..., executionCondition ...,
     expiresAt ...,
     packet InterledgerProtocolPayment }
 SuccessfulTransferResponse ::= 
-  SEQUENCE { transferId UInt128, fulfillment UInt256 }
+  SEQUENCE { 
+     transferId UInt128,
+     fulfillment UInt256 }
 FailedTransferResponse ::= 
-  SEQUENCE { transferId UInt128, reason InterledgerProtocolError }
+  SEQUENCE {
+      transferId UInt128, 
+     reason InterledgerProtocolError }
 </pre>
 
 <p smmall>It's not clear if the ILQP requests can ever have an ILP Error response so let's assume that is only used in response to a transfer request.
 
-Therefor the new set of Generic Packets are:</p>
-<pre xxxsmall>
-    [TransferRequest, SuccessfulTransferResponse, FailedTransferResponse, 
-     QuoteLiquidityRequest, QuoteLiquidityResponse, 
-     QuoteBySourceAmountRequest, QuoteBySourceAmountResponse,
-     QuoteByDestinationAmountRequest, QuoteByDestinationAmountResponse ]
-</pre>
-<p small>
 This is the protocol layer that exists below ILP, the messages exchanged directly between nodes (connectors, senders and receivers).
 
 **** The transfer request encapsulates the InterledgerProtocolPayment (often referred to as the ILP Packet) along with the other required data for a transfer (expiry, condition etc). ****
@@ -862,15 +850,15 @@ Route Schema:
 class Route:
   this.curve LiquidityCurve
 
-  // through which an incoming route enters this connector
+  // through which incoming route enters this con.
   this.sourceLedger  (required)
   // to which this connector should forward payments
   this.nextLedger
-  // last ledger on this route (defaults to nextLedger)
+  // last ledger on this route (def. to nextLedger)
   this.destinationLedger
 
-  // if targetPrefix specified, destinations matching it
-  // will follow this route rather than destinations
+  // if targetPrefix specified, dstns matching it
+  // will follow this route rather than dstns
   // matching 'destinationLedger'
   // See interledgerjs/ilp-routing/issues/49
   this.targetPrefix 
@@ -892,7 +880,7 @@ class Route:
   //   localLedger -> trustLine -> dstnLedger 
   //   =>  this.paths === [ [] ], path_length 2
   // for path:
-  //    localLedger -> trustLine -> anotherTL -> dstnLedger 
+  //  localLedger->trustLine->anotherTL->dstnLedger 
   // has this.paths === [ ['anotherTrustLine'] ] and 
   //     path length 3
   maxPathLength () 
@@ -913,7 +901,7 @@ class Route:
      </li>
      <li>
        <a href='https://github.com/interledgerjs/ilp-routing/blob/master/src/lib/routing-table.js'>ilp-routing src/lib/routing-table.js</a>
-        <pre small { >
+        <pre xsmall { >
 class RoutingTable 
   this.destinations = PrefixMap
           &lt;destination, /routes*/Map &lt;hop, route>>()
@@ -1090,7 +1078,7 @@ Secure WebSockets +
 OER +
 CLP + [ 'setup', 'vouch', 'ilp'*1, 'info', 'balance' ]
 
-     *1: ilp is "a bag" containing ILQP + ILPPayment + ILPError.
+*1: "bag" containing ILQP + ILPPayment + ILPError
 </pre>
       </li>
       <li>It the successor to <a href='https://github.com/interledger/rfcs/blob/master/0021-plugin-rpc-api/0021-plugin-rpc-api.md#plugin-rpc-api'>Plugin RPC</a>, and has been writen to use OER instead of JSON, both can been seen as concrete implementations of the <a href="https://github.com/interledger/rfcs/tree/master/0004-ledger-plugin-interface">Javascript Ledger Plugin Interface (LPI)RFC</a></li>
@@ -1312,8 +1300,9 @@ byte[] encodedCondition = senderCodecContext.write(                         |
                      <li><a href='https://github.com/interledger/rfcs/blob/9a4ffd6ff0f47dd3a9655332f2221f6240c21e3b/0000-hashed-timelock-agreements.md'>This document</a> describes how Interledger payments can be implemented over any type of ledger, including those that do not provide support for conditional transfers.</li>
                      <li>Hashlocks and timeouts can be enforced by ledgers or they can be upheld by senders and recipients themselves.</li>
                      </ul>
-                       <table xxsmall> <thead>
-                       <tr><th></th> <th>Conditional Payment Channels(with HTLCs)</th> <th>On-Ledger Holds/Escrow(using HTLCs)</th> <th>Simple Payment Channels</th> <th>Trustlines</th></tr>
+                      <table xxsmall>
+                       <thead>
+                       <tr xxxsmall><th></th> <th>Conditional Payment Channels(with HTLCs)</th> <th>Ledger Escrow (using HTLCs)</th> <th>Simple Payment Channels</th> <th>Trustlines</th></tr>
                        </thead>
                        <tbody>
                        <tr> <td><strong>Ledger Support Required  </strong></td> <td>High</td> <td>High  </td> <td>Medium</td> <td>Low </td> </tr>
@@ -1867,25 +1856,28 @@ CONNECTOR_PORT=400
                      <a href='https://github.com/interledger/java-ilp-core/blob/development/src/main/java/org/interledger/InterledgerPacket.java'>ILP Packet</a>,
                      SPSP, PSK, ILQP, ...
      <pre xxsmall>
-    Condition condition1 = Condition.builder().
-         hash(new byte[32]).build();
+Condition condition1 = Condition.builder().
+     hash(new byte[32]).build();
 
-    final InterledgerPayment payment1 =
-        InterledgerPayment.builder()
-        .destinationAccount(destinationAccount)
-        .destinationAmount(destinationAmount)
-        .data(data).build();
+final InterledgerPayment payment1 =
+    InterledgerPayment.builder()
+    .destinationAccount(destinationAccount)
+    .destinationAmount(destinationAmount)
+    .data(data).build();
 
-    InterledgerPaymentRequest ipr1 = 
-        InterledgerPaymentRequest.builder()
-        .payment(payment1)
-        .condition(condition1).build();
-    ---------------------------------------------------------
-    CodecContext context = CodecContextFactory.interledger();
-    context.write(ipr, outputStream);
-    InterledgerPaymentRequest decodedIpr = context.read(
-     InterledgerPaymentRequest.class, asn1OerPaymentBytes);
-    ---------------------------------------------------------
+InterledgerPaymentRequest ipr1 = 
+    InterledgerPaymentRequest.builder()
+    .payment(payment1)
+    .condition(condition1).build();
+-----------------------------------
+CodecContext context = 
+    CodecContextFactory.interledger();
+context.write(ipr, outputStream);
+InterledgerPaymentRequest decodedIpr = 
+   context.read(
+      InterledgerPaymentRequest.class,
+       asn1OerPaymentBytes);
+----------------------------------
      </pre>
   </td }>
   <td documentation >

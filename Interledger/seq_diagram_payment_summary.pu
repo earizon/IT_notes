@@ -1,0 +1,81 @@
+@startuml
+title ILP Universal transaction mode.\n REF: https://github.com/interledger/rfcs/blob/master/0003-interledger-protocol/0003-interledger-protocol.md
+participant "buyer\n(payment sender)" as app1
+participant "ILP enabled\n settlement ledger1" as ledger1
+participant "ILP\nconnector1" as connector1
+participant "bilateral ledger as\ndefined by BTP RFC\n(optional)" as aux_ledger
+participant "ILP\nconnector2" as connector2
+participant "ILP enabled\n settlement ledger2" as ledger2
+participant "seller\n(payment receiver)" as app2
+
+note over app1, app2: Note 1: pre-payment phase skipped. Payment amount, destination address, currency, crypto-condition negotation must have been negotiated previously through any mechanism (SPSP, ...)
+note over app1, app2: Note 2: Error handling not shown. Any error will throw a defined exception defined in the RFC and propagate back to any node aware of the current transaction
+...
+note over app1, app2: START PREPARAMENT PHASE {
+
+app1 -> ledger1    : new transfer\n Params:dst_address, amount,\n ILP_timeout, condition
+ledger1 -> ledger1 : handle incomming transfer
+note right of ledger1
+  1 check incomming transfer
+  2 create new ILP transfer in prepare state:
+    2.1 move "amount":
+        buyer-account -> hold-account
+    2.2 set ILP_timeout expiration timer
+        
+end note
+
+ledger1 -> connector1 : notify transfer
+connector1 -> aux_ledger : notify transfer
+aux_ledger -> aux_ledger : handle incomming transfer
+note right of aux_ledger
+  1 check incomming transfer
+  2 create new ILP transfer in prepare state:
+    2.1 update trust-line 
+    2.2 set ILP_timeout-NSecs expiration timer
+end note
+aux_ledger -> connector2: notify transfer
+connector2 -> ledger2 : notify transfer
+note right of ledger2
+  1 check incomming transfer
+  2 create new ILP transfer in prepare state:
+    2.1 move "amount":
+        buyer-account -> hold-account
+    2.2 set ILP_timeout - 2Nsecs expiration timer
+end note
+
+note over app1, app2: } END PREPARAMENT PHASE
+
+note over app1, app2: START EXECUTION PHASE {
+ledger2 -> app2: notify transfer
+app2 -> ledger2: fulfillment
+note left of ledger2
+  1 check fulfillment match condition
+  2 Execute transfer
+    2.1 clean timers
+    2.2 move "amount":
+        hold-account -> connector-account
+end note
+
+ledger2 -> connector2: fulfillment
+connector2 -> aux_ledger: fulfillment
+note left of ledger2
+  1 check fulfillment match condition
+  2 clean timers
+  3 update trust-line
+end note
+aux_ledger -> connector1: fulfillment
+connector1 -> ledger1: fulfillment
+note left of ledger1
+  1 check fulfillment match condition
+  2 Execute transfer
+    2.1 clean timers
+    2.2 move "amount":
+        hold-account -> connector-account
+end note
+  
+ledger1 -> app1: fulfillment (payment done!) 
+
+note over app1, app2: } END EXECUTION PHASE 
+
+@enduml
+

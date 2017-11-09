@@ -1,0 +1,925 @@
+<html>
+<head>
+   <meta charset="UTF-8">
+   <title>Kubernetes cluster orchestration system</title>
+<style>
+*[TODO]         { color:red; font-weight: bold; }
+*[TODO]:before  { content: "TODO:"; }
+*[xxxsmall]{ font-size:0.1rem; }
+*[xxsmall] { font-size:0.3rem; }
+*[xsmall]  { font-size:0.7rem; }
+ul { margin-left: 1.0em; padding-left: 0rem; }
+
+#zoomDiv *[xxxsmall]{ font-size:1rem; }
+#zoomDiv *[xxsmall] { font-size:1rem; }
+#zoomDiv *[xsmall]  { font-size:1rem; }
+body      { font-family:sans-serif; padding: 0; margin: 0; }
+#zoomDiv  { 
+   position:fixed; top:1%; left:1%; width:auto; height:auto;
+   max-height: 98%; max-width: 98%; overflow: auto;
+   background-color:#FFFFFF; color:#000; border-radius: 0.5rem; border: 4px solid black; font-size: 2rem;
+   box-shadow: 5px 5px 30px black;
+   padding: 0.5rem;
+}
+a            { text-decoration:none; font-family:monospace; padding:0.1em;}
+a[href^="#"]:before /* mark internal anchor */ {  content: ">"; }
+a[href^="#"]:after  /* mark internal anchor */ {  content: "<"; }
+a:visited { color:blue; }
+td { 
+   font-size: 0.8rem;
+   vertical-align: top;
+   outline: 1px solid grey; 
+}
+td { max-width: 100%; }
+td[topic] {overflow: hidden; background-color:#FFFFFF; min-width: 5%; max-width: 5%; font-size: 1rem;}
+td[summa] {overflow: hidden; background-color:#FAFAFA; min-width:19%; max-width:19%; }
+td[col1]  {overflow: hidden; background-color:#FFFFFF; min-width:19%; max-width:19%; }
+td[col2]  {overflow: hidden; background-color:#FAFAFA; min-width:19%; max-width:19%; }
+td[col3]  {overflow: hidden; background-color:#FFFFFF; min-width:19%; max-width:19%; }
+td[col4]  {overflow: hidden; background-color:#FAFAFA; min-width:19%; max-width:19%; }
+tr[header_delimit] > *{background-color:#000000; color:#FFFFFF; font-size:2em; }
+</style>
+
+<script>
+var zoomDivDOM
+function onZoomDivDoubleClick() { zoomDivDOM.innerHTML = ''; }
+function onTDDoubleClick()      { zoomDivDOM.innerHTML = "('Esc' to close)<br/>" + this.innerHTML; }
+
+function onPageLoaded() {
+   /* Notes:
+    * The name (and number) of columns 'topic', 'summa', 'col1', 'col2' is arbitrary.
+    * Change at will. For example for development projects there could be a column for each 
+    * software life-cycle similar to:  
+    * topic -> summary -> documentation -> development -> testing/CI -> deployment -> QA
+    * WARN: Don't forget to change the css too.
+   */
+
+  zoomDivDOM = document.getElementById('zoomDiv')
+  zoomDivDOM.addEventListener('dblclick',onZoomDivDoubleClick, false)
+  document.addEventListener('keyup',function(e) { if (e.code !== "Escape") return; onZoomDivDoubleClick(); })
+  // Change default a.target to blank. Ussually this is bad practice 
+  // but this is the exception to the rule
+  var nodeList = document.querySelectorAll('a')
+  for (idx in nodeList) { 
+      if (!nodeList[idx].href) { continue; }
+      if (nodeList[idx].href && !nodeList[idx].href.startsWith("http")) continue;
+      nodeList[idx].target='_blank'; 
+  }
+  nodeList = document.querySelectorAll('td')
+  for (idx in nodeList) { 
+     if (!!! nodeList[idx].addEventListener) continue;
+     nodeList[idx].addEventListener('dblclick',onTDDoubleClick, false)
+  }
+  setTimeout(onZoomDivDoubleClick, 3000);
+}
+</script>
+</head>
+<!--
+ROW TEMPLATE:
+<tr {>
+  <td topic >topic</td> 
+  <td summa >
+     <ul>
+       <li> </li>
+       <li> </li>
+       <li> </li>
+     </ul>
+  </td>
+  <td col1 >
+     <ul>
+       <li> </li>
+       <li> </li>
+       <li> </li>
+     </ul>
+  </td>  
+  <td col2  >
+     <ul>
+       <li> </li>
+       <li> </li>
+       <li> </li>
+     </ul>
+  </td>
+  <td col3 >
+     <ul>
+       <li> </li>
+       <li> </li>
+       <li> </li>
+     </ul>
+  </td>
+  <td col4 >
+     <ul>
+       <li> </li>
+       <li> </li>
+       <li> </li>
+     </ul>
+  </td>
+</tr }>
+-->
+<body onLoad='onPageLoaded()'>
+<div id='zoomDiv'>Hint: double-click on cell to zoom!!</div>
+<br/> <br/> <br/> <br/>
+<table>
+<tr header_delimit {>
+  <td topic >topic</td>
+  <td summa >summa</td>
+  <td col1  ></td>
+  <td col2  ></td>
+  <td col3  ></td>
+  <td col4  ></td>
+</tr>
+<tr {>
+  <td topic >Kubernetes cluster</td> 
+  <a href='https://kubernetes.io/docs/concepts/'>Concepts:</a>
+  <td summa >
+    The basic Kubernetes objects include:
+    <ul>
+      <ul>
+        <li><a href="/docs/concepts/workloads/pods/pod-overview/">Pod</a></li>
+        <li><a href="/docs/concepts/services-networking/service/">Service</a></li>
+        <li><a href="/docs/concepts/storage/volumes/">Volume</a></li>
+        <li><a href="/docs/concepts/overview/working-with-objects/namespaces/">Namespace</a></li>
+      </ul>
+    </ul>
+    In addition, Kubernetes contains higher-level abstractions called Controllers, build upon the basic objects, 
+    providing additional functionality and convenience features:
+    <ul>
+      <li><a href="/docs/concepts/workloads/controllers/replicaset/">ReplicaSet</a></li>
+      <li><a href="/docs/concepts/workloads/controllers/deployment/">Deployment</a></li>
+      <li><a href="/docs/concepts/workloads/controllers/statefulset/">StatefulSet</a></li>
+      <li><a href="/docs/concepts/workloads/controllers/daemonset/">DaemonSet</a></li>
+      <li><a href="/docs/concepts/workloads/controllers/jobs-run-to-completion/">Job</a>
+    </ul>
+    <pre xsmall { >
+  +---------------------------+----------------------------+------------------------------+
+  |Resource type       alias  | Resource type       alias  | Resource type          alias |
+  +---------------------------+----------------------------+------------------------------+
+  |clusters                   | jobs                       | podtemplates                 |
+  |componentstatuses   cs     | limitranges         limits | replicasets            rs    |
+  |configmaps          cm     | namespaces          ns     | replicationcontrollers rc    |
+  |daemonsets          ds     | networkpolicies            | resourcequotas         quota |
+  |deployments         deploy | nodes               no     | cronjob                      |
+  |endpoints           ep     | statefulsets               | secrets                      |
+  |event               ev     | persistentvolumeclaims  pvc| serviceaccount         sa    |
+  |horizon...oscalers  hpa    | persistentvolumes   pv     | services               svc   |
+  |ingresses           ing    | pods                po     | storageclasses               |
+  |                           | podsecuritypolicies psp    | thirdpartyresources          |
+  +---------------------------+------------------------+----------------------------------+
+    </pre } >
+     <ul>
+       <li>The Kubernet Master is responsible for managing the cluster. The master coordinates all activities in your cluster, such as scheduling applications, maintaining applications' desired state, scaling applications, and rolling out new updates</li>
+       <li>A node is a VM or a physical computer that serves as a worker machine in a Kubernetes cluster. Each node has a Kubelet, which is an agent for managing the node and communicating with the Kubernetes master. The node should also have tools for handling container operations, such as Docker or rkt. A Kubernetes cluster that handles production traffic should have a minimum of three nodes.</li>
+     </ul>
+  </td>
+  <td col1 >
+     <ul>
+       <li><a href='https://github.com/kubernetes/kubernetes/tree/master/docs/user-guide/kubectl'>kubectl manual</a> command line interface to Kubernetes API</li>
+       <li>
+       <pre { >
+apiVersion: v1
+kind: Pod
+metadata:
+  name: busybox-sleep
+spec:
+  containers:
+  - name: busybox
+    image: busybox
+    args:
+    - sleep
+    - "1000000"
+       </pre } >
+       </li>
+     </ul>
+  </td>  
+  <td col2  >
+     <ul>
+       <li>kubectl <action> <resource>
+         <pre xxsmall {>
+kubectl get      : list resources
+kubectl describe : show detailed information about a resource
+kubectl logs     : print the logs from a container in a pod
+kubectl exec     : execute a command on a container in a pod
+         </pre }>
+       </li>
+     </ul>
+  </td>
+  <td col3 >
+     <ul>
+       <li>
+        <pre xxsmall {>
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  # Change the name
+  name: ws-coordinates-be
+  # Set it to the production environment
+  namespace: nightswatch-pro
+spec:
+  replicas: 1
+  strategy:
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        # Change the name
+        app: ws-coordinates-be
+    spec:
+      containers:
+      # Change the name
+      - name: ws-coordinates-be
+        # Change the URL of the docker image
+        image: registry.nw.kube.everis.com/nightswatch/ws-coordinates-be
+        imagePullPolicy: Always
+        livenessProbe:
+          httpGet:
+            # Change to Application Path (see note below)
+            path: /graphreader/healthz
+            port: 8080
+            scheme: HTTP                           :
+          initialDelaySeconds: 30
+        env:
+
+        - name: MONGO_HOST
+          value: mongodb
+        - name: MONGO_PORT
+          value: "27017"
+        - name: MONGO_DATABASE
+          value: nightswatch
+      imagePullSecrets:
+      - name: nwregistrykey
+        </pre }>
+
+
+ </li>
+     </ul>
+  </td>
+  <td col4 >
+     <ul>
+       <li> 
+         <pre xxxsmall {>
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  # Change name
+  name: ws-coordinates-be
+  # Set to dev namespace
+  namespace: nightswatch-dev
+spec:
+  replicas: 1
+  selector:
+    # Change selectior
+    app: ws-coordinates-be
+  template:
+    metadata:
+      labels:
+        # Change label
+        app: tcp-graph-reader
+    spec:
+      containers:
+        # Change container name
+      - name: tcp-graph-reader
+        # Change docker registry path
+        image: nwregistry-on.azurecr.io/nightswatch/ws-coordinates-be
+        imagePullPolicy: Always
+        livenessProbe:
+          httpGet:
+            # Change to Application Path
+            path: /healthz
+            port: 8080
+            scheme: HTTP
+          initialDelaySeconds: 30
+         env:
+        - name: MONGO_HOST
+          value: mongodb
+                               - name: MONGO_PORT
+          value: "27017"
+        - name: MONGO_DATABASE
+          value: nightswatch
+      imagePullSecrets:
+      - name: registrykey
+        </pre }>
+        </li>
+     </ul>
+  </td>
+</tr }>
+<tr header_delimit >
+  <td colspan='6' >Basic Objects <!-- { --></td>
+</tr>
+
+<tr {>
+  <td topic ><a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-overview/">Pods</a></td> 
+  <td summa >
+     <ul>
+       <li>Kubernetes abstraction that represents a group of one or more application containers (such as Docker or rkt), and some shared resources for those containers. Those resources include:
+         <ul>
+           <li>Shared storage, as Volumes</li>
+           <li>Networking, as a unique cluster IP address</li>
+           <li>Information about how to run each container, such as the container image version or specific ports to use</li>
+         </ul>
+       </li>
+       <li>A Pod models an application-specific "logical host" and can contain different application containers which are relatively tightly coupled. For example, a Pod might include both the container with your Node.js app as well as a different container that feeds the data to be published by the Node.js webserver. The containers in a Pod share an IP Address and port space, are always co-located and co-scheduled, and run in a shared context on the same Node.</li>
+       <li>Pods are the atomic unit on the Kubernetes platform. When we create a Deployment on Kubernetes, that Deployment creates Pods with containers inside them (as opposed to creating containers directly). Each Pod is tied to the Node where it is scheduled, and remains there until termination (according to restart policy) or deletion. In case of a Node failure, identical Pods are scheduled on other available Nodes in the cluster.</li>
+       <li>The containers in a Pod are automatically co-located and co-scheduled on the same physical or virtual machine in the cluster. The containers can share resources and dependencies, communicate with one another, and coordinate when and how they are terminated.</li>
+       <li>Note that grouping multiple co-located and co-managed containers in a single Pod is a relatively advanced use case. You should use this pattern only in specific instances in which your containers are tightly coupled. The one container per pod is the recomended use-case.</li>
+
+       <li>Pods do not, by themselves, self-heal. Thus, while it is possible to use Pod directly, 
+           it’s far more common in Kubernetes to manage your pods using a Controller to 
+           implement Pod scaling and healing.
+       </li>
+
+     </ul>
+  </td>
+  <td col1 >
+  </td>  
+  <td col2  >
+  </td>
+  <td col3 >
+  </td>
+  <td col4 >
+  </td>
+
+</tr }>
+
+<tr {>
+  <td topic ><a href="https://kubernetes.io/docs/concepts/services-networking/service/">Service</a></td> 
+  <td summa >
+     <ul>
+       <li>abstraction defining a logical set of Pods and a policy by which to access them.<br/></li>
+       <li>The set of Pods targeted by a Service is (usually) determined by a Label Selector</li>
+       <li>Kubernetes-native applications: Kubernetes offers a simple Endpoints API
+           non-native        applications: Kubernetes offers virtual-IP-based-2-Service bridge</li>
+       <li>For some parts of your application (e.g. frontends) you may want to expose a
+           Service onto an external (outside of your cluster) IP address.<br/>
+           ServiceTypes allow you to specify what kind of service you want.
+           <ul>
+             <li>ClusterIP: (default) Exposes the service on a cluster-internal IP.<br/>
+                 Service only reachable from within the cluster.</li>
+             <li>NodePort: Exposes service on each Node’s IP @ static NodePort.<br/>
+                 Externably visible by requesting &lt;NodeIP&gt;:&lt;NodePort&gt;
+             </li>
+             <li>LoadBalancer: Exposes service externally using a cloud provider load balancer.
+                 Externably visible by requesting &lt;ClusterIP&gt;:&lt;NodePort&gt;
+             </li>
+             <li>ExternalName: Maps the service to the contents of the "externalName" field
+                 (e.g. foo.bar.example.com), by returning a CNAME record.
+                 requires version 1.7 or higher of kube-dns
+             </li>
+           </ul>
+       <li><p>externalIPs:  Traffic that ingresses into the cluster with the external IP (as destination IP),
+              on the service port, will be routed to one of the service endpoints. 
+              externalIPs can be specified along with any of the ServiceTypes. 
+           </p>
+       </li>
+     </ul>
+  </td>
+  <td col1 >
+     <ul>
+       <li>As of Kubernetes v1.0, Services are a “layer 4” (TCP/UDP over IP) construct.
+          In Kubernetes v1.1 the Ingress API was added (beta) to represent “layer 7” (HTTP) services.</li>
+       <li>By default, the choice of backend is round robin. Client-IP based session affinity can be selected
+           by setting service.spec.sessionAffinity to "ClientIP" (the default is "None"), and you can set
+           the max session sticky time by setting the field service.spec.sessionAffinityConfig.clientIP.timeoutSeconds
+           if you have already set service.spec.sessionAffinity to "ClientIP" (the default is “10800”). </li>
+       <li>ou can specify your own cluster IP address as part of a Service creation request. To do this, set the spec.clusterIP field </li>
+       <li>When a Pod is run on a Node, the kubelet adds a set of environment variables for each active Service.<br/>
+           example, Service "redis-master" exposing TCP:6379 allocated to cluster IP address 10.0.0.11:
+         <pre xsmall { >
+REDIS_MASTER_SERVICE_HOST=10.0.0.11
+REDIS_MASTER_SERVICE_PORT=6379
+REDIS_MASTER_PORT=tcp://10.0.0.11:6379
+REDIS_MASTER_PORT_6379_TCP=tcp://10.0.0.11:6379
+REDIS_MASTER_PORT_6379_TCP_PROTO=tcp
+REDIS_MASTER_PORT_6379_TCP_PORT=6379
+REDIS_MASTER_PORT_6379_TCP_ADDR=10.0.0.11
+         <pre } >
+       </li>
+       <li>DNS server: optional (strongly recommended) add-on.
+         The DNS server watches the Kubernetes API for new Services and creates a set of DNS records for each.
+         For example, if you have a Service called "my-service" in Kubernetes Namespace "my-ns" a DNS record 
+         "my-service.my-ns" is created. 
+       </li>
+       <li>Sometimes you don’t need or want load-balancing and a single service IP.
+           In this case, you can create "headless" services by specifying "None" in spec.clusterIP
+       </li>
+
+
+
+
+This does imply an ordering requirement - any Service that a Pod wants to access must be created before the Pod itself, or else the environment variables will not be populated. DNS does not have this restriction.
+DNS
+       <li> </li>
+     </ul>
+  </td>  
+  <td col2  >
+     <ul>
+       <li>
+         <pre {>
+kind: Service
+apiVersion: v1
+metadata:
+  name: my-service
+spec:
+  selector:     &gt;--  will be evaluated continuously and Endpoints notified
+    app: MyApp
+  ports:
+  type: ClusterIP   &gt;-- ClusterIP, NodePort, LoadBalancer, ExternalName
+  externalIPs:
+  - 80.11.12.10
+  externalIPs:
+  - 80.11.12.10
+  - name: http-port
+    protocol: TCP      &gt;-- Incomming port
+    port: 80           &gt;-- Target    port
+    targetPort: 9376
+  - name: https-port
+    protocol: TCP
+    port: 443
+    targetPort: 9377
+         </pre }>
+       </li>
+       <li> </li>
+     </ul>
+  </td>
+  <td col3 >
+     <ul>
+       <li> </li>
+       <li> </li>
+       <li> </li>
+     </ul>
+  </td>
+  <td col4 >
+  </td>
+</tr }>
+
+<tr {>
+  <td topic><a href="https://kubernetes.io/docs/concepts/storage/volumes/">Volume</a></td> 
+  <td summa >
+     <ul>
+       <li>A Kubernetes volume (vs a Docker volume)  has the lifetime of the pod. Consequently, a volume outlives any containers that run within the Pod, and data is preserved across Container restarts. </li>
+       <li>Kubernetes supports many types of volumes, and a Pod can use any number of them simultaneously.</li>
+       <li>a pod specifies what volumes to provide for the pod (spec.volumes) and where to mount those into containers(spec.containers.volumeMounts).</li>
+       <li>Each container in the Pod must independently specify where to mount each volume</li>
+       <li>Kubernetes supports several types of Volumes:</p>
+        <ul xsmall { >
+          <li>emptyDir</li>
+          <li>hostPath: mounts from hots node's filesystem. Types
+              Permissions: Those of the kubelet user
+              <ul xsmall { >
+                <li>DirectoryOrCreate: </li>
+                <li>Directory:</li>
+                <li>FileOrCreate:</li>
+                <li>File:</li>
+                <li>Socket:</li>
+                <li>CharDevice:</li>
+                <li>BlockDevice:</li>
+              </ul } >
+          </li>
+          <li>local: represents a mounted local storage device such as a disk, partition or directory. <br/> 
+              Local volumes can only be used as a statically created PersistentVolume.<br/>
+              Compared to HostPath volumes, local volumes can be used in a durable manner without manually scheduling pods to nodes, as the system is aware of the volume’s node constraints.
+          </li>
+          <li>awsElasticBlockStore
+          <pre {>
+  # STEP 1:
+  aws ec2 create-volume \
+     --availability-zone=eu-west-1a \
+     --size=10 --volume-type=gp2
+
+  # STEP 2:
+  kind: Pod
+    ...
+    volumes:
+    - name: test-volume
+    # This AWS EBS volume must already exist.
+    awsElasticBlockStore:
+      volumeID: <volume-id>
+      fsType: ext4
+          </pre }>
+
+          </li>
+          <li>nfs</li>
+          <li>iscsi</li>
+          <li>glusterfs</li>
+          <li>gitRepo</li>
+
+          <li TODO >persistenVolumeClaim</br>
+              https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+          </li>
+          <li>...</li>
+        </ul }>
+       </li>
+       <li>Sometimes, it is useful to share one volume for 
+           multiple uses in a single pod. The volumeMounts.subPath
+           property can be used to specify a sub-path inside the
+           referenced volume instead of its root.
+       </li>
+     </ul>
+
+  </td>
+  <td col1 >
+    <pre xsmall {>
+apiVersion: v1
+kind: Pod
+metadata:
+  name: test-pd
+spec:
+  containers:
+  - image: gcr.io/google_containers/test-webserver
+    name: test-container
+    volumeMounts:
+    - mountPath: /cache    &lt;-- where to mount
+      name: cache-volume   &lt;-- volume (name) to mount
+    - mountPath: /test-pd
+      name: test-volume
+  volumes:
+  - name: cache-volume
+    emptyDir: {}
+  - name: test-volume
+    hostPath:
+      # directory location on host
+      path: /data
+      # this field is optional
+      type: Directory
+
+    </pre } >
+  </td>  
+  <td col2  >
+    Example: PersistentVolume spec using a local volume:
+    <pre xxsmall { >
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: example-pv
+  annotations:
+    "volume.alpha.kubernetes.io/node-affinity": '{
+      "requiredDuringSchedulingIgnoredDuringExecution": {
+        "nodeSelectorTerms": [
+          { "matchExpressions": [
+            { "key": "kubernetes.io/hostname",
+              "operator": "In",
+              "values": ["example-node"]
+            }
+          ]}
+         ]}
+        }'
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes:
+  - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Delete
+  storageClassName: local-storage
+  local:
+    path: /mnt/disks/ssd1
+    </pre } >
+  </td>
+  <td col3 >
+  </td>
+  <td col4 >
+  </td>
+
+</tr }>
+
+<tr {>
+  <td topic ><a href="https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/">Namespace</a></td> 
+  <td summa >
+     <ul>
+       <li TODO><a href='https://kubernetes.io/docs/tasks/administer-cluster/namespaces/'>
+         Admin Guide for Namespaces</a>
+       </li>
+       <li>Kubernetes supports multiple virtual clusters backed by the same physical cluster. These virtual clusters are called namespaces</li>
+       <li>Provie a scope for names</li>
+       <li>Namespaces are intended for use in environments with many users spread across multiple teams, or projects. For clusters with a few to tens of users, you should not need to create or think about namespaces at all. Start using namespaces when you need the features they provide.</li>
+       <li>use labels, not namespaces, to distinguish resources within the same namespace</li>
+       <li>Services are created with DNS entry
+           "service-name"."namespace".svc.cluster.local</li>
+     </ul>
+  </td>
+  <td col1 >
+     <ul>
+       <li> Initial namespaces:
+         <pre { >
+$ kubectl get namespaces
+NAME          STATUS    AGE
+default       Active    1d 
+kube-system   Active    1d 
+       </li>
+       <li>create namespace:
+         <pre { >
+$ kubectl create namespace my-namespace
+         </pre>
+       </li>
+       <li>temporarily set the NS for a request:
+         <pre { >
+$ kubectl --namespace=my-namespace \
+    run nginx --image=nginx
+         </pre } >
+       </li>
+       <li>permanently save the NS:
+         <pre { >
+$ kubectl config set-context \
+    $(kubectl config current-context) \
+    --namespace=MyFavouriteNS
+$ kubectl config view | \
+    grep namespace: # Validate
+         </pre } >
+       </li>
+         </pre } >
+     </ul>
+
+
+
+
+
+  </td>  
+  <td col2  >
+  </td>
+  <td col3 >
+  </td>
+  <td col4 >
+  </td>
+</tr }>
+
+<tr header_delimit >
+  <td colspan='6' >Controllers <!-- } { --></td>
+</tr>
+<tr {>
+
+  <td topic TODO ><a href="https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/">ReplicaSet</a></td> 
+  <td summa >
+     <ul>
+       <li> If you want to scale your application horizontally (e.g., run multiple instances), you should use multiple Pods, one for each instance.</li>
+       <li>In Kubernetes, this is generally referred to as replication. Replicated Pods are usually created and managed as a group by an abstraction called a Controller.</li>
+       <li>A ReplicaSet ensures that a specified number of pod replicas are running at any given time. However, a Deployment is a higher-level concept that manages ReplicaSets and provides declarative updates to pods along with a lot of other useful features. Therefore, we recommend using Deployments instead of directly using ReplicaSets, unless you require custom update orchestration or don’t require updates at all.</li>
+     </ul>
+ </td>
+  <td col1 > </td>  
+  <td col2 > </td>
+  <td col3 > </td>
+  <td col4 > </td>
+</tr }>
+<tr {>
+  <td topic ><a href="https://kubernetes.io/docs/concepts/workloads/controllers/deployment/">Deployment</a></td> 
+  <td summa >
+     <ul>
+       <li>A Deployment controller provides declarative updates for Pods and ReplicaSets.</li>
+       <li>Ex. Deployment:
+         <pre {>
+# for versions before 1.7.0 use apps/v1beta1
+apiVersion: apps/v1beta2 
+kind: Deployment
+metadata:
+  name: nginx-deployment
+  labels:
+    app: nginx
+spec:
+  replicas: 3                  &lt;-- 3 replicated Pods
+  strategy: 
+   - type : Recreate           &lt;-- Recreate | RollingUpdate*
+  selector:
+    matchLabels:
+      app: nginx
+  template:                    &lt;-- pod template
+    metadata:
+      labels:
+        app: nginx
+    spec:                      &lt;-- template pod spec
+      containers:                change triggers new rollout
+      - name: nginx
+        image: nginx:1.7.9
+        ports:
+        - containerPort: 80
+
+$ kubectl create -f nginx-deployment.yaml
+
+$ kubectl get deployments
+  NAME             DESIRED CURRENT UP-TO-DATE AVAILABLE AGE
+  nginx-deployment 3       0       0          0         1s
+
+$ kubectl rollout status deployment/nginx-deployment
+  Waiting for rollout to finish: 2 out of 3 new replicas
+  have been updated...
+  deployment "nginx-deployment" successfully rolled out
+
+$ kubectl get deployments
+  NAME             DESIRED CURRENT UP-TO-DATE AVAILABLE AGE
+  nginx-deployment 3       3       3          3         18s
+
+To see the ReplicaSet (rs) created by the deployment:
+$ kubectl get rs
+  NAME                        DESIRED CURRENT READY AGE
+  nginx-deployment-2035384211 3       3       3     18s
+  ^format:[deployment-name]-[pod-template-hash-value]
+
+To see the labels automatically generated for each pod
+$ kubectl get pods --show-labels
+   NAME              ... LABELS
+   nginx-..211-7ci7o ... app=nginx,pod-template-hash=2035384211
+   nginx-..211-kzszj ... app=nginx,pod-template-hash=2035384211
+   nginx-..211-qqcnn ... app=nginx,pod-template-hash=2035384211
+
+update nginx Pods from nginx:1.7.9 to nginx:1.9.1:
+$ kubectl set image deployment/nginx-deployment \
+   nginx=nginx:1.9.1
+
+
+check the revisions of deployment:
+
+$ kubectl rollout history deployment/nginx-deployment
+deployments "nginx-deployment"
+R CHANGE-CAUSE
+1 kubectl create -f nginx-deployment.yaml ---record
+2 kubectl set image deployment/nginx-deployment nginx=nginx:1.9.1
+3 kubectl set image deployment/nginx-deployment nginx=nginx:1.91 
+
+$ kubectl rollout undo deployment/nginx-deployment \
+   --to-revision=2
+
+scale Deployment:
+
+$ kubectl scale deployment \
+  nginx-deployment --replicas=10
+
+$ kubectl autoscale deployment nginx-deployment \
+  --min=10 --max=15 --cpu-percent=80
+         </pre }>
+       </li>
+     </ul>
+  </td>
+  <td col1 >
+     <ul>
+       <li> </li>
+       <li> </li>
+       <li> </li>
+     </ul>
+  </td>  
+  <td col2  > </td>
+  <td col3 > </td>
+  <td col4 > </td>
+</tr }>
+
+
+<tr {>
+  <td topic TODO ><a href="https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/">StatefulSet</a></td> 
+  <td summa > </td>
+  <td col1 > </td>  
+  <td col2  > </td>
+  <td col3 > </td>
+  <td col4 > </td>
+</tr }>
+
+
+<tr {>
+  <td topic TODO ><a href="https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/">DaemonSet</a></td> 
+  <td summa > </td>
+  <td col1 > </td>  
+  <td col2  > </td>
+  <td col3 > </td>
+  <td col4 > </td>
+</tr }>
+
+
+<tr {>
+  <td topic TODO ><a href="https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/">Job</a></td> 
+  <td summa > </td>
+  <td col1 > </td>  
+  <td col2  > </td>
+  <td col3 > </td>
+  <td col4 > </td>
+</tr }>
+
+<tr {>
+  <td topic TODO ><a href="https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors/">Working with objects</a></td> 
+  <td summa > </td>
+  <td col1 > </td>  
+  <td col2  > </td>
+  <td col3 > </td>
+  <td col4 > </td>
+</tr }>
+
+
+
+
+<tr header_delimit >
+  <td colspan='6' >Other Concepts <!-- } { --></td>
+</tr>
+
+
+
+
+<tr {>
+  <td topic >topic</td> 
+  <td summa >
+  </td>
+  <td col1 >
+    <pre xxxsmall { >
+Kubectl Autocomplete
+
+$ source <(kubectl completion bash)
+$ source <(kubectl completion zsh)
+
+$ KUBECONFIG=~/.kube/config:~/.kube/kubconfig2 \ # use multiple kubeconfig files 
+kubectl config view # Show Merged kubeconfig settings.
+
+$ kubectl config current-context
+$ kubectl config use-context my-cluster-name 
+
+$ kubectl run nginx --image=nginx
+$ kubectl explain pods,svc
+
+    <pre } >
+  </td>  
+  <td col2  >
+    <pre xxxsmall { >
+INTERACTING WITH RUNNING PODS:
+$ kubectl logs my-pod (-c my-container) (-f)
+                                         ^"tail -f"
+$ kubectl run -i --tty busybox --image=busybox -- sh
+$ kubectl attach my-pod -i
+$ kubectl port-forward my-pod 5000:6000  # Forward port 6000 of Pod -> 5000 local machine
+$ kubectl exec my-pod (-c my-container) -- ls / # Run command in existing pod 
+$ kubectl top pod POD_NAME --containers
+
+    <pre } >
+  </td>
+  <td col3 >
+    <pre xxxsmall { >
+# GET COMMANDS WITH BASIC OUTPUT
+$ kubectl (get   | describe) (services|pods|deployment)
+           ^basic  ^verbose
+    --all-namespaces
+    -o wide   
+    --include-uninitialized
+    --sort-by=.metadata.name
+    --sort-by='.status.containerStatuses[0].restartCount'
+    --selector=app=cassandra  # filter
+
+EDITING RESOURCES
+$ KUBE_EDITOR="nano" kubectl edit svc/my-service-1
+    <pre } >
+  </td>
+  <td col4 >
+    <pre xxxsmall { >
+# Get ExternalIPs of all nodes
+$ kubectl get nodes -o jsonpath=\
+    '{.items[*].status.addresses[?(@.type=="ExternalIP")].address}'
+    <pre } >
+  </td>
+
+</tr }>
+
+
+<tr header_delimit >
+  <td colspan='6' ><!-- } --></td>
+</tr>
+
+</table>
+</body>
+<!--
+    Scale the deployment
+    Update the containerized application with a new software version
+    Debug the containerized application                              
+_________________________________
+ https://www.youtube.com/watch?v=PH-2FfFD2PU
+ "Desired State management":
+ App1.yaml:
+ Deployment
+   Pod1               <- Container N in same pod share two kinds of resources: networking and storage.
+     - Networking: unique IP address. Every container in a Pod shares the network namespace,
+                 including the IP address and network ports. Containers inside a Pod can
+                 communicate with one another using localhost. When containers in a Pod communicate 
+                 with entities outside the Pod, they must coordinate how they use the shared network 
+                 resources (such as ports).
+                 The IP addresses cannot be relied upon to be stable over time. => Services must be used
+ 
+     - Storage   : set of shared storage volumes. All containers in the Pod can access the
+                 shared volumes, allowing those containers to share data. Volumes also allow
+                 persistent data in a Pod to survive in case one of the containers within needs
+                 to be restarted. 
+     - [ Container 1,     <- Ussually only one container is used
+        Container 2 ?,..]
+   Pod2 ?
+     - Container 3
+     - Replicas = 2
+
+
+       </li>
+___________________________________
+TODO: label selectors: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors
+___________________________________
+https://kubernetes.io/docs/concepts/storage/persistent-volumes/
+
+A PersistentVolume (PV) is a piece of storage in the cluster that has been provisioned by an administrator. It is a resource in the cluster just like a node is a cluster resource. PVs are volume plugins like Volumes, but have a lifecycle independent of any individual pod that uses the PV. This API object captures the details of the implementation of the storage, be that NFS, iSCSI, or a cloud-provider-specific storage system.
+
+A PersistentVolumeClaim (PVC) is a request for storage by a user. It is similar to a pod. Pods consume node resources and PVCs consume PV resources. Pods can request specific levels of resources (CPU and Memory). Claims can request specific size and access modes (e.g., can be mounted once read/write or many times read-only).
+___________________________________
+
+https://kubernetes.io/docs/tutorials/object-management-kubectl/object-management/
+___________________________________
+https://kubernetes.io/docs/tasks/run-application/run-stateless-application-deployment/
+___________________________________
+-- TODO:(1) Kubernetes + Photon Platform? 
+-->
+</html>

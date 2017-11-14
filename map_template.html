@@ -1,0 +1,1981 @@
+<!DOCTYPE html>
+<html>
+   <meta charset="UTF-8">
+   <title>Interledger Map</title>
+<!--
+ Q:Note what the attribute { and } do:
+ A:Those attributes are ignored by the browser but are helpful to fold/unfold text in some
+   editors (Vim, Emacs,...)
+-->
+<!--
+ROW TEMPLATE
+<tr {>
+  <td topic >topic</td> 
+  <td summary >
+     <ul>
+       <li> </li>
+       <li> </li>
+       <li> </li>
+     </ul>
+
+  </td>
+  <td col1 >
+     <ul>
+       <li> </li>
+       <li> </li>
+       <li> </li>
+     </ul>
+  </td>  
+  <td col2  >
+  Ex.1:
+     <pre xxsmall>
+     ...
+     </pre>
+  </td>
+  <td >
+     <div subtable1>
+     <table subtable1>
+     <tr subtable1>
+       <td subtable1></td>
+       <td subtable1></td>
+       <td subtable1></td>
+     </tr>
+     </table>
+     </div>
+  </td>
+
+</tr }>
+-->
+
+<head>
+<script>
+var zoomDivDOM
+function onZoomDivDoubleClick() { zoomDivDOM.innerHTML = ''; }
+var zoomDivFW = true; // FW Full Width
+var zoomDivFH = true; // FW Full Height 
+var zoomDivTop = true; 
+var zoomDivLft = true; 
+function onTDDoubleClick()      { zoomDivDOM.innerHTML = 
+     "('Esc' to close) Toggle "+
+     "<span style='color:blue;' onClick=\"zoomDivFW  = !zoomDivFW ; zoomDivDOM.style.maxWidth  = zoomDivFW  ? '98%' : '30%'\">[Width]</span> " 
+   + "<span style='color:blue;' onClick=\"zoomDivFH  = !zoomDivFH ; zoomDivDOM.style.maxHeight = zoomDivFH  ? '98%' : '30%'\">[Height]</span> " 
+   + " Toggle " 
+   + "<span style='color:blue;' onClick=\"zoomDivLft = !zoomDivLft; zoomDivDOM.style.left      = zoomDivLft ? '1%'  : '69%'\">[Horz]</span> " 
+   + "<span style='color:blue;' onClick=\"zoomDivTop = !zoomDivTop; zoomDivDOM.style.top       = zoomDivTop ? '1%'  : '69%'\">[Vert]</span> " 
+   + " <br/> " 
+   + this.innerHTML; 
+}
+
+function removeToLeftMarginInPre() {
+  // TODO:(0) Not working
+  // nodeList = document.querySelectorAll('pre')
+  // for (idx in nodeList) { 
+  //   var node = nodeList[idx]
+  //   var html = node.innerHTML
+  //   var pattern = html.match(/^\s*[|]/)
+  //   var regEx = new RegExp(pattern, "")
+  //   console.log(html)
+  //   node.innerHTML = html.replace(regEx,''))
+  //    
+  // }
+}
+
+
+function onPageLoaded() {
+  zoomDivDOM = document.getElementById('zoomDiv')
+  zoomDivDOM.addEventListener('dblclick',onZoomDivDoubleClick, false)
+  document.addEventListener('keyup',function(e) { if (e.code !== "Escape") return; onZoomDivDoubleClick(); })
+  // Change default a.target to blank. Ussually this is bad practice 
+  // but this is the exception to the rule
+  var nodeList = document.querySelectorAll('a')
+  for (idx in nodeList) { 
+      if (!nodeList[idx].href) { continue; }
+      if (nodeList[idx].href && !nodeList[idx].href.startsWith("http")) continue;
+      nodeList[idx].target='_blank'; 
+  }
+  nodeList = document.querySelectorAll('td')
+  for (idx in nodeList) { 
+     if (!!! nodeList[idx].addEventListener) continue;
+     nodeList[idx].addEventListener('dblclick',onTDDoubleClick, false)
+  }
+  setTimeout(onZoomDivDoubleClick, 3000);
+  removeToLeftMarginInPre();
+}
+</script>
+<style>
+pre { background-color:#EEEEEE; outline:1px dotted grey; }
+*[cite]         { font-style: italic; }
+*[TODO]         { color:red; font-weight: bold; }
+*[TODO]:before  { content: "TODO:"; }
+*[xxxsmall]{ font-size:0.1rem; }
+img[xxxsmall]{ max-width:10rem; }
+* xxsmall] { font-size:0.3rem; }
+*[xsmall]  { font-size:0.7rem; }
+*[small]   { font-size:0.9rem; }
+ul { margin-left: 1.0em; padding-left: 0rem; }
+#zoomDiv [xxxsmall] , #zoomDiv * [xxxsmall], #zoomDiv * * [xxxsmall], #zoomDiv * * * [xxxsmall]{ font-size:1em; } 
+#zoomDiv img[xxxsmall] , #zoomDiv * img[xxxsmall], #zoomDiv * * img[xxxsmall], #zoomDiv * * * img[xxxsmall]{ max-width:100%; } 
+
+#zoomdiv [xxsmall]  , #zoomdiv * [xxsmall] , #zoomdiv * * [xxsmall] , #zoomdiv * * * [xxsmall] { font-size:1em; }
+#zoomdiv [xsmall]   , #zoomDiv * [xsmall]  , #zoomDiv * * [xsmall]  , #zoomDiv * * * [xsmall]  { font-size:1em; }
+#zoomdiv [small]    , #zoomDiv * [small]   , #zoomDiv * * [small]   , #zoomDiv * * * [small]   { font-size:1em; }
+
+body      { font-family:sans-serif; font-size:16px; padding: 0; margin: 0; }
+#zoomDiv  { 
+   position:fixed; top:1%; left:1%; width:auto; height:auto;
+   max-height: 98%; max-width: 98%; overflow: auto;
+   background-color:#FFFFFF; color:#000; border-radius: 0.5rem; border: 4px solid black; font-size: 2rem;
+   box-shadow: 5px 5px 30px black;
+   padding: 0.5rem;
+}
+
+a            { text-decoration:none; font-family:monospace; padding:0.1em;}
+a[href^="#"]:before /* mark internal anchor */ {  content: ">"; }
+a[href^="#"]:after  /* mark internal anchor */ {  content: "<"; }
+a:visited { color:blue; }
+td { 
+   font-size: 0.8rem;
+   vertical-align: top;
+   outline: 1px solid grey; 
+}
+td[topic]         ,th[topic]         {background-color:#FFFFFF; min-width: 7%; max-width: 7%; font-size: 1rem;}
+td[summary]       ,th[summary]       {background-color:#FAFAFA; min-width:25%; max-width:25%; }
+td[documentation] ,th[documentation] {background-color:#FFFFFF; min-width:25%; max-width:25%; }
+td[development]   ,th[development]   {background-color:#FAFAFA; min-width:25%; max-width:25%; }
+td[testing/CI]    ,th[testing/CI]    {background-color:#FFFFFF; min-width:10%; max-width:10%; }
+td[deployment]    ,th[deployment]    {background-color:#FAFAFA; min-width: 8%; max-width: 8%; }
+th[header_delimit]{background-color:#000000; color:#FFFFFF; font-size:2em; }
+div[subtable1] { max-width: 95%; overflow: auto; padding:0; margin: 0;}
+
+</style>
+</head>
+<body onLoad='onPageLoaded()'>
+<div id='zoomDiv'>Hint: double-click on cell to zoom!!</div>
+
+<table style='width:100%'{>
+  <thead {>
+  <tr {>
+     <th  topic        >&nbsp;</th>
+     <th  summary      >summary</th>
+     <th  documentation>&nbsp;documentation</th>
+     <th  development  >development</th>
+     <th  testing/CI   >testing/CI</th>
+     <th  deployment   >deployment</th>
+  </tr }>
+  </thead }>
+<tbody>
+<tr {>
+  <th colspan=6 header_delimit>RFCs</th>
+</tr }>
+<tr {>
+  <td topic         ><a href="https://interledger.org/">interledger.org</a> </td>
+  <td summary       >open protocol suite for sending payments across different ledgers.
+                     The open architecture and minimal protocol enable interoperability for any value transfer system.
+                      Interledger is not tied to any one company, blockchain, or currency.<br/>
+                     Note: In ILP ledgers do still keep in charge of double-entry bookkeeping. 
+                     Interledger is used to synchronize transfers (sets of debits and credits) 
+                     across multiple ledgers
+  </td>
+  <td documentation { >
+    <ul>
+    <li><a href="https://interledger.org/interledger.pdf"> white paper</a><br>
+    <li><a href="https://github.com/interledger/rfcs">RFCs</a></li>
+    <li><a href="https://github.com/interledger/rfcs/issues">RFCs issues</a></li>
+    <li><a href="https://github.com/interledger/rfcs/pulls">RFCs PR</a></li>
+    <li><a href="https://github.com/interledger/rfcs/blob/master/0020-explain-like-im-five/0020-explain-like-im-five.md">Explain like I'm five</a></li>
+    <li><a href="https://interledger.org/tutorials/">https://interledger.org/tutorials/</a></li>
+    <li><a href="https://github.com/interledger/rfcs/blob/master/0019-glossary/0019-glossary.md">Glossary</a></li>
+    <li><a href="https://github.com/interledger/interledger/wiki">Interledger Wiki</a></li>
+    <li><a href="https://www.slideshare.net/Interledger/interledger-workshop-berlin-1-june-2017/120">Interledger Presentation @ Workshop Berlin</a></li>
+    <li>
+        <a href="https://github.com/interledger/rfcs/pull/266">ILP as Settlement vs Clearing System</a> and design implications
+        """
+        3 very different views of ILP according to what we build:
+        <ul>
+        <li>Interledger as a SETTLEMENT System (ORIGINAL VIEW) <br/>
+           The abstraction for the ledger layer would do everything expected: conditional transfers, messages.. 
+           ("Ledger Plugin Interface", "Common Ledger Protocol"...), and why we think of trustlines as an unusual type of ledger.
+        </li>
+        <li>Interledger as a CLEARING System (CURRENT VIEW September 2017) <br/>
+          connectors as central actors acting as "clearing houses".<br/>
+          NORMAL CASE: connectors have some credit/trustlines relationship with each other. ILP payments go through them<br/>
+          UNUSUAL CASE:  You send every transfer through some ledger<br/>
+          It makes sense to standardize the clearing protocol:<br/>
+          entitities needed by connectors to clear payments: [transfers, fulfillments, rejections, quotes, route broadcasts]<br/>
+          """settle is completely divorced from clearing payments""". 
+          In this case, when dealing with a ledger treat it as if there were an imaginary connector in the middle
+          that you're talking to and you'd hack the functions it doesn't provide natively on top
+          (credit to @michielbdejong for this way of looking at it).
+        </li>
+        <li>The Internet *WITH* VALUE (FUTURISTIC VIEW) <br/> 
+          STACK BOTTOM LAYER: ability to send free requests, paid requests, and conditionally paid requests between connectors.<br/>
+          ON TOP: ILP Address namespace used to forward packets from multiple different protocols to the destination.<br/>
+          ILP payments are just one application built on top of conditionally paid requests. You could also add the ability to relay messages.<br/>
+          """... having DNS records resolve to both an IP and ILP address and let browser choose based on normal Internet /paid Internet.<br/> 
+          """...An argument here is that the reason IPv6 didn't really take off was because it offered relatively minor improvements over IPv4.
+             In contrast, ILP introduces the ability to send value as well as information and the ILP Addresses are much more flexible even 
+             than IPv6 addresses."""
+        </li>
+        </ul>
+    </li>
+
+    <li>CryptoCond_Escrow&nbsp; <a href="https://gist.github.com/justmoon/e68a2fb39f6217ad43a05df63c766912">1</a>,<a href="https://lists.w3.org/Archives/Public/public-interledger/2016Jul/0017.html">2</a>,<a href="https://lists.w3.org/Archives/Public/public-interledger/2016May/0032.html">3</a></li>
+    <li><a href="https://lists.w3.org/Archives/Public/public-interledger/">public-interledger@W3C mailing list</a></li>
+    <li><a href="https://lists.hyperledger.org/pipermail/hyperledger-quilt/">Hyperledger@Linux Foundation</a></li>
+    <li><a href="https://interledger.org/community.html">Community</a></li>
+    <li>(Biweekly) Remote meeting connections:<br/>
+      <a href="https://bluejeans.com/795795755">https://bluejeans.com/795795755</a> (Windows/Android/iPhone)<br/>
+      Dial in:  Enter Meeting ID: 795795755
+    </li>
+    <li>Giter.im: <a href="https://gitter.im/interledger/">https://gitter.im/interledger/</a></li>
+    <li><a href="https://www.crypto101.io/">https://www.crypto101.io/</a> free introductory course on cryptography for programmers of all ages and skill levels</li>
+    </ul>
+  </td } >
+  <td development   >
+      <ul>
+        <li><a href="https://github.com/interledger/">RFCs&Java code@Github</a><br></li>
+        <li><a href="https://github.com/interledgerjs/">NodeJS Ref.Impl. @Github</a><br></li>
+        <li>NodeJS Tooling:
+          <ul>
+            <li><a href='https://code.visualstudio.com/'>Visual Code Studio</a> is the recomended IDE for NodeJS development</li>
+            <li><a href='https://github.com/earizon/utility_shell_scripts/blob/master/node_wrapper.sh'>node_wrapper.sh</a> allows to easely run NodeJS in a dockerized enviroment (and change the default node version used if needed)</li>
+            <li TODO>How to debug java code</li>
+          </ul>
+        </li>
+        <li>Java Tooling:
+          <ul>
+            <li>IntelliJ, Eclipse or Netbeans have been used with no major problems.<br/>
+                IntelliJ is recomended when using Kotlin</li>
+          </ul>
+        </li>
+        </li>
+      </ul>
+  </td>
+  <td testing/CI    ><a href='https://lists.w3.org/Archives/Public/public-interledger/2017Jul/0024.html'>e-mail Michiel de Jong</a>
+      """
+      As discussed in the last community call, we started building a testnet. You
+      can now choose whether you want your node's home ledger to be part of the
+      live network (prefix `g.`) or of the testnet (prefix `test.`). We ask
+      everybody who runs a connector to situate their connector firmly on one
+      side of that divide, so either you connect only between `g.` ledgers, or
+      you connect only between `test.` ledgers. We'll probably add a feature in
+      ilp-kit to make it impossible to violate that rule from the admin UI, but
+      if you run a home-grown connector implementation, or edit your server
+      config via ssh, then please apply that rule manually.
+      """<br/>
+      <a href='https://gist.github.com/michielbdejong/0cec98ab8f1798cd26198f98cca50958'>michielbdejong@testnet-of-testnets.md</a> list different testing faucets for <a href="https://testnet.manu.backend.hamburg/faucet">BTC</a>, <a href="https://ripple.com/build/ripple-test-net/">XRP</a>, <a href="https://www.rinkeby.io/">ETH</a>, <a href="http://ltc.makejar.com/">LTC</a>, <a href="https://faucet.testnet.z.cash/">ZCASH</a> and test-case scenarios from simplest to the more complex ones:<br/>
+      baseline: pay to any testnet<br/>
+      step 1: baseline connector<br/>
+      step 2: multi-hop<br/>
+      step 3: end-to-end<br/>
+      step 4: routing<br/>
+      step 5: sender-paychan<br/>
+      step 6: receiver-paychan<br/>
+      step 7: bidirectional-paychan<br/>
+      <hr/>
+      Testting on Testnet<br/>:
+      <ul>
+        <li>alt1: <a href='https://github.com/interledgerjs/ilp-kit-docker-compose/tree/testnet/azure'>Azure ilp-kit deploy [testnet branch]</a></li>
+        <li>alt2: <a href='https://github.com/interledgerjs/ilp-kit-docker-compose'>docker-compose</a>(WARN: use testnet branch!)</li>
+        <li>alt3: <a href='https://github.com/interledgerjs/ilp-kit'>NodeJS manual install</a>. Replace prefixes like 'us.usd.john.' to 'test.' in env.list</li>
+      </ul>
+      Finally come to <a href='https://gitter.im/interledger/Lobby'>Gitter Lobby</a> and ping people to set up peering!<br/>
+      - To see who is in TestNet <a href='http://connector.land/?test=yourdomain.com#/ledgers'>http://connector.land/?test=yourdomain.com#/ledgers</a>
+      (your node will appear if you add it through the '?test=')<br/>
+      <br/>
+      - Michael test ledgers: 'gar.michielbdejong.com.' AND 'zup.michielbdejong.com.'
+  </td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+
+<!-- BUILDING BLOCKS START { -->
+<tr {>
+  <th colspan=6 header_delimit>BUILDING BLOCKS</th>
+</tr }>
+
+<tr name="java-cryptoconditions" {>
+  <td topic         ><a href='https://github.com/rfcs/crypto-conditions/'>java-cryptoconditions</a></td>
+
+  <td summary >A cryptographic condition is logically attached to each payment.<br/>
+     This condition is generated from a cryptographically hard to guess fulfillment that only the payment receiver (in some circumstances also the payer) knows.<br/>
+     Only when the fulfillment is presented to involved ledgers the payment will be executed.<br/>
+     No one else except the payment receiver (or the payment sender in some circumstances) can generate the fulfillment and so the payment is safely protected
+     by cryptographic algorithms.<br/>
+     There are a variety of cryptographic algorithms. For Interledger a cryptographically random 32 bytes is used as fulfillment (or preimage).<br/>
+     The crypto-condition is the sha256 hash of such 32 byte fulfillment/preimage.
+  </td>
+  <td development   ><a href="https://github.com/interledger/java-crypto-conditions">GitHub</a></td>
+  <td testing/CI    >
+    <a href='https://github.com/rfcs/crypto-conditions/tree/master/test-vectors/valid'>Test vectors</a> contains a set of fulfillment and conditions that any
+    compliant implementation must pass.
+  </td>
+    
+  <td deployment    >&nbsp;</td>
+</tr }>
+
+<tr  name="ilp-address" {>
+  <td topic         >ILP Address </td>
+  <td summary       >Destination Address(accounts) and Address Prefixes(ledgers,groups of accounts,..) provide
+                     a way to route payments to their intended destination
+                     through a recursive series of hops, including any number of ILP Connectors. 
+                     (This happens after the payment is set up on by a higher-level payment setup protocol such as SPSP.)
+                     Addresses are not meant to be user-facing, but allow several ASCII characters for easy debugging.
+                     Note: Different formats are used to define a (same) Unique Account ID on the ILP:<br>
+                     <code>
+                     ILP Address --&gt; ilp:us.fed.bank1.alice<br/>
+                     email Address-&gt; acct:alice@us.fed.bank1<br/>
+                     URI Address --&gt; https://us.fed.bank1/accounts/alice
+                     </code>
+  </td>
+  <td documentation >
+                     <ul>
+                     <li><a href='https://github.com/interledger/rfcs/blob/master/0015-ilp-addresses/0015-ilp-addresses.md'>RFC</a></li>
+                     <li><a href='https://github.com/interledger/rfcs/blob/master/asn1/InterledgerTypes.asn'>ASN1 Type def</a></li>
+                     <li><a href="https://github.com/interledger/rfcs/issues/31">Proposal: ILP Address Mapping</a></li>
+                     <li><a href="https://github.com/interledger/rfcs/issues/77">Proposal: Connector forwarding/delivery distinction</a></li>
+                     <li><a href="https://github.com/fluid-money/ilp-connector-java/wiki/A-Survey-of-Interledger-Account-Identifiers">ILP Account ID Format Survey</a>(explains the different <br>representations for unique AccountID)</li>
+                     <li>Mailing Threads <a href="https://lists.w3.org/Archives/Public/public-interledger/2016Dec/0001.html">1</a></li>
+                     <li><a href="https://github.com/interledger/rfcs/issues/132">Addressing small ledgers/currencies</a></li>
+                     </ul>
+  </td>
+  <td development   >
+                     <ul>
+                     <li><a href="https://github.com/interledgerjs/five-bells-shared/blob/master/schemas/IlpAddress.json">(Outdated)IlpAddress.json</a><span TODO>Is new schema defined anywhere in JS code?</span></li>
+                     <hr/>
+                     <li><a href="https://github.com/hyperledger/quilt/blob/master/ilp-core/src/main/java/org/interledger/InterledgerAddress.java">InterledgerAddress.java</a></li>
+                     </ul>
+</td>
+  <td testing/CI    >&nbsp;</td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+<tr name="ilp-protocol" {>
+  <td topic         >ILP Protocol</td>
+  <td summary       > 
+ Note: This ILP vs IP diagram is NOT correct, but was part of the initial
+ILP design. See <a href='https://lists.w3.org/Archives/Public/public-interledger/2017Aug/0013.html'>this mail</a>
+ for more info
+<pre xxsmall>
+              INTERLEDGER            INTERNET 
+              ARCHITECTURE  "versus" ARCHITECTURE
+-------------+------------------+----------------- 
+Application  | SPSP  HTTP-ILP   |  HTTP SMTP NNTP  
+             |   PAYTORRENT     |      NTP RTP     
+-------------+------------------|----------------- 
+Transport    | IPR    PSK       |   TCP   UDP      
+             |    PSKD-ECDH     |                  
+-------------+------------------|----------------- 
+Interledger  |        ILP       |            IP    
+-------------+------------------|----------------- 
+Ledger       | CLP  BLP         |  WiFi  BLuetooth                 
+             |(control local    |  Ethernet
+             | ledger transfers)|  
+-------------+------------------+----------------- 
+</pre>
+  </td>
+  <td documentation >
+    <ul> 
+      <li><a href='https://github.com/interledger/rfcs/blob/master/0003-interledger-protocol/0003-interledger-protocol.md'>RFC</a></li>
+      <li><a href='https://github.com/interledger/rfcs/tree/master/asn1'>Binary ASN1</a><br/></li>
+      <li><a href="https://github.com/interledger/rfcs/blob/master/0019-glossary/0019-glossary.md">Glossary</a></li>
+    </ul> 
+  </td>
+  <td development   >
+    <ul>
+    <li><a href='https://github.com/interledgerjs/five-bells-condition/blob/master/src/lib/condition.js'>five-bells-condition/src/lib/condition.js</a></li>
+    <li><a href='https://github.com/interledgerjs/five-bells-condition/blob/master/src/lib/fulfillment.js'>five-bells-condition/src/lib/fulfillment.js</a></li>
+    <hr/>
+    <li><a href='https://github.com/hyperledger/quilt/blob/master/ilp-core/src/main/java/org/interledger/Condition.java'>Condition.java</a></li>
+    <li><a href='https://github.com/hyperledger/quilt/blob/master/ilp-core/src/main/java/org/interledger/Fulfillment.java'>fulfillment.java</a></li>
+    </ul>
+  </td>
+  <td testing/CI    >&nbsp;</td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+<tr  name="local_transfer" {>
+  <td topic         ><a href='https://github.com/interledger/rfcs/blob/master/0003-interledger-protocol/0003-interledger-protocol.md#interledger-protocol-ilp'>Interledger Payment</a></td>
+  <td summary colspan="2" >
+    <ul>
+      <li>An Interledger payment consists of an ordered (in time) list of local transfers. The execution of each local transfer is coordinated by the ILP protocol:
+        <pre>
+SIMPLEST CASE: ILP payment between two remote ledgers with a common ILP connector
+               ledger1 ← connector → ledger2
+┌───┬────────────────────────────────┬───┬───────────────────────────────────┐
+│   │ LOCAL TRANSFERS @ LEDGER1      │ C │ LOCAL TRANFERFS @ LEDGER 2        │
+├───┼────────────────────────────────┤ O ├───────────────────────────────────┤
+│   │                                │ N │                                   │
+│↓  │                                │ N │                                   │
+│T 1│ sender → (amount1) → hold      │ E │                                   │
+│I 2│                                │ C │ connector → (amount2) → hold      │
+│M 3│                                │ T │ hold      → (amount2) → recipient │
+│E 4│ hold   → (amount1) → connector │ O │                                   │
+│↓  │                                │ R │                                   │
+└───┴────────────────────────────────┴───┴───────────────────────────────────┘
+  ↑                ↑                                      ↑
+  │                └── amount1 (inbound ammount) must ────┘
+  │                be greater than amount2 (outbound ammount)
+  │                  for the connector to have any profit 
+  │
+  └ local transfers 1, 2: PREPARE   PHASE 
+    local transfers 3, 4: EXECUTION PHASE
+
+  In the universal (non-atomic) mode it's possible for a timeout in ledger1 in step 4
+  after step 3 is executed properly in ledger 2. In that case ledger 2 looses
+  money.
+        </pre>
+        <pre>
+MUTILHOP CASE: ledger1 ← connector1 ←→ connector2 → ledger2
+┌───┬────────────────────────────────┬───┬────────────────────────┬───┬───────────────────────────────────┐
+│   │ LOCAL TRANSFERS @ LEDGER1      │ C │         TRUST          │ C │ LOCAL TRANFERFS @ LEDGER 2        │
+│   │                                │ O │         LINE           │ O │                                   │
+├───┼────────────────────────────────┤ N ├────────────────────────┤ N ├───────────────────────────────────┤
+│   │                                │ N │                        │ N │                                   │
+│↓  │                                │ E │                        │ E │                                   │
+│T 1│ sender → (amount1) → hold1     │ C │                        │ C │                                   │
+│I 2│                                │ T │ con1 →(amount2)→ holdT │ T │                                   │
+│M 3│                                │ O │                        │ O │ connector2→ (amount3) → hold2     │
+│E 4│                                │ R │                        │ R │ hold2     → (amount3) → recipient │
+│↓ 5│                                │   │ holdT →(amount2)→ con2 │   │                                   │
+│  6│ hold1  → (amount1) → connector1│ 1 │                        │ 2 │                                   │
+└───┴────────────────────────────────┴───┴────────────────────────┴───┴───────────────────────────────────┘
+* amount1 greater than amount2 greater than amount3
+* Trust-line can be implemented by a virtual ledger, a real ledger, lightning protocol, ...
+  Connector 1 and 2 most probably will use BTP (but not necesarelly) to communicate through a trust line
+  (but they can use a normal ledger or any other suitable mechanism that allows them to keep an
+   "I owe you " balance)
+        </pre>
+      </li>
+      <li>inbound amount decreases from hop to hop. If it get lower than destination amount in the ILP header payment will be rejected.</li>
+
+    </ul>
+  </td>
+  <td development>
+    <ul>
+      <li>
+  <p>Trust relationships in Universal Mode , extracted from Michiel de Jong's comment on Gitter (Nov 02 19:46)</p>
+  <pre { >
+INTERLEDGER ROLES := SENDER, LEDGER, CONNECTOR, RECEIVER
+Trust relationships:
+    sender    trusts ledger    with its balance
+    receiver  trusts ledger    with the payment amount
+    receiver  trusts connector with the opportunity cost
+                               of trying a payment
+                               that may fail *1
+    connector trusts ledgers   with its balances
+    connector trusts [sender, receiver, connectors] 
+                               with the opportunity cost 
+                               of trying a payment.
+  </pre } >
+      </li>
+      <li>'TRUSTLESS CONNECTORS' refers to the fact that senders and receivers
+       don't trust connectors with any actual value (except opportunity cost in case the connector fails)
+      </li>
+
+    Vouch protocol deals with trust from connector to sender
+  </td>
+  <td testing/CI >
+     Sequence diagram summary payment:
+     <img xxxsmall src='./seq_diagram_payment_summary.png' />
+  </td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+
+
+<tr name="ilp-packet" {>
+  <td topic         ><a href='https://github.com/interledger/rfcs/tree/master/asn1'>ILP Packet</a></td>
+  <td summary       >
+    <a href='https://interledger.org/rfcs/0003-interledger-protocol/draft-4.html#ilp-payment-packet-format'>IL-RFC-3#ilp-payment-packet-format</a> contains a precise description of the ILP packet: , including a byte-by-byte example
+<pre xxxsmall>
+InterledgerTypes                          | InterledgerPacket                          | InterledgerProtocol                        | InterledgerPaymentRequest
+DEFINITIONS                               | DEFINITIONS                                | DEFINITIONS                                | DEFINITIONS
+BEGIN                                     | AUTOMATIC TAGS ::=                         | AUTOMATIC TAGS ::=                         | AUTOMATIC TAGS ::=
+                                          | BEGIN                                      | BEGIN                                      | BEGIN
+hyphen IA5String ::= "-"                  |                                            |                                            | 
+period IA5String ::= "."                  | IMPORTS                                    | IMPORTS                                    | IMPORTS
+underscore IA5String ::= "_"              |     UInt8,                                 |     UInt64                                 |     UInt8,
+tilde IA5String ::= "~"                   |     VarBytes                               |     FROM GenericTypes                      |     UInt256
+                                          |     FROM GenericTypes                      |                                            |     FROM GenericTypes
+-- A standard interledger address         |                                            |     Address,                               | 
+Address ::= IA5String                     |     InterledgerProtocolPayment,            |     Timestamp                              |     InterledgerPacket
+    (FROM                                 |     InterledgerProtocolError               |     FROM InterledgerTypes                  |     FROM InterledgerPacket
+        ( hyphen                          |     FROM InterledgerProtocol               | ;                                          | ;
+        | period                          |                                            |                                            | 
+        | "0".."9"                        |     QuoteLiquidityRequest,                 | InterledgerProtocolPayment ::= SEQUENCE {  | InterledgerPaymentRequest ::= SEQUENCE {
+        | "A".."Z"                        |     QuoteLiquidityResponse,                |     -- Amnt which must be recved @ destsn  | -- IPR Version                                            
+        | underscore                      |     QuoteBySourceAmountRequest,            |     amount UInt64,                         |     version UInt8,
+        | "a".."z"                        |     QuoteBySourceAmountResponse,           |     -- Destination ILP Address             |     -- Cryptographic condition
+        | tilde )                         |     QuoteByDestinationAmountRequest,       |     account Address,                       |     condition UInt256,
+    )                                     |     QuoteByDestinationAmountResponse       |     -- Information for recipient           |     -- InterledgerPacket containing InterledgerProtocolPaymentayer 
+    (SIZE (1..1023))                      |     FROM InterledgerQuotingProtocol        |     data OCTET STRING (SIZE (0..32767)),   |     packet InterledgerPacket
+                                          | ;                                          |     -- Enable ASN.1 Extensibility          | }
+LiquidityCurve ::= SEQUENCE OF SEQUENCE { |                                            |     extensions SEQUENCE {                  | 
+  x UInt64,                               | PACKET ::= CLASS {                         |         ...                                | END
+  y UInt64                                |     &typeId UInt8 UNIQUE,                  |     }
+}                                         |     &Type                                  | }
+                                          | } WITH SYNTAX {&typeId &Type}              | 
+END                                       |                                            | InterledgerProtocolError ::= SEQUENCE {
+                                          | PacketSet PACKET ::= {                     |     -- Standardized error code
+                                          |     {1 InterledgerProtocolPayment} |       |     code IA5String (SIZE (3)),
+                                          |     {2 QuoteLiquidityRequest} |            |     -- Corresponding error name
+                                          |     {3 QuoteLiquidityResponse} |           |     name IA5String,
+                                          |     {4 QuoteBySourceAmountRequest} |       |     -- Participant that originally emitted the error
+                                          |     {5 QuoteBySourceAmountResponse} |      |     triggeredBy Address,
+                                          |     {6 QuoteByDestinationAmountRequest} |  |     -- Participants that forwarded the error
+                                          |     {7 QuoteByDestinationAmountResponse} | |     forwardedBy SEQUENCE OF Address,
+                                          |     {8 InterledgerProtocolError}           |     -- Time of emission
+                                          | }                                          |     triggeredAt Timestamp,
+                                          |                                            |     -- Additional data
+                                          | InterledgerPacket ::= SEQUENCE {           |     data OCTET STRING (SIZE (0..8192))
+                                          |     -- One byte type ID                    | }
+                                          |     type PACKET.&typeId ({PacketSet}),     | 
+                                          |     -- Length-prefixed header              | END
+                                          |     data PACKET.&Type ({PacketSet}{@type})
+                                          | }
+                                          | 
+                                          | END
+
+</pre>
+  </td>
+  <td documentation >
+    <ul>
+    <li><a href='https://github.com/interledger/rfcs/blob/master/0003-interledger-protocol/0003-interledger-protocol.md'>RFC</a> ILP Payment Packet Format Section)</li>
+    <li><a href='https://github.com/interledger/rfcs/blob/master/asn1/InterledgerPacket.asn'>InterledgerPacket ASN1 Definition</a></li>
+    <li>
+      <a href='https://github.com/interledger/rfcs/pull/264'>PR 264 Reduce CLP to the French Five</a>
+      <p small>note Adrian Hope: """I believe there is a layering issue in the set of generic packets that is making this harder than it should be. If you look at this list, the only packet that is relayed, unchanged, between nodes is the InterledgerProtocolPayment. This suggests that the InterledgerProtocolPayment should exist one layer higher in the stack and be encapsulated in a packet that is passed from node to node like the others.
+We should remove InterledgerProtocolPayment and add TransferRequest, SuccessfulTransferResponse and FailedTransferResponse defined as follows:</p>
+      <pre small>
+TransferRequest ::= SEQUENCE { 
+    transferId ..., 
+    amount ..., executionCondition ...,
+    expiresAt ...,
+    packet InterledgerProtocolPayment }
+SuccessfulTransferResponse ::= 
+  SEQUENCE { 
+     transferId UInt128,
+     fulfillment UInt256 }
+FailedTransferResponse ::= 
+  SEQUENCE {
+      transferId UInt128, 
+     reason InterledgerProtocolError }
+      </pre>
+
+      <p smmall>It's not clear if the ILQP requests can ever have an ILP Error response so let's assume that is only used in response to a transfer request.
+      This is the protocol layer that exists below ILP, the messages exchanged directly between nodes (connectors, senders and receivers).
+      
+      **** The transfer request encapsulates the InterledgerProtocolPayment (often referred to as the ILP Packet) along with the other required data for a transfer (expiry, condition etc). ****
+      Note that *Request and *Response at this layer imply the logical flow not the message flow (which is captured in the next layer down, the CommonMessageProtocol). For example, a TransferRequest may be carried in a RequestMessage and the ResponseMessage may simply carry an Ack.
+       Then the SuccessfulTransferResponse is returned, carried in a RequestMessage envelope, because it is initiated from the upstream node.
+      
+      The CommonMessageProtocol could then be reduced to:
+      </p>
+      <pre small>
+Ack ::= SEQUENCE { ...  }
+RequestMessage ::= SEQUENCE { ...  }
+ResponseMessage ::= SEQUENCE { ... }
+      </pre>
+    </li>
+    </ul>
+  </td>
+  <td development   >
+    <ul>
+    <li><a href='https://github.com/interledgerjs/ilp/blob/master/src/utils/packet.js'>packet.js (Outdated?)</a> </li>
+    <li><a href='https://github.com/interledgerjs/ilp-packet'>ilp-packet js impl</a>
+       Contains the js impl to serialize/de-serialize IlpPayment, IlqpLiquidity(Request|Response),
+       IlqpBySource(Request|Response), IlqpBySource(Request|Response), 
+       IlqpByDestination(Request|Response), IlqpByDestination(Request|Response) and IlpError ASN1 OER-binary packages</li>
+    <li><a href='https://github.com/interledgerjs/ilp-packet-viewer'>ilp-packet-viewer</a><hr/>
+    <li>Java (org.interledger.)Hierarchy:
+      <pre xxsmall>
+    <a href='https://github.com/hyperledger/quilt/blob/master/ilp-core/src/main/java/org/interledger/InterledgerPacket.java'>iface InterledgerPacket</a>
+    <a href='https://github.com/hyperledger/quilt/blob/master/ilp-core/src/main/java/org/interledger/ilp/InterledgerPayment.java'>iface (.ilp)InterledgerPayment</a>(<a href='https://github.com/hyperledger/quilt/blob/master/ilp-core/src/test/java/org/interledger/ilp/InterledgerPaymentTest.java'>Test</a>)
+    <a href='https://github.com/hyperledger/quilt/blob/master/ilp-core/src/main/java/org/interledger/ilp/InterledgerProtocolError.java'>iface (.ilp)InterledgerProtocolError</a>
+
+    <a href='https://github.com/hyperledger/quilt/blob/master/ilp-core/src/main/java/org/interledger/ilqp/QuoteRequest.java'>iface (.ilqp)QuoteRequest Interface</a>
+      <a href='https://github.com/hyperledger/quilt/blob/master/ilp-core/src/main/java/org/interledger/ilqp/QuoteByDestinationRequest.java'>iface QuoteByDestinationRequest</a>(<a href='https://github.com/hyperledger/quilt/tree/development/src/test/java/org/interledger/ilqp'>Test</a>)
+      <a href='https://github.com/hyperledger/quilt/blob/master/ilp-core/src/main/java/org/interledger/ilqp/QuoteBySourceRequest.java'>iface QuoteBySourceRequest</a>(<a href='https://github.com/hyperledger/quilt/tree/development/src/test/java/org/interledger/ilqp'>Test</a>)
+    <a href='https://github.com/hyperledger/quilt/blob/master/ilp-core/src/main/java/org/interledger/ilqp/QuoteResponse.java'>iface (org.interledger.ilqp)QuoteResponse</a>(<a href='https://github.com/hyperledger/quilt/tree/development/src/test/java/org/interledger/ilqp'>Test</a>)
+      <a href='https://github.com/hyperledger/quilt/blob/master/ilp-core/src/main/java/org/interledger/ilqp/QuoteByDestinationResponse.java'>iface QuoteByDestinationResponse</a>(<a href='https://github.com/hyperledger/quilt/tree/development/src/test/java/org/interledger/ilqp'>Test</a>)
+      <a href='https://github.com/hyperledger/quilt/blob/master/ilp-core/src/main/java/org/interledger/ilqp/QuoteBySourceResponse.java'>iface QuoteBySourceResponse</a>(<a href='https://github.com/hyperledger/quilt/tree/development/src/test/java/org/interledger/ilqp'>Test</a>)
+      <a href='https://github.com/hyperledger/quilt/blob/master/ilp-core/src/main/java/org/interledger/ilqp/QuoteLiquidityRequest.java'>iface QuoteLiquidityRequest</a>(<a href='https://github.com/hyperledger/quilt/tree/development/src/test/java/org/interledger/ilqp'>Test</a>)
+      <a href='https://github.com/hyperledger/quilt/blob/master/ilp-core/src/main/java/org/interledger/ilqp/QuoteLiquidityResponse.java'>iface QuoteLiquidityResponse</a>(<a href='https://github.com/hyperledger/quilt/tree/development/src/test/java/org/interledger/ilqp'>Test</a>)
+      </pre>
+    </li>
+    </ul>
+  </td>
+  <td testing/CI    >
+    <ul>
+    <li><a href='https://github.com/interledgerjs/ilp-packet/tree/master/test'>ilp-packet js tests</a>. 
+      The <a href='https://github.com/interledgerjs/ilp-packet/tree/master/test/data/'>data</a> directory contains data in binary 
+      and JSON format simultaneously.</li>
+    </ul>
+  </td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+
+
+<tr name="ilp-error-handling" {>
+  <td topic         >Error Handling</td>
+  <td summary       >
+    <ul>
+    <li>Errors may be generated at any point as an Interledger payment is being prepared or by the receiver.</li>
+    <li>Connectors that are notified of an outgoing transfer being rejected MUST reject the corresponding
+        incoming transfer with the same error.</li>
+    <li>Connectors SHOULD include their ILP address in the forwardedBy field in the error.</li>
+    <li>Connectors SHOULD NOT modify errors in any other way.</li>
+ </td>
+  <td documentation >
+    <ul>
+    <li><a href='https://github.com/interledger/rfcs/blob/master/0003-interledger-protocol/0003-interledger-protocol.md'>ILP Protocol(Errors Section)</a></li>
+    <li><a href='https://github.com/interledger/rfcs/blob/master/0003-interledger-protocol/0003-interledger-protocol.md#ilp-error-format'>ilp-error-format</a></li>
+    <li><a href='https://github.com/interledger/rfcs/blob/master/0003-interledger-protocol/0003-interledger-protocol.md#ilp-error-codes'>ilp-error-codes</a></li>
+    <li><a href='https://github.com/interledger/rfcs/blob/master/asn1/InterledgerProtocol.asn'>Error ASN.1 bin.format</a></li>
+    </ul>
+  </td>
+  <td development   >
+    <ul>
+    <li><a href='https://github.com/interledgerjs/ilp-packet/blob/master/index.ts'>ILPError@ilp-packet/index.js</a></li>
+    <li><a href='https://github.com/interledgerjs/ilp-connector/tree/master/src/errors'>ilp-connector list of errors</a><span TODO>(Compliant with ILPError RFCs?)<span></li>
+    <li><a href='https://github.com/interledgerjs/five-bells-ledger/tree/master/src/errors'>five-bells-ledger list of errors</a><span TODO>(Compliant with ILPError RFCs?)<span></li>
+    <hr/>
+    <li><a href='https://github.com/hyperledger/quilt/blob/master/ilp-core/src/main/java/org/interledger/InterledgerException.java'>Interledger Exception@java-ilp-core</a></li>
+    <li>Example ussage in java-vertx-ledger:<br/>
+    - An small wrapper <a href='https://github.com/earizon/java-vertx-ledger/blob/master/src/main/java/com/everis/everledger/HTTPInterledgerException.java'>HTTPInterledgerException.java</a> is created over the InterledgerException to include HTTP error code with the InterledgerException. (ILP is HTTP agnostic)<br/>
+    - Detected errors/exceptions will be wrapped in (HTTP)InterledgerException, with the help of utility class <a href='https://github.com/earizon/java-vertx-ledger/blob/master/src/main/java/com/everis/everledger/util/ILPExceptionSupport.java'>ILPExceptionSupport</a>. See example @ 
+    <a href='https://github.com/earizon/java-vertx-ledger/blob/master/src/main/java/com/everis/everledger/handlers/FulfillmentHandler.java'>FulfillmentHandler</a><br/>
+    - Finally there is a <a href='https://github.com/earizon/java-vertx-ledger/blob/master/src/main/java/com/everis/everledger/handlers/RestEndpointHandler.java'>global try{...}catch(InterledgerException) that will capture the exception and returns to the client a serialized version of the exception Interledger Exception@java-ilp-core</a>.<br/>
+    - Notice also that just before the catch(HTTPInterledgerException) any non-contemplated exception is transformed in an ILPInternalException, that is, anything we were not expecting for and that must be fixed by our server. Ideally there will never be internal-errors, but this situation is un-avoidable in practice<br/>
+    </li>
+    </ul>
+  </td>
+  <td testing/CI    >&nbsp;</td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+
+<tr {>
+  <td topic         >Atomic mode (AM)</td>
+  <td summary       >
+    <ul>
+      <li>Standard Universal Mode introduces risks to connectors due to race-conditions (See topic "Tunning TIMEOUTS").</li>
+      <li>Atomic mode warrants ACID transfers through all the ledgers BUT is not 
+          yet part of the standard ILP RFCs.</li>
+    </ul>
+    Different approached exist:
+    <ul>
+      <li><a href='https://en.wikipedia.org/wiki/Two-phase_commit_protocol'>Two-phase commit protocol</a></li>
+      <li>Threshold conditions (extension of multisignature conditions). 
+        <p cite>
+            from <a href='https://github.com/hyperledger/quilt/issues/101'>Issue #101</a>:
+            """(David Fuelling) In atomic-mode, the local-ledger transfers use threshold conditions (among other things) to wrap Preimage conditions used in the ILP packet."""
+        </p>
+        <p cite>From <a href='https://tools.ietf.org/html/draft-thomas-crypto-conditions-03'>Crypo-condtions draft</a>
+            """Crypto-conditions elegantly support weighted multi-signatures and
+             multi-level signatures.  A threshold condition has a number of
+             subconditions, and a target threshold.  Each subcondition can be a
+             signature or another threshold condition.  This provides flexibility
+             in forming complex conditions."""
+        </p>
+      </li>
+          
+      </li>
+    </ul>
+  </td>
+  <td documentation >See (Re:) Atomic Payments thread in w3c list started by Ryan Fugger
+     <a href='https://lists.w3.org/Archives/Public/public-interledger/2017Jun/thread.html'>June</a>, <a href='https://lists.w3.org/Archives/Public/public-interledger/2017Aug/thread.html'>August</a>
+  Extracted from Stefan Thomas <a href='https://lists.w3.org/Archives/Public/public-interledger/2017Jun/0040.html'>reply</a>:
+     <p cite small>....we haven't abandoned the ideal insofar ...
+         we still want any many payments as possible to be atomic ...
+         we cannot assume that atomic mode will always be available.<br/>
+         ... all participants along the payment chain have to have full
+         unconditional trust in the notary ... in order to be able to use
+         atomic mode all of the time, there must be at least one notary that 
+         is trusted by all people in the world. Otherwise, we may
+         run into situations where a liquidity path is available, but no valid
+         notary can be selected.<br/>
+         
+         It is possible to use multiple notaries in a payment, but that actually
+         doesn't make the trust problem easier and arguably makes it harder... 
+         then we now need all participants to trust notaries such that none 
+         of the notaries they trust would ever collude with any other notary they trust.
+         <br/>
+         ...
+         <b>It is possible to use atomic mode in the context of a universal mode
+         payment. Any number of participants can decide to make the transfer between
+         them subsidiary to some notary. If all the participants do that,
+         congratulations, the payment is fully atomic.<br/>
+         
+         SO THE IDEA IS TO DEFAULT TO UNIVERSAL MODE AND USE ATOMIC WHERE POSSIBLE
+         </b>
+         
+         Ripple is currently building a proprietary network for banks that uses
+         atomic mode internally and universal mode externally.<br/>
+         
+         ...XRP Atomic Mode Autodetection (XAMA). The idea is to allow participants in 
+         a payment to detect that XRP is used as one of the hops and then defer to
+         the outcome of the XRP transaction instead of using their own timeouts, 
+         effectively making the XRP Ledger a de-facto notary.
+          This can be generalized as a defer-right and defer-left behavior.
+          Any neighboring pair of participants (:= sender|receiver|connector) can
+         - by mutual agreement - decide to defer the outcome of their
+         transfer to whatever the outcome on the ledger right of them or the ledger
+         left of them.<br/>
+    </div>
+    
+and from Adrian-Hope <a href='https://lists.w3.org/Archives/Public/public-interledger/2017Jun/0059.html'>reply</a>:
+    <div xxxsmall>
+In my experience to date, it's most often people familiar with existing
+payment systems that want atomic mode. I think that in time <b>we'll find that
+complete end to end atomicity comes at a cost that is not justified for a
+lot of payments.</b><br/>
+
+<b>... There are operational costs that must be covered but ... the cost to 
+move the bytes from A to B to make a payment is certainly nowhere
+near the 1% and up that most payments cost to send.</b><br/>
+
+<b>In a world where ILP is a foundational layer ...  it's still possible
+ for someone to send a payment at almost zero cost if they accept the 
+ associated risks.</b>
+    </div>
+
+About New ILP architecture <a href='https://lists.w3.org/Archives/Public/public-interledger/2017Aug/0018.html'>From Adrian Hope</a>
+<div xxsmall>
+<p> Ledger layer components don't have to understand ILP unless they choose to
+re-use the condition for their own local transfer. Ledgers themselves
+*never* have to understand ILP.</p>
+
+<p>Remember a ledger layer protocol could use a completely different
+conditional payments scheme, like atomic mode ILP, where it takes the
+end-to-end condition and creates a new compound condition that depends on
+the fulfillment and some notary signature.</p>
+</div>
+  </td>
+  <td development   ></td>
+  <td testing/CI    >&nbsp;</td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+
+<tr name="ilp-optimistic-mode" {>
+  <td topic         >Optimistic Mode</td>
+  <td summary       >Sending Interledger payments without a condition and timeout. 
+       You need to trust the connectors all the way through but that may 
+       be acceptable for payments with very low amounts or if connectors 
+       turn out to be honest and reliable in practice. The advantage is
+       simplicity, the fact that you don't need any setup step at all, and 
+       it removes the backwards trip for the fulfillment.</td>
+  <td documentation >
+                     - <a href='https://lists.w3.org/Archives/Public/public-interledger/2017Jun/0033.html'>1</a>
+  </td>
+  <td development   >&nbsp;</td>
+  <td testing/CI    >&nbsp;</td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+
+<tr {>
+  <td topic         >Tunning TIMEOUTS</td>
+  <td summary       >
+      <ul>
+        <li>Avoiding timeouts warrants atomicity for the distributed transaction. Nothingless, the default mode of operation just warrants that
+            "most" of the times the transaction will be atomic except for a few scenarios where race-condition can arise.<br/>
+           Extracted from <a href='https://lists.w3.org/Archives/Public/public-interledger/2017Jun/0055.html'>Alternative Algorithm for Timeouts</a>
+           """It's possible that at some point there is an overload in the destination ledger. At this point the average time to process
+              the incomming transfer, executing and returning the fulfillment will increase approaching the initial timeout.
+              The closer it is to the timeout the more probable for race condition during the "travel back"."""<br/>
+           Different solutions exists for safe (timeout-free) solutions, like using an external clock acting as "notary" or "judge"
+           deciding deterministically when a payment timed-out or not. Also "very big" timeouts will suffice.
+        </li>
+        </li>
+        <li>
+           Setting correct timeouts in essential for proper network performance.<br/>
+           Using "big timeouts" will be safer but will block money in the escrow and decrease the liquidity<br/>
+           We also want to minimize the risk or race-condition when payment is fulfilled in the receiving ledger
+           but rejected on the sending ledger due to a timeout in the window-time when the fulfillment is
+           returning back to the originating (sending) ledger.
+        </li>
+        <li>
+           <a href='https://lists.w3.org/Archives/Public/public-interledger/2017Aug/0027.html'>ref</a>
+           """... the ILP packet already has an expiry.
+           It's implemented in the PSK details so the receiver knows whether the
+           packet it issued is still valid. But that's an application layer concern,
+           because it's only the receiver who looks at the ILP packet's expiry. The
+           connectors only need to know the expiries of the local transfers..."
+        </li>
+        <li>
+           <ul>
+           <li>See retry policy in <a href='https://github.com/interledgerjs/ilp-connector/blob/master/src/lib/executeSourceTransfer.js'>executeSourceTransfer.js</a></li>
+           <li TODO>Ledger</li>
+           <li TODO>Client(Wallet)</li>
+           </ul>
+        </ul>
+      </ul>
+  </td>
+  <td documentation >
+      <a href="https://lists.w3.org/Archives/Public/public-interledger/2017Jul/0027.html">Mail thread</a>
+  </td>
+  <td development   >
+      five-bells-ledger
+      <a href="https://github.com/interledgerjs/five-bells-ledger/blob/master/src/lib/timeQueue.js">timeQueue.js</a>, 
+      <a href="https://github.com/interledgerjs/five-bells-ledger/blob/master/src/lib/timerWorker.js">timeWorker.js</a>,
+      <a href="https://github.com/interledgerjs/five-bells-ledger/blob/master/src/lib/transferExpiryMonitor.js">transferExpiryMonitor.js</a> 
+      <br/>
+      ILP-Connector
+      <a href="https://github.com/interledgerjs/ilp-connector/blob/master/src/lib/testPaymentExpiry.js">testPaymentExpiry.js</a>,
+      <a href="https://github.com/interledgerjs/ilp-connector/blob/master/src/lib/route-builder.js">route-builder.js</a>(check minMessageWindow and maxHoldtime params),
+      <br/>
+  </td>
+  <td testing/CI    >&nbsp;</td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+
+<!-- } BUILDING BLOCKS END -->
+
+
+<!-- LEDGER PROTOCOLS START { -->
+<tr {>
+  <th colspan=6 header_delimit } {>LEDGER PROTOCOLS</th>
+</tr }>
+<tr name="ilp-common-ledger-api" {>
+  <td topic         ><a href='https://github.com/interledger/rfcs/tree/master/0012-five-bells-ledger-api'>Five Bells Ledger API</a></td>
+  <td summary       >
+    <ul>
+      <li>Proposal for a generic REST+JSON+Websocket Interface for an ILP compliant ledger </li>
+      <li>
+        This REST+WebSocket interface contains the set of "nice-to-have" features for an ILP-compliant ledger that is fast
+        enough (in terms of transactions per second) to support full HTLA features<br/>
+        Any ledger implementing it will be automatically compliant with the five-ledger-plugins and so with the 
+        ILP protocol and (NodeJS) connector. Both the <a href="#five-bells-ledger">(NodeJS) five-bells ledger</a> and the
+        <a href="#java-vertx-ledger">Java Vertx Ledger</a> implement this interface.<br/>
+        Also any ledger implementing this interface will be able to reuse (most of) the 
+        <a href="#https://github.com/interledgerjs/five-bells-ledger/tree/master/test">existing functional-tests</a>
+        developed for the five-bells ledger.
+      </li>
+      <li>When the ledger/s is not fast enough BTP ("payment channels" or "trust-lines") must be used</li>
+    </ul>
+  </td>
+  <td documentation >
+     <ul>
+     <li><a href="https://github.com/mDuo13/rfcs/tree/five_bells_ledger_api/0012-five-bells-ledger-api">RFC Complete Draft</a> and <a href="https://github.com/interledger/rfcs/pull/237">Pull Request</a><br/> </li>
+     <li><a href="https://github.com/mDuo13/rfcs/tree/five_bells_ledger_api/0012-five-bells-ledger-api">RFC Complete Draft</a> and <a href="https://github.com/mDuo13/rfcs/blob/five_bells_ledger_api/0012-five-bells-ledger-api/5BL-transfer-states.png">Transfer proposed->prepated->executed|rejected state diagram</a></li>
+     <li>
+       <ul>
+         <li>decimal_digits: a hint for GUIs, the conventionally  displayed number of decimal places for a given asset.</li>
+         <li>Precision: number of digits in a number.</li>
+         <li>Scale: number of digits to the right of the decimal point in a number.<br/>
+             Example 1: 123.45 has a precision of 5 and a scale of 2<br/>
+             Example 2: a USD ledger might use a precision of 15 and a scale of 6 and 2 decimal_digits
+         </li>
+       </ul>
+     </li>
+     <li><a href='https://github.com/interledger/rfcs/pull/264'>Reduce CLP to the French Five</a></li>
+     </ul>
+  </td>
+  <td development   >
+    <ul>
+      <li><a href="https://github.com/interledger/rfcs/issues">Issues</a></li>
+      <li><a href="https://github.com/michielbdejong/ilp-node">Michiel De Jogn ILP node</a></li>
+    </ul>
+  </td>
+  <td testing/CI    >&nbsp;</td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+
+<tr {>
+  <td topic         ><a href='https://github.com/interledger/rfcs/blob/master/0023-bilateral-transfer-protocol/0023-bilateral-transfer-protocol.md'>Bilateral Transfer Protocol BTP</a> (previously Common Ledger Protocol CLP)</td>
+  <td summary       >
+    <ul> 
+      <li>In lots of scenarios, we don't have an underlying ledger that's fast enough to do every ILP payment on-ledger. If two parties want to transact, they can send transfers directly to one another with BTP. BTP requires that the two parties trust one another (up to a limit) for funds that have not yet been settled on the underlying ledger. If their trust limit is high enough, the two parties can transact without settling on an underlying ledger at all.</li>
+      <li>ILP does not depends on BTP</li>
+      <li>It the successor to <a href='https://github.com/interledger/rfcs/blob/master/0021-plugin-rpc-api/0021-plugin-rpc-api.md#plugin-rpc-api'>Plugin RPC</a>, and has been writen to use OER instead of JSON, both can been seen as concrete implementations of the <a href="https://github.com/interledger/rfcs/tree/master/0004-ledger-plugin-interface">Javascript Ledger Plugin Interface (LPI)RFC</a></li>
+      <li><a href='https://github.com/interledger/rfcs/blob/master/asn1/BilateralTransferProtocol.asn'>ASN.1 def</a></li>
+      <li>glossary:
+        <ul>
+          <li>A **BTP Connection** is a websocket connection over which BTP packets are
+            sent. Websockets (as opposed to raw TLS sockets) are used because they provide
+            message framing and can be used from the browser.
+          </li>
+          <li>**BTP Packets** are the protocol data units formally defined in ASN.1
+              ([ Prepare, Fulfill, Reject, Message ], [Response,Error]) </li>
+          <li>**Peers** are the parties on a BTP connection. Your peer is the party on the
+              other side of the BTP connection.</li>
+          <li>The **Bilateral Ledger** (not to be confused with the **Underlying Ledger**)
+              is the ledger which the peers on a BTP connection
+              are keeping track of. When a peer keeping Authoritative State receives a BTP
+              packet, they process it and adjust their copy of the bilateral ledger.
+          </li>
+          <li>**Authoritative State**: authoritative view of the Bilateral Ledger's
+          state, maintained by one (one peer must the other ) or both of the peers
+          (they can get into dispute due to timeouts+race-conditions)</li>
+          <li>A **request is In-Flight** if the request has been sent out, but no response has been sent yet</li>
+          <li>A **transfer is In-Flight** if it has been prepared but not yet fulfilled nor rejected</li>
+          <li>An **Underlying Ledger** moves value between the two peers when they settle their balance</li>
+        </ul>
+      </li>
+      <li>Note that At the lower layer we have ILP packets. 
+       Using some custom encoding of ILQP + ILPPayment + ILPError into gprc/json/..., 
+       and some custom encoding for the "expiresAt" DateTime (no necesarelly OER)
+       can replace CLP. Some potential problems could be:
+         <ul>
+           <li>Using (for example) grpc-native data formats, there might have different
+           max precisions and max string lengths than in OER</li>
+           <li>transports could become bloaty: for example using gPRC for CLP then
+           interledgerjs/ilp-plugin-clp will dependens on protobuf and grpc 
+           (as well as on WebSocket)</li>
+           <li>There is an official list of optional extensions, currently [ ccp, paychan ].
+           They are not needed for the "core tasks", but CCP (Connector 2 Connector Protocol)
+           allows you to announce routes (choose your own custom ledger name, 
+           as well as attract connector traffic), and paychan is a performance improvement 
+           that gives you a middle ground between escrow and trustline in terms of
+           trustlessness vs speed.</li>
+         </ul>
+      </li>
+      <li>BTP Sub-protocols include optional functionality like ledger
+          metadata, balance, automated settlement, and dispute resolution.<br/>
+      </li>
+    </ul>
+  </td>
+  <td documentation >
+     <ul>
+     <li><a href='https://github.com/interledger/rfcs/blob/726705c99d0324d352ab698eb618ae28d369eef1/00XX-bilateral-transfer-protocol/00XX-bilateral-transfer-protocol.md'>GitHub PR</a></li>
+     <li>
+       <a href='https://github.com/interledger/interledger/wiki/Interledger-over-CLP'>Interledger over CLP </a>(the "testnet of testnets")
+       explains the setup, how to pick who is the server and client in the initial Websocket connection:<br/>
+       """If connections are short-lived, then you need to ask if they are "paused" or "ended", 
+          i.e. can the trustline later be resumed? Will the balance survive the downtime?
+          If so, then you need something like the TOKEN described in that same section.
+          We should probably include one or more setup protocols in the RFC (testnet plus WebFinger plus ...)"""
+     </li>
+     <li><a href='https://github.com/interledger/rfcs/pull/291'>PR291 for RFC</a></li>
+     <li><a href='https://github.com/interledger/rfcs/blob/master/asn1/BilateralTransferProtocol.asn'>ASN 1</a></li>
+     </ul>
+  </td>
+  <td development   >
+<ul>
+     <li><a href='https://github.com/interledgerjs/btp-toolbox/branches'>BTP-toolbox</a> for building and debugging with the BTP</li>
+</ul>
+  </td>
+  <td testing/CI    >&nbsp;</td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+
+<tr name="ilp-proxying-ledger" {>
+  <td topic         >"Proxying" Ledgers</td>
+  <td summary       >C&P: Michiel de Jong<br/>
+                     <i>So far we mainly considered subscription-based ledgers, where the recipient
+                        of a transfer needs to be connected to the ledger 24 hours a day, for
+                        instance by keeping a websocket open. I think this is a big burden on both
+                        the user and the ledger, and would like to propose an alternative: get rid
+                        of subscriptions, and use a "proxying ledger" instead.</i>
+  </td>
+  <td documentation >
+                     <a href='https://lists.w3.org/Archives/Public/public-interledger/2017Mar/0022.html'>1</a><br/>
+  </td>
+  <td development   >&nbsp;</td>
+  <td testing/CI    >&nbsp;</td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+<!-- } LEDGER PROTOCOLS END -->
+
+<!-- CONNECTOR PROTOCOLS START { -->
+<tr {>
+  <th colspan=6 header_delimit } {>CONNECTORS PROTOCOLS</th>
+</tr }>
+<tr {>
+  <td topic ><a href='https://github.com/interledger/rfcs/blob/master/0010-connector-to-connector-protocol/0010-connector-to-connector-protocol.md'>RFC-0010 Connector to Connector protocol CCP</a></td> 
+  <td summa >
+     <ul>
+       <li>Protocol for PEERING conectors</li>
+       <li>Connectors discover their peers through out-of-band communication, or by looking at
+           https://connector.land and contacting the administrator of another connector.</li>
+       <li>Once peered, two connectors have a ledger between them; this is often a ledger
+           with just two accounts (BTP bilateral ledger), often administered collaboratively 
+           by the two connectors.</li>
+       <li>
+           <p>
+             Extracted from Gitter chat:<br/>
+             """Q: Regarding the CCP protocol, it's ussing json in the RFC as well as in the ilp-connector implementation.<br/>
+             On the Amundsen connector I see a reference to a binary CcpPacket that doesn't look to be yet used.<br/>
+             Is there any plan to change to Binary, stay with JSON or something else? """
+             """A: @michielbdejong Nov 09 16:33<br/>
+             despite the name 'packet', the routebroadcast-over-BTP proposal (which hasn't really been used yet in practice),
+             is also JSON: https://github.com/interledgerjs/amundsen/blob/master/src/protocols.js#L59<br/>
+             however, the updated proposal is this:
+             <a href='https://github.com/interledger/interledger/wiki/Interledger-over-BTP#changes-to-ccp-sub-protocol'>
+             https://github.com/interledger/interledger/wiki/Interledger-over-BTP#changes-to-ccp-sub-protocol
+             </a> (basically, define the 'custom' protocol, which adds a level of nesting)
+           </p>
+           <p>Extracted from the wiki:
+             <h2>Changes to <code>ccp</code> sub-protocol</h2>
+             <p>To be decided, but probably the <code>ccp</code> sub-protocol will be deprecated
+                in favor of the new <code>custom</code> sub-protocol, to be used with contentType 
+                MIME_APPLICATION_JSON, and exactly like currently implemented in 
+                <a href="https://github.com/interledgerjs/ilp-connector">https://github.com/interledgerjs/ilp-connector</a>
+                version 21.1.10. See an example of the <code>custom</code> field in 
+                <a href="https://github.com/interledger/rfcs/blob/master/0021-plugin-rpc-api/0021-plugin-rpc-api.md#send-request-routing">
+                  https://github.com/interledger/rfcs/blob/master/0021-plugin-rpc-api/0021-plugin-rpc-api.md#send-request-routing</a>.
+                This is for the 'routes' packet, but the 'request full table' packet gets deprecated, as it will now 
+                piggy-back on route broadcasts, like implemented in
+                <a href="https://github.com/interledgerjs/ilp-connector/commit/7e4189de27640e02de336331ff6c4f6a617a6fed">
+                https://github.com/interledgerjs/ilp-connector/commit/7e4189de27640e02de336331ff6c4f6a617a6fed</a>
+           </p>
+       </li>
+     </ul>
+  </td>
+  <td development >
+     <ul>
+       <li>See <a href='https://github.com/interledgerjs/ilp-connector/blob/master/src/lib/message-router.js'>lib/message-router.js @ ilp-connector</a></li>
+       <li>See CcpPacket @ https://github.com/interledgerjs/amundsen/blob/master/src/protocols.js</li>
+     </ul>
+  </td>  
+  <td testing/CI >
+  Ex.1:
+     <pre xxsmall>
+     ...
+     </pre>
+  </td>
+  <td deployment >
+  </td>
+</tr }>
+<!-- } CONNECTOR PROTOCOLS END -->
+
+
+
+<!-- TRANSPORT PROTOCOLS START { -->
+<tr {>
+  <th colspan=6 header_delimit>TRANSPORT PROTOCOLS</th>
+</tr }>
+<tr name="ilp-ipr" {>
+  <td topic         >Interledger Payment Request (IPR)</td>
+  <td summary       >
+    - End-to-end transport protocol in which the receiver of an Interledger payment first 
+    communicates a request for payment to the sender. A method is proposed for receivers 
+    to generate payment requests such that they can verify incoming payments without storing
+    all outstanding requests.<br/>
+    - This protocol is binding (non-repudiable). See PSK for an alternative non-binding(repudiable) protocol.
+  </td>
+  <td documentation >
+    <ul>
+    <li><a href='https://github.com/interledger/rfcs/blob/master/0011-interledger-payment-request/0011-interledger-payment-request.md'>RFC</a></li>
+    <li><a href='https://github.com/interledger/rfcs/blob/master/asn1/InterledgerProtocol.asn'>Payment ASN.1 bin.format</a></li>
+    </ul>
+  </td>
+  <td development   >
+    <ul>
+    <li><a href='https://github.com/interledgerjs/ilp'>ILP Client</a>includes an IPR client
+        <a href='https://github.com/interledgerjs/ilp/blob/master/src/lib/ipr.js'>@src/lib/ipr.js</a></li>
+    <li>
+      <a href='https://github.com/hyperledger/quilt/blob/master/ilp-core/src/test/java/org/interledger/ipr/InterledgerPaymentRequestEndToEndTest.java'>Java PSK End-to-end test</a>
+      <pre xxxsmall { >
+----------------------------------------------------------------------------+-------------------------------------------------------------------
+                SENDER                                                      |                    RECEIVER
+----------------------------------------------------------------------------+-------------------------------------------------------------------
+/* STEP 2: PARSE IPR AT SENDER */                                           |  STEP 1: create PSK IPR (Interledger Payment Request) at receiver:
+CodecContext senderCodecContext = CodecContextFactory.interledger();        |  CodecContext receiverCodecContext = CodecContextFactory.interledger();
+                                                                            |  final String SECRET = "MY_SECRET";
+InterledgerPaymentRequest decodedIpr = senderCodecContext.read(             |  
+                             InterledgerPaymentRequest.class, encodedIpr);  |  Build InterledgerPaymentRequest at receiver from [
+InterledgerPayment     paymentToSend = decodedIpr.getInterledgerPayment();  |     Fulfillment(receiverContextBuildingIpr(seed)
+Condition            conditionToSend = decodedIpr.getCondition();           |     payment(dstAccount, dstAmount, encryptedPSKMessageData) ]
+                                                                            | 
+PskMessage message = senderCodecContext.read( // Decode PSK message         |  STEP 3 - PARSE PAYMENT AT RECEIVER
+                             PskMessage.class, paymentToSend.getData());    |  InterledgerPayment decodedPayment = receiverCodecContext.read(
+           message.getData()                                                |      InterledgerPayment.class, encodedPayment);
+           message.getEncryptionHeader()                                    |  Condition decodedCondition = receiverCodecContext.read(
+           message.getPublicHeaders(PskMessage.Header.WellKnown.PAYMENT_ID) |      Condition.class, encodedCondition);
+                                                                            |  PskMessage encryptedMessage = receiverCodecContext.read(
+PskMessage decryptedPskMessageAtSender =                                    |      PskMessage.class, decodedPayment.getData());
+           (PskContext.fromPreSharedKey(psk)).decryptMessage(message);      |  
+                                                                            |  // Load PSK Context based on token extracted of address in payment packet
+byte[] encodedPayment = senderCodecContext.write(                           |  PskContext receiverContext = PskContext.fromReceiverAddress(
+                            InterledgerPayment.class, paymentToSend);       |      SECRET, decodedPayment.getDestinationAccount());
+byte[] encodedCondition = senderCodecContext.write(                         |  
+                            Condition.class, conditionToSend);              |  PskMessage decryptedPskMessage = receiverContext.decryptMessage(encryptedMessage);  
+----------------------------------------------------------------------------+-------------------------------------------------------------------
+      </pre>
+    </li>
+    </ul>
+  </td>
+  <td testing/CI    >&nbsp;</td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+<tr name="ilp-psk" {>
+  <td topic         >Pre-Shared Key(PSK) Protocol</td>
+  <td summary       >
+    <ul>
+    <li>End-to-end non-interactive transport protocol, used by the sender and receiver of an ILP in which the sender chooses the payment amount and generates the fulfillment/condition without communicating with the recipient</li>
+    <li>This protocol is NOT binding since the sender can generate the fulfillment
+        and so he can NOT probe such fulfillment was actually generated by receiver.
+        <a href='https://github.com/interledger/rfcs/blob/master/0011-interledger-payment-request/0011-interledger-payment-request.md'>
+        ILP Payment Request</a> must be used in such cases.</li>
+    <li>The entirety of the PSK data, including public headers, encrypted 
+        private headers, and encrypted private data, is encoded into an octet-stream 
+        that forms the data portion of the <a href='https://github.com/interledger/rfcs/blob/master/asn1/InterledgerProtocol.asn'>ILP Payment Packet</a></li>
+    <li>The PSK data is authenticated via AES-256-GCM in addition to the HMAC-SHA-256 which authenticates the full
+        ILP payment</li>
+    </ul>
+  </td>
+  <td documentation >
+    <ul>
+    <li><a href='https://github.com/interledger/rfcs/blob/master/0016-pre-shared-key/0016-pre-shared-key.md'>RFC</a></li>
+    <li><a href='https://github.com/interledger/rfcs/issues/197'>Issue 197 Should public headers be removed from PSK?</a></li>
+    </ul>
+
+  </td>
+  <td development   >
+    <ul>
+    <li>The<a href='https://github.com/interledger/rfcs/blob/master/0016-pre-shared-key/0016-pre-shared-key.md'>RFC</a> contains pseudo-code for both the sender and receiver of the payment</li>
+    <li><a href='https://github.com/interledgerjs/ilp/blob/master/src/lib/psk.js'>ilp/src/lib/psk.js</a></li>
+    <li> <a href='https://github.com/interledgerjs/ilp'>ILP Client</a>includes an PSK client</li>
+    <hr/>
+    <li><a href='https://github.com/hyperledger/quilt/tree/development/src/main/java/org/interledger/psk'>org.interledger.psk@java-ilp-core</a><br/>
+        <a href='https://github.com/interledger/java-ilp-core/pull/54'>This PR 54</a> refactors PSK builders/interfaces to follow same patterns, decouples encrypt/decrypt from encoding/decoding, ...
+    </li>
+    <li><a href='https://github.com/hyperledger/quilt/blob/master/ilp-core/src/main/java/org/interledger/psk/PskContext.java'>PskContext.java</a><br/> contains the context for Sender, Receiver. Notice the SenderPskContext can genrate the fulfillment (and so it can NOT probed that he didn't create it).
+    </li>
+    <li> <a href='https://github.com/hyperledger/quilt/tree/development/src/test/java/org/interledger/psk'>Java Tests</a></li>
+    </ul>
+  </td>
+  <td testing/CI    >
+  </td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+<!-- } TRANSPORT PROTOCOLS END -->
+
+<!-- INTERLEDGER PROTOCOL START { -->
+<tr {>
+  <th colspan=6 header_delimit>INTERLEDGER PROTOCOL</th>
+</tr }>
+<tr name="ilp-htla" {>
+  <td topic         >HTLAs</td>
+  <td summary       >C&P:(Evan Schwartz)<br/>
+    <i>Hashed Timelock Agreements is a generalization of the idea of a Hashed Timelock Contract
+    (HTLC), which is the Bitcoin/Lightning Network term for conditional
+    transfers where the conditions and timeouts are enforced by the ledger.  </i><br/>
+    <ul>
+    <li><a href='https://github.com/interledger/rfcs/blob/9a4ffd6ff0f47dd3a9655332f2221f6240c21e3b/0000-hashed-timelock-agreements.md'>This document</a> describes how Interledger payments can be implemented over any type of ledger, including those that do not provide support for conditional transfers.</li>
+    <li>Hashlocks and timeouts can be enforced by ledgers or they can be upheld by senders and recipients themselves.</li>
+    </ul>
+    <table xxsmall>
+     <thead>
+     <tr xxxsmall><th></th> <th>Conditional Payment Channels(with HTLCs)</th> <th>Ledger Escrow (using HTLCs)</th> <th>Simple Payment Channels</th> <th>Trustlines</th></tr>
+     </thead>
+     <tbody>
+     <tr> <td><strong>Ledger Support Required  </strong></td> <td>High</td> <td>High  </td> <td>Medium</td> <td>Low </td> </tr>
+     <tr> <td><strong>Implementation Complexity</strong></td> <td>High</td> <td>Medium</td> <td>Low   </td> <td>Low </td> </tr>
+     <tr> <td><strong>Bilateral Risk           </strong></td> <td>Low </td> <td>Low   </td> <td>Medium</td> <td>High</td> </tr>
+     </tbody>
+     </table>
+  </td>
+  <td documentation >
+    <ul>
+    <li><a href='https://github.com/interledger/rfcs/blob/9a4ffd6ff0f47dd3a9655332f2221f6240c21e3b/0000-hashed-timelock-agreements.md'>RFC-PR</a></li>
+    <li><a href='https://www.youtube.com/watch?v=8zVzw912wPo&t=951s'>[Video] Lightning & Payment Channels Explained</a></li>
+    <li><a href='https://lists.w3.org/Archives/Public/public-interledger/2017Jun/0009.html'>1</a></li>
+    <li><a href='https://bitcoinmagazine.com/articles/understanding-the-lightning-network-part-building-a-bidirectional-payment-channel-1464710791/'>
+        UNDERSTANDING THE LIGHTNING NETWORK, PART 1: BUILDING A BIDIRECTIONAL BITCOIN PAYMENT CHANNEL</a>
+    </li>
+    <li><a href='https://bitcoinmagazine.com/articles/understanding-the-lightning-network-part-creating-the-network-1465326903/'>
+        UNDERSTANDING THE LIGHTNING NETWORK, PART 2, CREATING THE NETWORK</a>
+    </li>
+    <li><a href='https://bitcoinmagazine.com/articles/understanding-the-lightning-network-part-completing-the-puzzle-and-closing-the-channel-1466178980/'>
+        UNDERSTANDING THE LIGHTNING NETWORK, PART 3: COMPLETING THE PUZZLE AND CLOSING THE CHANNEL</a>
+    </li>
+    </ul>
+  </td>
+  <td development   >&nbsp;</td>
+  <td testing/CI    >&nbsp;</td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+<!-- } INTERLEDGER PROTOCOL END -->
+
+<!-- APLICATION PROTOCOLS START { -->
+<tr {>
+  <th colspan=6 header_delimit>APLICATION PROTOCOLS</th>
+</tr }>
+<tr name="ilp-spsp" {>
+  <td topic         >SPSP</td>
+  <td summary       >
+     <ul>
+       <li>Simple Payment Setup Protocol to create "input" condition to initiate an ILP payment</li>
+       <li>SPSP may be used by end-user applications, such as a digital wallet with a user interface 
+           for the sender to initiate payments. SPSP clients and receivers use ILP modules to send and
+           receive Interledger payments.<br/>
+           """The idea here is to define SPSP as one of potentially many setup protocols.
+              So a receiver does not necessarily have a URI (this is defined in SpspReceiver)."""
+       </li>
+       <li>Any SPSP receiver will run an SPSP server and expose an HTTPS endpoint called the SPSP Endpoint.
+           The sender can query this endpoint to get information about the type of payment that can be 
+           made to this receiver. The sender can set up and send multiple ILP payments using the details
+           provided by the receiver.
+       </li>
+       <li>SPSP uses the Pre-Shared Key (PSK) transport protocol for condition generation and data encoding</li>
+  </td>
+  <td documentation >
+    <ul>
+    <li><a href='https://github.com/interledger/rfcs/blob/master/0009-simple-payment-setup-protocol/0009-simple-payment-setup-protocol.md'>RFC</a></li>
+    <li><a href='https://github.com/interledger/rfcs/issues/152'>Closed issue: How SPSP should look like?</a>(How to split methods?, How invoices work?, Can we query with URL instead of a webfinger acct?, Should SPSP use SSP or IPR?,...)</li> 
+    <li><a href='https://github.com/interledger/rfcs/blob/master/asn1/InterledgerPaymentRequest.asn'>ASN.1 bin.def.</a></li>
+
+    </ul>
+  </td>
+  <td development   >
+    <ul>
+    <li>Evan Schwartz <a href='https://github.com/emschwartz/cicada'>Cicada</a> "Minimal" ILP/SPSP server for receiving payments</li>
+    <li><a href='https://github.com/interledgerjs/ilp'>ILP Client</a>includes an SPSP client 
+        <a href='https://github.com/interledgerjs/ilp/blob/master/src/lib/spsp.js'>@ilp/src/lib/spsp.js</a>
+    </li>
+    <hr/>
+    <li><a href='#java-spsp-client'>java-spsp-client</a></li>
+    </ul>
+  </td>
+  <td testing/CI    >To launch bin/api service @ ilp-kit follow next steps:<br/>
+    Clone git
+    <pre xxxsmall>
+  1.- git clone https://github.com/interledgerjs/ilp-kit
+    </pre>
+  2.- launch docker instance with an script similar to: cat launch_ilp_kit_docker.sh 
+    <pre xxxsmall { >
+      #!/bin/sh
+      PWD=`pwd`
+      VOLUME="-v ${PWD}:/usr/src/app" 
+      CONTAINER_NAME="ilp-kit-everis"
+      OPTS=""
+      OPTS="$OPTS -ti"
+      OPTS="$OPTS -p 3100:3100 $OPTS -p 3010:3010 "
+      # OPTS="$OPTS -p 9229:9229 "
+      # OPTS="$OPTS -p 9222:9222 "
+      OPTS="$OPTS -p 8080:8080 "
+      OPTS="$OPTS $VOLUME "
+      IMAGE="interledgerjs/ilp-kit:latest"
+      sudo docker run $OPTS ${IMAGE} bash
+    </pre } >
+  3.- Init Postgresql database with:
+    <pre xxxsmall {>
+cat setupPostgresql.sh 
+#!/bin/sh
+
+sed -i "s/md5$/trust/" /etc/postgresql/9.4/main/pg_hba.conf 
+/etc/init.d/postgresql start
+sleep 2
+
+SQL_FILE="/tmp/init_database.sql"
+cat <<EOF >$SQL_FILE
+CREATE USER ilpkit WITH PASSWORD 'ilpkit';
+CREATE DATABASE ilpkit;
+GRANT ALL PRIVILEGES ON DATABASE ilpkit TO ilpkit;
+GRANT ALL PRIVILEGES ON DATABASE ilpkit TO postgres;
+EOF
+
+psql -U postgres -h 127.0.0.1 -f $SQL_FILE
+    </pre }>
+  4.- Launch API like:
+    <pre xxxsmall>
+cat launch_api.sh 
+#!/bin/sh
+
+export DEBUG=true
+export NODE_PATH=./api 
+export NODE_ENV=production 
+node debug bin/api.js
+    </pre>
+  </td>
+  <td deployment    ></td>
+</tr }>
+<tr name="ilp-streaming" {>
+  <td topic         >Streaming</td>
+  <td summary       >Fragment/Stream payments</td>
+  <td documentation ><a href='https://lists.w3.org/Archives/Public/public-interledger/2017Jun/0022.html'>1</a></td>
+  <td development   >&nbsp;</td>
+  <td testing/CI    >
+                     <a href='https://lists.w3.org/Archives/Public/public-interledger/2017Jul/0009.html'>Setting up a testnet</a>
+  </td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+
+<tr name="ilp-ilqp" {>
+  <td topic         >ILQP</td>
+  <td summary       >Note(REF:<a href='https://github.com/interledger/rfcs/pull/309'>PR #309: Replace ILQP with End-to-End Quoting</a>)
+    <ul>
+      <li>The Interledger Quoting Protocol is a method of getting quote 
+          information from a Connector in preparation for arranging transfers 
+          across two ledgers. The quote returned by a Connector is non-binding,
+          but provides a basis for choosing which connectors to use.<br/>
+          There are two consumers of the ILQP: sending clients, and other connectors.<br/>
+          ILQP is part of the pre-payment setup phase. Once the ILQP quotes are accepted
+          by the sender, the ILP payment starts (the sending ledger puts the money 
+          into the escrow).</li>
+                     
+    </ul>
+  </td>
+  <td documentation >
+    <ul>
+    <li><a href='https://github.com/interledger/rfcs/blob/master/0008-interledger-quoting-protocol/0008-interledger-quoting-protocol.md'>RFC</a></li>
+    </ul>
+  </td>
+  <td development   >
+    <ul>
+    <li><a href='https://github.com/interledger/rfcs/tree/master/asn1'>Binary ASN1</a></li>
+httpterledger/rfcs/tree/master/asn1
+    <li><a href='https://github.com/interledgerjs/ilp/blob/master/src/lib/ilqp.js'></a></li>
+    <li><a href='https://github.com/interledgerjs/ilp'>ILP Client</a>includes an ILPQ client
+        <a href='https://github.com/interledgerjs/ilp/blob/master/src/lib/ilqp.js'>@ilp/src/lib/ilqp.js</a>
+    </li>
+    <hr/>
+    <li><a href='https://gist.github.com/justmoon/a59fd43958ce421c8b4a88d5143c718b#quoting-request-example'>Quote Request Example</a></li>
+    <li><a href='https://github.com/hyperledger/quilt/tree/development/src/main/java/org/interledger/ilqp'>org.interledger.ilqp java</a>
+        and <a href='https://github.com/hyperledger/quilt/tree/development/src/test/java/org/interledger/ilqp'>unit-tests</a>
+    </li>
+    </ul>
+  </td>
+  <td testing/CI    >&nbsp;</td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+
+<!-- } APLICATION PROTOCOLS END -->
+
+
+<!-- NODE JS START { -->
+<tr {>
+  <th colspan=6 header_delimit>Node JS</th>
+</tr }>
+<tr {>
+  <td topic >ILP JS Client library</td> 
+  <td summa >
+     The ILP module includes:
+     <ul>
+       <li>Simple Payment Setup Protocol (SPSP), a higher level interface for sending ILP payments, which requires the receiver to have an SPSP server.</li>
+       <li>Pre-Shared Key (PSK) Transport Protocol, a non-interactive protocol in which the sender creates the payment details and uses a shared secret to generate the conditions</li>
+       <li>Interledger Payment Request (IPR) Transport Protocol, an interactive protocol in which the receiver specifies the payment details, including the condition</li>
+       <li>Interledger Quoting and the ability to send through multiple ledger types using Ledger Plugins</li>
+     </ul>
+  </td>
+  <td documentation >
+     <ul>
+       <li><a href='https://github.com/interledgerjs/ilp'>Github</a></li>
+     </ul>
+     <div subtable1>
+     <table>
+     <tr>
+       <td>
+       Sending to an SPSP receiver with a user@example.com identifier high-level interface:
+         <pre xxxsmall { >
+const SPSP = require('ilp').SPSP
+const FiveBellsLedgerPlugin = require('ilp-plugin-bells')
+
+const plugin = new FiveBellsLedgerPlugin({
+  account: 'https://.../accounts/alice',
+  password: 'alice'
+})
+
+(async function () {
+  await plugin.connect()
+  console.log('plugin connected')
+
+  const payment = await SPSP.quote(plugin, {
+    receiver: 'bob@blue.ilpdemo.org',
+    sourceAmount: '1'
+  })
+
+  console.log('got SPSP payment details:', payment)
+
+  // we can attach arbitrary JSON data to the payment 
+  // to be sent to the receiver.
+  payment.memo = { message: 'hello!' }
+
+  await SPSP.sendPayment(plugin, payment)
+  console.log('receiver claimed funds!')
+})()
+         </pre } >
+       </td>
+       <td>
+In order to receive payments using PSK, the receiver must also register a reviewPayment handler. reviewPayment is a callback that returns either a promise or a value, and will prevent the receiver from fulfilling a payment if it throws an error. This callback is important, because it stops the receiver from getting unwanted funds.
+         <pre xxxsmall { >
+const uuid = require('uuid')
+const ILP = require('ilp')
+const FiveBellsLedgerPlugin = require('ilp-plugin-bells')
+
+const sender = new FiveBellsLedgerPlugin({
+  account: 'https://.../accounts/alice',
+  password: 'alice' })
+
+const receiver = new FiveBellsLedgerPlugin({
+  account: 'https://.../accounts/bob',
+  password: 'bobbob' })
+
+(async function () {
+  await receiver.connect()
+  console.log('receiver connected')
+
+  const receiverSecret = Buffer.from('secret_seed')
+  const { sharedSecret, destinationAccount } = 
+  ILP.PSK.generateParams({
+    destinationAccount: receiver.getAccount(),
+    receiverSecret
+  })
+
+  // Note the user of this module must implement the method
+  // for communicating sharedSecret and destinationAccount
+  // from the recipient to the sender
+  const stopListening = await ILP.PSK.listen(
+    receiver, { receiverSecret }, (params) => {
+    console.log('got transfer:'+ params.transfer)
+    return params.fulfill() // fulfilling now
+  })
+
+  // the sender can generate these, via the 
+  // sharedSecret and destinationAccount
+  // given to them by the receiver.
+  const { packet, condition } = 
+  ILP.PSK.createPacketAndCondition({
+    sharedSecret,
+    destinationAccount,
+    destinationAmount: '10', // ledger's base unit
+  })
+
+  const quote = await ILP.ILQP.quoteByPacket(sender, packet)
+  console.log('got quote:', quote)
+
+  await sender.sendTransfer({
+    id: uuid(),
+    to: quote.connectorAccount,
+    amount: quote.sourceAmount,
+    expiresAt: quote.expiresAt,
+    executionCondition: condition,
+    ilp: packet
+  })
+
+  sender.on('outgoing_fulfill', (transfer, fulfillment) => {
+    console.log(transfer.id, 'fulfilled with', fulfillment)
+    stopListening()
+  })
+})()
+         </pre } >
+       </td>
+       <td>
+IPR JS code handles the generation of payment requests, but not the communication of the request details from the recipient to the sender. In some cases, the sender and receiver might be HTTP servers, in which case HTTP would be used. In other cases, they might be using a different medium of communication. <br/>
+IPR Sending and Receiving Example
+         <pre xxxsmall { >
+const uuid = require('uuid')
+const ILP = require('ilp')
+const FiveBellsLedgerPlugin = require('ilp-plugin-bells')
+
+const sender = new FiveBellsLedgerPlugin({
+  account: 'https://ledger1/accounts/alice',
+  password: 'alice'
+})
+
+const receiver = new FiveBellsLedgerPlugin({
+  account: 'https://ledger2/accounts/bob',
+  password: 'bobbob'
+})
+
+(async function () {
+  const stopListening = await ILP.IPR.listen(receiver, {
+    receiverSecret: Buffer.from('secret', 'utf8')
+  }, async function ({ transfer, fulfill }) {
+    console.log('got transfer:', transfer),,
+
+    console.log('claiming incoming funds...'),,
+    await fulfill()
+    console.log('funds received!')
+  })
+
+  // `ipr` is a buffer with the encoded IPR
+  const ipr = ILP.IPR.createIPR({
+    receiverSecret: Buffer.from('secret', 'utf8'),
+    destinationAccount: receiver.getAccount(),
+    // denominated in the ledger's base unit
+    destinationAmount: '10',
+  })
+
+  // Note the user of this module must implement the 
+  // method for communicating
+  // packet and condition from the recipient to the sender.
+
+  // In practice, The rest of this example would happen
+  // on the sender's side.
+
+  const { packet, condition } = ILP.IPR.decodeIPR(ipr)
+  const quote = await ILP.ILQP.quoteByPacket(sender, packet)
+  console.log('got quote:', quote)
+
+  await sender.sendTransfer({
+    id: uuid(),
+    to: quote.connectorAccount,
+    amount: quote.sourceAmount,
+    expiresAt: quote.expiresAt,
+    executionCondition: condition,
+    ilp: packet
+  })
+
+  sender.on('outgoing_fulfill', (transfer, fulfillment) => 
+  {
+    console.log(transfer.id, 'was fulfilled with', fulfillment)
+  })
+})()
+         </pre } >
+       </td>
+     </tr>
+     </table>
+     </div>
+
+       </li>
+       <li>
+         <pre>
+         </pre>
+       </li>
+       <li>
+         <pre>
+         </pre>
+       </li>
+     </ul>
+  </td>  
+  <td development  >
+  </td>
+  <td testing/CI >
+  </td>
+  <td deployment > </td >
+
+</tr }>
+<tr name="ilp-connector" {>
+  <td topic         >ilp-connector</td>
+  <td summary       >Ripple reference JS implementation of<br>ILP Connectorg</td>
+  <td documentation >
+  </td>
+  <td development   >
+    <ul>
+    <li><a href="https://github.com/interledgerjs/ilp-connector">GitHub</a>  </li>
+    <li><a href="https://github.com/interledgerjs/ilp-connector/blob/master/src/lib/route-builder.js">RouteBuilder</a> </li>
+    <li><hr/></li>
+    </ul>
+  </td>
+  <td testing/CI    >npm test</td>
+  <td deployment    ><a href="https://github.com/interledgerjs/ilp-connector/blob/master/Dockerfile">Dockerfile</a></td>
+</tr }>
+<tr name="five-bells-ledger" {>
+  <td topic         >five-bells-ledger</td>
+  <td summary       >Ripple JS reference implementation of <br>a ledger compliant with ILP</td>
+  <td documentation ><a href="https://red.ilpdemo.org/ledger/">API</a> , <a href="https://github.com/interledgerjs/five-bells-ledger/blob/master/src/sql/sqlite3/create.sql">DDBB Squema</a> ,</td>
+  <td development   ><a href="https://github.com/interledgerjs/five-bells-ledger">GitHub</a></td>
+  <td testing/CI    >npm test</td>
+  <td deployment    ><a href="https://github.com/interledgerjs/five-bells-ledger/blob/master/Dockerfile">Dockerfile</a> ,</td>
+</tr }>
+<tr name="ilp-plugin-bells" {>
+  <td topic         >ilp-plugin-bells</td>
+  <td summary       >This is the plugin used to connect the ilp-connector to the five-bells-ledger.<br>
+    Note: The API used to connect five-bells-ledger and ilp-plugin-bells was developped 
+    "informally" but it's being used as the reference/base for a 
+    <a href="#ilp-common-ledger-api">Common Ledger API<a>
+  </td>
+  <td documentation ><a href="https://github.com/interledger/rfcs/tree/master/0004-ledger-plugin-interface">Javascript Ledger Plugin Interface (LPI)RFC</a>&nbsp;<a href="https://github.com/earizon/rfcs/tree/earizon-SeqDiagram0004/0004-ledger-plugin-interface/sequence_diagrams">sequence diagrams(draft)</a></td>
+  <td development   ><a href="https://github.com/interledgerjs/ilp-plugin-bells">Github</a></td>
+  <td testing/CI    >&nbsp;</td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+<tr name="ilp-plugin-virtual" {>
+  <td topic         >ilp-plugin-virtual</td>
+  <td summary       >Virtual plugin to offer partial support for existing<br>ledgers NOT supporting ILP. <br>Notice that while connectors and connectors <br>plugins are for the most part stateless, this <br>plugin keeps internal state to offer the functionality<br>required for the protocol (Usually this state ought<br>to be on the the ILP-enabled ledger).<br/>
+   Q: how can I be sure a peer is not sending me fake money?<br/>
+   A: That depends on the type of plugin you peer over. If you use plugin-virtual (the default plugin in ILP Kit), then you simply trust your peer to eventually settle its dept with you. Alternatively, you can use other plugins that require less trust in your peer, like ilp-plugin-bitcoin-paychan. This plugin tracks the debt with your peer on the bitcoin blockchain.<br/>
+  </td>
+  <td documentation >&nbsp;</td>
+  <td development   ><a href="https://github.com/interledgerjs/ilp-plugin-virtual">GitHub</a></td>
+  <td testing/CI    >&nbsp;</td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+<tr {>
+  <td topic         >NodeJS ILP-Plugin-payment-channel-framework</td>
+  <td summary       >
+    ILP virtual ledger plugin for directly transacting connectors, 
+    including a framework for attaching on-ledger settlement mechanisms.
+</td>
+  <td documentation >From <a href='https://github.com/interledger/rfcs/pull/263'>RFC PR263</a>:
+<p xsmall>
+Any ledger protocol author can definitely fork CLP, or design something completely different from scratch.
+However, as we've found writing ledger plugins, it's much easier to use something like the payment channel framework than implement everything yourself. That framework will be changed to use the CLP as the base protocol and allow individual plugins to add custom messages (in the same way you can add custom RPC methods now) and custom data to existing messages (in the same way you can add custom arguments to existing RPC calls now). The benefit of allowing for multiple plugin types is that we don't have to standardize this layer. But as we've seen from experience it's way easier to implement plugins if you can reuse something like that framework that does 80% of the work for you (and avoids common gotchas).
+</p>
+</td>
+  <td development   ><a href='https://github.com/interledgerjs/ilp-plugin-payment-channel-framework'>GitHub</a></td>
+  <td testing/CI    >&nbsp;</td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+<tr {>
+     <th  topic        >&nbsp;</th>
+     <th  summary      >summary</th>
+     <th  documentation>&nbsp;documentation</th>
+     <th  development  >development</th>
+     <th  testing/CI   >testing/CI</th>
+     <th  deployment   >deployment</th>
+</tr }>
+<tr name="ilp-kit" {>
+  <td topic         ><a href='https://github.com/interledgerjs/ilp-kit'>ilp-kit</a></td>
+  <td summary       >bootstrapping project in an effort to get<br>real-money moving on the Interledger.<br>It also includes a wallet/front-end to the ledger,<br>as well as different utilities<br/>
+   A newer effort is the <a href='https://github.com/interledger/interledger/wiki/Testnet-of-Testnets-design'>TestNet of Testnets</a>. """The idea for the testnet-of-testnets is that it will be one connected Interledger network, meaning (up to some bandwidth limitations, maybe) you can always pay from any account to any account. Accounts will come in two types: on-ledger and off-ledger...An on-ledger account is tied to one account on one of the testnets (XRP testnet, Ethereum Rinkeby, Ethereum Ropsten, and more to come), and its balance is whatever its balance is according to that testnet."""
+  </td>
+  <td documentation ><a href="https://github.com/interledgerjs/ilp-kit/wiki">WiKi</a> ,</td>
+  <td development   ><a href="https://github.com/interledgerjs/ilp-kit">Github</a></td>
+  <td testing/CI    >
+    <a href="https://lists.w3.org/Archives/Public/public-interledger/2017Jul/0024.html">1</a>
+  </td>
+  <td deployment    >
+    - <a href='https://github.com/interledgerjs/ilp-kit/blob/master/Dockerfile'>Dockerfile</a>
+    - <a href='https://connector.land/'>https://connector.land,<a>  List of up-and-running connectors<br/>
+    - Example conf.file:
+      <pre xxxsmall { >
+API_DB_URI=postgres://<lt;user>:<lt;password>@localhost/ilpkit
+API_GITHUB_CLIENT_ID=<lt;github client id>
+API_GITHUB_CLIENT_SECRET=<lt;github client secret>
+API_HOSTNAME=<lt;domain name of ilp-kit instance>
+API_MAILGUN_API_KEY=<lt;mailgun api key>
+API_MAILGUN_DOMAIN=<lt;mailgun domain>
+API_PORT=3100
+API_PRIVATE_HOSTNAME=localhost
+API_PUBLIC_HTTPS=1
+API_PUBLIC_PATH=/api
+API_PUBLIC_PORT=443
+API_SECRET=<lt;api secret>
+BLUEBIRD_WARNINGS=0
+CLIENT_HOST=<lt;domain name of ilp-kit instance>
+CLIENT_PORT=3010
+CLIENT_PUBLIC_PORT=443
+CLIENT_TITLE=<lt;public name of ilp-kit instance>
+LEDGER_ADMIN_USER=<lt;admin username>
+LEDGER_ADMIN_PASS=<lt;admin password>
+LEDGER_CURRENCY_CODE=ZAR
+LEDGER_CURRENCY_SYMBOL=R
+LEDGER_ILP_PREFIX=<lt;ledger prefix e.g.: za.zar.hopebailie.>
+LEDGER_RECOMMENDED_CONNECTORS=<lt;accounts on ledger running connectors>
+CONNECTOR_ENABLE=true
+CONNECTOR_LEDGERS=
+    {"us.usd.nexus.":
+       {"plugin":"ilp-plugin-bells",
+        "currency":"USD",
+        "options":
+            {"identifier":"adrian@nexus.justmoon.com",
+             "password":"..."}
+       },
+     "lu.eur.pineapplesheep.":
+       {"plugin":"ilp-plugin-bells","currency":"EUR","options":
+            {"identifier":"adrian@pineapplesheep.ilp.rocks",
+             "password":"..."}
+       },
+     "za.zar.hopebailie.":
+       {"currency":"ZAR","plugin":"ilp-plugin-bells","options":
+           {"account":"https://.../accounts/adrian",
+            "password":"..."}
+       }
+    }
+CONNECTOR_LOG_LEVEL=info
+CONNECTOR_MAX_HOLD_TIME=100
+CONNECTOR_PEERS=us.usd.nexus.stefan,...
+CONNECTOR_PORT=400
+      </pre } >
+  </td>
+</tr }>
+<!-- } NODE JS END -->
+<!-- JAVA START { -->
+<tr {>
+  <th colspan=6 header_delimit>JAVA</th>
+</tr }>
+<tr {>
+  <td topic ><a href='https://github.com/hyperledger/quilt/tree/master/crypto-conditions'>crypto-conditions</a></td> 
+  <td summary      {>Interfaces and specs (common structs to all <br>implementations) for different ILP compliant systems</br>
+  <span TODO>Class explanation and hierarchy</span>
+  </td>
+  <td  documentation >
+    See <a href='https://github.com/hyperledger/quilt/tree/master/crypto-conditions/src/test/java/org/interledger/cryptoconditions'>Unit-test</a>
+    for class utilization
+  </td>  
+  <td  development > </td>
+  <td  testing/CI > </td>
+</tr }>
+
+<tr name="java-ilp-core" {>
+  <td topic         ><a href='https://github.com/hyperledger/quilt/tree/master/ilp-core'>ilp-core</a></td>
+  <td summary      {>Interfaces and specs (common structs to all <br>implementations) for different ILP compliantsystems</br>
+    <a href='https://github.com/hyperledger/quilt/blob/master/ilp-core/src/main/java/org/interledger/InterledgerAddress.java'>ILP Address</a>,
+    <a href='https://github.com/hyperledger/quilt/blob/master/ilp-core/src/main/java/org/interledger/InterledgerException.java'>ILP Exceptions</a>,
+    <a href='https://github.com/hyperledger/quilt/blob/master/ilp-core/src/main/java/org/interledger/InterledgerPacket.java'>ILP Packet</a>,
+    SPSP, PSK, ILQP, ...
+     <pre xxsmall>
+Condition condition1 = Condition.builder().
+     hash(new byte[32]).build();
+
+final InterledgerPayment payment1 =
+    InterledgerPayment.builder()
+    .destinationAccount(destinationAccount)
+    .destinationAmount(destinationAmount)
+    .data(data).build();
+
+InterledgerPaymentRequest ipr1 = 
+    InterledgerPaymentRequest.builder()
+    .payment(payment1)
+    .condition(condition1).build();
+-----------------------------------
+CodecContext context = 
+    CodecContextFactory.interledger();
+context.write(ipr, outputStream);
+InterledgerPaymentRequest decodedIpr = 
+   context.read(
+      InterledgerPaymentRequest.class,
+       asn1OerPaymentBytes);
+----------------------------------
+     </pre>
+  </td }>
+  <td documentation >
+      <a href="https://gitter.im/interledger/java">Gitter</a><br/>
+      <a href='https://github.com/hyperledger/quilt/blob/master/architecture.md'>Architecture & Roadmap notes</a><br/>
+  </td>
+  <td development   ><a href="https://github.com/hyperledger/quilt">GitHub</a></td>
+  <td testing/CI    >
+     <pre>
+gradle test
+     </pre>
+  </td>
+  <td deployment    >
+    <a href='https://github.com/hyperledger/quilt/issues/18'>Java JCE Unlimited Strength encryption policies from Oracle are needed</a>
+     <pre>
+gradle install
+     </pre>
+  </td>
+</tr }>
+<tr name="java-vertx-ledger" {>
+  <td topic         >java-vertx-ledger</td>
+  <td summary       >Everis Java implementation of a ledger compliant with the <a href='#ilp-common-ledger-api'>Common Ledger API</a> and the java-ilp-core interfaces</td>
+  <td documentation >
+    <ul>
+    <li><a href="https://github.com/interledger/rfcs/pull/125">API Proposal</a></li>
+    <li><a href="https://github.com/earizon/java-vertx-ledger/blob/master/dev_docs/architecture_notes.txt">Coding styles, architecture notes,...</a></li>
+    </ul>
+  </td>
+  <td development   ><a href="https://github.com/earizon/java-vertx-ledger">Github</a></td>
+  <td testing/CI    >&nbsp;</td>
+  <td deployment    >
+    <a href="https://github.com/earizon/java-vertx-ledger/blob/master/README.md">README</a> contains tips explaining who to launch the server 
+  </td>
+</tr }>
+<tr {>
+  <th  topic        >&nbsp;</th>
+  <th  summary      >summary</th>
+  <th  documentation>documentation</th>
+  <th  development  >development</th>
+  <th  testing/CI   >testing/CI</th>
+  <th  deployment   >deployment</th>
+</tr }>
+<tr name="java-ilp-spsp" {>
+  <td topic         ><span name='java-spsp-client' id='java-spsp-client'>java-spsp-client</span></td>
+  <td summary       >Java SPSP Client Spring implementation</td>
+  <td documentation ></td>
+  <td development   ><a href="https://github.com/jgallare/java-spsp-client-spring">Github</a></td>
+  <td testing/CI    >TODO</td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+<!-- } JAVA END -->
+
+<!-- BLOCKCHAINS START { -->
+<tr {>
+  <th colspan=6 header_delimit>BLOCKCHAINS</th>
+</tr }>
+<tr {>
+  <td topic         ><a href='https://github.com/interledger/interledger/wiki/Interledger-over-XRP'>ILP over XRP</a>(Ripple "XRP" Network)</td>
+  <td summary       >
+    <p>
+    Ripple Network is a real-time international gross settlement system 
+    (<a href='http://treasurytoday.com/2004/12/gross-and-net-settlement-systems'>gross vs net settlement system compared</a>),
+    used for currency exchange and money transfer network. <br/>
+    Ripple is based on the idea "secure, instant and nearly free global financial transactions of any size with no chargebacks." 
+    The Ripple protocol enables the instant and direct transfer of money between two parties. As such the protocol can
+    circumnavigate the fees and wait times of the traditional correspondent banking system.
+    </p>
+
+    <p>
+    Ripple relies on a common shared ledger that has its contents decided on by consensus, and which is a distributed
+    database storing information about all Ripple accounts.
+    </p>
+  </td>
+  <td documentation >
+    <ul>
+      <li><a href="https://ripple.com/build/rippleapi/">Ripple API</a></li>
+    </ul>
+  </td>
+  <td development   >
+    <ul>
+      <li><a href="https://github.com/sublimator?utf8=%E2%9C%93&tab=repositories&q=&type=source&language=">Sublimator repos</a> including Java Ripple client</li>
+    </ul>
+  </td>
+  <td testing/CI    >&nbsp;</td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+
+<tr {>
+  <td topic         ><a href='https://github.com/interledger/interledger/wiki/Interledger-over-ETH'>Ethereum</a></td>
+  <td summary       > </td>
+  <td documentation >&nbsp;</td>
+  <td development   ><a href="https://github.com/sharafian/ilp-plugin-ethereum">Sharafian Ethereum</a> JS connector Plugin</td>
+  <td testing/CI    >&nbsp;</td>
+  <td deployment    >
+    <ul>
+      <li>Michael De John """Sending Interledger payments over Ethereum's testnet is slightly more
+             complicated, because you need to run a geth node, connected to the
+             Rinkeby network."""
+      </li>
+    </ul>
+</td>
+</tr }>
+
+
+<tr {>
+  <td topic         >BTC/LTC/ZCASH</td>
+  <td summary       ></td>
+  <td documentation >&nbsp;</td>
+  <td development   ><a href="https://github.com/interledgerjs/ilp-plugin-bitcoin-paychan">Bitcoin/LiteCoin/Zcash</a> JS connector plugin</td>
+  <td testing/CI    >&nbsp;</td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+
+<tr {>
+  <td topic         >XPR</td>
+  <td summary       >Initial Java Support for XPR Blockchain</td>
+  <td documentation >&nbsp;</td>
+  <td development   ><a href="https://github.com/ripple/ripple-lib-java">github.com/ripple/ripple-lib-java</a> XRP client </td>
+  <td testing/CI    >&nbsp;</td>
+  <td deployment    >&nbsp;</td>
+</tr }>
+<!-- } BLOCKCHAINS END -->
+
+<!-- DEPRECATED START { -->
+<tr {>
+  <th colspan=6 header_delimit>DEPRECATED</th>
+</tr }>
+<!-- } DEPRECATED END -->
+
+
+</tbody>
+</table }>
+</body>
+<!--
+  
+   TODO: 
+   - Add info about Metamorphosis: new ilp-connector architecture based on kafka, ....
+
+   - connector-shard:
+      simple
+      good performance
+      easy to set up
+      easy to extend/reimplement
+      robust against DoS attacks
+      scales to many users
+      Composable (could be run with/without UI, static routes, etc,..)
+
+   - RFC 21: Switch to OER encoding #249 https://github.com/interledger/rfcs/issues/249
+
+
+   -   PlantUML for seq. diagrams
+         https://github.com/interledgerjs/ilp/blob/master/src/lib/ipr.js
+         https://github.com/interledgerjs/ilp/blob/master/src/lib/transport.js
+
+  
+   - Risk: https://github.com/interledger/rfcs/tree/master/0018-connector-risk-mitigations
+
+   - Optimistic vs Universal
+     - https://lists.w3.org/Archives/Public/public-interledger/2017Jun/0033.html 
+
+
+
+   - Is CCP (Conector to Connector protocol the same that Virtual-Plugin?)
+     From https://lists.w3.org/Archives/Public/public-interledger/2016Dec/0000.html
+     """Some of the issues you describe may be addressed with the new peering
+     method (using ilp-plugin-virtual.) Right now, Adrian's connector would have
+     to have an account on your ledger and vice versa for it to work properly.
+     With the new flow you just need to both extend trust to one another."""
+
+   - https://github.com/interledger/rfcs/blob/master/0011-interledger-payment-request/0011-interledger-payment-request.md
+
+-->
+
+<!--
+    TODO:
+    When you set up an IToT node, it doesn't matter which ledger you connect
+    to first. Just like it doesn't matter whether you connect to the internet
+    via WiFi or Ethernet or 3G. The easiest way to set up an IToT node, so far,
+    is using a NodeJS script running on your laptop, in combination with an XRP
+    testnet account. First, we need an Interledger payment script. Interledger
+    payments are quite simple in fact, you just need to send the generate a random
+    string called the fulfillment, and then send the SHA256 hash of that fulfillment
+    along with your ledger-specific transfer. If you pay to yourself then you can
+    easily reply to the incoming payment from the same script, using the fulfillment
+    of the SHA256 condition. ...
+
+-->
+
+<!--
+TODO:(0) 
+  "Core classes" grouping the main use-cases:
+  model/payments.js
+  lib/routing-builder.js
+________________________________________
+
+  Adrian Hope?
+  """ As discussed on the call yesterday I have tried to document some deployment scenarios and their different architectures: https://github.com/interledger/interledger/wiki/Architecture
+  I'm busy implementing BTP codecs in the Java core libraries and will try to have a Java client that can speak to Frog using BTP up and running soon
+  One thing I noted in doing this is the similarity (in some respects, not all) to the relationship between lnd and bitcoind
+  Obviously lnd implements more than jut ledger adaptor functions but it's interesting to compare the architectures"""
+____________________
+ NodeJS Inteledger:
+   LPI Sequence diagrams
+   https://github.com/earizon/rfcs/tree/earizon-SeqDiagram0004/0004-ledger-plugin-interface/sequence_diagrams
+________________________
+
+    ILP-LIGHTNING demo: https://github.com/interledgerjs/ilp-lightning-demo
+    http://dev.lightning.community/overview/
+
+________________________
+   TODO:
+   -----
+   BI-DIRECTIONAL DVP or PVP settlements:
+     - https://en.wikipedia.org/wiki/Delivery_versus_payment (DVP)
+   
+     - PVP: Payment versus Payment:
+       FROM https://www.ecb.europa.eu/home/glossary/html/glossp.en.html
+   
+       """ A mechanism which ensures that the final transfer of a 
+           payment in one currency occurs if - and only if - the final transfer
+           of a payment in another currency or currencies takes place. """
+   
+________________________
+    https://github.com/interledger/interledger/wiki/The-Interledger-Testnet-of-Testnets-(IToT)
+
+    https://github.com/interledger/interledger/wiki/Architecture
+
+    JS FROG: BTP Toolbox
+    
+    BTP "TO" FROG "TO" Existing ledgers
+    
+    FROG wraps an existing connector plugin (for example five-bells-plugin) into a BTP connection. 
+
+    New implementations are encouraged to natively support BTP and can run alongside a ledger adaptor 
+    such as Frog in the BTP Toolbox which can load ledger plugins as required and wrap
+    these in a BTP interface.
+___________________________
+
+   Q: can we ask you what "repudiable" mean? 
+   A: "Repudiable" in ILP means that someone can neglect having made 
+      a payment or received the payment and nobody else can probe he 
+      is lying (or confirm he is telling the true).  So there is a
+      dispute between sender and receiver (or connector in the payment path). 
+      non-repudiable by contrast mean that the people involved have a
+      (cryptographic) probe that anyone else has executed or rejected the payment .
+   
+   Q: so in ilp when we use sps -> repudiable and when we use ipr -> non-repudiable? 
+   A: yes.  The spsp is ussually "good enough" because the payment sender can present the
+      fulfillment to connectors to probe that the payment was recieved by the recipient even 
+      if it wasn't ... but he will not win much with that. He will just loose his money  
+   
+       The receiver can not probe the opposite but he just received money for free.
+   
+      IPR is just needed in some "corner" scenarios when the receiver could be fined 
+      because un-intentionally he received the money and he was obligated
+      to declare the error to some authority. 
+      IPR is "slightly" safer, 100% non-repudiable, but takes more message rounds 
+      between sender and receiver and so it less suitable for small payments. 
+_____________________________________
+_____________________________________
+-->
+</html>

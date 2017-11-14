@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html>
+   <meta charset="UTF-8">
+   <title>Interledger Map</title>
+<!--
+ Q:Note what the attribute { and } do:
+ A:Those attributes are ignored by the browser but are helpful to fold/unfold text in some
+   editors (Vim, Emacs,...)
+-->
+<!--
+ROW TEMPLATE
+<tr {>
+  <td col1 >
+     <ul>
+       <li> </li>
+       <li> </li>
+       <li> </li>
+     </ul>
+  </td>  
+  <td col2 >
+     <ul>
+       <li> </li>
+       <li> </li>
+       <li> </li>
+     </ul>
+  </td>  
+  <td col3 >
+     <ul>
+       <li> </li>
+       <li> </li>
+       <li> </li>
+     </ul>
+  </td>  
+</tr }>
+-->
+
+<head>
+<script>
+var zoomDivDOM
+function onZoomDivDoubleClick() { zoomDivDOM.innerHTML = ''; }
+var zoomDivFW = true; // FW Full Width
+var zoomDivFH = true; // FW Full Height 
+var zoomDivTop = true; 
+var zoomDivLft = true; 
+function onTDDoubleClick()      { zoomDivDOM.innerHTML = 
+     "('Esc' to close) Toggle "+
+     "<span style='color:blue;' onClick=\"zoomDivFW  = !zoomDivFW ; zoomDivDOM.style.maxWidth  = zoomDivFW  ? '98%' : '30%'\">[Width]</span> " 
+   + "<span style='color:blue;' onClick=\"zoomDivFH  = !zoomDivFH ; zoomDivDOM.style.maxHeight = zoomDivFH  ? '98%' : '30%'\">[Height]</span> " 
+   + " Toggle " 
+   + "<span style='color:blue;' onClick=\"zoomDivLft = !zoomDivLft; zoomDivDOM.style.left      = zoomDivLft ? '1%'  : '69%'\">[Horz]</span> " 
+   + "<span style='color:blue;' onClick=\"zoomDivTop = !zoomDivTop; zoomDivDOM.style.top       = zoomDivTop ? '1%'  : '69%'\">[Vert]</span> " 
+   + " <br/> " 
+   + this.innerHTML; 
+}
+
+function removeToLeftMarginInPre() {
+  // TODO:(0) Not working
+  // nodeList = document.querySelectorAll('pre')
+  // for (idx in nodeList) { 
+  //   var node = nodeList[idx]
+  //   var html = node.innerHTML
+  //   var pattern = html.match(/^\s*[|]/)
+  //   var regEx = new RegExp(pattern, "")
+  //   console.log(html)
+  //   node.innerHTML = html.replace(regEx,''))
+  //    
+  // }
+}
+
+
+function onPageLoaded() {
+  zoomDivDOM = document.getElementById('zoomDiv')
+  zoomDivDOM.addEventListener('dblclick',onZoomDivDoubleClick, false)
+  document.addEventListener('keyup',function(e) { if (e.code !== "Escape") return; onZoomDivDoubleClick(); })
+  // Change default a.target to blank. Ussually this is bad practice 
+  // but this is the exception to the rule
+  var nodeList = document.querySelectorAll('a')
+  for (idx in nodeList) { 
+      if (!nodeList[idx].href) { continue; }
+      if (nodeList[idx].href && !nodeList[idx].href.startsWith("http")) continue;
+      nodeList[idx].target='_blank'; 
+  }
+  nodeList = document.querySelectorAll('td')
+  for (idx in nodeList) { 
+     if (!!! nodeList[idx].addEventListener) continue;
+     nodeList[idx].addEventListener('dblclick',onTDDoubleClick, false)
+  }
+  setTimeout(onZoomDivDoubleClick, 3000);
+  removeToLeftMarginInPre();
+}
+</script>
+<style>
+pre { background-color:#EEEEEE; outline:1px dotted grey; }
+*[cite]         { font-style: italic; }
+*[TODO]         { color:red; font-weight: bold; }
+*[TODO]:before  { content: "TODO:"; }
+*[xxxsmall]{ font-size:0.1rem; }
+img[xxxsmall]{ max-width:10rem; }
+*[xxsmall] { font-size:0.3rem; }
+*[xsmall]  { font-size:0.7rem; }
+*[small]   { font-size:0.9rem; }
+ul { margin-left: 1.0em; padding-left: 0rem; }
+#zoomDiv [xxxsmall] , #zoomDiv * [xxxsmall], #zoomDiv * * [xxxsmall], #zoomDiv * * * [xxxsmall]{ font-size:1em; } 
+#zoomDiv img[xxxsmall] , #zoomDiv * img[xxxsmall], #zoomDiv * * img[xxxsmall], #zoomDiv * * * img[xxxsmall]{ max-width:100%; } 
+
+#zoomdiv [xxsmall]  , #zoomdiv * [xxsmall] , #zoomdiv * * [xxsmall] , #zoomdiv * * * [xxsmall] { font-size:1em; }
+#zoomdiv [xsmall]   , #zoomDiv * [xsmall]  , #zoomDiv * * [xsmall]  , #zoomDiv * * * [xsmall]  { font-size:1em; }
+#zoomdiv [small]    , #zoomDiv * [small]   , #zoomDiv * * [small]   , #zoomDiv * * * [small]   { font-size:1em; }
+
+body      { font-family:sans-serif; font-size:16px; padding: 0; margin: 0; }
+#zoomDiv  { 
+   position:fixed; top:1%; left:1%; width:auto; height:auto;
+   max-height: 98%; max-width: 98%; overflow: auto;
+   background-color:#FFFFFF; color:#000; border-radius: 0.5rem; border: 4px solid black; font-size: 2rem;
+   box-shadow: 5px 5px 30px black;
+   padding: 0.5rem;
+}
+
+a            { text-decoration:none; font-family:monospace; padding:0.1em;}
+a[href^="#"]:before /* mark internal anchor */ {  content: ">"; }
+a[href^="#"]:after  /* mark internal anchor */ {  content: "<"; }
+a:visited { color:blue; }
+td { 
+   vertical-align: top;
+   outline: 1px solid grey; 
+}
+td[col1] ,th[col1] {background-color:#FFFFFF; min-width:34%; max-width:34%; font-size: 1rem;}
+td[col2] ,th[col2] {background-color:#FAFAFA; min-width:33%; max-width:33%; }
+td[col3] ,th[col3] {background-color:#FFFFFF; min-width:33%; max-width:33%; }
+th[header_delimit]{background-color:#000000; color:#FFFFFF; font-size:2em; }
+div[subtable1] { max-width: 95%; overflow: auto; padding:0; margin: 0;}
+
+</style>
+</head>
+<body onLoad='onPageLoaded()'>
+<div id='zoomDiv'>Hint: double-click on cell to zoom!!</div>
+
+<table style='width:100%'{>
+<tbody>
+<tr {>
+  <th colspan=3 header_delimit {   >Ethereum VM</th>
+</tr }>
+<tr {>
+  <td col1 >
+         <pre {>
+Account:
+---------
+address
+wei balance
+Map&lt;256b,256b> storage
+         </pre }>
+     <ul>
+       <li { >There are two kinds of accounts in Ethereum which share the same address space:
+         <ul>
+           <li>External account : controlled by public-private key pairs (i.e. humans)<br/>
+               account.address: determined from the public key</li>
+           <li>contract accounts: controlled by the code stored together with the account. 
+               account.address in a contract is determined at the time the contract is created derived from the nonce = function(creator address, num.transactions sent)</li>
+         </ul>
+       </li }>
+       <li>account.balance: can be modified by sending transactions that include Ethers.</li>
+       <li { >account.storage: Persistent memory area 
+         <ul>
+           <li>It is not possible to enumerate storage from within a contract </li>
+           <li>It is comparatively costly to read and even more so, to modify storage</li>
+           <li>A contract can neither read nor write to any storage apart from its own</li>
+         </ul>
+       </li } >
+     </ul>
+  </td>
+  <td col2 >
+         <pre>
+Message Calls
+-------------
+sender
+target(can be==sender)
+payload
+ether
+gas
+return data
+         </pre>
+     <ul>
+       <li>
+Contracts can user message calls to call other contracts or send Ether to non-contract accounts.
+
+Every transaction consists of a top-level message call which in turn can create further message calls.
+
+contracts can decide how much of its remaining gas should be sent with the inner message call and how much it wants to retain. If an out-of-gas exception happens in the inner call (or any other exception), this will be signalled by an error value put onto the stack. In this case, only the gas sent together with the call is used up. In Solidity, the calling contract causes a manual exception by default in such situations, so that exceptions "bubble up" the call stack.
+
+Calls depth is limited to 1024 (Loops must be used over recursive calls)
+
+After finished execution, contracts can return data stored at a preallocated location in the caller’s memory.
+       </li>
+
+       <li>Delegatecall (See libraries): Special variant of a message call, is identical to a 
+           message call apart from the fact that the code at the target address is executed in the context
+           of the calling contract and msg.sender and msg.value do not change their values.<br/>
+           This means that a contract can dynamically load code from a different address at runtime.
+           Storage, current address and balance still refer to the calling contract, only the code is taken from the called address.<br/>
+           This makes it possible to implement the “library” feature in Solidity:
+           Reusable library code that can be applied to a contract’s storage in order to e.g. implement a complex data structure.
+       </li>
+     </ul>
+  </td>  
+  <td col3 >
+    (EVM) Memory:
+     <ul>
+       <li>A contract obtains a freshly cleared instance for each message call</li>
+       <li>Memory is linear and can be addressed at byte level</li>
+       <li>Reads are limited to a width of 256 bits</li>
+       <li>Writes can be either 8 bits or 256 bits wide</li>
+       <li>Memory is expanded by a word (256-bit), when accessing 
+           (either reading or writing) a previously untouched memory word (ie.
+           any offset within a word). At the time of expansion, the cost in gas 
+           must be paid. Memory is more costly the larger it grows (it scales
+           quadratically)
+       </li>
+       <li>calldata: Separate area of memory whe message call payload is placed</li>
+     </ul>
+    <hr/>
+    (EVM) Stack:
+    <ul>
+    <li>EVM memory area list of 256bits up to 1024 elements used for computations</li>
+    <li>The 16 topmost elements can be moved to the top or swaped wih the top ele</li>
+    <li>All other operations take the topmost one (or two, or more) elements and push the result onto the stack</li>
+    <li>top elements can be moved to/from storage/memory, but deeper elements can
+        be accessed without first removing elements on top of them.
+    </li>
+    <li>(EVM)full computational state: can be defined by the tuple:<br/>
+      (block_state, transaction, message, code, memory, stack, pc, gas)
+      block_state = global state = all accounts (balances + storage)
+    </li>
+    <li>selfdestruct(target): Destructor for contract @ address
+      <ul>
+      <li>Remaining Ethers are sent to target</li>
+      <li>storage & code are removed from the blockchain state</li>
+      </ul>
+    </li>
+  </td>  
+</tr }>
+
+<tr {>
+  <th colspan=3 header_delimit }   >Transactions</th>
+</tr }>
+<tr {>
+  <td col1 >
+         <pre {>
+Transaction
+-------------
+address sender
+target
+payload
+wei ether
+wei gasPrice?
+wei gas
+return data
+         </pre }>
+"message" sent from src. account to a target (account or code)
+     <ul>
+       <li><code>transaction.target := address | code | "zero-account"</code>
+         <pre {>
+if target == code 
+   => code is executed
+      input data = transaction.payload 
+if target == "zero.." 
+   => step 1: new contract created
+      step 2: transaccion.payload is executed 
+      step 3: exec. output stored as contract.code
+      (=> trans.payload == code factory of contract code)
+         </pre }>
+       </li>
+       <li>transaction.ether: Price in Wei of one unit of gas, in which VM operations are priced.<br/>
+- The product of gasPrice and gas represents the maximum amount of Wei we are willing to pay for executing the transaction. gasPrice is used by miners to rank transactions for inclusion in the blockchain. 
+       </li>
+       <li>transaction.gas: Its purpose is to limit the amount of work needed to execute the transaction 
+           and to pay for this execution. 
+           transaction creator (sender?) chooses the gas to pay.
+             - If execution gas < transaction.gas => Refund to sender
+             - If execution gas > transaction.gas => out-of-gas exception triggered
+                 (reverts all modifications made to the state in current call frame)
+       </li>
+
+       <li>nonce: increasing numeric value which is used to uniquely identify transactions.
+           A nonce can only be used once and until a transaction is mined, it is possible
+           to send multiple versions of a transaction with the same nonce, however, 
+           once mined, any subsequent submissions will be rejected.
+       </li>
+
+       <li> </li>
+     </ul>
+  </td>  
+  <td col2 >
+     <ul>
+       <li>Calls vs Transactions:
+           <ul>
+             <li>Calls: invoque an smart-contract function and return a value, 
+                 but nothing is mined/verified by the consensus.</li>
+             <li>Transactions: Verified by the consensus miners. 
+                  Expends gases, do not return any value (is asynchronous)
+                  We need events to return the value</li>
+           </ul>
+       </li>
+
+       <li { >state transition function,  APPLY (S, TX) -> S' can be defined as follows:
+         <ol>
+           <li>Check if the transaction is well-formed (ie, has the right number of values), the signature is valid, and the nonce matches the nonce in the sender's account.  If not, return an error.</li>
+           <li>Calculate the transaction fee as STAR_GAS * GAS_PRICE, and determine the sending address from the signature. Subtract the fee from the sender's account balance and increment the sender's nonce. If there is not enought balance to spend, return an error.</li>
+           <li>Initialize GAS = STARTGAS, and take off a certain quantity of gas per byte to pay for the bytes in the transaction.</li>
+           <li>Transfer the transaction value from the sender's account to the receiving account.  If the receiving account does not yet exist, create if. If the receiving account is a contract, run the contract's code either to completion or until the execution runs out of gas.</li>
+           <li>If the value transfer failed because the sender did not have enough money, or the code execution ran out of gas, revert all state changes except the payment of the fees, and add the fees to the miner's account</li>
+           <li>Otherwise, refund the fees for all remaining gas to the sender, and send the fees paid for gas consumed to the miner</li>
+         </ol>
+       </li } >
+       <li {>
+         There are two mechanisms you can use to transact with Ethereum:
+         <ul>
+           <li>Transaction signing via an Ethereum client (geth, parity,...).
+               It forces to have the wallet on the client node and unlock the 
+               account.</li>
+           <li>Offline transaction signing (recomended)
+             The "raw" transaction must be signed first
+             (See https://docs.web3j.io/transactions.html#transaction-mechanisms ->
+             raw transactions for more info)</li>
+         </ul>
+       </li } >
+<!--
+       <li> </li>
+       <li> </li>
+-->
+     </ul>
+  </td>  
+  <td col3 >
+     <ul>
+<!--
+       <li> </li>
+       <li> </li>
+       <li> </li>
+-->
+     </ul>
+  </td>  
+</tr }>
+
+<tr {>
+  <th colspan=3 header_delimit } { >LOGS</th>
+</tr }>
+<tr {>
+  <td col1 >
+     <ul>
+         <li>Logs: It is possible to store data in a specially indexed data structure 
+             that maps all the way up to the block level.<br/>
+             This feature called 'logs' is used to implement events.</li>
+         <li>Contracts *CAN NOT* access log data after it has been created, but they 
+             can be efficiently accessed from outside the blockchain. <br/>
+             Since some part of the log data is stored in bloom filters,
+             it is possible to search for this data in an efficient and cryptographically 
+             secure way, so network peers that do not download the whole blockchain 
+             ("light clients") can still find these logs.</li>
+         <li>Logs were designed to be a form of storage that costs significantly less gas than contract storage:<br/>
+             Logs basically[3] cost 8 gas per byte, whereas contract storage costs 20,000 gas per 32 bytes. 
+             Up to 3 parameters can be indexed.<br/>
+         </li>
+     </ul>
+  </td>  
+  <td col2 >
+     <ul>
+       <li>
+Solidity code:
+             <pre { >
+event EventDepositLog(
+    uint256 indexed _market,
+    address indexed _sender,
+    uint256 _amount,
+     uint256 _time);
+             </pre } >
+JS Client Log monitoring:
+             <pre { >
+  var depositEvent =
+    cryptoExContract.EventDepositLog(
+       {_sender: userAddress} /* filter */, 
+       {fromBlock: 0, toBlock: 'latest'} /* range*1
+    );
+  // *1 If block range ommited => "real-time" event logs
+
+  depositEvent.watch
+     /* to cancel: depositEvent.stopWatching() */(
+    function(err, result) {
+      if (err) { ...    return; }
+      console.log(
+           "_market:"+result.args._market
+         + "_sender:"+result.args._sender );
+    }
+  )
+             </pre } >
+
+       </li>
+     </ul>
+  </td>  
+  <td col3 >
+     <ul>
+<!--
+       <li> </li>
+       <li> </li>
+       <li> </li>
+-->
+     </ul>
+  </td>  
+</tr }>
+
+
+<tr {>
+  <th colspan=3 header_delimit }   >Consensus</th>
+</tr }>
+<tr {>
+  <td col1 >
+     <ul>
+       <li>Ehtereum block validation algorithm:
+         <ol>
+         <li>Check if the previous block referenced exists and is valid</li>
+         <li>Check that the timestamp of the block is greater than that of the referenced previous
+     block and less than 15 minutes into the future.</li>
+         <li>Check that the block number, difficulty, transaction root, uncle root and gas limit 
+     (various low-level Ethereum-specific concepts) are valid.</li>
+         <li>Check that the proof of work on the block is valid</li>
+         <li>Let S[0] be the STATE_ROOT of the previous block</li>
+         <li>Let TX be the block's transaction list, with n transactions. For all in i in 
+     0,...n-1, set S[i+1] = APPLY (S[i],TX[i]). If any applications returns an error, or
+     if the total gas consumed in the block up until this point exceeds the GASLIMIT, 
+     return an error</li>
+         <li>Let S_FINAL be S[n], but adding the block reward paid to the miner</li>
+         <li>Check if S_FINAL is the same as the STATE_ROOT. If it is, the block is valid;
+             otherwise, it is not.</li>
+         </ol>
+       </li>
+       <li>coinbase: In a mining node indicates the address where rewards will go.
+           Must be set to an account owned by miner</li>
+     </ul>
+  </td>  
+  <td col2 >
+     <ul>
+       <li TODO> Proof of work vs Proof of stake</li>
+     </ul>
+  </td>  
+  <td col3 >
+     <ul>
+       <li TODO>CAP Theorem</li>
+     </ul>
+  </td>  
+</tr }>
+
+
+<tr {>
+  <th colspan=3 header_delimit }   >SOLIDITY LANGUAGE</th>
+</tr }>
+
+<tr {>
+  <td col1 >
+     <ul>
+       <li><a href='https://blog.ethereum.org/2016/07/12/build-server-less-applications-mist/'>TUTORIALS: </a></li>
+       <li>function modifiers. 
+         <pre small { >
+modifier inState(State _state)    { if (state != _state) throw;  _;  }
+modifier require(bool _condition) { if (!_condition) throw; _;       }
+
+function confirmPurchase()
+    inState(State.Created)          // precondition
+    require(msg.value == 2 * value) // precondition
+    payable
+    { 
+      ... 
+    }
+         </pre } >
+       <li>
+       <li>Imports:
+         <pre { >
+import ""filename"";
+import * as symbolName from ""filename"";
+import {symbol1 as alias, symbol2} from ""filename"";
+import ""filename"" as symbolName;
+         </pre } >
+       </li>
+       <li>Structs
+         <pre { >
+struct Voter {
+  uint weight;
+  bool voted;
+}
+         </pre } >
+       </li>
+       <li>Enums:
+         <pre { >
+enum State { Created, Locked, Inactive }
+         </pre } >
+       </li>
+       <li>Address:
+         <pre { >
+addressInstance.balance (uint256): balance in Wei
+addressInstance.transfer(uint256 amount): 
+              msg.sender ->(amount in wei) ->addressInstance
+              throws on failure 
+
+addressInstance.send(uint256 amount): returns (bool):
+              msg.sender ->(amount in wei) ->addressInstance
+              returns true/false, does NOT throw an exception
+         </pre } >
+       </li>
+       <li>In addressInstance.transfer (or send), if addressInstance
+           is a contract address, its code (more specifically: its fallback function, if present) 
+           will be executed together with the transfer call. This is a limitation of the EVM and
+           cannot be prevented. <br/>
+           If that execution runs out of gas or fails in any way, the Ether transfer will be
+           reverted and the current contract will stop with an exception.
+       </li>
+       <li>In var x = 1/4;, x will receive the type ufixed0x8 while in var x = 1/3 it will
+           receive the type ufixed0x256 because 1/3 is not finitely representable in binary 
+           and will thus be approximated.
+       </li>
+       <li>FUNCTIONS:
+         <pre { >
+function 
+  (<parameter_list types>)
+    {internal*|external}
+    [constant]
+    [payable]
+    [returns (<return types>)]
+         </pre } >
+       </li>
+       <li>To use and external/public function f as an internal function,
+           just use f, if you want to use its external form, use this.f
+       </li>
+       <li>
+         <pre { >
+pragma solidity ^0.4.5;
+
+library ArrayUtils {
+  // internal functions can be used in internal library 
+  // functions because (part of same context)
+  function map(uint[] memory self, function (uint) returns (uint) f)
+    internal
+    returns (uint[] memory r)
+  {
+    r = new uint[](self.length);
+    for (uint i = 0; i &lt; self.length; i++) {
+      r[i] = f(self[i]);
+    }
+  }
+
+  function reduce(
+    uint[] memory self,
+    function (uint x, uint y) returns (uint) f
+  )
+    internal
+    returns (uint r)
+  {
+    r = self[0];
+    for (uint i = 1; i &lt; self.length; i++) {
+      r = f(r, self[i]);
+    }
+  }
+
+  function range(uint length) 
+    internal 
+    returns (uint[] memory r) 
+  {
+    r = new uint[](length);
+    for (uint i = 0; i &lt; r.length; i++) {
+      r[i] = i;
+    }
+  }
+}
+         </pre } >
+       </li>
+       <li>
+         <pre { >
+contract Pyramid {
+  using ArrayUtils for *;
+  function pyramid(uint l) returns (uint) {
+    return ArrayUtils.range(l).map(square).reduce(sum);
+  }
+  function square(uint x) internal returns (uint) {
+    return x * x;
+  }
+  function sum(uint x, uint y) internal returns (uint) {
+    return x + y;
+  }
+}
+         </pre } >
+       </li>
+       <li>EXTERNAL FUNCTIONS AND CALLBACKS:
+         <pre { >
+pragma solidity ^0.4.5;
+
+contract Oracle {
+  struct Request {
+    bytes data;
+    function(bytes memory) external callback;
+  }
+  Request[] requests;
+  event NewRequest(uint);
+  function 
+    query(bytes data, function(bytes memory) 
+    external 
+    callback 
+  {
+    requests.push(Request(data, callback));
+    NewRequest(requests.length - 1);
+  }
+
+  function 
+    reply(uint requestID, bytes response) 
+  {
+    // Here goes the check that the
+    // reply comes from a trusted source
+    requests[requestID].callback(response);
+  }
+}
+         </pre } >
+       </li>
+       <li>
+         <pre { >
+contract OracleUser {
+  // known contract
+  Oracle constant oracle = Oracle(0x1234567);
+  function buySomething() {
+    oracle.query(""USD"", this.oracleResponse);
+  }
+  function oracleResponse(bytes response) {
+    if (msg.sender != address(oracle)) throw;
+    // Use the data
+  }
+}
+         </pre } >
+       </li>
+       <li>GLOBAL METHODS:
+         <pre { >
+block.blockhash(uint blockNumber) 
+  returns (bytes32): 
+  hash of the given block - only works for 256 most
+  recent blocks excluding current
+         </pre } >
+       </li>
+       <li>GLOBAL CONTROL METHODS:
+         <pre { >
+assert(bool condition): 
+  throws if condition not met
+revert()              :
+  abort execution, revert state changes 
+selfdestruct(address recipient):
+  destroy current contract
+  send its funds to recipient 
+         </pre } >
+       </li>
+       <li><code>this</code>: (current contract’s type),
+         explicitly convertible to Address
+       </li>
+       <li>GLOBAL VARIABLES:
+         <pre { >
+block.coinbase (address): current block miner’s address
+block.difficulty (uint) : current block difficulty
+block.gaslimit (uint)   : current block gaslimit
+block.number (uint)     : current block number
+block.timestamp (uint)  : current block timestamp
+msg.data (bytes)        : complete calldata
+msg.gas (uint)          : remaining gas
+msg.sender (address)    : sender of the message (current call)
+msg.sig (bytes4)        : first four bytes of the calldata 
+                          (i.e. function identifier)
+msg.value (uint)        : number of wei sent with the message
+now (uint)              : current block timestamp 
+                          (alias for block.timestamp)
+tx.gasprice (uint)      : gas price of the transaction
+tx.origin (address)     : sender of the transaction 
+                          (full call chain)
+         </pre } >
+       </li>
+       <li>GLOBAL Mathematical and Cryptographic Functions
+         <pre { >
+addmod(uint x, uint y, uint k) 
+  returns (uint): /* compute (x + y) % k */
+mulmod(uint x, uint y, uint k)
+  returns (uint): /* compute (x * y) % k */
+keccak256(...)
+  returns (bytes32): compute Ethereum-SHA-3 hash
+                of the (tightly packed) arguments
+sha3(...) 
+  returns (bytes32): alias to keccak256()
+sha256(...) 
+  returns (bytes32): compute SHA-256 hash of the
+                      (tightly packed) arguments
+ripemd160(...) 
+  returns (bytes20): compute RIPEMD-160 hash of 
+  the (tightly packed) arguments
+ecrecover
+  (bytes32 hash, uint8 v, bytes32 r, bytes32 s)
+  returns (address):
+    recover the address associated with the public key 
+    from elliptic curve signature or return zero on error
+         </pre } >
+       </li>
+
+       <li>EXCEPTIONS: CATCHING EXCEPTIONS IS NOT YET POSSIBLE (2017-03-01)!
+        <p>The effect of an exception is that the currently executing call is stopped 
+           and reverted (i.e. all changes to the state and balances are undone) and
+           the exception is also “bubbled up” through Solidity function calls
+           (low-level ""send""|""delegatecall""|""callcode"" will return false)
+        </p>
+        <p>Currently, Solidity automatically generates a runtime exception in the following situations:
+          <li>...</li>
+          <li>If your contract receives Ether via a public function without payable modifier (including the constructor and the fallback function)</li>
+          <li>If your contract receives Ether via a public getter function</li>
+          <li>If you call a zero-initialized variable of internal function type</li>
+          <li>If a addressInstance.transfer() fails</li>
+        <p>a user-provided exception is generated with throw or assert(false condition)<br/>
+           Internally, Solidity performs a revert operation (instruction 0xfd) when a 
+           user-provided exception is thrown.<br/>
+           In contrast, it performs an invalid operation (instruction 0xfe) if a runtime
+           exception is encountered. In both cases, this causes the EVM to revert all
+           changes made to the state.
+        </p>
+       </li>
+<!--
+       <li> </li>
+       <li> </li>
+-->
+     </ul>
+  </td>  
+  <td col2 >
+    Grammar summary extracted from 
+    <a href='https://github.com/ethereum/solidity/blob/develop/docs/grammar.txt'>https://github.com/ethereum/solidity/blob/develop/docs/grammar.txt</a>
+    <pre xxsmall  { >
+{
+Elementary:
+Identifier = [a-zA-Z_$] [a-zA-Z_$0-9]*
+NumberUnit = ('wei' | 'szabo' | 'finney' | 'ether') | ('seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'years')
+(Notice: NumberUnit can NOT be applied to variables, only to literals:
+   M wei;     // &lt;- wrong
+   M * 1 wei; // &lt;- correct
+
+ElementaryTypeName = 'address' /*20 byte*/| 'bool' | 'string' | 'var' 
+     |  'int(8|6|24|32|...|256)' 
+     | 'uint(8|6|24|32|...|256)' 
+     | 'byte(s|1-32)'
+     | 'fixed'  | 'fixed(0|8|16|24|...|256)x(8|16|24|...|256)' &lt;- first+second&lt;=256 
+     | 'ufixed' | 'ufixed(0|8|16|24|...|256)x(8|16|24|...|256)' &lt;- first+second&lt;=256
+}
+
+{
+PrimaryExpression = 
+    Identifier 
+  | ('true' | 'false') 
+  | ( ( (/*HexNumber*/ '0x' [0-9a-fA-F]+) | (/*DecimalNumber*/ [0-9]+) ) (' ' NumberUnit)? ) 
+  | ( 'hex' ('"' ([0-9a-fA-F]{2})* '"' | '\'' ([0-9a-fA-F]{2})* '\'') ) 
+  | (/*StringLiteral*/ '"' ([^"\r\n\\] | '\\' .)* '"') 
+  | ElementaryTypeName
+
+Expression =
+    ( Expression ('++' | '--') 
+      | FunctionCall 
+      | (/*IndexAccess*/ Expression '[' Expression? ']')
+      | (/*MemberAccess*/ Expression '.' Identifier) 
+      | '(' Expression ')' 
+    )
+  | ('!' | '~' | 'delete' | '++' | '--' | '+' | '-') Expression
+  | Expression '**' Expression
+  | Expression ('*' | '/' | '%') Expression
+  | Expression ('+' | '-') Expression
+  | Expression ('&lt;&lt;' | '>>') Expression
+  | Expression '&' Expression
+  | Expression '^' Expression
+  | Expression '|' Expression
+  | Expression ('&lt;' | '>' | '&lt;=' | '>=') Expression
+  | Expression ('==' | '!=') Expression
+  | Expression '&&' Expression
+  | Expression '||' Expression
+  | Expression '?' Expression ':' Expression
+  | Expression ('=' | '|=' | '^=' | '&=' | '&lt;&lt;=' | '>>=' | '+=' | '-=' | '*=' | '/=' | '%=') Expression
+  | Expression? (',' Expression)
+  | PrimaryExpression
+}
+
+{
+TypeNameList = '(' ( TypeName (',' TypeName )* )? ')'
+
+FunctionTypeName = 'function' TypeNameList ( 'internal' | 'external' | 'constant' | 'payable' )*
+                   ( 'returns' TypeNameList )?
+TypeName =
+     ElementaryTypeName 
+   | /*UserDefined*/Identifier ( '.' Identifier )* 
+   | ( 'mapping' '(' ElementaryTypeName '=>' TypeName ')' ) 
+   | (TypeName '[' Expression? ']') 
+   | FunctionTypeName
+
+
+FunctionCall = ( PrimaryExpression | ( 'new' TypeName ) | TypeName ) ( ( '.' Identifier ) | ( '[' Expression ']' ) )* '(' FunctionCallArguments ')'
+
+FunctionDefinition = 'function' Identifier? ParameterList
+                     ( FunctionCall | Identifier | 'constant' | 'payable' | 'external' | 'public' | 'internal' | 'private' )*
+                     ( 'returns' ParameterList )? ( ';' | Block )
+
+ParameterList =        '(' ( TypeName            Identifier? (',' TypeName            Identifier?)* )? ')'
+
+// semantic restriction: mappings & structs (recursively) containing mappings not allowed in argument lists
+}
+
+
+{
+VariableDeclaration = TypeName (/*StorageLocation*/ ('memory' | 'storage'))? Identifier
+VariableDefinition = ('var' (/*IdentifierList*/ '(' ( Identifier? ',' )* Identifier? ')') | VariableDeclaration) ( '=' Expression )?
+SimpleStatement = VariableDefinition | Expression
+}
+
+
+{
+Statement = 
+   (  ('if' '(' Expression ')' Statement ( 'else' Statement )?) 
+   | ('while' '(' Expression ')' Statement)
+   | ('for' '(' (SimpleStatement)? ';' (Expression)? ';' (Expression)? ')' Statement)
+   | ( /*block*/ '{' Statement* '}')
+   | InlineAssemblyStatement 
+   | ('do' Statement 'while' '(' Expression ')' ) 
+   | /*place holder*/'_' 
+   | 'continue' | 'break' | 'return' Expression?  |'throw' 
+   | SimpleStatement )
+   ';'
+}
+
+
+{ Contracts:
+IndexedParameterList = '(' ( TypeName 'indexed'? Identifier? (',' TypeName 'indexed'? Identifier?)* )? ')'
+
+ContractPart = 
+    ( TypeName ( 'public' | 'internal' | 'private' )? Identifier ('=' Expression)? ';' )
+  | ( 'using' Identifier 'for' ('*' | TypeName) ';' )
+  | ( 'struct' Identifier '{' ( VariableDeclaration ';' (VariableDeclaration ';')* )? '}' ) 
+  | ( 'modifier' Identifier ParameterList? Block )
+  | ( 'event' Identifier IndexedParameterList 'anonymous'? ';' )
+  | ( 'enum' Identifier '{' Identifier? (',' Identifier)* '}' )
+  | FunctionDefinition
+
+InheritanceSpecifier = UserDefinedTypeName ( '(' Expression ( ',' Expression )* ')' )?
+
+ContractDefinition = ( 'contract' | 'library' ) Identifier
+                     ( 'is' InheritanceSpecifier (',' InheritanceSpecifier )* )?
+                     '{' ContractPart* '}'
+}
+
+
+    </pre } >
+     <ul>
+<!--
+       <li> </li>
+       <li> </li>
+       <li> </li>
+-->
+     </ul>
+  </td>  
+  <td col3 >
+     <ul>
+       <li>Simple Coin
+         <pre small { >
+pragma solidity ^0.4.0;
+contract /*Simple*/Coin {
+
+  address public minter; // public => readable ""outside""
+
+  // state variable. Permanently stored in contract storage
+  mapping ( address => uint) public balances;
+
+  event EventSent( address from, address to, uint amount);
+
+  // This is the constructor whose code is run only       
+  // when the contract is created.                        
+                                                          
+  function Coin() { minter = msg.sender; }                
+
+  function mint( address receiver, uint amount) {         
+    if (msg.sender != minter) return ;                    
+    balances[receiver] += amount;                         
+  }                                                       
+                                                          
+  function send( address receiver, uint amount) {                 
+    if (balances[msg.sender] &lt; amount) return ;
+      balances[msg.sender] -= amount;
+      balances[receiver] += amount;
+      EventSent(msg.sender, receiver, amount);
+  }
+
+  function arithmetics(uint _a, uint _b)
+    // returns 2-tuple 
+    returns (uint o_sum, uint o_product) {
+    // alt return (o_sum, o_product) -
+    o_sum = _a + _b;
+    o_product = _a * _b;
+  }
+}
+         </pre } >
+
+// JS to use it:
+         <pre small { >
+Coin.Sent().watch(
+ {},
+ '',
+ function (error, result) {
+   if (!error) {
+     console.log(""Coin transfer: "" + result.args.amount +
+       "" coins were sent from "" + result.args.from +
+       "" to "" + result.args.to + ""."");
+  
+     console.log(""Balances now:\n"" +
+       ""Sender: "" + Coin.balances.call(result.args.from) +
+       ""Receiver: "" + Coin.balances.call(result.args.to));
+   }
+}
+         </pre } >
+       </li>
+
+<!--
+       <li> </li>
+       <li> </li>
+       <li> </li>
+-->
+     </ul>
+  </td>  
+</tr }>
+
+
+<tr {>
+  <th colspan=3 header_delimit }   >PRICE CALCULATION</th>
+</tr }>
+
+<tr {>
+  <td col1 >
+     <ul>
+       <li>Extracted from stack-overflow:<br/>
+        <p>
+        Q: """The price of ETH has gone from ~8 USD/ETH to ~90 ETH/USD in 6 months,
+           but when I view transactions on the blockchain (example), I see that most people are still using
+           the default gas price of 2e10 wei/gas. Shouldn't we be lowering the gas prices on our transactions
+           to account for this price change? 
+           I have built a Dapp where low transaction fees are an important selling point. I intend to drop
+           my gas price to 5e9 (a 75% reduction). Will my transactions still clear in a timely fashion?"""
+        </p>
+        <p>
+        A: """Absolutely. Everyone should. There's a great site here that will help you understand gas and gas prices.
+        It's called Ethereum Gas Station: http://ethgasstation.info/
+        They just recently made this post which explains something they call the Safe Gas Price:
+         https://medium.com/@ethgasstation/the-safe-low-gas-price-fb44fdc85b91"""
+       </p>
+</li>
+     </ul>
+  </td>  
+  <td col2 >
+  Wikipedia entries on:
+<a hef='https://en.wikipedia.org/wiki/Hal_Finney_%28computer_scientist%29' >Hal Finney</a>
+<a hef='https://en.wikipedia.org/wiki/Nick_Szabo'                          >Nick Szabo</a>
+<a hef='https://en.wikipedia.org/wiki/Claude_Shannon'                      >Claude Shannon</a>
+<a hef='https://en.wikipedia.org/wiki/Charles_Babbage'                     >Charles Babbage</a>
+<a hef='https://en.wikipedia.org/wiki/Ada_Lovelace'                        >Ada Lovelace</a>
+<a hef='https://en.bitcoin.it/wiki/Wei_Dai'                                >Wei Dai</a>
+
+
+    <a hef='http://ethgasstation.info/calculator.php'>http://ethgasstation.info/calculator.php</a>
+    <pre xsmall { >
+wei                         :                                1 wei      <--- discussion around APIs ...
+gwei(shannon|nanoether|nano):                    1.000.000.000 weis     <--- gas prices
+szabo|microether|micro      :                            1.000 gweis
+finney|milliether|milli     :                        1.000.000 gweis    <--- micropayments
+ether                       :                    1.000.000.000 gweis    <--- main unit
+kether(grand|einstein)      :                            1.000 ethers 
+mether                      :                        1.000.000 ethers
+gether                      :                    1.000.000.000 ethers
+tether                      :                1.000.000.000.000 ethers
+
+200€/ether:
+Transaction gas price: 21000 gas/tx       32bytes Contract storage: 20000 gas
++----------+-----------------+--------+   +----------+-----------------+--------+
+| gasprice | total gas price | total €|   | gasprice | total gas price | total €|
++----------+-----------------+--------+   +----------+-----------------+--------+
+|  1gwei   | 21000 *  1gwei  | 0,0042 |   |  1gwei   | 21000 *  1gwei  | 0,0040 |
+| 20gwei   | 21000 * 20gwei  | 0,0420 |   | 20gwei   | 21000 * 20gwei  | 0,0400 |
++----------+-----------------+--------+   +----------+-----------------+--------+
+
+For a transaction updating 64bytes (32bytes from debitor account to 32bytes creditor account)
++----------+-----------+
+| gasprice | total € *1|
++----------+-----------+
+|  1gwei   |   0,0122  |
+| 20gwei   |   0,2440  |
++----------+-----------+
+
+Logs cost: 375 gas for a LOG operation + 8 gas per log data byte + 375 gas for each topic. 200€/eth:
+
++----------+-----------+----------+--------------------+------------
+|log  size | num.topics| gasprice | total gas price*1  |     total €
++----------+-----------+----------+--------------------+------------
+|1024bytes |     3     |   1gwei  |  9692 *  1gwei     | 0,0019384 €
+| 512bytes |     3     |   1gwei  |  5596 *  1gwei     | 0,0011192 €
+| 256bytes |     1     |   1gwei  |  2798 *  1gwei     | 0,0005596 €
+| 128bytes |     0     |   1gwei  |  1399 *  1gwei     | 0,0002798 €
++----------+-----------+----------+--------------------+------------
+|          |           |  20gwei  |  9692 * 20gwei     | 0,0387680 €
+| 512bytes |     3     |   1gwei  |  5596 *  1gwei     | 0,0223840 €
+| 256bytes |     1     |   1gwei  |  2798 *  1gwei     | 0,0111920 €
+| 128bytes |     0     |   1gwei  |  1399 *  1gwei     | 0,0055960 €
++----------+-----------+----------+--------------------+------------
+
+(375 gas/LOG * 1LOG ) + (8 gas/byte * 1024byte) + (375 gas/topic * 3 topic) = 375 + 8192 + 1125 = 9692
+(375 gas/LOG * 1LOG ) + (8 gas/byte *  512byte) + (375 gas/topic * 3 topic) = 375 + 4096 + 1125 = 5596
+(375 gas/LOG * 1LOG ) + (8 gas/byte *  512byte) + (375 gas/topic * 1 topic) = 375 + 2048 +  375 = 2798
+(375 gas/LOG * 1LOG ) + (8 gas/byte *  128byte) + (375 gas/topic * 0 topic) = 375 + 1024        = 1399    
+    </pre } >
+
+  </td>  
+  <td col3 >
+     <ul>
+       <li> </li>
+       <li> </li>
+       <li> </li>
+     </ul>
+  </td>  
+</tr }>
+
+
+
+<tr {>
+  <th colspan=3 header_delimit }   ><a href='http://ethereum.stackexchange.com/questions/269/what-exactly-is-an-ethereum-client-and-what-clients-are-there/335'>TOOLS</a></th>
+</tr }>
+
+<tr {>
+  <td col1 >
+     <ul>
+       <li>(NodeJS) TestRPC Ethereum RPC client for testing and development.<br/>
+         It uses ethereumjs to simulate full client behavior and make developing Ethereum applications much faster. <br/>
+         It also includes all popular RPC functions and features (like events) and can be run deterministically to make development a breeze.<br/>
+         Install: <code> npm install -g ethereumjs-testrpc </code>
+         Can also be embeded in JS code like:
+         <pre>
+// As a Web3 provider:
+var TestRPC = require(""ethereumjs-testrpc"");
+web3.setProvider(TestRPC.provider());
+// As a general http server:
+var TestRPC = require(""ethereumjs-testrpc"");
+var server = TestRPC.server();
+server.listen(port, function(err, blockchain) {...});
+         </pre>
+       </li>
+       <li TODO>Remix (Solidity Browser) https://remix.ethereum.org/</li>
+       <li><a href='http://truffleframework.com/docs/'>Truffle Framework</a>
+        Built-in smart contract compilation, linking, deployment , binary management, testing, <span TODO>Network management for deploying to many public & private networks</span>, Interactive console for direct contract communication, Instant rebuilding of assets during development, External script runner that executes scripts within a Truffle environment.<br/>
+        STEPS:
+       <ol>
+         <li>create working dir for project: <code> $ mkdir demo && cd demo</code></li>
+         <li>Init truffle.<code>$ truffle init</code></li>
+         <li>Dapp work:<br/>
+           <ul>
+             <li><code>$ cp .../""MyContract"".sol contracts</code><br/>
+               (remove default example contracts in ./contracts and migrations/2_deploy_contracts.js  if desired)
+             </li>
+             <li><code>$ "edit" migrations/2_deploy_contracts.js to add MyContract  </code>
+                WARN: ¡¡¡do not touch 1_initial_migration.js!!!
+             </li>
+           </ul>
+         </li>
+         <li>Compile sol to json: WARN: requires solc installed.<br/><code>$ truffle compile</code>
+             (compiles /contracts/*.sol -> build/contracts/*.json )
+              JS clients apps can then use the contract with code similar to:
+              import metacoin_artifacts from '../../build/contracts/MetaCoin.json'
+         </li>
+         <li>Migrate to default network defined in truffle.js (localhost:8545)
+             (Ussually this correspond to the testrpc daemon)
+         </li>
+         <li>$ truffle migrate</li>
+         <li>$ truffle test </li>
+         <li>Deploy to ""real""/""test"" network<br/>
+           <pre>
+$ truffle deploy 
+# sends contract to the Ethe. network. Will also update
+# contracts.json adding the {""address"":...""} for the
+#deployed contract"</li>
+           </pre>
+         <li>Create  ""JS"" front-end app (if profile present)
+         <li><code>$ truffle serve # start web server with front-end</code></li>
+       </ol>
+<!-- TODO:
+config/app.json: build, deploy and ether-node rpc setup
+./app: JS front-end app.
+"tuffle compile generated config/development/contracts.json: 
+Contains the JS interface to the Eth. contract."
+test/example.js:
+Note: 
+ contract.value.call() -> NO new transactions => NO Eth expended
+ contract.setValue(5) -> new transaction => eth expended     
+      
+contract('Example', function(accounts) {
+  it('should do more complex interaction', function(done) {
+    var example = Example.at(Example.deployed_address);
+    example.value.call().then( function(value) {
+      assert.equal(value, 0, 'Value should be zero after deployment');
+    }).then(function() {
+      return example.setValue(5);
+    }).then(function(tx) {
+      return example.value.call();
+    }).then(function(value) {
+      assert.equal(value, 5, 'Value should be five');
+    })
+    .then(done).catch(done);
+  });
+});
+Deploying new contract:
+> web3.eth.getCoinbase(function(e,r) { console.log(e, r); })
+null ""0x82e.....""
+> Example.new({ from: ""=x82e..."" }).then(function(instance) { ... })
+
+-->
+       </li>
+       <li TODO><a href='https://github.com/ethpm/ethpm-js'>https://github.com/ethpm/ethpm-js</a>
+         Javascript library for publishing and consuming Ethereum packages,
+         provides utilities for publishing and consuming Ethereum packages based
+         on the Ethereum Package Manager specification. It is meant to be integrated
+         directly into development tools to support their use of the Ethereum Package Management ecosystem.
+       </li>
+     </ul>
+  </td>  
+  <td col2 >
+<!--
+     <ul>
+       <li> </li>
+       <li> </li>
+       <li> </li>
+     </ul>
+-->
+  </td>  
+  <td col3 >
+     <ul>
+<!--
+       <li> </li>
+       <li> </li>
+       <li> </li>
+-->
+     </ul>
+  </td>  
+</tr }>
+
+<tr {>
+  <th colspan=3 header_delimit } { ><a href='https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20-token-standard.md'>ERC20 Coin/Fungible Assets Contract Interface</a></th>
+</tr }>
+
+<tr {>
+  <td col1 >
+     <ul>
+       <li><a href='https://theethereum.wiki/w/index.php/ERC20_Token_Standard'>ERC20 @ Ethereum WiKi</a></li>
+       <li><a href='https://edcon.io/ppt/two/Dmitry%20Khovratovich_Secure%20Token%20Development%20and%20Deployment_EDCON.pdf'>Problems with the Standard</a></li>
+       <li><a href='https://tokenmarket.net/what-is/ethereum-token-wallets/'>ERC20 compliant wallets</a></li>
+<!--
+       <li> </li>
+       <li> </li>
+-->
+     </ul>
+  </td>  
+  <td col2 >
+    Example implementations
+    <ul>
+      <li><a href="https://github.com/OpenZeppelin/zeppelin-solidity/blob/master/contracts/token/StandardToken.sol">OpenZeppelin StandardToken.sol</a></li>
+      <li><a href="https://github.com/ConsenSys/Tokens/blob/master/contracts/StandardToken.sol">ConsenSys StandardToken.sol</a></li>
+    </ul>
+    <ul>
+<!--
+       <li> </li>
+       <li> </li>
+       <li> </li>
+-->
+     </ul>
+  </td>  
+  <td col3 >
+     <ul>
+       <li><a href='https://etherscan.io/tokens'>Popular Token List @ Etherscan</a></li>
+<!--
+       <li> </li>
+       <li> </li>
+-->
+     </ul>
+  </td>  
+</tr }>
+
+<tr {>
+  <th colspan=3 header_delimit } { TODO >EXTERNAL STORAGE (IPFS, Maidsafe, SWARN,...)</th>
+</tr }>
+<!--
+TODO: Compare with alternative Storage "providers": IPFS , Maidsafe, Storj
+"WARM: Swarm is alpha software. Use at your own risk.
+
+Code is currently at POC 0.2 codename 'sworm'. The source is now in the main branch of the go-ethereum repository. "
+"http://swarm-gateways.net/bzz:/theswarm.eth/
+
+Swarm
+""serverless hosting incentivised peer-to-peer storage and content distribution""
+
+""""""From the end user's perspective, Swarm is not that different from WWW, except that uploads are not to a specific server. The objective is to peer-to-peer storage and serving solution that is DDOS-resistant, zero-downtime, fault-tolerant and censorship-resistant as well as self-sustaining due to a built-in incentive system which uses peer to peer accounting and allows trading resources for payment. Swarm is designed to deeply integrate with the devp2p multiprotocol network layer of Ethereum as well as with the Ethereum blockchain for domain name resolution, service payments and content availability insurance. """"""
+
+""""""Two major features of swarm that sets it apart from other decentralised distributed storage solutions (bittorent, zeronet, IPFS) are 'upload and disappear' and the incentive system. The former refers to fact that Swarm does not only serve content, but it also provides a cloud storage service. Unlike related systems, you do not only publish the fact you host content, but there is a genuine sense in which you can just upload stuff to the swarm and potentially disappear (drop off as a node, disconnect or just operate without storage entirely) right away. Swarm aspires to be the generic storage and delivery service catering for all usecases ranging from serving low latency realtime interactive web applications as well as acting as guaranteed persistent storage for rarely used content. The incentive system makes sure that participating nodes following their rational self interest nontheless converge on an emergent swarm behaviour that is beneficial for the entire system as well as economically self-sustaining. In particular, it allows nodes in the network to pool their bandwidth and storage resources in the most efficient way to collectively provide services. """""""
+here are two kinds of accounts in Ethereum which share the same address space: External accounts that are controlled by public-private key pairs (i.e. humans) and contract accounts which are controlled by the code stored together with the account.
+-->
+<tr {>
+  <th colspan=3 header_delimit } { TODO >FORMAL VERIFICATION</th>
+</tr }>
+<!--
+FORMAL Verification
+https://github.com/pirapira/eth-isabelle
+https://github.com/pirapira/ethereum-formal-verification-overview
+"Why3 Solidity
+Why3 is a platform for deductive program verification. It provides a rich language for specification and programming, called WhyML, and relies on external theorem provers, both automated and interactive, to discharge verification conditions. (See the specific section below for the list of supported provers.) Why3 comes with a standard library of logical theories (integer and real arithmetic, Boolean operations, sets and maps, etc.) and basic programming data structures (arrays, queues, hash tables, etc.). A user can write WhyML programs directly and get correct-by-construction OCaml programs through an automated extraction mechanism. WhyML is also used as an intermediate language for the verification of C, Java, or Ada programs. (See Projects using Why3 below.) Why3 can be easily extended with support for new theorem provers. Why3 can be used as a software library, through an OCaml API. 
+
+"
+"https://forum.ethereum.org/discussion/3779/formal-verification-for-solidity-contracts
+
+""""""We just merged a first pull request that allows Solidity contracts to be formally verified using a toolkit called why3.
+This means that a computer creates and checks a mathematical proof of assertions about the behaviour of the contract.
+Only a small subset of Solidity is supported for now, but that makes it already possible to verify a recursive binary search routine on arrays:
+https://gist.github.com/chriseth/0c671e0dac08c3630f47""""""
+
+""""""How to use it on the example
+The solidity compiler (only solc at latest develop for now) can translate the source code into a different programming language which can be understood by why3 (the language is a dialect of ocaml). To do that, call it as ""solc --formal -o /tmp/output_directory/ source.sol"". Furthermore, using special tags in the Solidity comments of the form ""///@why3 ..."" you can formulate assertions and requirements that can be understood by the why3 framework and will be literally inserted into the generated code.
+
+After that, you can use ""why3 ide /tmp/output_directory/solidity.mlw"" to start a graphical version of the toolkit and perform the verification.
+How to install why3
+I am not aware of any binary packages, so you have to download the source from the website.
+As why3 itself is only a frontend to the real workhorses, the provers, you need to install a prover. I tried ""alt-ergo"" and Z3 - the first is part of the ubuntu distribution, the second has binaries for most platforms.
+
+After installing the prover (and making sure it is in the PATH), call ""why3 config --detect"" and it should detect your prover. """""""
+"Video Tutorial:
+https://www.youtube.com/watch?v=Mzh4fyoaBJ0&feature=youtu.be&list=PL9oaY6Y4QxRZybj86eGItGVApxLXVIXHz"
+https://gitter.im/ethereum/formal-methods
+"https://en.wikipedia.org/wiki/Logical_harmony
+
+Logical harmony, a name coined by Sir Michael Dummett, is a supposed constraint on the rules of inference (https://en.wikipedia.org/wiki/Rules_of_inference) that can be used in a given logical system(https://en.wikipedia.org/wiki/Logical_system)"
+
+-->
+
+
+
+<tr {>
+  <th colspan=3 header_delimit } { TODO >External Inputs (Oracles)</th>
+</tr }>
+<!--
+http://ethereumj.io/blog/2015/09/09/friendly-ether-bot/
+
+""Ethereum is a great system to achieve consensus between an independent peers, but if we want to pump data from the real world into the system , how exactly we do it ?"""
+TODO: Microsoft Cryplets
+TODO: Oracle patterns
+
+-->
+
+<!--
+-->
+<tr {>
+  <th colspan=3 header_delimit } { TODO >TODO_XXX</th>
+</tr }>
+<!--
+-->
+<tr {>
+  <th colspan=3 header_delimit } { TODO >TODO_XXX</th>
+</tr }>
+<!--
+-->
+
+<tr {>
+  <th colspan=3 header_delimit } END></th>
+</tr }>
+</body>
+<!--
+REF: http://www.alanflavell.org.uk/unicode/unidata25.html
+─  ┐  ┠   ┰    ╀   ═   ╠   ╰     ┌─────┬─────┐
+                                 │     │     │
+━  ┑  ┡   ┱    ╁   ║   ╡   ╱     │     │     │
+                                 ├─────┼─────┤
+│  ┒  ┢   ┲    ╂   ╒   ╢   ╲     │     │     │
+                                 │     │     │
+┃  ┓  ┣   ┳    ╃   ╓   ╣   ╳     └─────┴─────┘
+                                 ← ↑
+┄  └  ┤   ┴    ╄   ╔   ╤   ╴     → ↓
+
+┅  ┕  ┥   ┵    ╅   ╕   ╥   ╵     ┌─────────┐
+                                 │         │
+┆  ┖  ┦   ┶    ╆   ╖   ╦   ╶     │         │
+                                 │         │
+┇  ┗  ┧   ┷    ╇   ╗   ╧   ╷     │         │
+                                 └─────────┘
+┈  ┘  ┨   ┸    ╈   ╘   ╨   ╸ 
+
+┉  ┙  ┩   ┹    ╉   ╙   ╩   ╹ 
+
+┊  ┚  ┪   ┺    ╊   ╚   ╪   ╺ 
+
+┋  ┛  ┫   ┻    ╋   ╛   ╫   ╻ 
+
+┌  ├  ┬   ┼    ╌   ╜   ╬   ╼ 
+
+┍  ┝  ┭   ┽    ╍   ╝   ╭   ╽ 
+
+┎  ┞  ┮   ┾    ╎   ╞   ╮   ╾ 
+
+┏  ┟  ┯   ┿    ╏   ╟   ╯   ╿ 
+
+-->
+<!--
+TODO:
+_______________________________________________________
+See also alternatives to Whisper: "Message Contract" and "Telehash"
+https://github.com/ethereum/wiki/wiki/Whisper
+"""""""
+In a nutshell whisper is a communication protocol for DApps to communicate with each other.
+Use case
+    DApps that need to publish small amounts of information to each other and have the publication last some substantial amount of time. For example, a currency exchange DApp may use it to record an offer to sell some currency at a particular rate on an exchange. In this case, it may last anything between tens of minutes and days. The offer wouldn't be binding, merely a hint to get a potential deal started.
+
+    DApps that need to signal to each other in order to ultimately collaborate on a transaction. For example, a currency exchange DApp may use it to coordinate an offer prior to creating one (or two, depending on how the exchange is structured) transactions on the exchange.
+
+    DApps that need to provide non-real-time hinting or general communications between each other. E.g. a small chat-room app.
+
+    DApps that need to provide dark (plausible denial over perfect network traffic analysis) comms to two correspondents that know nothing of each other but a hash. This could be a DApp for a whistleblower to communicate to a known journalist exchange some small amount of verifiable material and arrange between themselves for some other protocol (Swarm, perhaps) to handle the bulk transfer.
+""""""
+"
+_______________________________________________________
+_______________________________________________________
+RPC Methods: JS API to Ethereum network:
+https://github.com/ethereum/wiki/wiki/JavaScript-API
+"eth_accounts                                           eth_getTransactionCount
+eth_blockNumber                                        eth_getTransactionReceipt
+eth_call                                               eth_hashrate
+eth_coinbase                                           eth_mining
+eth_compileSolidity                                    eth_newBlockFilter
+eth_estimateGas                                        eth_newFilter (includes log/event filters)
+eth_gasPrice                                           eth_sendTransaction
+eth_getBalance                                         eth_sendRawTransaction
+eth_getBlockByNumber                                   eth_sign
+eth_getBlockByHash                                     eth_syncing
+eth_getCode (only supports block number “latest”)      eth_uninstallFilter
+eth_getCompilers                                       net_listening
+eth_getFilterChanges                                   net_peerCount
+eth_getFilterLogs                                      net_version
+eth_getLogs                                            miner_start
+eth_getStorageAt                                       miner_stop
+eth_getTransactionByHash                               rpc_modules
+eth_getTransactionByBlockHashAndIndex                  web3_clientVersion
+eth_getTransactionByBlockNumberAndIndex                web3_sha3
+_______________________________________________________
+_______________________________________________________
+Geth:
+"- Keys are stored under <DATADIR>/keystore(backup regularly)
+- keyfiles format(2017-05): UTC--<created_at UTC ISO8601>-<address hex>
+
+geth account [arguments...]
+geth account help <subcommand>
+      subcommand:
+    - new       :  create new accounts. Will ask for password/passphrase. Will return public address {168bc315a2ee09042d83d7c5811b533620531f67}
+    - list      :  list all existing accounts. Example
+                    | Account #0: {a94f5374fce5edbc8e2a8697c15331677e6ebf0b}
+                    | Account #1: {c385233b188811c9f355d4caec14df86d6248235}
+                    | Account #2: {7f444580bfef4b9bc7e14eb7fb2a029336b07c9d}
+    - import    :  import a private key into a new account
+                    | $ geth --datadir /someOtherEthDataDir  account import ./key.prv
+                    | The new account will be encrypted with a passphrase.
+                    | Please enter a passphrase now.
+                    | Passphrase:
+                    | Repeat Passphrase:
+                    | Address: {7f444580bfef4b9bc7e14eb7fb2a029336b07c9d}
+    -           :   | export (unencrypted format >>NOT<< supported)
+    - update    :  migrate to newest key format. account will be saved in newest version in encrypted format
+                   you are prompted for passphrase to unlock old-format account wallet and another to save updated file
+                   (can also be used to change file/wallet password)
+                    | $ geth account update a94f5374fce5edbc8e2a8697c15331677e6ebf0b
+                    | Unlocking account a94f5374fce5edbc8e2a8697c15331677e6ebf0b | Attempt 1/3
+                    | Passphrase:
+                    | 0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b
+                    | Account 'a94f5374fce5edbc8e2a8697c15331677e6ebf0b' unlocked.
+                    | Please give a new password. Do not forget this password.
+                    | Passphrase:
+                    | Repeat Passphrase:
+                    | 0xa94f5374fce5edbc8e2a8697c15331677e6ebf0b
+
+    -           :  change password
+
+
+
+using account NON-interactively (not connected to a geth node):
+   STEP 1: unlock account wallet for one session: 
+   $ getch ??? --unlock <comma_separated_account_list>(in hex)  # with on list -> first found account
+   Example:
+   $ geth --unlock primary --rpccorsdomain localhost --verbosity 6 2>> geth.log 
+   $ geth --unlock "0x407d73d8a49eeb85d32cf465507dd71d507100c1,0,5,e470b1a7d2c9c5c6f03bbaa8fa20db6d404a0c32"
+
+
+CHECKING ACCOUNT BALANCES FROM GETH CONSOLE
+    $ cat /Users/username/gethload.js
+    function checkAllBalances() {
+        var totalBal = 0;
+        for (var acctNum in eth.accounts) {
+            var acct = eth.accounts[acctNum];
+            var acctBal = web3.fromWei(eth.getBalance(acct), "ether");
+            totalBal += parseFloat(acctBal);
+            console.log("  eth.accounts[" + acctNum + "]: \t" + acct + " \tbalance: " + acctBal + " ether");
+        }
+        console.log("  Total balance: " + totalBal + " ether");
+    };
+    ---------------------
+    > loadScript("/Users/username/gethload.js")
+    > checkAllBalances();
+      eth.accounts[0]: 0xd1ade25ccd3d550a7eb532ac759cac7be09c2719         balance: 63.11848 ether
+      eth.accounts[1]: 0xda65665fc30803cb1fb7e6d86691e20b1826dee0         balance: 0 ether
+      eth.accounts[2]: 0xe470b1a7d2c9c5c6f03bbaa8fa20db6d404a0c32         balance: 1 ether
+_______________________________________________________
+j
+______________________________________________
+
+{
+"Alt 2: npm / Node.js
+     $ npm install solc
+ or  $ sudo npm install -g solc
+
+This is probably the most portable and most convenient way to install Solidity locally. A platform-independent JavaScript library is provided by compiling the C++ source into JavaScript using Emscripten for browser-solidity and there is also an npm package available.To install it, simply use
+"
+}
+
+
+{ INSTALL SOLIDITY COMPILER (solc)    
+Alt 1   "npm / Node.js
+     $ npm install solc
+ or  $ sudo npm install -g solc
+
+This is probably the most portable and most convenient way to install Solidity locally. A platform-independent JavaScript library is provided by compiling the C++ source into JavaScript using Emscripten for browser-solidity and there is also an npm package available.To install it, simply use"   
+Alt 2   "PPAs for Ubuntu. For the latest stable version.
+Solidity Documentation, Release 0.4.8-develop
+sudo add-apt-repository ppa:ethereum/ethereum
+sudo apt-get update
+sudo apt-get install solc
+
+If you want to use the cutting edge developer version:
+sudo add-apt-repository ppa:ethereum/ethereum
+sudo add-apt-repository ppa:ethereum/ethereum-dev
+sudo apt-get update
+sudo apt-get install solc"  
+}
+_____________________________________
+LexiFi's Modeling Language for Finance
+
+Screenshot
+
+Developed by the company LexiFi, the Modeling Language for Finance (MLFi) is the first formal language that accurately describes the most sophisticated capital market, credit, and investment products. MLFi is implemented as an extension of OCaml.
+
+MLFi users derive two important benefits from a functional programming approach. First, the declarative formalism of functional programming languages is well suited for specifying complex data structures and algorithms. Second, functional programming languages have strong list processing capabilities. Lists play a central role in finance where they are used extensively to define contract event and payment schedules.
+
+In addition, MLFi provides crucial business integration capabilities inherited from OCaml and related tools and libraries. This enables users, for example, to interoperate with C and Java programs, manipulate XML schemas and documents, and interface with SQL databases.
+
+Data models and object models aiming to encapsulate the definitions and behavior of financial instruments were developed by the banking industry over the past two decades, but face inherent limitations that OCaml helped overcome.
+
+LexiFi's approach to modeling complex financial contracts received an academic award in 2000, and the MLFi implementation was elected “Software Product of the Year 2001” by the magazine Risk, the leading financial trading and risk management publication. MLFi-based solutions are gaining growing acceptance throughout Europe and are contributing to spread the use of OCaml in the financial services industry
+___________________________
+The ASTRÉE Static Analyzer
+
+David Monniaux (CNRS), member of the ASTRÉE project, says: “ASTRÉE is a static analyzer based on abstract interpretation that aims at proving the absence of runtime errors in safety-critical software written in a subset of the C programming language.”
+
+“Automatically analyzing programs for exactly checking properties such as the absence of runtime errors is impossible in general, for mathematical reasons. Static analysis by abstract interpretation works around this impossibility and proves program properties by over-approximating the possible behaviors of the program: it is possible to design pessimistic approximations that, in practice, allow proving the desired property on a wide range of software.”
+
+“So far, ASTRÉE has proved the absence of runtime errors in the primary control software of the Airbus A340 family. This would be impossible by software testing, for testing only considers a limited subset of the test cases, while abstract interpretation considers a superset of all possible outcomes of the system.”
+
+“ASTRÉE is written in OCaml and is about 44000 lines long (plus external libraries). We needed a language with good performance (speed and memory usage) on reasonable equipment, easy support for advanced data structures, and type and memory safety. OCaml also allows for modular, clear and compact source code and makes it easy to work with recursive structures such as syntax trees.”
+
+____________________________________________
+
+    <hr/>
+    Libraries: similar to contracts, but their purpose is that
+    they are deployed only once at a specific address and their code is reused
+    using the DELEGATECALL (CALLCODE until Homestead) feature of the EVM. 
+    In comparison to contracts:
+    <ul>
+      <li>No state variables</li>
+      <li>Cannot inherit nor be inherited</li>
+      <li>Cannot recieve Ether</li>
+    </ul>
+____________________________________________
+
+'Ethereum client' refers to any node able to parse and verify the blockchain, its smart contracts ... .
+ It also provides (JSON-RPC?) interfaces to create transactions and mining"
+____________________________________________
+
+Third party non-official clients:
+
+parity (Rust client): https://github.com/ethcore/parity
+
+ethereumj Java client: https://github.com/ethereum/ethereumj
+
+ethereumjs-vm: https://github.com/ethereumjs/ethereumjs-vm
+
+node-blockchain-server: https://github.com/ethereumjs/node-blockchain-server
+
+____________________________________________
+TODO: Smart-Contracts Best Practices
+
+-->
+</html>

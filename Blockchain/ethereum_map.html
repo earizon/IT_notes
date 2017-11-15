@@ -101,12 +101,11 @@ img[xxxsmall]{ max-width:10rem; }
 *[small]   { font-size:0.9rem; }
 ul { margin-left: 1.0em; padding-left: 0rem; }
 #zoomDiv [xxxsmall] , #zoomDiv * [xxxsmall], #zoomDiv * * [xxxsmall], #zoomDiv * * * [xxxsmall]{ font-size:1em; } 
-#zoomDiv img[xxxsmall] , #zoomDiv * img[xxxsmall], #zoomDiv * * img[xxxsmall], #zoomDiv * * * img[xxxsmall]{ max-width:100%; } 
+#zoomDiv [xxsmall]  , #zoomDiv * [xxsmall] , #zoomDiv * * [xxsmall] , #zoomDiv * * * [xxsmall] { font-size:1em; }
+#zoomDiv [xsmall]   , #zoomDiv * [xsmall]  , #zoomDiv * * [xsmall]  , #zoomDiv * * * [xsmall]  { font-size:1em; }
+#zoomDiv [small]    , #zoomDiv * [small]   , #zoomDiv * * [small]   , #zoomDiv * * * [small]   { font-size:1em; }
 
-#zoomdiv [xxsmall]  , #zoomdiv * [xxsmall] , #zoomdiv * * [xxsmall] , #zoomdiv * * * [xxsmall] { font-size:1em; }
-#zoomdiv [xsmall]   , #zoomDiv * [xsmall]  , #zoomDiv * * [xsmall]  , #zoomDiv * * * [xsmall]  { font-size:1em; }
-#zoomdiv [small]    , #zoomDiv * [small]   , #zoomDiv * * [small]   , #zoomDiv * * * [small]   { font-size:1em; }
-
+#zoomDiv img[xxxsmall] , #zoomDiv * img[xxxsmall], #zoomDiv * * img[xxxsmall], #zoomDiv * * * img[xxxsmall]{ max-width:100%; }
 body      { font-family:sans-serif; font-size:16px; padding: 0; margin: 0; }
 #zoomDiv  { 
    position:fixed; top:1%; left:1%; width:auto; height:auto;
@@ -166,6 +165,7 @@ Map&lt;256b,256b> storage
            <li>A contract can neither read nor write to any storage apart from its own</li>
          </ul>
        </li } >
+
      </ul>
   </td>
   <td col2 >
@@ -331,8 +331,25 @@ if target == "zero.."
   </td>  
   <td col3 >
      <ul>
+       <li>Transactions in solidity:
+         <pre { >
+addressInstance.balance (uint256): balance in Wei
+addressInstance.transfer(uint256 amount): 
+    msg.sender ->(amount in wei) ->addressInstance
+    throws on failure 
+
+addressInstance.send(uint256 amount): returns (bool):
+    msg.sender ->(amount in wei) ->addressInstance
+    returns true/false, does NOT throw an exception
+         </pre } >
+         In addressInstance.transfer (or send), if addressInstance
+         is a contract address, its code (more specifically: its fallback function, if present) 
+         will be executed together with the transfer call. This is a limitation of the EVM and
+         cannot be prevented. <br/>
+         If that execution runs out of gas or fails in any way, the Ether transfer will be
+         reverted and the current contract will stop with an exception.
+       </li>
 <!--
-       <li> </li>
        <li> </li>
        <li> </li>
 -->
@@ -449,28 +466,39 @@ JS Client Log monitoring:
 
 
 <tr {>
-  <th colspan=3 header_delimit }   >SOLIDITY LANGUAGE</th>
+  <th colspan=3 header_delimit }   ><a href='http://solidity.readthedocs.io/en/develop/'>SOLIDITY LANGUAGE</a></th>
 </tr }>
 
 <tr {>
   <td col1 >
      <ul>
        <li><a href='https://blog.ethereum.org/2016/07/12/build-server-less-applications-mist/'>TUTORIALS: </a></li>
-       <li>function modifiers. 
+       <li>FUNCTIONS:
          <pre small { >
 modifier inState(State _state)    { if (state != _state) throw;  _;  }
 modifier require(bool _condition) { if (!_condition) throw; _;       }
 
-function confirmPurchase()
+function confirmPurchase(<parameter_list types>)
     inState(State.Created)          // precondition
     require(msg.value == 2 * value) // precondition
-    payable
+    [(internal|private)|(external|public))]
+    [pure]
+    [constant]
+    [payable]
+    [view]
+    [returns (<return types>)]
     { 
       ... 
     }
          </pre } >
-       <li>
-       <li>Imports:
+         To use and external function f as an internal function,
+         just use f, if you want to use its external form, use this.f (not recomended) <br/>
+         external vs public: (Best practice) use external if function will only ever be called externally
+         and use public if function will also be called internally.
+         external avoid copying parameters twice (very important with big arrays)<br/>
+         private: only this contract vs internal: only this contract and child ones.
+       </li>
+       <li>IMPORTS:
          <pre { >
 import ""filename"";
 import * as symbolName from ""filename"";
@@ -478,245 +506,23 @@ import {symbol1 as alias, symbol2} from ""filename"";
 import ""filename"" as symbolName;
          </pre } >
        </li>
-       <li>Structs
+       <li>STRUCTS, ENUMS
          <pre { >
-struct Voter {
-  uint weight;
-  bool voted;
-}
-         </pre } >
-       </li>
-       <li>Enums:
-         <pre { >
-enum State { Created, Locked, Inactive }
-         </pre } >
-       </li>
-       <li>Address:
-         <pre { >
-addressInstance.balance (uint256): balance in Wei
-addressInstance.transfer(uint256 amount): 
-              msg.sender ->(amount in wei) ->addressInstance
-              throws on failure 
+struct Voter {   ┃ enum State {
+  uint weight;   ┃    Created,
+  bool voted;    ┃    Locked,
+}                ┃    Inactive 
+                 ┃ }
 
-addressInstance.send(uint256 amount): returns (bool):
-              msg.sender ->(amount in wei) ->addressInstance
-              returns true/false, does NOT throw an exception
-         </pre } >
-       </li>
-       <li>In addressInstance.transfer (or send), if addressInstance
-           is a contract address, its code (more specifically: its fallback function, if present) 
-           will be executed together with the transfer call. This is a limitation of the EVM and
-           cannot be prevented. <br/>
-           If that execution runs out of gas or fails in any way, the Ether transfer will be
-           reverted and the current contract will stop with an exception.
-       </li>
-       <li>In var x = 1/4;, x will receive the type ufixed0x8 while in var x = 1/3 it will
-           receive the type ufixed0x256 because 1/3 is not finitely representable in binary 
-           and will thus be approximated.
-       </li>
-       <li>FUNCTIONS:
-         <pre { >
-function 
-  (<parameter_list types>)
-    {internal*|external}
-    [constant]
-    [payable]
-    [returns (<return types>)]
-         </pre } >
-       </li>
-       <li>To use and external/public function f as an internal function,
-           just use f, if you want to use its external form, use this.f
-       </li>
-       <li>
-         <pre { >
-pragma solidity ^0.4.5;
-
-library ArrayUtils {
-  // internal functions can be used in internal library 
-  // functions because (part of same context)
-  function map(uint[] memory self, function (uint) returns (uint) f)
-    internal
-    returns (uint[] memory r)
-  {
-    r = new uint[](self.length);
-    for (uint i = 0; i &lt; self.length; i++) {
-      r[i] = f(self[i]);
-    }
-  }
-
-  function reduce(
-    uint[] memory self,
-    function (uint x, uint y) returns (uint) f
-  )
-    internal
-    returns (uint r)
-  {
-    r = self[0];
-    for (uint i = 1; i &lt; self.length; i++) {
-      r = f(r, self[i]);
-    }
-  }
-
-  function range(uint length) 
-    internal 
-    returns (uint[] memory r) 
-  {
-    r = new uint[](length);
-    for (uint i = 0; i &lt; r.length; i++) {
-      r[i] = i;
-    }
-  }
-}
          </pre } >
        </li>
        <li>
          <pre { >
-contract Pyramid {
-  using ArrayUtils for *;
-  function pyramid(uint l) returns (uint) {
-    return ArrayUtils.range(l).map(square).reduce(sum);
-  }
-  function square(uint x) internal returns (uint) {
-    return x * x;
-  }
-  function sum(uint x, uint y) internal returns (uint) {
-    return x + y;
-  }
-}
-         </pre } >
-       </li>
-       <li>EXTERNAL FUNCTIONS AND CALLBACKS:
-         <pre { >
-pragma solidity ^0.4.5;
-
-contract Oracle {
-  struct Request {
-    bytes data;
-    function(bytes memory) external callback;
-  }
-  Request[] requests;
-  event NewRequest(uint);
-  function 
-    query(bytes data, function(bytes memory) 
-    external 
-    callback 
-  {
-    requests.push(Request(data, callback));
-    NewRequest(requests.length - 1);
-  }
-
-  function 
-    reply(uint requestID, bytes response) 
-  {
-    // Here goes the check that the
-    // reply comes from a trusted source
-    requests[requestID].callback(response);
-  }
-}
-         </pre } >
-       </li>
-       <li>
-         <pre { >
-contract OracleUser {
-  // known contract
-  Oracle constant oracle = Oracle(0x1234567);
-  function buySomething() {
-    oracle.query(""USD"", this.oracleResponse);
-  }
-  function oracleResponse(bytes response) {
-    if (msg.sender != address(oracle)) throw;
-    // Use the data
-  }
-}
-         </pre } >
-       </li>
-       <li>GLOBAL METHODS:
-         <pre { >
-block.blockhash(uint blockNumber) 
-  returns (bytes32): 
-  hash of the given block - only works for 256 most
-  recent blocks excluding current
-         </pre } >
-       </li>
-       <li>GLOBAL CONTROL METHODS:
-         <pre { >
-assert(bool condition): 
-  throws if condition not met
-revert()              :
-  abort execution, revert state changes 
-selfdestruct(address recipient):
-  destroy current contract
-  send its funds to recipient 
-         </pre } >
-       </li>
-       <li><code>this</code>: (current contract’s type),
-         explicitly convertible to Address
-       </li>
-       <li>GLOBAL VARIABLES:
-         <pre { >
-block.coinbase (address): current block miner’s address
-block.difficulty (uint) : current block difficulty
-block.gaslimit (uint)   : current block gaslimit
-block.number (uint)     : current block number
-block.timestamp (uint)  : current block timestamp
-msg.data (bytes)        : complete calldata
-msg.gas (uint)          : remaining gas
-msg.sender (address)    : sender of the message (current call)
-msg.sig (bytes4)        : first four bytes of the calldata 
-                          (i.e. function identifier)
-msg.value (uint)        : number of wei sent with the message
-now (uint)              : current block timestamp 
-                          (alias for block.timestamp)
-tx.gasprice (uint)      : gas price of the transaction
-tx.origin (address)     : sender of the transaction 
-                          (full call chain)
-         </pre } >
-       </li>
-       <li>GLOBAL Mathematical and Cryptographic Functions
-         <pre { >
-addmod(uint x, uint y, uint k) 
-  returns (uint): /* compute (x + y) % k */
-mulmod(uint x, uint y, uint k)
-  returns (uint): /* compute (x * y) % k */
-keccak256(...)
-  returns (bytes32): compute Ethereum-SHA-3 hash
-                of the (tightly packed) arguments
-sha3(...) 
-  returns (bytes32): alias to keccak256()
-sha256(...) 
-  returns (bytes32): compute SHA-256 hash of the
-                      (tightly packed) arguments
-ripemd160(...) 
-  returns (bytes20): compute RIPEMD-160 hash of 
-  the (tightly packed) arguments
-ecrecover
-  (bytes32 hash, uint8 v, bytes32 r, bytes32 s)
-  returns (address):
-    recover the address associated with the public key 
-    from elliptic curve signature or return zero on error
+var x = 1/4; // x type: ufixed0x8 
+var x = 1/3  // x type: ufixed0x256, no finity bin.repre
          </pre } >
        </li>
 
-       <li>EXCEPTIONS: CATCHING EXCEPTIONS IS NOT YET POSSIBLE (2017-03-01)!
-        <p>The effect of an exception is that the currently executing call is stopped 
-           and reverted (i.e. all changes to the state and balances are undone) and
-           the exception is also “bubbled up” through Solidity function calls
-           (low-level ""send""|""delegatecall""|""callcode"" will return false)
-        </p>
-        <p>Currently, Solidity automatically generates a runtime exception in the following situations:
-          <li>...</li>
-          <li>If your contract receives Ether via a public function without payable modifier (including the constructor and the fallback function)</li>
-          <li>If your contract receives Ether via a public getter function</li>
-          <li>If you call a zero-initialized variable of internal function type</li>
-          <li>If a addressInstance.transfer() fails</li>
-        <p>a user-provided exception is generated with throw or assert(false condition)<br/>
-           Internally, Solidity performs a revert operation (instruction 0xfd) when a 
-           user-provided exception is thrown.<br/>
-           In contrast, it performs an invalid operation (instruction 0xfe) if a runtime
-           exception is encountered. In both cases, this causes the EVM to revert all
-           changes made to the state.
-        </p>
-       </li>
 <!--
        <li> </li>
        <li> </li>
@@ -726,11 +532,12 @@ ecrecover
   <td col2 >
     Grammar summary extracted from 
     <a href='https://github.com/ethereum/solidity/blob/develop/docs/grammar.txt'>https://github.com/ethereum/solidity/blob/develop/docs/grammar.txt</a>
-    <pre xxsmall  { >
+    <pre xsmall  { >
 {
 Elementary:
 Identifier = [a-zA-Z_$] [a-zA-Z_$0-9]*
-NumberUnit = ('wei' | 'szabo' | 'finney' | 'ether') | ('seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'years')
+NumberUnit = ('wei' | 'szabo' | 'finney' | 'ether') |
+             ('seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'years')
 (Notice: NumberUnit can NOT be applied to variables, only to literals:
    M wei;     // &lt;- wrong
    M * 1 wei; // &lt;- correct
@@ -744,13 +551,7 @@ ElementaryTypeName = 'address' /*20 byte*/| 'bool' | 'string' | 'var'
 }
 
 {
-PrimaryExpression = 
-    Identifier 
-  | ('true' | 'false') 
-  | ( ( (/*HexNumber*/ '0x' [0-9a-fA-F]+) | (/*DecimalNumber*/ [0-9]+) ) (' ' NumberUnit)? ) 
-  | ( 'hex' ('"' ([0-9a-fA-F]{2})* '"' | '\'' ([0-9a-fA-F]{2})* '\'') ) 
-  | (/*StringLiteral*/ '"' ([^"\r\n\\] | '\\' .)* '"') 
-  | ElementaryTypeName
+PrimaryExpression = Identifier | ('true' | 'false')  | (/*DecimalNumber*/ [0-9]+) | ...
 
 Expression =
     ( Expression ('++' | '--') 
@@ -772,7 +573,9 @@ Expression =
   | Expression '&&' Expression
   | Expression '||' Expression
   | Expression '?' Expression ':' Expression
-  | Expression ('=' | '|=' | '^=' | '&=' | '&lt;&lt;=' | '>>=' | '+=' | '-=' | '*=' | '/=' | '%=') Expression
+  | Expression ('=' | '|=' | '^=' | '&=' | 
+                '&lt;&lt;=' | '>>=' | '+=' |
+                '-=' | '*=' | '/=' | '%=') Expression
   | Expression? (',' Expression)
   | PrimaryExpression
 }
@@ -790,13 +593,15 @@ TypeName =
    | FunctionTypeName
 
 
-FunctionCall = ( PrimaryExpression | ( 'new' TypeName ) | TypeName ) ( ( '.' Identifier ) | ( '[' Expression ']' ) )* '(' FunctionCallArguments ')'
+FunctionCall = ( PrimaryExpression | ( 'new' TypeName ) | TypeName ) 
+               ( ( '.' Identifier ) | ( '[' Expression ']' ) )*
+               '(' FunctionCallArguments ')'
 
 FunctionDefinition = 'function' Identifier? ParameterList
-                     ( FunctionCall | Identifier | 'constant' | 'payable' | 'external' | 'public' | 'internal' | 'private' )*
+                     ( FunctionCall | Identifier | 'constant'
+                     | 'payable' | 'external' | 'public'
+                     | 'internal' | 'private' )*
                      ( 'returns' ParameterList )? ( ';' | Block )
-
-ParameterList =        '(' ( TypeName            Identifier? (',' TypeName            Identifier?)* )? ')'
 
 // semantic restriction: mappings & structs (recursively) containing mappings not allowed in argument lists
 }
@@ -921,7 +726,251 @@ Coin.Sent().watch(
      </ul>
   </td>  
 </tr }>
+<tr {>
+  <td col1 >
+     <ul>
+       <li>
+         <pre { >
+pragma solidity ^0.4.5;
 
+library ArrayUtils {
+  // internal functions can be used in internal library 
+  // functions because (part of same context)
+  function map(uint[] memory self, function (uint) returns (uint) f)
+    internal
+    returns (uint[] memory r)
+  {
+    r = new uint[](self.length);
+    for (uint i = 0; i &lt; self.length; i++) {
+      r[i] = f(self[i]);
+    }
+  }
+
+  function reduce(
+    uint[] memory self,
+    function (uint x, uint y) returns (uint) f
+  )
+    internal
+    returns (uint r)
+  {
+    r = self[0];
+    for (uint i = 1; i &lt; self.length; i++) {
+      r = f(r, self[i]);
+    }
+  }
+
+  function range(uint length) 
+    internal 
+    returns (uint[] memory r) 
+  {
+    r = new uint[](length);
+    for (uint i = 0; i &lt; r.length; i++) {
+      r[i] = i;
+    }
+  }
+}
+         </pre } >
+
+         <pre { >
+contract Pyramid {
+  using ArrayUtils for *;
+  function pyramid(uint l) returns (uint) {
+    return ArrayUtils.range(l).map(square).reduce(sum);
+  }
+  function square(uint x) internal returns (uint) {
+    return x * x;
+  }
+  function sum(uint x, uint y) internal returns (uint) {
+    return x + y;
+  }
+}
+         </pre } >
+       </li>
+<!--
+       <li> </li>
+-->
+     </ul>
+  </td>  
+  <td col2 >
+     <ul>
+       <li>EXTERNAL FUNCTIONS AND CALLBACKS:
+         <pre { >
+pragma solidity ^0.4.5;
+
+contract Oracle {
+  struct Request {
+    bytes data;
+    function(bytes memory) external callback;
+  }
+  Request[] requests;
+  event NewRequest(uint);
+  function 
+    query(bytes data, function(bytes memory) 
+    external 
+    callback 
+  {
+    requests.push(Request(data, callback));
+    NewRequest(requests.length - 1);
+  }
+
+  function 
+    reply(uint requestID, bytes response) 
+  {
+    // Here goes the check that the
+    // reply comes from a trusted source
+    requests[requestID].callback(response);
+  }
+}
+         </pre } >
+         <pre { >
+contract OracleUser {
+  // known contract
+  Oracle constant oracle = Oracle(0x1234567);
+  function buySomething() {
+    oracle.query(""USD"", this.oracleResponse);
+  }
+  function oracleResponse(bytes response) {
+    if (msg.sender != address(oracle)) throw;
+    // Use the data
+  }
+}
+         </pre } >
+       </li>
+
+<!--
+       <li> </li>
+       <li> </li>
+       <li> </li>
+-->
+     </ul>
+  </td>  
+  <td col3 >
+     <ul>
+       <li>GLOBAL METHODS:
+         <pre { >
+block.blockhash(uint blockNumber) 
+  returns (bytes32): 
+  hash of the given block - only works for 256 most
+  recent blocks excluding current
+         </pre } >
+       
+         GLOBAL CONTROL METHODS:
+         <pre { >
+assert(bool condition): 
+  throws if condition not met
+revert()              :
+  abort execution, revert state changes 
+selfdestruct(address recipient):
+  destroy current contract
+  send its funds to recipient 
+         </pre } >
+         <code>this</code>: (current contract’s type),
+         explicitly convertible to Address
+       GLOBAL VARIABLES:
+         <pre { >
+block.coinbase (address): current block miner’s address
+block.difficulty (uint) : current block difficulty
+block.gaslimit (uint)   : current block gaslimit
+block.number (uint)     : current block number
+block.timestamp (uint)  : current block timestamp
+msg.data (bytes)        : complete calldata
+msg.gas (uint)          : remaining gas
+msg.sender (address)    : sender of the message (current call)
+msg.sig (bytes4)        : first four bytes of the calldata 
+                          (i.e. function identifier)
+msg.value (uint)        : number of wei sent with the message
+now (uint)              : current block timestamp 
+                          (alias for block.timestamp)
+tx.gasprice (uint)      : gas price of the transaction
+tx.origin (address)     : sender of the transaction 
+                          (full call chain)
+         </pre } >
+       GLOBAL Mathematical and Cryptographic Functions
+         <pre { >
+addmod(uint x, uint y, uint k) 
+  returns (uint): /* compute (x + y) % k */
+mulmod(uint x, uint y, uint k)
+  returns (uint): /* compute (x * y) % k */
+keccak256(...)
+  returns (bytes32): compute Ethereum-SHA-3 hash
+                of the (tightly packed) arguments
+sha3(...) 
+  returns (bytes32): alias to keccak256()
+sha256(...) 
+  returns (bytes32): compute SHA-256 hash of the
+                      (tightly packed) arguments
+ripemd160(...) 
+  returns (bytes20): compute RIPEMD-160 hash of 
+  the (tightly packed) arguments
+ecrecover
+  (bytes32 hash, uint8 v, bytes32 r, bytes32 s)
+  returns (address):
+    recover the address associated with the public key 
+    from elliptic curve signature or return zero on error
+         </pre } >
+       </li>
+<!--
+       <li> </li>
+       <li> </li>
+       <li> </li>
+-->
+     </ul>
+  </td>  
+</tr }>
+
+<tr {>
+  <th colspan=3 header_delimit }   >ERROR CONTROL</th>
+</tr }>
+
+<tr {>
+  <td col1 >
+     <ul>
+       <li>EXCEPTIONS: CATCHING EXCEPTIONS IS NOT YET POSSIBLE (2017-03-01)!
+        <p>The effect of an exception is that the currently executing call is stopped 
+           and reverted (i.e. all changes to the state and balances are undone) and
+           the exception is also “bubbled up” through Solidity function calls
+           (low-level ""send""|""delegatecall""|""callcode"" will return false)
+        </p>
+        <p>Currently, Solidity automatically generates a runtime exception in the following situations:
+          <li>...</li>
+          <li>If your contract receives Ether via a public function without payable modifier (including the constructor and the fallback function)</li>
+          <li>If your contract receives Ether via a public getter function</li>
+          <li>If you call a zero-initialized variable of internal function type</li>
+          <li>If a addressInstance.transfer() fails</li>
+        <p>a user-provided exception is generated with throw or assert(false condition)<br/>
+           Internally, Solidity performs a revert operation (instruction 0xfd) when a 
+           user-provided exception is thrown.<br/>
+           In contrast, it performs an invalid operation (instruction 0xfe) if a runtime
+           exception is encountered. In both cases, this causes the EVM to revert all
+           changes made to the state.
+        </p>
+       </li>
+<!--
+       <li> </li>
+       <li> </li>
+       <li> </li>
+-->
+     </ul>
+  </td>  
+  <td col2 >
+     <ul>
+<!--
+       <li> </li>
+       <li> </li>
+       <li> </li>
+-->
+     </ul>
+  </td>  
+  <td col3 >
+     <ul>
+<!--
+       <li> </li>
+       <li> </li>
+       <li> </li>
+-->
+     </ul>
+  </td>  
+</tr }>
 
 <tr {>
   <th colspan=3 header_delimit }   >PRICE CALCULATION</th>
@@ -1028,6 +1077,7 @@ Logs cost: 375 gas for a LOG operation + 8 gas per log data byte + 375 gas for e
 <tr {>
   <td col1 >
      <ul>
+       <li><a href='http://ethereum.github.io/browser-solidity'>Browser Solidity</a></li>
        <li>(NodeJS) TestRPC Ethereum RPC client for testing and development.<br/>
          It uses ethereumjs to simulate full client behavior and make developing Ethereum applications much faster. <br/>
          It also includes all popular RPC functions and features (like events) and can be run deterministically to make development a breeze.<br/>
@@ -1407,7 +1457,12 @@ CHECKING ACCOUNT BALANCES FROM GETH CONSOLE
       eth.accounts[1]: 0xda65665fc30803cb1fb7e6d86691e20b1826dee0         balance: 0 ether
       eth.accounts[2]: 0xe470b1a7d2c9c5c6f03bbaa8fa20db6d404a0c32         balance: 1 ether
 _______________________________________________________
-j
+ - Libraries / Libraries dispatcher / ...
+ https://blog.aragon.one/library-driven-development-in-solidity-2bebcaf88736
+ https://blog.zeppelin.solutions/proxy-libraries-in-solidity-79fbe4b970fd
+ https://blog.aragon.one/advanced-solidity-code-deployment-techniques-dc032665f434
+ https://blog.zeppelin.solutions/proxy-libraries-in-solidity-79fbe4b970fd
+
 ______________________________________________
 
 {
@@ -1464,6 +1519,70 @@ David Monniaux (CNRS), member of the ASTRÉE project, says: “ASTRÉE is a stat
 “ASTRÉE is written in OCaml and is about 44000 lines long (plus external libraries). We needed a language with good performance (speed and memory usage) on reasonable equipment, easy support for advanced data structures, and type and memory safety. OCaml also allows for modular, clear and compact source code and makes it easy to work with recursive structures such as syntax trees.”
 
 ____________________________________________
+https://ethereum.stackexchange.com/questions/3667/difference-between-call-callcode-and-delegatecall
+Difference between CALL, CALLCODE and DELEGATECALL
+   
+CALL and CALLCODE take the same number of operands (in the execution stack).
+For the exception flag being pushed on top of the stack: 0 means exception, 1 means successful execution.
+CALL is easy to understand, but I could not digest the subtle difference between CALL & CALLCODE. It is stated in the yellow paper that for
+
+CALLCODE: This means that the recipient is in fact the same account as at present, simply that the code is overwritten.
+
+What does it mean by the code is overwritten? Does that mean I can ask the contract to execute some external code? It would be helpful if anyone can provide me an example to differentiate between the two.
+
+EDIT: DELEGATECALL was added in Homestead what is the difference?
+Response:
+DELEGATECALL basically says that I'm a contract and I'm allowing (delegating) you to do whatever you want to my storage. DELEGATECALL is a security risk for the sending contract which needs to trust that the receiving contract will treat the storage well.
+
+DELEGATECALL was a new opcode that was a bug fix for CALLCODE which did not preserve msg.sender and msg.value. If Alice invokes Bob who does DELEGATECALL to Charlie, the msg.sender in the DELEGATECALL is Alice (whereas if CALLCODE was used the msg.sender would be Bob).
+Details
+
+When D does CALL on E, the code runs in the context of E: the storage of E is used.
+
+When D does CALLCODE on E, the code runs in the context of D. So imagine that the code of E is in D. Whenever the code writes to storage, it writes to the storage of account D, instead of E.
+
+contract D {
+  uint public n;
+  address public sender;
+
+  function callSetN(address _e, uint _n) {
+    _e.call(bytes4(sha3("setN(uint256)")), _n); // E's storage is set, D is not modified 
+  }
+
+  function callcodeSetN(address _e, uint _n) {
+    _e.callcode(bytes4(sha3("setN(uint256)")), _n); // D's storage is set, E is not modified 
+  }
+
+  function delegatecallSetN(address _e, uint _n) {
+    _e.delegatecall(bytes4(sha3("setN(uint256)")), _n); // D's storage is set, E is not modified 
+  }
+}
+
+contract E {
+  uint public n;
+  address public sender;
+
+  function setN(uint _n) {
+    n = _n;
+    sender = msg.sender;
+    // msg.sender is D if invoked by D's callcodeSetN. None of E's storage is updated
+    // msg.sender is C if invoked by C.foo(). None of E's storage is updated
+
+    // the value of "this" is D, when invoked by either D's callcodeSetN or C.foo()
+  }
+}
+
+contract C {
+    function foo(D _d, E _e, uint _n) {
+        _d.delegatecallSetN(_e, _n);
+    }
+}
+
+When D does CALLCODE on E, msg.sender inside E is D as commented in the code above.
+
+When an account C invokes D, and D does DELEGATECALL on E, msg.sender inside E is C. That is, E has the same msg.sender and msg.value as D.
+
+____________________________________________
 
     <hr/>
     Libraries: similar to contracts, but their purpose is that
@@ -1493,6 +1612,13 @@ node-blockchain-server: https://github.com/ethereumjs/node-blockchain-server
 
 ____________________________________________
 TODO: Smart-Contracts Best Practices
+____________________________________________
+http://martin.swende.se/blog/EVM-Assembly-trick.html#
+"""I recently discovered a method to do generic proxying of Ethereum calls. Skip further down for nitty gritty details, I’ll start this off with some basics.
+The problem
 
+Sometimes, it’s convenient to build contract factories. For example, say you want to implement crowdsourcing, or auctions, or games, or DAOs. In those cases, instead of having one “Mother” auction which keeps track of active auctions (which, in turn keep track of bidders, offers and items), it makes sense to implement each auction/crowdfund/game/DAO as it’s own contract.
+
+One problem is that these contracts are quite heavy; creating them may be very expensive and the creation of several may be limited by block gas limits. To counter this, the library-model can be used instead: """
 -->
 </html>

@@ -89,9 +89,6 @@ ROW TEMPLATE:
 <table>
 <tr header_delimit {>
   <td summa colspan=4 >Summary<td>
-  <td col1  ></td>
-  <td col2  ></td>
-  <td col3  ></td>
 </tr>
 <tr {>
   <td summa>
@@ -185,8 +182,7 @@ ORDERING_SVC -> ORDERING_SVC:
        bundles TX into a block
 ORDERING_SVC -> PEERS on channel: block
 PEER -> PEER : validate block
-
-   </pre>
+</pre>
        </li>
        <li>Nodes are the communication entities of the blockchain.
          A “node” is only a logical function in the sense that 
@@ -263,7 +259,7 @@ Ordering Service -> Peers: TX block
 Peers -> Peers: validate block
 Peers -> Peers: Update ledger
 Peers -> Client: event TX inmmutable appended to chain
-    </pre } >
+</pre } >
   </td>
   <td col3 >
    <a href='https://hyperledger-fabric.readthedocs.io/en/latest/prereqs.html'>Prerequisites:</a>
@@ -529,7 +525,7 @@ T5 -> Write k6 -> (k6, v6')
 
 Note: Transactions with multiple read-write sets are 
       not yet supported.
-         </pre } >
+</pre } >
        </li>
      </ul>
   </td>
@@ -546,45 +542,16 @@ Note: Transactions with multiple read-write sets are
 
 <tr header_delimit } {> 
   <td colspan=4 >
-    <a href='https://github.com/hyperledger/fabric-samples/blob/release/first-network/byfn.sh'>Build Your First Network script</a>
+    Build Your First Network script, REF:
+      <a href='http://hyperledger-fabric.readthedocs.io/en/release/build_network.html'   >Doc</a>,
+      <a href='https://github.com/hyperledger/fabric-samples/blob/release/first-network/'>GitHub code</a>
   </td>
 </tr>
 <tr {>
   <td summa >
-     <a href='https://github.com/hyperledger/fabric-samples/blob/release/basic-network/docker-compose.yml'>basic network docker-compose.yml</a> containing 
-     [ hyperledger/fabric-ca, hyperledger/fabric-orderer, hyperledger/fabric-peer, hyperledger/fabric-couchdb, hyperledger/fabric-tools ]
-     <ul>
-       <li>STEPS:
-       <ol>
-         <li>Generate certificates <br/>
-            <code>$ cryptogen generate --config=./crypto-config.yaml</code></li>
-         <li>Generate Orderer Genesis block:<br/>
-            <code>$ configtxgen -profile TwoOrgsOrdererGenesis -outputBlock ./channel-artifacts/genesis.block </code>
-         </li>
-         <li>Generate channel configuration transaction 'channel.tx'<br/>
-            <code>$ configtxgen -profile TwoOrgsChannel -outputCreateChannelTx ./channel-artifacts/channel.tx -channelID $CHANNEL_NAME
-  
-         </li>
-         <li>Generate anchor peer update for Org1MSP/Org2MSP
-            <pre xsmall >
-$ configtxgen -profile TwoOrgsChannel \
-      -outputAnchorPeersUpdate \
-      ./channel-artifacts/Org1MSPanchors.tx \ #  
-      -channelID $CHANNEL_NAME -asOrg Org1MSP #  
-# *1 (same for Org2MSPanchors.tx)
-# *2 (same for Org2MSP)
-            </pre>
-         </li>
-       </li>
-       <li></li>
-
-
-     </ul>
-  </td>
-  <td col1 >
-     <ul>
-       <li>first-network/crypto-config.yaml:
-         <pre xxsmall { >
+     <span xbig>crypto-config.yaml input to 'cryptogen' tool</span>
+         <pre xsmall { >
+cat first-network/crypto-config.yaml:
 OrdererOrgs:
   - Name: Orderer
     Domain: example.com
@@ -627,70 +594,196 @@ PeerOrgs:
     Template:
       Count: 2
     Users:
-         </pre }>
-       </li>
-     </ul>
-  </td>  
-  <td col2  >
-<a href='https://github.com/hyperledger/fabric-samples/blob/release/first-network/configtx.yaml'>configtx.yaml</a>
-     <pre xxsmall { >
+</pre }>
+     <span xbig>configtx.yaml input to the 'configtxgen' tool</span>
+<pre xsmall { >
+$ cat <a href='https://raw.githubusercontent.com/hyperledger/fabric-samples/release/first-network/configtx.yaml'>configtx.yaml</a> (Summary only)
 Profiles:
-    TwoOrgsOrdererGenesis:
-        Orderer:
-            &lt;&lt;: *OrdererDefaults
-            Organizations:
-                - *OrdererOrg
-        Consortiums:
-            SampleConsortium:
-                Organizations:
-                    - *Org1
-                    - *Org2
-    TwoOrgsChannel:
-        Consortium: SampleConsortium
-        Application:
-            &lt;&lt;: *ApplicationDefaults
+  TwoOrgsOrdererGenesis:
+    Orderer:
+        <<: *OrdererDefaults
+        Organizations:
+            - *OrdererOrg
+    Consortiums:
+        SampleConsortium:
             Organizations:
                 - *Org1
                 - *Org2
+  TwoOrgsChannel:
+    Consortium: SampleConsortium
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+          - *Org1
+          - *Org2
+
+# Organizations sect. defines the organizational identities 
 Organizations:
-    - &OrdererOrg
-        Name: OrdererOrg
-        ID: OrdererMSP
-        MSPDir: crypto-config/ordererOrganizations/example.com/msp
-    - &Org1
-        Name: Org1MSP
-        ID: Org1MSP
-        MSPDir: crypto-config/peerOrganizations/org1.example.com/msp
-        AnchorPeers:
-            - Host: peer0.org1.example.com
-              Port: 7051
-    - &Org2
-        Name: Org2MSP
-        ID: Org2MSP
-        MSPDir: crypto-config/peerOrganizations/org2.example.com/msp
-        AnchorPeers:
-            - Host: peer0.org2.example.com
-              Port: 7051
-Orderer: &OrdererDefaults
-    OrdererType: solo
-    Addresses:
-        - orderer.example.com:7050
-    BatchTimeout: 2s
-    BatchSize:
-        MaxMessageCount: 10
-        AbsoluteMaxBytes: 99 MB
-        PreferredMaxBytes: 512 KB
-    Kafka:
-        Brokers:
-            - 127.0.0.1:9092
-    Organizations:
-Application: &ApplicationDefaults
-    Organizations:
-         </pre }>
+  # MSP using sampleconfig.  It *should* never be used
+  # in production but may be used as a template for other definitions
+  - &lt;OrdererOrg
+      Name: OrdererOrg
+      ID: OrdererMSP
+      MSPDir: crypto-config/ordererOrganizations/example.com/msp
+
+  - &lt;Org1
+      Name: Org1MSP
+      ID: Org1MSP
+      MSPDir: crypto-config/peerOrganizations/org1.example.com/msp
+
+      # location of peers for cross org gossip communication.
+      #  Note, this value is only
+      # encoded in the genesis block in the Application section context
+      AnchorPeers:
+        - Host: peer0.org1.example.com
+          Port: 7051
+
+  - &lt;Org2
+      Name: Org2MSP
+      ID: Org2MSP
+      MSPDir: crypto-config/peerOrganizations/org2.example.com/msp
+
+      AnchorPeers:
+        - Host: peer0.org2.example.com
+          Port: 7051
+
+Orderer: &lt;OrdererDefaults
+  # OrdererType := "solo" and "kafka"
+  OrdererType: solo
+  Addresses:
+      - orderer.example.com:7050
+  # time to wait before creating a batch
+  BatchTimeout: 2s
+  BatchSize:
+      MaxMessageCount: 10
+      AbsoluteMaxBytes: 99 MB
+      PreferredMaxBytes: 512 KB
+
+  Kafka:
+      # A list of Kafka brokers to which the orderer connects
+      Brokers:
+          - 127.0.0.1:9092
+
+  # list of orgs defined as participants on
+  # the orderer side of the network
+  Organizations:
+
+Application: &lt;ApplicationDefaults
+  Organizations:
+</pre } >
+     </ol>
   </td>
-  <td col3 >
+  <td col1 >
+     STEPS:
+     <ol>
+       <li>Generate certificates using crypto-config.yaml as input:
+         <pre xsmall { >
+$ cryptogen generate --config=./crypto-config.yaml
+</pre }>
+       </li>
+       <li>Generate Orderer Genesis block:
+<pre xsmall { >
+$ configtxgen -profile TwoOrgsOrdererGenesis \
+   -outputBlock ./channel-artifacts/genesis.block 
+</pre } >
+       </li>
+       <li>Generate channel configuration transaction 'channel.tx'
+<pre xsmall { >
+$ configtxgen -profile TwoOrgsChannel \
+    -channelID $CHANNEL_NAME \
+    -outputCreateChannelTx ./channel-artifacts/channel.tx
+</pre } >
+       </li>
+       <li>Generate anchor peer update for Org1MSP/Org2MSP
+<pre xsmall { >
+$ configtxgen -profile TwoOrgsChannel \
+      -outputAnchorPeersUpdate \
+      ./channel-artifacts/Org1MSPanchors.tx \ #  
+      -channelID $CHANNEL_NAME -asOrg Org1MSP #  
+# *1 (same for Org2MSPanchors.tx)
+# *2 (same for Org2MSP)
+</pre } >
+       </li>
+     </ol>
+
+  </td>
+  <td col2 >
+REF: <a href='https://github.com/hyperledger/fabric-samples/blob/release/first-network/docker-compose-cli.yaml'>docker-compose-cli.yaml</a>
+<pre xsmall { >
+DOMAIN=example.com
+GOPATH=/opt/gopath
+FABRIC_DIR=${GOPATH}/src/github.com/hyperledger/fabric/
+WORKING_DIR=${FABRIC_DIR}/peer
+BASE_PATH=${WORKING_DIR}/crypto/peerOrganizations
+ORG1=org1
+ORG2=org2
+BASE_PATH_ORG1=${BASE_PATH}/${ORG1}.${DOMAIN}
+PEER1_0_TLS=peer0.${ORG1}.${DOMAIN}/tls
+    CORE_PEER_TLS_CERT_FILE=BASE_PATH_ORG1/peers/${PEER1_0_TLS}/server.crt
+     CORE_PEER_TLS_KEY_FILE=BASE_PATH_ORG1/peers/${PEER1_0_TLS}/server.key
+CORE_PEER_TLS_ROOTCERT_FILE=BASE_PATH_ORG1/peers/${PEER1_0_TLS}/ca.crt
+CORE_PEER_MSPCONFIGPATH    =BASE_PATH_ORG1/users/Admin@${ORG1}.${DOMAIN}/msp
+BASH_CMD="./scripts/script.sh ${CHANNEL_NAME} ${DELAY}; sleep $TIMEOUT"
+cat << EOF > docker-compse-cli.yaml
+version: '2'
+networks:
+  byfn:
+services:
+  orderer.${DOMAIN}:
+    extends:
+      file:   base/docker-compose-base.yaml
+      service: orderer.${DOMAIN}
+    container_name: orderer.${DOMAIN}
+    networks:
+      - byfn
+
+  peer0.${ORG1}.${DOMAIN}:
+  (same for  peer1.${ORG1}.${DOMAIN} changing)
+  (same for  peer0.org2.${DOMAIN} changing)
+    container_name: peer0.${ORG1}.${DOMAIN}
+    extends:
+      file:  base/docker-compose-base.yaml
+      service: peer0.${ORG1}.${DOMAIN}
+    networks:
+      - byfn
+
+  cli:
+    container_name: cli
+    image: hyperledger/fabric-tools
+    tty: true
+    environment:
+      - GOPATH=${GOPATH}
+      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
+      - CORE_LOGGING_LEVEL=DEBUG
+      - CORE_PEER_ID=cli
+      - CORE_PEER_ADDRESS=peer0.${ORG1}.${DOMAIN}:7051
+      - CORE_PEER_LOCALMSPID=Org1MSP
+      - CORE_PEER_TLS_ENABLED=true
+      - CORE_PEER_TLS_CERT_FILE=${CORE_PEER_TLS_CERT_FILE}
+      - CORE_PEER_TLS_KEY_FILE=${CORE_PEER_TLS_KEY_FILE}
+      - CORE_PEER_TLS_ROOTCERT_FILE=${CORE_PEER_TLS_ROOTCERT_FILE}
+      - CORE_PEER_MSPCONFIGPATH=${CORE_PEER_MSPCONFIGPATH}
+    working_dir: ${WORKING_DIR}
+    command: /bin/bash -c '${BASH_CMD}'
+    volumes:
+        - /var/run/:/host/var/run/
+        - ./../chaincode/     :${FABRIC_DIR}/examples/chaincode/go
+        - ./crypto-config     :${FABRIC_DIR}/peer/crypto/
+        - ./scripts           :${FABRIC_DIR}/peer/scripts/
+        - ./channel-artifacts :${FABRIC_DIR}/peer/channel-artifacts
+    depends_on:
+      - orderer.${DOMAIN}
+      - peer0.${ORG1}.${DOMAIN}
+      - peer1.${ORG1}.${DOMAIN}
+      - peer0.${ORG2}.${DOMAIN}
+      - peer1.${ORG2}.${DOMAIN}
+    networks:
+      - byfn
+</pre }>
+  </td>  
+  <td col3  >
 <a href='https://github.com/hyperledger/fabric-samples/blob/release/first-network/docker-compose-couch.yaml'>docker-compose-couch.yaml</a>
-<pre xxsmall { >
+<pre xsmall { >
 version: '2'
 networks:
   byfn:
@@ -719,70 +812,11 @@ services:
     depends_on:
       - couchdb0
 </pre }>
-<hr/>
-<a href='https://github.com/hyperledger/fabric-samples/blob/release/first-network/docker-compose-cli.yaml'>docker-compose-cli.yaml</a>
-<pre xxxsmall { >
-version: '2'
-networks:
-  byfn:
-services:
-  orderer.example.com:
-    extends:
-      file:   base/docker-compose-base.yaml
-      service: orderer.example.com
-    container_name: orderer.example.com
-    networks:
-      - byfn
-
-  peer0.org1.example.com:
-  (same for  peer1.org1.example.com changing)
-  (same for  peer0.org2.example.com changing)
-    container_name: peer0.org1.example.com
-    extends:
-      file:  base/docker-compose-base.yaml
-      service: peer0.org1.example.com
-    networks:
-      - byfn
-
-  cli:
-    container_name: cli
-    image: hyperledger/fabric-tools
-    tty: true
-    environment:
-      - GOPATH=/opt/gopath
-      - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
-      - CORE_LOGGING_LEVEL=DEBUG
-      - CORE_PEER_ID=cli
-      - CORE_PEER_ADDRESS=peer0.org1.example.com:7051
-      - CORE_PEER_LOCALMSPID=Org1MSP
-      - CORE_PEER_TLS_ENABLED=true
-      - CORE_PEER_TLS_CERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.crt
-      - CORE_PEER_TLS_KEY_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/server.key
-      - CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
-      - CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
-    working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
-    command: /bin/bash -c './scripts/script.sh ${CHANNEL_NAME} ${DELAY}; sleep $TIMEOUT'
-    volumes:
-        - /var/run/:/host/var/run/
-        - ./../chaincode/:/opt/gopath/src/github.com/hyperledger/fabric/examples/chaincode/go
-        - ./crypto-config:/opt/gopath/src/github.com/hyperledger/fabric/peer/crypto/
-        - ./scripts:/opt/gopath/src/github.com/hyperledger/fabric/peer/scripts/
-        - ./channel-artifacts:/opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts
-    depends_on:
-      - orderer.example.com
-      - peer0.org1.example.com
-      - peer1.org1.example.com
-      - peer0.org2.example.com
-      - peer1.org2.example.com
-    networks:
-      - byfn
-</pre }>
-
   </td>
 </tr }>
 <tr header_delimit } {> 
   <td colspan=4 >
-    <a href='https://github.com/hyperledger/fabric-samples/tree/release/fabcar'>Ex. FabCar</a>>
+    <a href='https://github.com/hyperledger/fabric-samples/tree/release/fabcar'>Ex. FabCar</a>
   </td>
 </tr>
 <tr {>
@@ -908,7 +942,7 @@ func main /* testing purposes*/() {
     // Create new Contract
     err := shim.Start(new(SmartContract))
 }
-    </pre } >
+</pre } >
   </td>
   <td col1 >
          <a href='https://github.com/hyperledger/fabric-samples/blob/release/fabcar/query.js' xbig>fabcar query.js</a> (errors and async code removed)
@@ -947,7 +981,7 @@ console.log("Response: ", query_responses[0].toString());
   </td>  
   <td col2  >
          <a href='https://github.com/hyperledger/fabric-samples/blob/release/fabcar/invoke.js' xbig>fabcar invoke.js</a> (errors removed)
-    <pre xxsmall { >
+    <pre xsmall { >
 var hfc = require('fabric-client');
 var path = require('path');
 var util = require('util');
@@ -1048,7 +1082,7 @@ if (response.status === 'SUCCESS') {
     console.log('Successfully sent TX to orderer.');
     return tx_id.getTransactionID();
 }
-         </pre } >
+</pre } >
   </td>
   <td col3 >
   </td>
@@ -1094,8 +1128,6 @@ if (response.status === 'SUCCESS') {
 
 <tr header_delimit } {> <td colspan=4 ><a href='https://hyperledger.github.io/composer/stable/index.html'>COMPOSER</a></td> </tr>
 <tr {>
-  <td topic>
-  </td> 
   <td summa >
      <ul>
      <li><a href='https://composer-playground.mybluemix.net/'>On-oline playground</a></li>
@@ -1110,27 +1142,27 @@ if (response.status === 'SUCCESS') {
      <span xbig>Businness Networks core concepts</span>
      <ul>
        <li>
-         <pre>
+<pre { >
  INPUT             OUTPUT
-┌──────────────┐   Business Network
-│* .cto        │   Archive *.bna  
-│- Assets      │   (Package-up input ready
-│- Participants│    to deploy "somewhere")
-│- Transactions│
-└──────────────┘
+┌──────────────┐   ┌───────────────────────┐
+│* .cto        │   │Business Network       │
+│- Assets      │   │Archive *.bna          │
+│- Participants│   │(Package-up input ready│
+│- Transactions│   │ to deploy "somewhere")│
+├──────────────┤   └───────────────────────┘
 │*.js          │
 │- Transaction │
 │  Functions   │
-└───────────── ┘
+├──────────────┤
 │*.acl         │
 │- Access      │
 │  Control     │
-└─────────     ┘
+├──────────────┤
 │*.qry         │
 │- Query defini│
 │  rules       │
 └──────────────┘
-         </pre>
+</pre } >
        </li>
      </ul>
   </td>

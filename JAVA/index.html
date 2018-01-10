@@ -1047,6 +1047,9 @@ Eclipse -> Properties -> Java -> Compiler -> Errors/Warnings -> Null analysis:
 <!--
 -------------------------------------------------
 TODO:
+JAVA MIND-MAP:
+https://zeroturnaround.com/wp-content/uploads/2014/06/jtnt-mindmap.png
+-------------------------------------------------
 -  Weak reference:
 - http://picodotdev.github.io/blog-bitix/ , http://elblogdepicodev.blogspot.com.es/
 - java.util.concurrent.Future
@@ -1056,8 +1059,8 @@ https://www.youtube.com/channel/UCyhuNcrGetIRY9SdD92Uigw
 -------------------------------------------------
 https://www.youtube.com/channel/UCyhuNcrGetIRY9SdD92Uigw
 -------------------------------------------------
-JVM:
-JamVM is a new Java Virtual Machine conforming to the JVM specification edition 2 (blue book). It is extremely small - stripped on PowerPC ~110K, Intel 80K. However, unlike other small VMs it supports the full spec, inc. object finalisation and JNI.
+List of (Active) Java JVM: https://en.wikipedia.org/wiki/List_of_Java_virtual_machines
+ Light weight alternatives to standard Oracle JVM, ...
 -------------------------------------------------
 http://teavm.org/
 "https://en.wikipedia.org/wiki/Java_virtual_machine#Compilation_to_JavaScript
@@ -1112,4 +1115,170 @@ Spring Reactive Streams is a small spec, also adopted in Java 9, that defines th
    
 Reactive Streams plays an important role for interoperability. It is of interest to libraries and infrastructure components but less useful as an application API because it is too low level. What applications need is a higher level and richer, functional API to compose async logic — similar to the Java 8 Stream API but not only for collections. This is the role that reactive libraries play.
 -------------------------------------------------
+Java Value Types proposal:
+https://www.infoq.com/news/2017/11/ValueTypesNov10
+--------------------------------
+JAVA Enhancements proposals:
+http://openjdk.java.net/jeps/0
+-------------------------------
+REF: http://www.baeldung.com/java-completablefuture
+  |In asynchronous computation, actions are represented as callbacks, handling errors might occur at any step.
+  |
+  |Java 5+: Future: Represent an asynchronous computation
+  |Java 8+: CompletableFuture : Extends Future with methods to combine and handle errors
+  |                            Extends the CompletionStage interface
+  |                              - Contract for an asynchronous computation step that
+  |                                can be combined with other steps.
+  |                            About 50 different methods for composing, combining, executing async computation
+  |
+  |
+  |Using CompletableFuture as a Simple Future (no-arg constructor) 
+  |
+  |In the example below we have a method that creates a CompletableFuture instance, then spins off some computation in another thread and returns the Future immediately.
+  |
+  |  1  public Future<String> calculateAsync() throws InterruptedException {
+  |  2      Future<String> result = new CompletableFuture<>();
+  |  3     
+  |  4      Executors.newCachedThreadPool().submit(() -> {
+  |  5          Thread.sleep(500);
+  |  6          completableFuture.complete("Hello");
+  |  7          return null;
+  |  8      });
+  |  9   
+  |  10     return completableFuture;
+  |  11 }
+  |  Line 2: Alternatively when the result of computation is known:
+  |          Future<String> result = CompletableFuture.
+  |             completedFuture("Hello");
+  |  
+  |  Line 6: Alternatively completableFuture.cancel(false);
+  |  Line 5: any other mechanism can be used to compute 
+  |    
+  |
+  |  1 Future<String> completableFuture = calculateAsync();
+  |  2  
+  |  3 // ... 
+  |  4  
+  |  5 String result = completableFuture.get();
+  |  6 assertEquals("Hello", result);
+  |
+  |Line 5: get() blocks until .complete("...") is called in other thread
+  |Line 5: get()can raise 
+  |           ExecutionException: error during computation
+  |           InterruptedException: thread executing method interrupted
+  |
+  |4. CompletableFuture with Encapsulated Computation Logic (runAsync -<<Runnable>>-, supplyAsync -<<Supplier>>-)
+  |
+  |<<Supplier>>: generic functional interface with single method (zero arguments, returns value)
+  |
+  |  1 CompletableFuture<String> future
+  |  2   = CompletableFuture.supplyAsync(/*supplier lambda*/ () -> "Hello")
+  |  3 .thenApply(/* "processor" lambda */ s -> s + " World") /* returns CompletableFuture */;
+  |  4 .thenAccept(/*consumer lambda */ 
+  |  5    s -> System.out.println("Computation returned: " + s));
+  |    Line 4: Alternatively (ignrore result)
+  |    .thenRun(/*Runnable lambda*/ () -> System.out.println("Computation finished."));
+  |
+  |5. Combining Futures (monadic design pattern in functional languages)
+  |
+  |  1 CompletableFuture<String> completableFuture 
+  |  2   = CompletableFuture.supplyAsync(() -> "Hello")
+  |  3     .thenCompose(
+  |  4           s -> CompletableFuture.supplyAsync(() -> s + " World"));
+  |  4  
+  |  5 assertEquals("Hello World", completableFuture.get());
+  |    
+  |6. Execute two independent Futures and do something with their results
+  |
+  |  1 CompletableFuture future  
+  |  2   = CompletableFuture.supplyAsync(() -> "Hello")
+  |  3     .thenCombine(CompletableFuture.supplyAsync(
+  |  4       () -> " World"), (s1, s2) -> s1 + s2));
+  |  5  
+  |  6 assertEquals("Hello World", future.get());
+  |    
+  |(Simpler case - nothing to do with resulting value-)
+  |  2   = CompletableFuture.supplyAsync(() -> "Hello")
+  |  3   .thenAcceptBoth(CompletableFuture.supplyAsync(
+  |  4      () -> " World"), (s1, s2) -> log(s1 + s2));
+  |    
+  |7. Running Multiple Futures in Parallel:  wait for all to execute and process combined results
+  |
+  |  1  CompletableFuture<String> future1  
+  |  2    = CompletableFuture.supplyAsync(() -> "Hello");
+  |  3  CompletableFuture<String> future2  
+  |  4    = CompletableFuture.supplyAsync(() -> "Beautiful");
+  |  5  CompletableFuture<String> future3  
+  |  6    = CompletableFuture.supplyAsync(() -> "World");
+  |  7   
+  |  8  CompletableFuture<Void> combinedFuture 
+  |  9    = CompletableFuture.allOf(future1, future2, future3);
+  |  10  
+  |  11 // ...
+  |  12  
+  |  13 combinedFuture.get();
+  |  14  
+  |  15 String combined = Stream.of(future1, future2, future3)
+  |  16   .map(CompletableFuture::join)
+  |  17   .collect(Collectors.joining(" "));
+  |  18 assertEquals("Hello Beautiful World", combined);
+  |
+  |    Line 16: join() is similar to get, but throws unchecked exception if the Future does not complete normally.
+  |
+  |8. Handling Errors
+  |
+  |   Instead of catching an exception in a syntactic block, the CompletableFuture class allows you to handle it in a special handle method. This method receives two parameters: a result of a computation (if it finished successfully) and the exception thrown (if some computation step did not complete normally).
+  |
+  |
+  |
+  |Capture async exception:
+  |           
+  |  1  CompletableFuture<String> completableFuture  
+  |  2    =  CompletableFuture.supplyAsync(() -> {
+  |  3        ... if(errorDetected) 
+  |  4               throw new RuntimeException("Computation error!");
+  |  6        return "Hello ";
+  |  7    })}).handle((s, t) -> s != null ? s : "Hello, Stranger!");
+  |  8   
+  |  9  assertEquals("Hello, Stranger!", completableFuture.get());
+  |Alt: 
+  |  1  completableFuture.completeExceptionally(
+  |  2    new RuntimeException("Calculation failed!"));
+  |  3  ...  
+  |  4  completableFuture.get(); // ExecutionException
+  |                                                                            
+  |9. Async Methods
+  | - The methods without the Async postfix run next execution stage using a calling thread.
+  |
+  | - The Async method without the Executor argument runs a step using the common fork/join pool implementation of Executor 
+  |   that is accessed with the ForkJoinPool.commonPool() method.
+  |
+  | - The Async method with an Executor argument runs a step using the passed Executor.
+  |
+  | Ex.: process result of computation with a Function instance
+  |  1 CompletableFuture<String> completableFuture  
+  |  2   = CompletableFuture.supplyAsync(() -> "Hello");
+  |  3  
+  |  4 CompletableFuture<String> future = completableFuture
+  |  5   .thenApplyAsync(s -> s + " World");
+  |  6  
+  |  7 assertEquals("Hello World", future.get());
+  |
+  |    Line 5: under the hood the application of a function is wrapped into a ForkJoinTask instance 
+  |    (for more information on the fork/join framework, see the article ?Guide to the Fork/Join Framework in Java?).
+  |    This allows to parallelize your computation even more and use system resources more efficiently.
+
+--------------
+QA: 
+  - Static analysis tool for Java / C/C++ / Objective C
+       http://fbinfer.com/ 
+
+  - FindBugs:
+
+  - Junit:
+    https://www.infoq.com/news/2018/01/VSCodeJunit
+
+  - 
+-->
+
 </html>

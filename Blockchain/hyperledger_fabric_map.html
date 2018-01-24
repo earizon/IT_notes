@@ -106,31 +106,36 @@ ROW TEMPLATE:
   </td>
   <td col1 >
      <ul>
+       <li>Nodes are the (logical) communication entities of the blockchain.</li>
+       <li>Multiple nodes of different types can run on the same physical server. </li>
        <li>There are three types of nodes:
          <ul>
-           <li>Client or submitting-client: a client that submits an actual 
-               transaction-invocation to the endorsers, and broadcasts transaction-proposals to
-               the ordering service.<br/>
-               The client represents the entity that acts on behalf of an end-user.<br/>
-               It must connect to a peer for communicating with the blockchain.  <br/>
-               The client may connect to any peer of its choice. <br/>
-               Clients create and thereby invoke transactions.
-           </li>
            <li>Peer: node that commits TXs and maintains the state and a copy of the ledger
-               (see Sec, 1.2). Besides, peers can have a special endorser role. A peer receives
-               ordered state updates in the form of blocks from the ordering service and
-               maintain the state and the ledger.  Peers can additionally take up a special
-               role of an endorsing peer, or an endorser with respect to a particular chaincode.
+
+               can also have a special <b>endorser peer</b> or <b>endorser respect to a particular chaincode</b> role
            </li>
-           <li>Ordering-service-node or orderer: a node running the communication service that 
+           <li>Ordering(service): Runs the communication service that 
                implements a delivery guarantee, such as atomic or total order broadcast.</li>
+           <li>(submitting) (NodeJS, java, ...) client: Node that submits/invoke/trigger an actual 
+               transaction-invocation to (any peer of its choice) peer-endorsers behalf an
+               end-user<br/>
+           </li>
          </ul>
-       </li>
-  
+<pre>
+...
+ordering_service -> leeding_peer: block_of_state_updates *1
+leeding_peer -> organization peers: block_of_state_updates *2
+peer -> peer: update state/ledger
 
-
-       <li>
-   <pre xsmall { >
+*1 a member/organization can have more than one peer.
+   The election of a leading_peer for each member on a
+   channel determines which peer communicates with the 
+   ordering service on behalf of the member. 
+   If no leader is identified, an algorithm can be used.
+*2 Use gossip protocol
+</pre>
+<br/>
+<pre xsmall { >
                   ┌──────────┐
                ┌─→│MEMBERSHIP│
                ┆  │ No SPoF  ┼───────────────────────────────┐
@@ -149,9 +154,7 @@ ROW TEMPLATE:
                 2 Submit TX  │           │ 4 Deliver   └─────────────┘
                              │ event     │   batch
                              └───────────┘
- *1 <a href="https://hyperledger-fabric.readthedocs.io/en/latest/fabric_model.html#consensus" >Consensus</a> is ultimately achieved when
-     the order and results of a block's transactions 
-     have met the explicit policy criteria checks.
+ *1 <a href="https://hyperledger-fabric.readthedocs.io/en/latest/fabric_model.html#consensus" >Consensus</a>
 
 CouchDB: the PEER hold the hash chain (the record of updates),
 while updates themselves are stored in a separate
@@ -183,13 +186,6 @@ ORDERING_SVC -> ORDERING_SVC:
 ORDERING_SVC -> PEERS on channel: block
 PEER -> PEER : validate block
 </pre>
-       </li>
-       <li>Nodes are the communication entities of the blockchain.
-         A “node” is only a logical function in the sense that 
-         multiple nodes of different types can run on the same 
-         physical server. What counts is how nodes are grouped in
-         “trust domains” and associated to logical entities that
-         control them.
        </li>
   </td>
   <td col2 >
@@ -368,25 +364,38 @@ Peers -> Client: event TX inmmutable appended to chain
      </ul>
   </td>
   <td col3 >
-    <a href="https://hyperledger-fabric.readthedocs.io/en/latest/fabric_model.html#privacy-through-channels" xbig >Privacy through Channels</a>
+    <span xbig>Channels</span> REF:<a href="https://hyperledger-fabric.readthedocs.io/en/latest/fabric_model.html#privacy-through-channels" >Privacy through Channels</a>
     <ul>
-      <li>""" One truism about Hyperledger Fabric networks is that members know each other (identity), 
-          but they do not know what each other are doing (privacy and confidentiality)."""</li>
-      <li>Channel = { ledgerSingleton: ..., ACL: ...., block_policies } </li>
-      <li>Channels enable multi-lateral transactions with the high degrees of privacy and confidentiality required by competing businesses and regulated industries that exchange assets on a common network.</li>
-      <li>A channel's ledger contains a configuration block defining policies, access control lists, and other pertinent information</li>
-      <li>Channel's contain Membership Service Provider instances allowing for crypto materials to be derived from different certificate authorities</li>
-      <li>The channel supports atomic delivery of all messages, that is, message communication with total-order delivery and (implementation specific) reliability. In other words, the channel outputs the same messages to all connected peers and outputs them to all peers in the same logical order. This atomic communication guarantee is also called total-order broadcast, atomic broadcast, or consensus in the context of distributed systems. The communicated messages are the candidate transactions for inclusion in the blockchain state</li>
-
-      <li>A channel is defined by members (organizations), anchor peers per member, the shared ledger, chaincode application(s) and the ordering service node(s). Each transaction on the network is executed on a channel, where each party must be authenticated and authorized to transact on that channel. Each peer that joins a channel, has its own identity given by a membership services provider (MSP), which authenticates each peer to its channel peers and services.</li>
-
-      <li>To create a new channel, the client SDK calls configuration system chaincode and references properties such as anchor peer**s, and members (organizations). This request creates a **genesis block for the channel ledger, which stores configuration information about the channel policies, members and anchor peers. When adding a new member to an existing channel, either this genesis block, or if applicable, a more recent reconfiguration block, is shared with the new member.<br/>
-        <span TODO>Add client SDK code</span>
+      <li>enable multi-lateral TXs with the high degrees of privacy and confidentiality 
+          ("""members know each other (identity), but they do not know what each other are doing""")</li>
+      <li>Channel is defined by:
+<pre>
+- the shared ledger ("ledger singleton")
+  Contains a genesis (configuration) block defining policies,
+  ACLs, initial members and anchor peers
+- members (organizations)
+- anchor peers per member
+- chaincode application(s)
+- ordering service node(s)
+- Membership service provider (ACLs)
+  * Authenticate each peer to other channel's
+    nodes.
+  * crypto materials can be derived
+    from different CAs</li>
+- Block policies  
+</pre>
       </li>
-      <li>The election of a leading peer for each member on a channel determines which peer communicates with the ordering service on behalf of the member. If no leader is identified, an algorithm can be used to identify the leader. The consensus service orders transactions and delivers them, in a block, to each leading peer, which then distributes the block to its member peers, and across the channel, using the gossip protocol.
+      <li>support<b>atomic delivery</b>(also called total-order/atomic broadcast, or consensus) of all messages (== candidate TX): message communication with total-order delivery and (implementation specific) reliability to all connected peers . </li>
+   </ul>
+   Creating a new Channel:
+   <ul>
+      <li>client SDK calls configuration system chaincode and references properties such as anchor peer**s,
+          and members (organizations). This request creates a channel ledger's <b>genesis block</b> </li>
+      <li>When adding a new member to an existing channel, either this genesis block, or if applicable, a
+          more recent reconfiguration block, is shared with the new member.<br/>
+          <span TODO>Add client SDK code</span>
       </li>
     </ul>
-
   </td>
 </tr }>
 <tr header_delimit {> 

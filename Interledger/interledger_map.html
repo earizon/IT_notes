@@ -353,6 +353,29 @@ Related:
     <li><a href="https://github.com/interledger/rfcs/issues/132">Addressing small ledgers/currencies</a></li>
     <li><a href="https://github.com/hyperledger/quilt/blob/master/ilp-core/src/main/java/org/interledger/InterledgerAddress.java">InterledgerAddress.java</a></li>
   </ul>
+  <span xbig>Trust-lines / Payment Channels</span>
+  <ul>
+    <li>Trust-line: Virtual ledger established amongst peers that keeps a
+      temporal balance that periodically gets sincronised with the (real)
+      settlement ledger<br/>
+      Trus-lines can be divided into:
+      <ul>
+        <li>asymmetrical trustline: ledger with two account holders,
+          and one of them is also the ledger administrator.</li>
+        <li> symmetrical trustline: ledger with two account holders,
+          who collaborate on an equal basis to administer the 
+          ledger between them.</li>
+      </ul>
+    </li>
+    <li>Payment-channel: A trust-line with the support of 
+      a blockchain or cryptographic system to secure/enhance
+      payments.<br/>
+      Lightning and <a href="https://ripple.com/build/payment-channels-tutorial/">
+      Ripple XPR Channels</a> are two well known examples.<br/>
+      More info and theory about them can also be found in the
+      <a href="https://en.bitcoin.it/wiki/Payment_channels">Bitcoin wiki</a>
+    </li>
+  </ul>
   </td>
   <td summary colspan=2>
   <span xbig><a href='https://github.com/interledger/rfcs/blob/master/0003-interledger-protocol/0003-interledger-protocol.md'>ILP Protocol</a></span>
@@ -752,6 +775,34 @@ the fulfillment and some notary signature.</p>
   <td summary colspan=1 > 
     <span xbig><a href='https://github.com/interledger/rfcs/blob/master/0023-bilateral-transfer-protocol/0023-bilateral-transfer-protocol.md'>Bilateral Transfer Protocol BTP</a> (previously Common Ledger Protocol CLP)</span>
     <ul>
+      <li>@michielbdejong 
+          <span cite>"""BTP is just a wrapper around ILP packets that makes it 
+          easier to send them over WebSockets...<br/>
+          ... I guess the advantage of HTTP is that it's easier (to implement).
+          The Advantage of WebSockets is that it allows a client (so a computer 
+          that's not publicly addressable, e.g. a laptop or phone) to be a receiver,
+          and that some JavaScript-based connectors may only support WebSockets 
+          (but if a JavaScript-based connector wants to peer with a Java-based one,
+           it would be easy to add ilp-plugin-http)"""
+          </span></li>
+      <li><a href="https://github.com/interledgerjs/ilp-plugin-btp/issues/2">ilp-plugin-btp issue:</a>
+        <span cite>
+          <p>In the readme, we should explain that this plugin implements "BTP/2.0"
+            (if that's what we want to call it), and is 
+          <a href="https://github.com/interledgerjs/ilp-plugin-btp/blob/master/index.js#L343">incompatible</a> with BTP/1.0.
+          </p>
+          <p>
+          Also, we need to explicitly document (since it's so confusing) that the new 
+          Transfer/Response/Error sequence <strong>decreases</strong> (settles) the 
+          sender's <code>unsecuredAmount</code>.
+           This is the opposite of how in BTP/1.0 the Prepare/Fulfill/Reject sequence
+          used to <strong>increase</strong> (cause) the sender's <code>unsecuredAmount</code>,<br>
+          see <a href="https://github.com/interledger/rfcs/pull/360#issuecomment-355737129">interledger/rfcs#360 (comment)</a>.<br/>
+           It would be easy to oversee this difference, and think that Transfer/Response/Error is just the unconditional version 
+          of Prepare/Fulfill/Reject. Or maybe we should just say "forget everything you think you know about BTP". :)   
+          </p>
+        </span>
+      </li>
       <li>Can be used in place of ILP-over-HTTP</li>
       <li>"""In lots of scenarios, we don't have an underlying ledger that's fast enough to do every ILP payment on-ledger.
            If two parties want to transact, they can send transfers directly to one another with BTP. BTP requires that
@@ -1036,6 +1087,18 @@ client &lt;- local connector: fulfillment (payment receipt) OR ILP error
        </li>
        <li>Any SPSP receiver will run an SPSP server and expose an HTTPS endpoint called the SPSP payment pointer.</li>
        <li>SPSP uses the Pre-Shared Key v2(PSK2) transport protocol for condition generation and data encoding</li>
+       <li>SPSP ussually is "good enough" because the payment sender can present the
+         fulfillment to connectors to probe that the payment was recieved by the recipient even 
+         if it wasn't ... but he will not win much with that. He will just loose his money  
+         The receiver can not probe the opposite but he just received money for free.<br/>
+         <br/>
+         IPR is just needed in some "corner" scenarios when the receiver could be fined 
+         because un-intentionally he received the money and he was obligated
+         to declare the error to some authority. 
+         IPR is "slightly" safer, 100% non-repudiable, but takes more message rounds 
+         between sender and receiver and so it less suitable for small payments. 
+        </li>
+    </ul>
 
     <span xbig>Docu.Links</span>
     <ul>
@@ -1573,31 +1636,6 @@ _______________________________
 https://github.com/interledger/rfcs/pull/341#issuecomment-352186733
  In some cases, you may have a ledger that is fast enough to do ILP transactions, but does not have an ILP connector built-in, e.g. something like five-bells-ledger. In that case, you can simulate a connector in the plugin. If the ILP destination address starts with a ledger prefix that the plugin is configured with, it takes the first segment after the plugin and forwards the payment to that account. Otherwise, it forwards the payment to the default connector on that ledger. (getInfo().connectors[0])
 _______________________________
-ILPv4 BTP notes:
-    REF: //github.com/interledgerjs/ilp-plugin-btp/
-  Q  earizon
-     Looking at the JS activity (https://github.com/interledgerjs/ilp-plugin-btp), I think the idea to implement rfc issue 359 is to use a base parent BTP plugin that can be adapted to any type of trust-line/payment-channel by child class. Is that correct?
-    The BTP acronym confuses me because I thought that "ILPv4" supersedes "BTP", but it still makes sense to me to implement using this way, or maybe I'm lost.
-    
-    From a practical point of view, my doubt is whether to implement a BTP-packet in quilt. (I think that's the case, but not 100% sure after all the ILP-enlightment changes)
-    Otherwise said, using a developper friendly language:
-    
-    Issue 359 == https://github.com/interledger/rfcs/issues/359 "==" https://github.com/interledger/rfcs/pull/364 "=?" https://github.com/interledgerjs/ilp-plugin-btp
-
-  A michielbdejong4:39 AM
-    
-        > whether to implement a BTP-packet in quilt
-    We can choose!  BTP is just a wrapper around ILP packets that makes it easier to send them over WebSockets. So our first choice is, do we want Quilt to use WebSockets or HTTP for its API? I would vote for HTTP. @earizon @adrianhopebailie @sappenin @nathanaw what would be your preference?
-    I guess advantage of HTTP is that it's easier. Advantage of WebSockets is that it allows a client (so a computer that's not publicly addressable, e.g. a laptop or phone) to be a receiver, and that some JavaScript-based connectors may only support WebSockets (but if a JavaScript-based connector wants to peer with a Java-based one, it would be easy to add ilp-plugin-http)
-    michielbdejong4:57 AM
-    To answer your question about ilp-plugin-btp, it's indeed confusing that we still call it BTP without differentiating; I think maybe we should call it BTP/2.0, see https://github.com/interledgerjs/ilp-plugin-btp/issues/2 
-    https://github.com/interledgerjs/ilp-plugin-btp/issues/2
-
-
-
-Also, we need to explicitly document (since it's so confusing) that the new Transfer/Response/Error sequence decreases (settles) the sender's unsecuredAmount. This is the opposite of how in BTP/1.0 the Prepare/Fulfill/Reject sequence used to increase (cause) the sender's unsecuredAmount,
-see interledger/rfcs#360 (comment). It would be easy to oversee this difference, and think that Transfer/Response/Error is just the unconditional version of Prepare/Fulfill/Reject. Or maybe we should just say "forget everything you think you know about BTP". :)
-
 ______________________________
 ILP Streaming Tutorial https://interledger.org/tutorials/streaming-payments/ {
 
@@ -1625,7 +1663,6 @@ ______________________
 ILP hosted payments https://interledger.org/tutorials/hosted-ledgers/ {
 
   -  how to use a hosted ledger to speed things up
-    Bilateral Transfer Protocol (BTP) and its relation to ILP
 
   __ Initial setup __
   shop devel -> shop: Add a ledger to the shop app. (private ledger / "trust-line")
@@ -1634,13 +1671,9 @@ ILP hosted payments https://interledger.org/tutorials/hosted-ledgers/ {
   client     -> shop: pay letters to client's account at shop.ledger
                       (much faster than XRP)
  
-  trustline types: symmetrical/asymmetrical
-    - An asymmetrical trustline is a ledger with two account holders,
-      and one of them is also the ledger administrator.
-    - A   symmetrical trustline is a ledger with two account holders,
-      who collaborate on an equal basis to administer the 
-      ledger between them.
+______________________
 
+______________________
     - The shop's ledger will expose version 1.0 of the Bilateral Transfer Protocol (BTP),
      optimization of the Ledger Plugin Interface (LPI), transported over a WebSocket.
      These BTP packets are similar to the objects passed to plugin.sendTransfer 
@@ -1651,10 +1684,10 @@ ILP hosted payments https://interledger.org/tutorials/hosted-ledgers/ {
 _________________________
 Ledger Plugin Interface v2: https://github.com/interledger/rfcs/pull/347
   - Ephemeral Transfers
+_________________________
 
 ILQPv2: https://github.com/interledger/rfcs/pull/309
   - Replace ILQP with End-to-End Quotin
-__________________________
 __________________________
 "Proxying" Ledgers
 C&P: Michiel de Jong
@@ -1663,20 +1696,32 @@ C&P: Michiel de Jong
    instance by keeping a websocket open. I think this is a big burden on both
    the user and the ledger, and would like to propose an alternative: get rid
    of subscriptions, and use a "proxying ledger" instead."""
-_____________________________
-// https://github.com/interledger/interledger/wiki/Architecture
-
-        spsp is ussually "good enough" because the payment sender can present the
-      fulfillment to connectors to probe that the payment was recieved by the recipient even 
-      if it wasn't ... but he will not win much with that. He will just loose his money  
-      The receiver can not probe the opposite but he just received money for free.
-   
-      IPR is just needed in some "corner" scenarios when the receiver could be fined 
-      because un-intentionally he received the money and he was obligated
-      to declare the error to some authority. 
-      IPR is "slightly" safer, 100% non-repudiable, but takes more message rounds 
-      between sender and receiver and so it less suitable for small payments. 
-
-
-</div>
-</html>
+____________________________________
+  <a href="https://github.com/interledger/rfcs/pull/384"> PR: Remove chunked payments from PSKv2</a>
+  <p>
+  Draft 1 attempted to have PSKv2 handle one-off payments, streaming payments, 
+  and chunked payments. However, <a href="https://github.com/sharafian" class="user-mention">@sharafian</a> 
+  made good points (summarized <a href="https://gist.github.com/emschwartz/235ac5bdfcd0a6b07315a248c0cd84ee">here</a>) 
+  that some of the features in the protocol and implementation of PSKv2 were only useful for
+  chunked payments and not for streaming. When streaming payments, it makes more sense to have
+  a completely stateless receiver that has a single callback to handle all incoming chunks,
+  and applications will want more direct control over how they determine whether to
+  accept or reject individual packets. Also, we wanted to
+  <a href="https://github.com/interledgerjs/ilp-protocol-psk2/issues/5">support application data</a> 
+  but PSKv2 did not go all the way to implementing segmentation and reassembly like TCP.
+  (<a href="https://github.com/sentientwaffle" class="user-mention">@sentientwaffle</a> 
+  also asked the first time he read the spec why we didn't separate the chunked 
+  payments part from the rest of PSKv2)
+  </p>
+  <p>This change simplifies the protocol and includes only the features necessary for:</p>
+  <ol>
+    <li>Generating the conditions and fulfillments from a shared secret</li>
+    <li>Encrypting and authenticating request and response data</li>
+    <li>Providing the sender a way to indicate to the receiver the minimum
+        amount they should get to accept a given packet.</li>
+  </ol>
+  This is implemented in
+     <a href="https://github.com/interledgerjs/ilp-protocol-psk2/pull/19">interledgerjs/ilp-protocol-psk2#19</a>
+  </div>
+-->
+  </html>

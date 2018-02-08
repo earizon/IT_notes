@@ -106,7 +106,7 @@ function onPageLoaded() {
 }
 </script>
 <style>
-pre { background-color:#EEEEEE; outline:1px dotted grey; }
+pre { background-color:#FFFFFF; outline:0px dotted grey; }
 *[cite]         { font-style: italic; }
 *[TODO]         { color:red; font-weight: bold; }
 *[TODO]:before  { content: "TODO:"; }
@@ -122,9 +122,15 @@ ul { margin-left: 1.0em; padding-left: 0rem; }
 #zoomDiv [xxxsmall] , #zoomDiv * [xxxsmall], #zoomDiv * * [xxxsmall], #zoomDiv * * * [xxxsmall]{ font-size:1em; } 
 #zoomDiv img[xxxsmall] , #zoomDiv * img[xxxsmall], #zoomDiv * * img[xxxsmall], #zoomDiv * * * img[xxxsmall]{ max-width:100%; } 
 
+/* REF: https://stackoverflow.com/questions/4910077/select-all-child-elements-recursively-in-css */
+#zoomDiv * [small], #zoomDiv * [xsmall], #zoomDiv * [xxsmall] { font-size:1em; }
+#zoomDiv * td { font-size:1em; }
+
+/*
 #zoomdiv [xxsmall]  , #zoomdiv * [xxsmall] , #zoomdiv * * [xxsmall] , #zoomdiv * * * [xxsmall] { font-size:1em; }
 #zoomdiv [xsmall]   , #zoomDiv * [xsmall]  , #zoomDiv * * [xsmall]  , #zoomDiv * * * [xsmall]  { font-size:1em; }
 #zoomdiv [small]    , #zoomDiv * [small]   , #zoomDiv * * [small]   , #zoomDiv * * * [small]   { font-size:1em; }
+*/
 
 body      { font-family:sans-serif; font-size:16px; padding: 0; margin: 0; }
 #zoomDiv  { 
@@ -1002,102 +1008,121 @@ Michiel de Jong @michielbdejong Jan 29 21:42 @rhuairahrighairidh cool! i think y
     <ul>
     <li><a href='https://github.com/interledgerjs/ilp'>ILP Client</a>includes an IPR client
         <a href='https://github.com/interledgerjs/ilp/blob/master/src/lib/ipr.js'>@src/lib/ipr.js</a></li>
-    <li>
-      <a href='https://github.com/hyperledger/quilt/blob/master/ilp-core/src/test/java/org/interledger/ipr/InterledgerPaymentRequestEndToEndTest.java'>Java PSK End-to-end test</a>
-      <pre small { >
-byte[] encodedPayment = senderCodecContext.write(
-    InterledgerPayment.class, paymentToSend);
-byte[] encodedCondition = senderCodecContext.write(
-    Condition.class, conditionToSend);
---------------------------------------------------------
-                  RECEIVER
---------------------------------------------------------
-STEP 1: create PSK IPR (Interledger Payment Request)
-CodecContext receiverCodecContext =
-    CodecContextFactory.interledger();
-
-final String SECRET = "MY_SECRET";
-
-Build InterledgerPaymentRequest at receiver from [
-   Fulfillment(receiverContextBuildingIpr(seed)
-   payment(dstAccount, dstAmount, encryptedPSKMessageData) ]
-
-STEP 3 - PARSE PAYMENT AT RECEIVER
-InterledgerPayment decodedPayment =
-    receiverCodecContext.read(
-    InterledgerPayment.class, encodedPayment);
-Condition decodedCondition = receiverCodecContext.read(
-    Condition.class, encodedCondition);
-PskMessage encryptedMessage = receiverCodecContext.read(
-    PskMessage.class, decodedPayment.getData());
-
-// Load PSK Context based on token extracted of
-//        address in payment packet
-PskContext receiverContext =
-    PskContext.fromReceiverAddress(
-      SECRET, decodedPayment.getDestinationAccount());
-
-PskMessage decryptedPskMessage =
-    receiverContext.decryptMessage(encryptedMessage);
--------------------------------------------------------
-
-
--------------------------------------------------------
-                SENDER
--------------------------------------------------------
-/* STEP 2: PARSE IPR AT SENDER */
-CodecContext senderCodecContext =
-    CodecContextFactory.interledger();
-
-InterledgerPaymentRequest decodedIpr =
-    senderCodecContext.read(
-        InterledgerPaymentRequest.class, encodedIpr);
-InterledgerPayment  paymentToSend =
-    decodedIpr.getInterledgerPayment();
-Condition conditionToSend = decodedIpr.getCondition();
-
-// Decode PSK message
-PskMessage message = senderCodecContext.read(
-    PskMessage.class, paymentToSend.getData());
-        message.getData()
-        message.getEncryptionHeader()
-        message.getPublicHeaders(
-          PskMessage.Header.WellKnown.PAYMENT_ID)
-
-PskMessage decryptedPskMessageAtSender =
-    (PskContext.fromPreSharedKey(psk)).decryptMessage(message);
-
----------------------------------------------------------
-      </pre>
-    </li>
     </ul>
   </td>
   <td colspan=3 >
-    <span xbig>Pre-Shared Key(PSK) Protocol v2</span>
+
+    <span xbig><a href="https://github.com/interledger/rfcs/blob/master/0016-pre-shared-key/0016-pre-shared-key.md">RFC 0016 Pre-Shared Key(PSK)</a></span>
     <ul>
-      <li TODO>Update v2 changes over PSK v1</li>
-      <li><a href='https://gist.github.com/emschwartz/235ac5bdfcd0a6b07315a248c0cd84ee'>Motivation for changing PSK2 Draft 1</a><br/>
-         <span cite>Draft 1 of PSK2 attempts to support both streaming and chunked payments.
-           However, it includes some features that are only useful for chunked payments and
-           does not include some others that would be needed for a proper chunked 
-           payments implementation.<br/>
-           Based on a conversation with @sharafian, this proposes narrowing the scope of PSK2
-            while making it easier to build use cases like streaming and chunked payments on top.
-         </span>
-      </li>
       <li>End-to-end non-interactive transport protocol, used by the sender
           and receiver of an ILP payment in which the sender chooses the payment
           amount and generates the fulfillment/condition without communicating 
           with the recipient</li>
+      <li>Used to avoid recevier to repeately recreate a new fulfillment. Once  a given
+          secret is shared by sender and receiver, they can negotiate new payments at will</li>
+
       <li>This protocol is NOT binding since the sender can generate the fulfillment
           and so he can NOT probe such fulfillment was actually generated by receiver.
           <a href='https://github.com/interledger/rfcs/blob/master/0011-interledger-payment-request/0011-interledger-payment-request.md'>
           ILP Payment Request</a> must be used in such cases.
       </li>
-      <li>The entirety of the PSK data, including public headers, encrypted 
-          private headers, and encrypted private data, is encoded into an octet-stream 
-          that forms the data portion of the <a href='https://github.com/interledger/rfcs/blob/master/asn1/InterledgerProtocol.asn'>ILP Payment Packet</a></li>
-      <li>The PSK data is authenticated via AES-256-GCM in addition to the HMAC-SHA-256 which authenticates the full ILP payment</li>
+      <li>
+<pre { >
+Pre-Shared Key Transport Protocol (PSK)
+
+F.ex:
+SPSP:
+--- just once:  share new key
+sender -> sender: + shared key
+sender -> receiver: shared key (over HTTPS normally)
+-----
+sender -> sender: 16-byte nonce (used as IV for AES)
+sender -> sender AUTH_TAG= 16-byte auth.tag 
+                 returned by AES-256-GCM cipher
+sender -> sender: build PSK-data =
+  PSK/1.0\n
+  Nonce: base64url(16-bytes)
+  Encryption: none |
+              aes-256-gcm + base64url(AUTH_TAG)
+  .... other public headers
+  (\n)
+  (\n)
+  -- if Encryption = aes-256-gcm follows 
+  --   AES-256-GCM encrypted headers
+  --   using encryption key := 
+  --    HMAC(shared-secret,'ilp_key_encryption')
+  -- else 
+  --   remainder PSK data appended in cleartext
+  (\n)
+  (\n)
+  raw binary application data
+sender -> sender: PSK-condition-key =
+        HMAC(shared-secret,'ilp_psk_condition')
+sender -> sender: fulfillment = 
+        HMAC(secret=PSK-condtion-key, full ILP packet)
+sender -> sender: condition = SHA-256(fulfillment)
+sender -> sender: get quote to destination
+sender -> connector: send payment with
+                     ILP_paket.data = PSK-data
+...
+connector -> receiver: new local TX with ILP_packet
+receiver  -> receiver: un-encrypt if needed
+receiver  -> receiver: verifies 
+               TX.amount matches ILP_packet.amount
+               (opt) external system for extra checks
+receiver  -> receiver: +fulfillment 
+              (generated as in client)
+receiver  -> connector: fulfillment
+
+</pre }>
+<pre {>
+Example PSK-data
+    PSK/1.0
+    Nonce: fpwpAhlN588
+    Key: hmac-sha-256
+    Encryption: aes-256-gcm 58EowcXBk3qBIvJ0kmvdCh
+    Header: data_everyone_can_see
+    ...
+
+</pre }>
+      </li>
+      <li>The full PSK_data is encoded into byte-streams to form the data portion of the 
+         <a href='https://github.com/interledger/rfcs/blob/master/asn1/InterledgerProtocol.asn'>ILP Payment Packet</a>
+      </li>
+      <li><span TODO>Update v2 changes over PSK v1</span><br/>
+        <a href='https://gist.github.com/emschwartz/235ac5bdfcd0a6b07315a248c0cd84ee'>Motivation for changing PSK2 Draft 1</a><br/>
+         <span cite>Draft 1 of PSK2 attempts to support both streaming and chunked payments.
+           However, it includes some features that are only useful for chunked payments and
+           does not include some others that would be needed for a proper chunked 
+           payments implementation.<br/>
+           Based on a conversation with @sharafian (summarized <a href="https://gist.github.com/emschwartz/235ac5bdfcd0a6b07315a248c0cd84ee">here</a>),
+           this proposes narrowing the scope of PSK2 while making it easier
+           to build use cases like streaming and chunked payments on top.
+         </span><br/>
+         <a href="https://github.com/interledger/rfcs/pull/384">PSK v2 PR: Remove chunked payments from PSKv2</a><br/>
+  <p>When streaming payments, it makes more sense to have
+  a completely stateless receiver that has a single callback to handle all incoming chunks,
+  and applications will want more direct control over how they determine whether to
+  accept or reject individual packets. Also, we wanted to
+  <a href="https://github.com/interledgerjs/ilp-protocol-psk2/issues/5">support application data</a> 
+  but PSKv2 did not go all the way to implementing segmentation and reassembly like TCP.
+  (<a href="https://github.com/sentientwaffle" class="user-mention">@sentientwaffle</a> 
+  also asked the first time he read the spec why we didn't separate the chunked 
+  payments part from the rest of PSKv2)
+  </p>
+  <p>This change simplifies the protocol and includes only the features necessary for:</p>
+  <ol>
+    <li>Generating the conditions and fulfillments from a shared secret</li>
+    <li>Encrypting and authenticating request and response data</li>
+    <li>Providing the sender a way to indicate to the receiver the minimum
+        amount they should get to accept a given packet.</li>
+  </ol>
+  This is implemented in
+     <a href="https://github.com/interledgerjs/ilp-protocol-psk2/pull/19">interledgerjs/ilp-protocol-psk2#19</a>
+  </div>
+
+      </li>
+
     </ul>
 
     <span xbig>Documentation Links</span>
@@ -1640,32 +1665,6 @@ ILP hosted payments https://interledger.org/tutorials/hosted-ledgers/ {
 
 }
 ____________________________________
-  <a href="https://github.com/interledger/rfcs/pull/384"> PR: Remove chunked payments from PSKv2</a>
-  <p>
-  Draft 1 attempted to have PSKv2 handle one-off payments, streaming payments, 
-  and chunked payments. However, <a href="https://github.com/sharafian" class="user-mention">@sharafian</a> 
-  made good points (summarized <a href="https://gist.github.com/emschwartz/235ac5bdfcd0a6b07315a248c0cd84ee">here</a>) 
-  that some of the features in the protocol and implementation of PSKv2 were only useful for
-  chunked payments and not for streaming. When streaming payments, it makes more sense to have
-  a completely stateless receiver that has a single callback to handle all incoming chunks,
-  and applications will want more direct control over how they determine whether to
-  accept or reject individual packets. Also, we wanted to
-  <a href="https://github.com/interledgerjs/ilp-protocol-psk2/issues/5">support application data</a> 
-  but PSKv2 did not go all the way to implementing segmentation and reassembly like TCP.
-  (<a href="https://github.com/sentientwaffle" class="user-mention">@sentientwaffle</a> 
-  also asked the first time he read the spec why we didn't separate the chunked 
-  payments part from the rest of PSKv2)
-  </p>
-  <p>This change simplifies the protocol and includes only the features necessary for:</p>
-  <ol>
-    <li>Generating the conditions and fulfillments from a shared secret</li>
-    <li>Encrypting and authenticating request and response data</li>
-    <li>Providing the sender a way to indicate to the receiver the minimum
-        amount they should get to accept a given packet.</li>
-  </ol>
-  This is implemented in
-     <a href="https://github.com/interledgerjs/ilp-protocol-psk2/pull/19">interledgerjs/ilp-protocol-psk2#19</a>
-  </div>
 _________________________
 dora-gt Is there any material to refer about amount control, like... 
 - if I want to send $10 by XRP, how to control destination amount?
@@ -1745,17 +1744,161 @@ https://github.com/interledger/tutorials/blob/53b6930b158d5921add604346cc319d97d
  1 Create your payment pointer
 
    npm install -g ilp-spsp-server
-   DEBUG=* ilp-spsp-server --subdomain michielbdejong
+   DEBUG=* ilp-spsp-server - -subdomain michielbdejong
 
  2 Pay yourself
 
    npm install -g ilp-spsp
-   DEBUG=* ilp-spsp send --receiver '$michielbdejong.localtunnel.me' --amount 100
+   DEBUG=* ilp-spsp send - -receiver '$michielbdejong.localtunnel.me' - -amount 100
 
 You should see something like:
 
    paying 100 to "$michielbdejong.localtunnel.me"...
    sent!
+_____________________________________________
+PSK Pseudocode
 
+CLIENT PAYMENT CREATION
+(suppose shared_secret , destination_account already known through SPSP, ....):
+
+private_headers = create_empty_buffer()
+                +  headers.join('\n')
+                +  '\n\n'
+                +  application_data
+
+nonce = random_bytes(16)
+
+payment_encryption_key = 
+   hmac_sha_256(
+    shared_secret, 'ilp_psk_encryption')
+encrypted_data, auth_tag = aes_256_gcm({
+  key: payment_encryption_key,
+  iv: nonce,
+  data: private_headers
+})
+
+psk_data = create_empty_buffer()
+         + 'PSK/1.0\n'
+         + 'Nonce: ' + nonce
+         + 'Encryption: aes-256-gcm ' + auth_tag
+         + public_headers.join('\n')
+
+psk_data += '\n\n'
+psk_data += encrypted_data
+
+ilp_packet = create_ilp_packet({
+  amount: destination_amount,
+  account: destination_account,
+  data: psk_data
+})
+
+psk_condition_key = hmac_sha_256
+    (shared_secret, 'ilp_psk_condition')
+fulfillment = hmac_sha_256(
+    psk_condition_key, ilp_packet)
+condition = sha_256(fulfillment)
+
+// The sender will now quote and prepare this payment with the condition
+// and the ilp_packet attached.
+
+2. Payment Fulfillment
+
+This is executed by the receiver for each payment once they have gotten the notification of the incoming transfer:
+
+/**
+  * @param shared_secret (same as the one used by the sender)
+  * @param account (the receiver's account, as provided by their ledger plugin)
+  * @param ilp_packet (the ILP packet attached to the incoming payment)
+  */
+
+// The nonce is taken from the public headers and used as the IV
+// (initialization vector) of AES-256-GCM. The auth tag for GCM decryption is
+// the second space-separated field of the 'encryption' header. Note that the
+// header names are case-insensitive but the values are case-sensitive, just as
+// in HTTP. If the public 'Encryption' header were set to 'none', this
+// decryption function would be omitted, as packet.data would contain the
+// plaintext of the private headers and application data.
+
+psk_data = packet.data
+nonce = psk_data.headers['nonce']
+auth_tag = psk_data.headers['encryption'].split(' ')[1]
+payment_decryption_key = hmac_sha_256(shared_secret, 'ilp_psk_encryption')
+private_headers = aes_256_gcm_decipher({
+  key: payment_decryption_key,
+  iv: nonce,
+  tag: auth_tag,
+  data: psk_data.data
+})
+
+// After extracting and decrypting the PSK data, the receiver passes it to
+// another function to perform any application-level logic on whether or not to
+// accept this payment.
+
+review_payment(private_headers, psk_data, ilp_packet, ... )
+
+// Having reviewed the payment without exception, the receiver regenerates the
+// fulfillment from the shared secret and the ILP packet, and then uses it to
+// fulfill the incoming payment.
+
+psk_condition_key = hmac_sha_256(shared_secret, 'ilp_psk_condition')
+fulfillment = hmac_sha_256(psk_condition_key, ilp_packet)
+
+// The receiver submits the fulfillment to execute the incoming transfer.
+
+Appendix A: Recommended Algorithm for Generating Shared Secrets
+
+The receiver MAY use any method they choose for determining the shared_secret. This algorithm is RECOMMENDED because it allows the receiver to listen for incoming PSK payments with many different shared secrets without needing to store all of the various secret values.
+
+The receiver maintains one receiver_secret, which is HMACed with a random public token to generate the shared secret initially and regenerate it from incoming payment packets.
+Shared Secret Generation
+
+This is executed by the receiver, using a single receiver_secret, each time a new shared_secret is desired (NOT once per payment):
+
+/**
+  * @param account (this is the address the receiver will listen on, as
+  * returned by their ledger plugin)
+  * @param receiver_secret (a random 32-byte secret generated and stored by the receiver)
+  */
+
+// The token is attached to the receiver's ILP address, allowing them to
+// regenerate the shared secret every time they receive a payment, instead of
+// keeping a store of all shared secrets they've given out.
+
+token = random_bytes(16)
+
+// The receiver id differentiates this receiver from other receivers on the
+// same account with different receiver_secrets. When they receive a payment,
+// the receiver can make sure the receiver id in the ILP address is their own.
+
+receiver_id = hmac_sha_256(receiver_secret, "ilp_psk_receiver_id").slice(0, 8)
+destination_account = account + "." + base64url(receiver_id) + base64url(token)
+
+// The shared secret is generated using a hard-coded string and the token.
+
+shared_secret_generator = hmac_sha_256(receiver_secret, "ilp_psk_generation")
+shared_secret = hmac_sha_256(shared_secret_generator, token)
+
+// The shared_secret and the destination_account are transmitted to the sender.
+
+Shared Secret Regeneration
+
+This is executed each time a payment is received, before 2. Payment Fulfillment:
+
+/**
+  * @param ilp_packet (the ILP packet attached to the incoming payment)
+  * @param receiver_secret (same as generated above)
+  * @param account (the receiver's account, as provided by their ledger plugin)
+  */
+
+// The receiver id and the shared secret are regenerated from the account in
+// the ILP packet. Remember from the previous section that this address contains
+// the token appended after the receiver id.
+
+receiver_id = hmac_sha_256(receiver_secret, "ilp_psk_receiver_id").slice(0, 8)
+token = ilp_packet.account.slice(account.length + receiver_id.length)
+shared_secret_generator = hmac_sha_256(receiver_secret, "ilp_psk_generation")
+shared_secret = hmac_sha_256(shared_secret_generator, token)
+
+// Now the receiver can continue with Payment Fulfillment
 -->
   </html>

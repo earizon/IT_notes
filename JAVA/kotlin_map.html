@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html>
+   <meta charset="UTF-8">
+   <title>Kotlin map</title>
+<!--
+ Q:Note what the attribute { and } do:
+ A:Those attributes are ignored by the browser but are helpful to fold/unfold text in some
+   editors (Vim, Emacs,...)
+-->
+<!--
+ROW TEMPLATE
+<table {>
+<tr {>
+  <td col1 colspan=4>
+    <ul>
+      <li> </li>
+      <li> </li>
+      <li> </li>
+    </ul>
+  </td>  
+  <td col2 colspan=4>
+  </td>  
+  <td col3 colspan=4>
+  </td>  
+</tr }>
+</table }>
+-->
+
+<head>
+<script>
+var zoomDivDOM
+function onZoomDivDoubleClick() { zoomDivDOM.innerHTML = ''; }
+var zoomDivFW = true; // FW Full Width
+var zoomDivFH = true; // FW Full Height 
+var zoomDivTop = true; 
+var zoomDivLft = true; 
+function onTDDoubleClick()      { zoomDivDOM.innerHTML = 
+     "('Esc' to close) Toggle "+
+     "<span style='color:blue;' onClick=\"zoomDivFW  = !zoomDivFW ; zoomDivDOM.style.maxWidth  = zoomDivFW  ? '98%' : '30%'\">[Width]</span> " 
+   + "<span style='color:blue;' onClick=\"zoomDivFH  = !zoomDivFH ; zoomDivDOM.style.maxHeight = zoomDivFH  ? '98%' : '30%'\">[Height]</span> " 
+   + " Toggle " 
+   + "<span style='color:blue;' onClick=\"zoomDivLft = !zoomDivLft; zoomDivDOM.style.left      = zoomDivLft ? '1%'  : '69%'\">[Horz]</span> " 
+   + "<span style='color:blue;' onClick=\"zoomDivTop = !zoomDivTop; zoomDivDOM.style.top       = zoomDivTop ? '1%'  : '69%'\">[Vert]</span> " 
+   + " <br/> " 
+   + this.innerHTML; 
+}
+
+function onPageLoaded() {
+  zoomDivDOM = document.getElementById('zoomDiv')
+  document.addEventListener('keyup',function(e) { if (e.code !== "Escape") return; onZoomDivDoubleClick(); })
+  // Change default a.target to blank. Ussually this is bad practice 
+  // but this is the exception to the rule
+  var nodeList = document.querySelectorAll('a')
+  for (idx in nodeList) { 
+      if (!nodeList[idx].href) { continue; }
+      if (nodeList[idx].href && !nodeList[idx].href.startsWith("http")) continue;
+      nodeList[idx].target='_blank'; 
+  }
+  nodeList = document.querySelectorAll('td')
+  for (idx in nodeList) { 
+     if (!!! nodeList[idx].addEventListener) continue;
+     nodeList[idx].addEventListener('dblclick',onTDDoubleClick, false)
+  }
+  setTimeout(onZoomDivDoubleClick, 3000);
+}
+</script>
+<style>
+b { color: #0A9}
+pre { background-color:#EEEEEE; border-right:1px dotted grey; margin: 0; overflow:auto; }
+*[cite]         { font-style: italic; }
+*[TODO]         { color:red; font-weight: bold; }
+*[TODO]:before  { content: "TODO:"; }
+*[xxxsmall]{ font-size:0.1rem; }
+img[xxxsmall]{ max-width:10rem; }
+* xxsmall] { font-size:0.3rem; }
+*[xsmall]  { font-size:0.7rem; }
+*[small]   { font-size:0.9rem; }
+*[xxbig]  { font-size:1.5em; color:#007733;}
+*[xbig]  { font-size:1.3em;  color:#005577;}
+*[big]  { font-size:1.1em; }
+*[comment] { whitespace:break; font-family:sans; }
+ul { margin-left: 1.0em; padding-left: 0rem; }
+
+#zoomDiv [xxxsmall] , #zoomDiv * [xxxsmall], #zoomDiv * * [xxxsmall], #zoomDiv * * * [xxxsmall]{ font-size:1em; } 
+#zoomDiv img[xxxsmall] , #zoomDiv * img[xxxsmall], #zoomDiv * * img[xxxsmall], #zoomDiv * * * img[xxxsmall]{ max-width:100%; } 
+
+/* REF: https://stackoverflow.com/questions/4910077/select-all-child-elements-recursively-in-css */
+
+#zoomDiv * [small], #zoomDiv * [xsmall], #zoomDiv * [xxsmall] { font-size:1em; }
+#zoomDiv *[small], #zoomDiv *[xsmall], #zoomDiv *[xxsmall] { font-size:1em; }
+#zoomDiv * td { font-size:1em; }
+
+body      { font-family:sans-serif; font-size:16px; padding: 0; margin: 0; }
+#zoomDiv  { 
+   position:fixed; top:0%; left:1%; width:98%; height:auto;
+   max-height: 98%; max-width: 98%; overflow: auto;
+   background-color:#FFFFFF; color:#000; border-radius: 0.5rem; border: 4px solid black; font-size: 2rem;
+   box-shadow: 5px 5px 30px black;
+   padding: 0.5rem;
+}
+
+a            { text-decoration:none; font-family:monospace; padding:0.1em;}
+a[href^="#"]:before /* mark internal anchor */ {  content: ">"; }
+a[href^="#"]:after  /* mark internal anchor */ {  content: "<"; }
+a:visited { color:blue; }
+td { 
+   font-size: 0.8rem;
+   vertical-align: top;
+   outline: 0px solid grey; 
+}
+td[col1] ,th[col1]  {background-color:#FFFFFF; min-width:8.25%; max-width:8.25%; }
+td[col2] ,th[col2]  {background-color:#FAFAFA; min-width:8.25%; max-width:8.25%; }
+td[col3] ,th[col3]  {background-color:#FFFFFF; min-width:8.25%; max-width:8.25%; }
+td[col4] ,th[col4]  {background-color:#FAFAFA; min-width:8.25%; max-width:8.25%; }
+td[col5] ,th[col5]  {background-color:#FFFFFF; min-width:8.25%; max-width:8.25%; }
+td[col6] ,th[col6]  {background-color:#FAFAFA; min-width:8.25%; max-width:8.25%; }
+td[col7] ,th[col7]  {background-color:#FFFFFF; min-width:8.25%; max-width:8.25%; }
+td[col8] ,th[col8]  {background-color:#FAFAFA; min-width:8.25%; max-width:8.25%; }
+td[col9] ,th[col9]  {background-color:#FFFFFF; min-width:8.25%; max-width:8.25%; }
+td[col10],th[col10] {background-color:#FAFAFA; min-width:8.25%; max-width:8.25%; }
+td[col11],th[col11] {background-color:#FFFFFF; min-width:8.25%; max-width:8.25%; }
+td[col12],th[col12] {background-color:#FAFAFA; min-width:8.25%; max-width:8.25%; }
+th[header_delimit]{background-color:#000000; color:#FFFFFF; font-size:2em; }
+div[subtable1] { max-width: 95%; overflow: auto; padding:0; margin: 0;}
+
+</style>
+</head>
+<body onLoad='onPageLoaded()'>
+<div id='zoomDiv' style="padding: 0">Hint: double-click on cell to zoom!!</div>
+<br/>
+<table style='width:100%'{>
+<tbody>
+<tr {>
+  <td col1 ></td> <td col2 ></td> <td col3 ></td> <td col4 ></td>
+  <td col5 ></td> <td col6 ></td> <td col7 ></td> <td col8 ></td>
+  <td col9 ></td> <td col10></td> <td col11></td> <td col12></td>
+</tr }>
+
+<tr {>
+  <td col1 colspan=1 >
+    <ul>
+      <li><a href="https://kotlinlang.org/docs/reference/>Language Reference</a></li>
+      <li><a href="https://try.kotlinlang.org/#">On-line IDE for Kotlin</a></li>
+    </ul>
+<br/>
+
+    <span xxbig>Everything is an expresion</span>
+<pre { >
+// "if" are expresions and the last 
+// expression is the value of the "if"-block:
+val max = if (a > b) {
+    print("a Wins "); a 
+} else {
+    print("b Wins "); b 
+}
+</pre }>
+    <span xxbig>Immutable values and inferred types</span>
+<pre { >
+// Immediate inmutable assignment
+val a: Int  = 1
+
+// Inferred Int type (var mutable)
+var count  = 5;
+    count += 1;
+</pre } >
+
+    <span xxbig>Python like import-as</span>
+<pre xxsmall { >
+import bar.Bar as bBar
+</pre } >
+
+<span xxbig>Check types at runtime ('is')</span>
+
+<pre { >
+fun getStringLenght(obj: Any) {
+  if (obj  is String) {...} 
+  if (obj !is String) {...}
+}
+</pre } >
+
+    <span xxbig>'with':</span><br/>
+<pre {>
+  class Turtle {
+      turn(degrees: Double)
+      forward(pixels: Double)
+      ...
+  }
+  val myTurtle = Turtle()
+  with(myTurtle) {
+    penDown() ;
+    for(i in 1..4) { 
+      forward(100.0) ; turn(90.0) 
+    }
+  }
+</pre }>
+
+
+  </td>  
+  <td col2 colspan=2 >
+      <a xxbig href="https://kotlinlang.org/docs/reference/null-safety.html">Avoiding nulls</a><br/>
+    <span xbig>nullables must be declared explicetelly</span>
+<pre { >
+val nullableBob : String? = "abc"
+nullableInstance<b>?</b>.department<b>?</b>.head<b>?</b>.name 
+^_______________^___________^_____^
+<span xbig>Returns null if nullableInstance,
+ department or head is null
+</span>
+
+val listWithNulls: List<String?> = listOf("A", null)
+for (item in listWithNulls) {
+<span xbig>
+/* ".let" skips expression
+ * block execution for nulls */</span>
+  item?.let { println(it) }
+}
+
+<span xbig>
+/* Assigning nullable to non-nullabe
+ * requires if (..!=null) ... else ...*/</span>
+val l: Int = if (b != null) b.length else -1
+<span xbig>or Elvis operator ?:</span>
+val l = b?.length ?: -1
+
+<span xbig>Abort/throw NullPointerE. if null present</span>
+  val name = node.getName()!!
+      
+<span xbig>Filtering Nulls at list i12n</span>
+<pre { >
+val intList: List<Int> =
+  listOf(1, 2, null, 4)
+  <b>.filterNotNull()</b>
+</pre } >
+  </td>  
+  <td col3 colspan=7 >
+    <span xxbig>String Handling</span><br/>
+</pre } >
+    <span xbig>String template</span>
+<pre { >
+  val a  = 23
+  val s1 = "Hello World <b>$a</b>!"
+  println(s1)
+</pre } >
+<br/>
+    <span xbig>String Expresions</span>
+<pre { >
+  val s2 = "<b>${</b>s1.replace("Hello", "Goodbye")<b>}</b> $d"
+</pre } >
+    <span xbig>Multiline string with margin</span>
+<pre { >
+  val myMultiLineString = """
+<b>    |</b> for (c in "foo")
+<b>    |</b>     print(c)
+<b>    |</b> Dolar is writen as ${'$'}
+  """.<b>trimMargin()</b> // remove leading spaces.
+  print(myMultiLineString)
+</pre }>
+<br/><br/>
+    <span xxbig>Collection Handling</span><br/>
+<pre { >
+val result List<T> = ArrayList<T>()
+
+<span xbig>Lambda initializer for arrays</span>
+val squaredArray: Array = 
+    Array(5, <b>{ idx -> (idx * idx).toString() }</b>)
+
+<span xbig>"Walk" over collection</span>
+for (<b>item in</b> myArrayOrList)
+  println("item is ${item}")
+
+<span xbig>"Walk" over list index</span>
+for (<b>idx  in intList.indices</b>)
+  println("$idx is ${intList[idx]}")
+
+<span xbig>Initialize a map (HashTable/Dictionary)</span>
+val map1 = mapOf("a" to 1, "b" to 2)
+println(map1) // Prints [1, 2]
+
+<span xbig>"spread" array</span>
+val    a = asList(1, 2, 3)
+val list = asList(-1, 1, <b>*a</b> /*spread*/, 4)  
+
+<span xbig>Filtering a list</span>
+val positives = list<b>.filter</b> { x -&gt; x &gt; 0 }
+// even shorter: (using default "it")
+val positives = list.filter { it &gt; 0 }
+</pre } >
+  </td>  
+  <td colspan=2>  
+    <span xxbig>Types</span>
+<pre { >
+String Boolean Char Int Long
+
+val c: Char = '\uFF00' //  'a', '\b'
+
+<span xbig>explicit Chart to Int conversion</span>
+if (c !in '0'...'9') 
+  c.toInt() - '0'.toInt() 
+else
+  throw RuntimeException("...")
+
+<span xbig>bitwise operations</span>
+val x = (1 shl 2) and 0x00FF
+// (u)shl/(u)shr) bits:(un)signed shift left/righ
+// and/or/xor bits 
+// inv()               :bitwise inversion
+
+<span xbig>special optimized arrays</span>
+// (Byte|Short|Int|...)Array
+</pre }>
+    <span xxbig>"When"</span>
+<pre {>
+fun describe(obj: Any = 1) :
+    String = when(obj) {
+  1            -> "One" 
+  "Hello"      -> "Greeting" 
+  is Long      -> "Long"
+  in 32...128  -> "Is ASCII"
+  !is String   -> "Not a string"
+  "dog" in obj -> "Animal list"
+  else         -> "Unknown"
+}
+</pre }>
+    <span xxbig>try/catch as expresion</span><br/>
+     try/catch block returns values:(return value)
+<pre {>
+  val result = 
+    try { count() } 
+    catch (e: ArithmeticException) {
+      throw RuntimeException(e) 
+    }
+</pre }>
+
+  </td>  
+
+
+</tr }>
+</table>
+<table>
+<tr {>
+  <td col1 >.</td> <td col2 >.</td> <td col3 >.</td> <td col4 >.</td>
+  <td col5 >.</td> <td col6 >.</td> <td col7 >.</td> <td col8 >.</td>
+  <td col9 >.</td> <td col10>.</td> <td col11>.</td> <td col12>.</td>
+</tr }>
+
+
+<tr {>
+  <td col1 colspan=2>
+
+    <span xxbig>".use" Java 7 try-with-resources:</span><br/>
+<pre {>
+val stream =
+  Files.newInputStream(
+    Paths.get("/some/file.txt"))
+stream.buffered().
+  reader()<b>.use</b> {
+  reader -> 
+    println(reader.readText()) 
+}
+</pre }>
+
+    <span xxbig>Interfaces</span>
+<pre {>
+interface MyInterface {
+    val prop1: Int 
+    val prop2: String
+        // default accessor
+        get() = "foo"
+    fun bar(): Int
+    // default implementation
+    fun foo() { print(prop)  } 
+    fun foo() { }
+}
+
+class Child : MyInterface {
+  override val prop: Int = 29
+}
+</pre }>
+
+  </td>  
+
+  <td col2 colspan=2>
+    <span xxbig>Functions</span><a href="https://kotlinlang.org/docs/reference/functions.html">(ref)</a>
+<pre xxsmall { >
+fun sum(a: Int, b: Int = 1): Int {   
+  return a+b                     
+}                                
+// "shortcut"
+fun sum(a: Int, b: Int = 1) <b>= a + b</b>
+
+<span xbig>Generic Functions</span>
+// &lt;T&gt; is specified before the fun. name
+fun <T> singletonList(item: T): 
+  List<T> {
+    // ...
+}
+</a>
+<span xbig>Tail recursive</span>
+// <b>Compiler optimises out the recursion!!!</b>
+// - function must call itself as last operation)
+// - doesn't work  within try/catch.
+// - only supported in JVM (currently)
+tailrec 
+fun findFixPoint(x: Double = 1.0): Double
+  = if (x == Math.cos(x)) x 
+    else findFixPoint(Math.cos(x))
+
+<a xbig href="https://kotlinlang.org/docs/reference/inline-functions.html">Inline functions</a>
+inline 
+  fun lock(param1: Class1, ...) :
+  ReturnClass {
+}
+</pre }>
+
+<pre TODO hidden {>
+// <- instance 'space':'space' => type <-> supertype
+interface Foo<out T : Any> : Bar {
+// <- instance: => instance <-> type
+    fun foo(a: Int): T 
+}
+</pre }>
+
+  </td>  
+  <td col3 colspan=3>
+    <span xxbig>Classes<a href="https://kotlinlang.org/docs/reference/classes.html">(REF)</a></span><br/>
+
+  <span xbig><code>"Any"</code> (common superclass in Kotlin) is <b>NOT</b> java.lang.Object;</span><br/>
+  it does not have any members other than equals(), hashCode() and toString().
+
+<pre {>
+<span xbig>"by" Composition(delegation) over inheritance</span>
+REF1:"Efective Java" Chapter 4
+REF2:<a href="https://kotlinlang.org/docs/reference/delegation.html">Kotlin doc ref</a>
+interface IPrint { fun print() }
+
+class BaseImpl(val x: Int) : IPrint {
+  override fun print() { print(x) }
+}
+
+class MyClass(b: IPrint) : IPrint <b>by</b> b
+
+fun main(args: Array<String>) {
+    val base = BaseImpl(10)
+    val myClass = Myclass(base)
+    myClass<b>.print() /* = myClass.base.print() */</b>
+
+}
+
+<span xbig>Inheritance (discouraged)</span>
+class Derived(p: Int) <b>:</b> Base(p)
+
+class Container(
+  id     : Int, 
+  size   : Int,
+  childs : Containers
+) : SuperClass(id, name),
+  Iface1, Iface2, Iface3 {
+  var person_id = id
+  <span xbig>// custom accesor</span>
+  val isEmpty: Boolean 
+      <b>get() = this.size == 0 
+             || (var sum = 0; for (c in childs) sum+=c.size) == 0  </b>
+  val stringRepr : String
+      <b>get() = this.toString()</b>
+      <b>set(value) = _setFromString(value)</b>
+  // ...
+}
+
+<!--  TODO:(0)
+class Customer public @Inject constructor(name: String = "") { ... }
+
+/* The 'constructor' keyword is optional if not annotations or visibility
+ modifiers are used */
+class Customer constructor(name: String) { // primary constructor
+    init { // 'init' marks an initializer block
+        logger.info("Customer initialized with value ${name}")
+    }
+}
+class Customer {
+  constructor(parent: Person) { // Secondary constructor
+    parent.children.add(this)
+  }
+}
+-->
+</pre } >
+  </td>
+  <td col3 colspan=5>
+<pre { >
+<span xbig>//Compaq class declaration</span>
+// use val or var:
+class Person(
+  val firstName: String,
+  val lastName: String,
+  var age: Int) {
+  ...
+}
+
+
+<span xxbig>data class (DTO)</span>
+<span comment>automatically generates:
+- getters (and setters for vars),
+- equals(), hashCode(), toString(), copy()
+- component1(),… for all properties 
+</span>
+<span xbig><b>data</b></span> class Customer(
+  val name  : String,  // val: inmutable
+  val email : String, // val: inmutable
+  var refNum: Int )    // var:   mutable
+
+<span xxbig>Extension Functions</span>
+fun <span xbig><b>String.</b></span>spaceToCamelCase()
+    String { ... }
+(String. == Applies only to String objects)
+Ussage:
+"to camelcase".spaceToCamelCase()
+23424.spaceToCammelCase() // Compiler error
+
+<span xxbig>Singletons</span>
+<span xbig><b>object</b></span> Resource {
+  val name = "Name"
+}
+</pre } >
+  </td>
+</tr }>
+</table>
+</body>
+<!--
+***** The open annotation on a class is the opposite of Java's final:
+ it allows others to inherit from this class. By default, all classes
+ in Kotlin are final, which corresponds to Effective Java, Item 17:
+  Design and document for inheritance or else prohibit it. ****
+open class Base          {           open fun v() {} } // if not open => final
+class Derived() : Base() { final override fun v() {} } // by default override is also open
+
+======================================================
+sealed class Expr
+data class Const(val number: Double)         : Expr()
+data class Sum  (val e1: Expr, val e2: Expr) : Expr()
+object NotANumber                            : Expr()
+
+fun eval(expr: Expr): Double = when(expr) {
+    is Const -> expr.number
+    is Sum -> eval(expr.e1) + eval(expr.e2)
+    NotANumber -> Double.NaN
+    // the `else` clause is not required because we've covered all the cases
+}
+======================================================
+Object expressions and declarations
+generalization of anonymous inner classes:
+Ej1:
+  window.addMouseListener( object : MouseListenerBaseClase(baseClassConstructorParam1,...) 
+    { // object is an instance of an anonymous class inheriting from base listener class
+      override fun onMouseClicked(e: MouseEvent) { ... }
+      ...
+    })
+Ej 2:
+  interface B {...}
+  val ab: A = object : A(1), B { override ...  }
+----------- Object singletons --------------------------
+Object singletons or object declaration, always has a name following the object keyword. Just
+like a variable declaration, an object declaration is not an expression, and cannot be used
+on the right hand side of an assignment statement.
+  object DataProviderManager {
+      fun registerDataProvider(provider: DataProvider) {
+          // ...
+      }
+  
+      val allDataProviders: Collection<DataProvider>
+          get() = // ...
+  }
+  DataProviderManager.registerDataProvider(...)
+-------------- Companion Objects -------------------
+Members of companion objects can be called by using simply the class name as the qualifier:
+  class MyClass {
+      companion object Factory : FactoryTemplate<MyClass> { // <- object name ('Factory') can be ommited
+          override fun create(): MyClass = MyClass()
+      }
+  }
+  val instance = MyClass.create()
+===== Delegation =====
+A class "Derived" can inherit from an interface <IBase> and delegate all of its public methods
+to a specified object:
+Ex:
+   interface IBase { fun print() }
+
+   class BaseImpl(val x: Int) : IBase { override fun print() { print(x) } }
+
+   // b will be stored internally in objects of Derived and the compiler will
+   // generate all the methods of IBase that forward to b
+   class Derived(b: IBase) : IBase by b 
+
+   fun main (args: Array<String>) {
+      val b = BaseImpl(10)
+      Derived(b).print() // prints 10
+   }
+
+
+</pre } >
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+-->
+
+<!--
+  Multiplatform Native Development In Kotlin
+https://blog.kotlin-academy.com/multiplatform-native-development-in-kotlin-now-with-ios-a8546f436eec
+
+
+https://www.infoworld.com/article/3224868/java/what-is-kotlin-the-java-alternative-explained.html#tk.ifw-infsb
+
+https://www.infoworld.com/article/3236419/development-tools/kotlin-frameworks-a-survey-of-jvm-development-tools.html#tk.ifw-infsb
+
+-->
+
+<!--
+TODO: Lazy property:
+  val p: String by lazy { // compute the string }
+
+  <span xbig TODO>Higher-Order functions and lambdas</span>
+  https://kotlinlang.org/docs/reference/lambdas.html 
+
+__________________________
+
+__________________________
+TODO: If you need to write a function that can be called without having a class instance
+but needs access to the internals of a class (for example, a factory method), you
+can write it as a member of an object declaration
+(https://kotlinlang.org/docs/reference/object-declarations.html) inside that class.
+Even more specifically, if you declare a companion object 
+(https://kotlinlang.org/docs/reference/object-declarations.html#companion-objects) 
+inside your class, you'll be able to call its members with the same syntax as calling
+static methods in Java/C#, using only the class name as a qualifier.
+____________________________
+Use Kotlin with npm, webpack and react:
+  https://blog.jetbrains.com/kotlin/2017/04/use-kotlin-with-npm-webpack-and-react/
+____________________________
+<span xbig>// Checking ranges:</span>
+<pre { >
+if (x in 1...y+1) { println("OK") } 
+
+for (x in 1..10       step 2) { print(x) }
+for (x in 10 downTo 0 step 2) { print(x) }
+for (idx          in array.indices)     { println(array[idx])       }
+for ((idx, value) in array.withIndex()) { println("$idx -> $value") }
+for ((key, value) in map              ) { println("$key -> $value") }
+fruits.filter { it.startsWith("a") }.sortedBy { it }.
+    map { it.toUpperCase() }.forEeach( println(it) )
+
+val arrayOfMinusOnes: Array = IntArray(20).apply{fill(-1)} // 
+</pre } >
+
+____________________________
+<pre { >
+fun foo() {
+  // Alt 1. lambda function
+  ints.forEach lit@ {
+    // returns from foo
+    if (it == 0) return
+    // returns from lambda lit@
+    if (it == 1) return@lit
+    // returns from lambda lit@ (implicit label)
+    if (it == 2) return@forEach
+    print(it)
+  }
+  // Alt 2. anonymous function
+  ints.forEach( func(value: Int) {
+    // local returns from  anonymous funct
+    if (it == 0) return
+    print(value)
+  }
+}
+_______________________
+mainLoop@ for (i in 1..100) { // <- any expresion can be marked with a  label ("identifier"@)
+  for (j in 1..100) {
+    if (j == 55) break@loop // jumps right after the loop marked with label
+  }
+}
+</pre }>
+
+
+-->
+<!--
+<ul>
+<li><a href="http://kotlinlang.org/api/latest/kotlin.test/index.html">kotlin.test</a>, included out of the box in Kotlin 1.2, lets you write your test once and run it under both the JVM and JS;</li>
+<li><a href="https://github.com/kotlin/kotlinx.html">kotlinx.html</a> supports <strong>isomorphic rendering</strong> – using the same code to render HTML in the backend and in the frontend;</li>
+<li><a href="https://github.com/kotlin/kotlinx.serialization">kotlinx.serialization</a> allows you to easily marshal Kotlin objects between different tiers of your application, using JSON or ProtoBuf as serialization formats.</li>
+</ul>
+
+What's new in Koltin 1.2:
+http://kotlinlang.org/docs/reference/whatsnew12.html
+
+____________________
+Warnings as errors
+
+The compiler now provides an option to treat all warnings as errors. Use -Werror on the command line, or the following Gradle snippet:
+
+compileKotlin {
+    kotlinOptions.allWarningsAsErrors = true
+}
+__________________________
+https://kotlinlang.org/docs/reference/native-overview.html
+
+https://github.com/JetBrains/kotlin-native/blob/master/samples/tensorflow/src/main/kotlin/HelloTensorflow.kt
+
+_____________________________________
+Kotlin also ease the creation of an internal DSLs, or fluent interface.
+It does that with lambdas and the help of some syntactic sugar.
+ Like the fact that the last argument of a function, if it is a lambda,
+ can also be put outside of the parentheses.
+
+ This is useful to reduce the need for complex string interpolations. 
+For instance, this example uses a library to create HTML.
+
+createHTML().table {
+    for (language in languages) {
+       tr {
+           td { +language.name }
+           td { +language.popularity }
+       }
+    }
+}
+__________________________
+
+
+
+-->
+</html>

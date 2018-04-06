@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html>
+   <meta charset="UTF-8">
+   <title>OpenShift map</title>
+<!--
+ Q:Note what the attribute { and } do:
+ A:Those attributes are ignored by the browser but are helpful to fold/unfold text in some
+   editors (Vim, Emacs,...)
+-->
+<!--
+TABLE TEMPLATE
+<table { >
+<tr {>
+  <th colspan=3 header_delimit {   >topic1</th>
+</tr }>
+<tr {>
+  <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td>
+</tr }>
+<tr {>
+  <td col1 colspan=6 >
+    <ul>
+      <li>
+      </li>
+    </ul>
+  </td>  
+  <td col2 colspan=6 >
+  </td>  
+</tr }>
+</table } >
+-->
+
+<head>
+<script>
+var zoomDivDOM
+function onZoomDivDoubleClick() { zoomDivDOM.innerHTML = ''; }
+var zoomDivFW = true; // FW Full Width
+var zoomDivFH = true; // FW Full Height 
+var zoomDivTop = true; 
+var zoomDivLft = true; 
+function onTDDoubleClick(e)      { zoomDivDOM.innerHTML = 
+     "('Esc' to close) Toggle "+
+     "<span style='color:blue;' onClick=\"zoomDivFW  = !zoomDivFW ; zoomDivDOM.style.maxWidth  = zoomDivFW  ? '98%' : '30%'\">[Width]</span> " 
+   + "<span style='color:blue;' onClick=\"zoomDivFH  = !zoomDivFH ; zoomDivDOM.style.maxHeight = zoomDivFH  ? '98%' : '30%'\">[Height]</span> " 
+   + " Toggle " 
+   + "<span style='color:blue;' onClick=\"zoomDivLft = !zoomDivLft; zoomDivDOM.style.left      = zoomDivLft ? '1%'  : '69%'\">[Horz]</span> " 
+   + "<span style='color:blue;' onClick=\"zoomDivTop = !zoomDivTop; zoomDivDOM.style.top       = zoomDivTop ? '1%'  : '69%'\">[Vert]</span> " 
+   + " <br/> " 
+// + this.innerHTML; 
+   + this.outerHTML; 
+   e.stopPropagation();
+}
+
+function removeToLeftMarginInPre() {
+  // TODO:(0) Not working
+  // nodeList = document.querySelectorAll('pre')
+  // for (idx in nodeList) { 
+  //   var node = nodeList[idx]
+  //   var html = node.innerHTML
+  //   var pattern = html.match(/^\s*[|]/)
+  //   var regEx = new RegExp(pattern, "")
+  //   console.log(html)
+  //   node.innerHTML = html.replace(regEx,''))
+  //    
+  // }
+}
+
+
+function onPageLoaded() {
+  zoomDivDOM = document.getElementById('zoomDiv')
+  document.addEventListener('keyup',function(e) { if (e.code !== "Escape") return; onZoomDivDoubleClick(); })
+  // Change default a.target to blank. Ussually this is bad practice 
+  // but this is the exception to the rule
+  var nodeList = document.querySelectorAll('a')
+  for (idx in nodeList) { 
+      if (!nodeList[idx].href) { continue; }
+      if (nodeList[idx].href && !nodeList[idx].href.startsWith("http")) continue;
+      nodeList[idx].target='_blank'; 
+  }
+  nodeList = document.querySelectorAll('td')
+  for (idx in nodeList) { 
+     if (!!! nodeList[idx].addEventListener) continue;
+     nodeList[idx].addEventListener('dblclick',onTDDoubleClick, false)
+  }
+  nodeList = document.querySelectorAll('*[zoom]')
+  for (idx in nodeList) { 
+     if (!!! nodeList[idx].addEventListener) continue;
+     nodeList[idx].addEventListener('dblclick',onTDDoubleClick, false)
+  }
+
+  setTimeout(onZoomDivDoubleClick, 3000);
+  removeToLeftMarginInPre();
+}
+</script>
+<style { >
+b { color: #0A9}
+*[mono]         { font-family: monospace; white-space: pre; }
+pre { background-color:#EEEEEE; outline:1px dotted grey; margin: 0; }
+*[cite]         { font-style: italic; }
+*[TODO]         { color:red; font-weight: bold; }
+*[TODO]:before  { content: "TODO:"; }
+*[xxxsmall]{ font-size:0.1rem; }
+img[xxxsmall]{ max-width:10rem; }
+*[xxsmall] { font-size:0.3rem; }
+*[xsmall]  { font-size:0.7rem; }
+*[small]   { font-size:0.9rem; }
+*[xxbig]  { font-size:1.7em; font-weight: bold; color:#007733;}
+*[xbig]  { font-size:1.5em; }
+*[hidden]  { display:none; }
+ul,ol { margin-left: 1.0em; padding-left: 0rem; }
+#zoomDiv [xxxsmall] , #zoomDiv * [xxxsmall], #zoomDiv * * [xxxsmall], #zoomDiv * * * [xxxsmall]{ font-size:1em; } 
+#zoomDiv img[xxxsmall] , #zoomDiv * img[xxxsmall], #zoomDiv * * img[xxxsmall], #zoomDiv * * * img[xxxsmall]{ max-width:100%; } 
+
+/* REF: https://stackoverflow.com/questions/4910077/select-all-child-elements-recursively-in-css */
+#zoomDiv * [small], #zoomDiv * [xsmall], #zoomDiv * [xxsmall] { font-size:1em; }
+#zoomDiv *[small], #zoomDiv *[xsmall], #zoomDiv *[xxsmall] { font-size:1em; }
+#zoomDiv * td { font-size:1em; }
+
+body      { font-family:sans-serif; font-size:16px; padding: 0; margin: 0; }
+#zoomDiv  { 
+   position:fixed; top:1%; left:1%; width:auto; height:auto;
+   max-height: 98%; max-width: 98%; overflow: auto;
+   background-color:#FFFFFF; color:#000; border-radius: 0.5rem; border: 4px solid black; font-size: 2rem;
+   box-shadow: 5px 5px 30px black;
+   padding: 0.5rem;
+}
+
+a            { text-decoration:none; font-family:monospace; padding:0.0;}
+a[href^="#"]:before /* mark internal anchor */ {  content: ">"; }
+a[href^="#"]:after  /* mark internal anchor */ {  content: "<"; }
+a:visited { color:blue; }
+td { 
+   font-size: 0.8rem;
+   vertical-align: top;
+   outline: 1px solid grey; 
+}
+td,th               {background-color:#FFFFFF; min-width:8.25%; max-width:8.25%; }
+td[col0] ,th[col1]  {background-color:#FFFFFF; min-width:8.25%; max-width:8.25%; }
+td[col2] ,th[col2]  {background-color:#FAFAFA; min-width:8.25%; max-width:8.25%; }
+td[col3] ,th[col3]  {background-color:#FFFFFF; min-width:8.25%; max-width:8.25%; }
+td[col4] ,th[col4]  {background-color:#FAFAFA; min-width:8.25%; max-width:8.25%; }
+td[col5] ,th[col5]  {background-color:#FFFFFF; min-width:8.25%; max-width:8.25%; }
+td[col6] ,th[col6]  {background-color:#FAFAFA; min-width:8.25%; max-width:8.25%; }
+td[col7] ,th[col7]  {background-color:#FFFFFF; min-width:8.25%; max-width:8.25%; }
+td[col8] ,th[col8]  {background-color:#FAFAFA; min-width:8.25%; max-width:8.25%; }
+td[col9] ,th[col9]  {background-color:#FFFFFF; min-width:8.25%; max-width:8.25%; }
+td[col10],th[col10] {background-color:#FAFAFA; min-width:8.25%; max-width:8.25%; }
+td[col11],th[col11] {background-color:#FFFFFF; min-width:8.25%; max-width:8.25%; }
+td[col12],th[col12] {background-color:#FAFAFA; min-width:8.25%; max-width:8.25%; }
+tr[header_delimit] > *{background-color:#000000; color:#FFFFFF; font-size:2em; color: white; }
+tr[header_delimit] > td > a{color:inherit; text-decoration: underline; }
+div[subtable1] { max-width: 95%; overflow: auto; padding:0; margin: 0;}
+
+table { width:100% border:0; margin: 0;}
+</style }>
+</head>
+<body onLoad='onPageLoaded()'>
+<div id='zoomDiv'>Hint: double-click on cell to zoom!!</div>
+
+<table { >
+<tr {>
+  <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td>
+</tr }>
+<tr {>
+  <td col1 colspan=2 >
+(Full list of commands @<a href="https://github.com/openshift/origin/blob/master/docs/generated/oc_by_example_content.adoc">GiHub</a>)<br/>
+<pre xxxsmall zoom { >
+<span xxbig>"ACRONYMS"
+  bc/  == Build Configuration
+  dc/  == Deployment configuration
+  pod/ == (Running?) pod
+</span>
+</pre } >
+<span xbig>Edit Deployment Configuration Manually</span>
+<pre xxxsmall zoom { >
+$ oc edit dc/instantApp -o json # -o json => Edit in JSON format
+"spec": {
+  "<b>strategy</b>": {
+    "<b>type</b>": "Rolling",
+    "<b>rollingParams</b>": {
+      "<b>pre</b>": { "failurePolicy": "Abort",
+        "execNewPod": { 
+          "command": [
+            "/usr/bin/echo",
+            "RUNNING PRE HOOK"], "containerName": "instantApp" }
+      },
+      "<b>post</b>": { "failurePolicy": "Abort",
+        "execNewPod": {
+          "command": [
+             "/usr/bin/echo",
+             "RUNNING POST HOOK"
+          ],
+          "containerName": "instantApp" }
+      }
+    }
+},...
+
+</pre }>
+<span xbig>Add (Readiness) Probe</span>
+<pre xxxsmall zoom { >
+$ oc set probe dc/instantApp --readiness --get-url=http://:8080/<b>health</b>
+
+</pre }>
+<span xbig>Get Info (describe) Deployments</span>
+<pre xxxsmall zoom { >
+$ oc describe dc/instantApp # get list of all deployments made
+
+</pre }>
+<span xbig>Get Info of Templates</span>
+<pre xxxsmall zoom { >
+# list global(loaded by cluster admin) templates
+$ oc get templates -n openshift
+
+</pre }>
+<span xbig>Get Info (describe) Pods</span>
+<pre xxxsmall zoom { >
+$ oc get pods # find out instances <b>running</b>
+              # add filter with: --selector app=hiworld
+  NAME                    READY     STATUS      RESTARTS   AGE
+  hiworld-1-build      0/1       Completed   0          37m
+  hiworld-2-build      0/1       Completed   0          33m
+  ...
+</pre }>
+<span xbig>Get info (Describe) Pod Instance</span>
+<pre xxxsmall zoom { >
+$ oc describe pod/hiworld-4-cd3y3 # Info about given instance.
+  Name:       hiworld-4-cd3y3
+  Namespace:  wfproject
+  Image(s):   172.30.210.155:5000/wfproject/hiworld@sha256:9c941cb...
+  Node:       origin/10.0.2.15Start
+  Time: Thu, 17 Mar 2016 11:30:08 +1100
+  Labels:     <b>app=</b>hiworld,<b>deployment=</b>hiworld-4,<b>deploymentconfig=</b>hiworld
+  Status:     Running
+
+</pre }>
+<span xbig>View Cluster Events</span>
+<pre xxxsmall zoom { >
+$ oc get events 
+
+</pre }>
+
+<span xbig>Review Pod Logs</span>
+<pre xxxsmall zoom { >
+$ oc logs hiworld-5-cqlo4 (-f)
+
+</pre }>
+<span xxbig>Environement Variables</span>
+<pre xxxsmall zoom { >
+# set/edit env.var for DC
+$ oc set env dc/hiworld MYSQL_DATABASE=mysql
+
+# set/edit env.var for BC
+$ oc set env bc/hiworld MAVEN_ARGS_APPEND='-Dmaven.test.skip=true'
+
+# list set of env.vars (that will be) exported to a container
+$ oc set env dc/hiworld --list 
+  # deploymentconfigs hiworld, container hiworld
+  PATH=/opt/app-root/src/bin:...
+  STI_SCRIPTS_URL=image:///usr/libexec/s2i
+  ...
+</pre }>
+<span xbig>Shell Access to Running Pod</span>
+<pre xxxsmall zoom { >
+$ oc rsh hiworld-8 # 
+</pre } >
+  </td>  
+  <td col2 colspan=2 >
+<pre xxxsmall zoom { >
+1 project 
+</pre } >
+    <b>Flow diagram</b>
+<pre xxxsmall zoom { >
+@startuml
+title Wilfly + DDBB
+
+participant github
+participant developer as dev
+participant OpenshiftConsole as cc
+participant OpenshiftWebConsole as wc
+participant Project/Pod as project
+
+<b STEP 1: Create app from template</b>
+dev →   github: fork
+dev →       cc: oc <b>new-project</b> insultapp \
+                   --display-name="Elizabe..."
+cc  → +project:
+dev →        cc: oc <b>new-app</b> \
+                    wildfly:lastest~<span xxmall><a href="https://github.com/gshipley/book-insultant.git">...github...</a></span> \
+                    -name='insults'
+cc  →     +pod: new pod(project) from template
+cc  →       cc: display log
+note over cc
+    →Found image
+    ...
+    →<b>Success</b>
+    ...
+    Run 'oc status' to view your app
+end note
+dev →       cc: oc <b>expose service</b> insults
+                (using web con. the route is automatically created)
+dev →       cc: oc <b>get routes</b>
+                (verify app by visiting the URL)
+  Output is similar to:
+  NAME    HOST/PORT        PATH    SERVICE  LABELS
+  insults insul....xip.io  insults          app=insults
+
+note over github, project STEP 2: Create database
+
+dev →       wc: go to Project 
+                 → click Add to project
+                  → filter by "postgres"
+                   → Selecte Database postgresql-persistent
+dev →       wc: setup conf. settings (Mem. limit, service name, ..)
+dev →       wc: click create
+wc  →     +pod: creates pod running database
+                env vars are created:
+                POSTGRESQL_PORT_5432_TCP_ADDR=172.30.76.249
+                ...
+dev →       cc: oc <b>env dc</b> insults \
+                  -e POSTGRESQL_USER=insult
+                  -e PGPASSWORD=insult
+                  -e POSTGRESQL_DATABASE=insults
+                # adds env.vars to DeploymentConfig (<b>common to all pods</b>)
+
+dev →      dev: edit createSchema.sql
+dev →       wc: open terminal for running postgres pod and execute:
+                $ cat createSchema.sql | psql \
+                  -h $POSTGRESQL_SERVICE_HOST \
+                  -p $POSTGRESQL_SERVICE_PORT \
+                  -U $POSTGRESQL_USER $POSTGRESQL_DATABASE 
+note over dev,wc:
+   secrets can be used to automate password creation
+end note
+dev →       dev: Edit pom.xml to add deps on driver
+                 &lt;dependency&gt;
+                   &lt;groupId&gt;org.postgresql&lt;/groupId&gt;
+                     &lt;artifactId&gt;postgresql&lt;/artifactId&gt;
+                     &lt;version&gt;9.4-1200-jdbc41&lt;/version&gt;
+                 &lt;/dependency&gt;
+
+<b>STEP 3: Create REST Endpoint</b>
+dev →       dev: Edit pom.xml
+                 &lt;dependency&gt;
+                   &lt;groupIdgt;javax&lt;/groupId&gt;
+                     &lt;artifactIdgt;javaee-api&lt;/artifactId&gt;
+                     &lt;versiongt;7.0&lt;/version&gt;
+                     &lt;scopegt;provided&lt;/scope&gt;
+                 &lt;/dependency&gt;
+</pre } >
+    <b>New template</b><br/>
+    (Java EE app + MongoDB)
+<pre xxxsmall zoom { >
+@startuml
+participant github
+participant developer as dev
+participant OpenshiftConsole as cc
+participant OpenshiftWebConsole as wc
+participant Project/Pod as project
+
+dev →      cc : oc <b>new-project</b> parksapp \
+                --display-name="Baseball Parks"
+cc  → +project:
+dev →       cc: oc create \
+                -f <a href="https://raw.githubusercontent.com/gshipley/openshift3mlbparks/master/mlbparks-template.json">
+                    https://..../mlbparks-<b>template</b>.json</a>
+cc  →+template: add to project
+                (template is now available to project workspace)
+                As cluster admin, add to openshift namespace to make available to
+                any user
+@enduml
+</pre }>
+
+    <b>oc manual</b><br/>
+    (OpenShift Client)<br/>
+
+<pre xxxsmall zoom { >
+$ oc <command> --help
+$ oc options" for a list of global command-line options (applies to all commands).
+
+<b>Basic Commands:</b>
+  types           An introduction to concepts and types
+  login           Log in to a server
+  new-project     Request a new project
+  new-app         Create a new application
+  status          Show an <b>overview of the current project</b>
+  project         Switch to another project
+  projects        Display existing projects
+  explain         Documentation of resources
+  cluster         Start and stop OpenShift cluster
+
+<b>Build and Deploy Commands:</b>
+  rollout         Manage a Kubernetes deployment or OpenShift deployment config
+  deploy          View, start, cancel, or retry a deployment
+  rollback        Revert part of an application back to a previous deployment
+  new-build       Create a new build configuration
+  start-build     Start a new build
+  cancel-build    Cancel running, pending, or new builds
+  import-image    Imports images from a Docker registry
+  tag             Tag existing images into image streams
+
+<b>Application Management Commands:</b>
+  get             Display one or many resources
+                  -o : shows also Runtime associated info
+  describe        Show details of a specific resource or group of resources
+  edit            Edit a resource on the server
+  set             Commands that help set specific features on objects
+  label           Update the labels on a resource
+  annotate        Update the annotations on a resource
+  expose          <b>Expose</b> a replicated application as a <b>service or route</b>
+  delete          Delete one or more resources
+  scale           Change the number of pods in a deployment
+  autoscale       Autoscale a deployment config, deployment, replication controller, or replica set
+  secrets         Manage secrets
+  serviceaccounts Manage service accounts in your project
+
+<b>Troubleshooting and Debugging Commands:</b>
+  logs            Print the logs for a resource
+  rsh             Start a shell session in a pod
+  rsync           Copy files between local filesystem and a pod
+  port-forward    Forward one or more local ports to a pod
+  debug           Launch a new instance of a pod for debugging
+  exec            Execute a command in a container
+  proxy           Run a proxy to the Kubernetes API server
+  attach          Attach to a running container
+  run             Run a particular image on the cluster
+  cp              Copy files and directories to and from containers.
+
+<b>Advanced Commands:</b>
+  adm             Tools for managing a cluster
+  create          Create a resource by filename or stdin
+  replace         Replace a resource by filename or stdin
+  apply           Apply a configuration to a resource by filename or stdin
+  patch           Update field(s) of a resource using strategic merge patch
+  process         Process a template into list of resources
+  export          Export resources so they can be used elsewhere
+  extract         Extract secrets or config maps to disk
+  idle            Idle scalable resources
+  observe         Observe changes to resources and react to them (experimental)
+  policy          Manage authorization policy
+  convert         Convert config files between different API versions
+  import          Commands that import applications
+
+<b>Settings Commands:</b>
+  logout          End the current server session
+  config          Change configuration files for the client
+  whoami          Return information about the current session
+  completion      Output shell completion code for the given shell (bash or zsh)
+
+</pre }>
+
+
+  </td>  
+  <td col1 colspan=2 >
+    <b>Storage (PV/PVC)</b>
+<pre xxxsmall zoom { >
+- PersistemVolume: created by cloud-admin
+- PersistemVolumeClaim: created by user 
+OS matches PVC to existing PV
+
+  Read Only
+  Read Write Once: Only a pod can write
+  Read Write Many: Many pods can write
+
+</pre }>
+
+
+    <b>Services</b>
+<pre xxxsmall zoom { >
+ Provides fixed IP to access (indirectly) to pods (pods IPs change at redeploy)
+ Uses selectos to choose target pods.
+ If more than one pod is found "round-roubing" is used.
+
+ 3 Services types:
+  - (IPTables) HostPort/HosNetwork:  host/port in the "Host" (cluster visible)
+  - (IPTables) NodePort: all nodes (included master) will listen in port "X" 
+    redirecting to pod
+  - (HAProxy?) Routes: "completelly virtual", uses unique URL.
+     Can also use session affinity (sticky session based on cookies, ...)
+</pre }>
+
+    <b>Routes</b><br/>
+    Unique object defined 1 to 1 by service name (vs label selectors)
+<pre xxxsmall zoom { >
+ TODO
+Options:
+ - Edge Termination:
+ - Pass-through Termination:
+ - Re-encryption Termination:
+</pre }>
+
+    <b>Scaling</b><br/>
+<pre xxxsmall zoom { >
+$ oc scale dc hello --replicas 5
+
+$ oc rollout latest hello
+
+HorizontalPodAutoscaler:
+(HPA) Performance metrics must be active
+$ oc autoscale dc/myapp \
+   --min 1 --max 10 \
+   --cpu-percent=80
+</pre } >
+
+    <b>OpenVSwitch</b>
+    (Software defined network)
+<pre xxxsmall zoom { >
+Types:
+  ovs-subnet
+  ovs-mutitenant     (network by project)
+  ovs-networkpolicy  (fine grained policy access)
+</pre } >
+
+    <br/>
+
+    <b>ImageStream</b><br/>
+      <span xxsmall>Image Stream tags must not necesarelly
+        match docker registry images</span>
+    <br/>
+
+    <b>Policies</b><br/>
+    <ul xxxsmall zoom { >
+      <li>2 types:
+        <ul>
+          <li>cluster:<br/>
+            $ oc describe cluster policy
+
+          </li>
+          <li>project:
+          </li>
+        </ul>
+      </li>
+      <li>
+<pre {>
+$ oc policy add-role-to-user edit demo-user
+<pre }>
+      </li>
+    </ul } >
+
+    <b>Users + HTPPassword:</b><br/>
+    Enable HTTP Auth. in master config.:
+<pre xxxsmall zoom { >
+vim /etc/origin/master/master-config.yaml
+  provider: 
+-   #kind: denyAllPasswordIdentityProvider
++   kind: HTPPasswordIdentityProvider
+
+$ systemctl restart ???-openshift-???
+</pre } >
+    Adding a new user (id):
+<pre xxxsmall zoom { >
+$ htpasswd -cb  \
+    /etc/origin/master/openshift-passwd ricardo redhat
+</pre } >
+<br/>
+    <b>SCC</b><br/>
+     <span xsmall>
+       <b>Security Context Constraints</b> control the actions a <b>pod</b> (vs a user) can perform and what resources it can access.('restricted SCC' by default)
+     </span>
+<code>[root@master ~]# oc get scc</code>
+<pre xxxsmall zoom { >
+NAME             PRIV  CAPS SELINUX   RUNASUSER        FSGROUP   SUPGROUP PRIORI READONLY 
+                                                                                 ROOTFS  
+anyuid           false []   MustRunAs RunAsAny         RunAsAny  RunAsAny 10     false    
+hostaccess       false []   MustRunAs MustRunAsRange   MustRunAs RunAsAny <none> false    
+hostmount-anyuid false []   MustRunAs RunAsAny         RunAsAny  RunAsAny <none> false    
+hostnetwork      false []   MustRunAs MustRunAsRange   MustRunAs MustRunAs<none> false    
+nonroot          false []   MustRunAs MustRunAsNonRoot RunAsAny  RunAsAny <none> false    
+privileged       true  []   RunAsAny  RunAsAny         RunAsAny  RunAsAny <none> false    
+<b>restricted</b>       false []   MustRunAs MustRunAsRange   MustRunAs RunAsAny <none> false    
+
+NAME             VOLUMES
+
+anyuid           [configMap downwardAPI emptyDir              persistentVolumeClaim secret]
+hostaccess       [configMap downwardAPI emptyDir hostPath     persistentVolumeClaim secret]
+hostmount-anyuid [configMap downwardAPI emptyDir hostPath nfs persistentVolumeClaim secret]
+hostnetwork      [configMap downwardAPI emptyDir              persistentVolumeClaim secret]
+nonroot          [configMap downwardAPI emptyDir              persistentVolumeClaim secret]
+privileged       [*]
+restricted       [configMap downwardAPI emptyDir persistentVolumeClaim secret]
+
+$ oc describe scc anyuid
+</pre } >
+    <b>Storage (PV/PVC)</b><br/>
+    Seq. diagram
+<pre xxxsmall zoom { >
+STEP 1: PersistentVolume: specific resource
+STEP 2: PersistentVolumeClaim : 
+        request PV + min size, r/rw, ...  Used by pods.
+STEP 3: Use PVC in Pod
+</pre }>
+Pod Definition with a Claim
+<pre xxxsmall zoom { >
+(Admins can reserve a PV to a PVC)
+STEP 1(admin)                            STEP 2(dev)                    STEP 3(dev)
+apiVersion: v1                          |apiVersion: "v1"              |apiVersion: "v1"
+kind: PersistentVolume                  |kind: "PersistentVolumeClaim" |kind: "Pod"
+metadata:                               |metadata:                     |...
+  name: pv0001                          |  name: <b>"claim1"</b>              |spec:
+spec:                                   |spec:                         |  containers:
+  capacity:                             |  accessModes:                |    -
+    storage: 1Gi                        |    - "ReadWriteOnce"         |      ...
+  accessModes:                          |  resources:                  |      volumeMounts:
+  - ReadWriteOnce                       |    requests:                 |        -
+  nfs:                                  |      storage: "1Gi"          |          mountPath: "/var/www/html"
+    path: /tmp                          |  volumeName: "pv0001"        |          name: <b>"pvol"</b>
+    server: 172.17.0.2                  |                              |  volumes:
+  persistentVolumeReclaimPolicy: Recycle|                                   -
+  claimRef:                             |                                     name: <b>"pvol"</b>
+    name: <b>claim1</b>                        |                                     persistentVolumeClaim:         
+    namespace: default                  |                                       claimName: <b>"claim1"</b>
+
+</pre }>
+   Storage Notes:
+   <ul xxxsmall zoom { >
+     <li>Specifying a volumeName in your PVC does not prevent a different PVC from binding to the specified PV before yours does.  Your claim will remain Pending until the PV is Available.</li>
+     <li>Therefore, to avoid these scenarios and ensure your claim gets bound to the volume you want, you must ensure that both volumeName and claimRef are specified.</li>
+     <li>You can tell that your setting of volumeName and/or claimRef influenced the matching and binding process by inspecting a Bound PV and PVC pair for the pv.kubernetes.io/bound-by-controller annotation. The PVs and PVCs where you set the volumeName and/or claimRef yourself will have no such annotation, but ordinary PVs and PVCs will have it set to "yes".</li>
+      <li>When a PV has its claimRef set to some PVC name and namespace, and is reclaimed according to a Retain or Recycle reclaim policy, its claimRef will remain set to the same PVC name and namespace even if the PVC or the whole namespace no longer exists.</li>
+   </ul } >
+  </td>  
+  <td col1 colspan=2 >
+  </td>  
+  <td col1 colspan=2 >
+  </td>  
+  <td col1 colspan=2 >
+    Guides:
+    <ul>
+      <li>
+    <a href="https://access.redhat.com/documentation/en-us/openshift_container_platform/3.5/html-single/developer_guide/">developer guide</a>
+      </li>
+    </ul>
+  </td>  
+</tr }>
+
+
+</table } >
+
+
+<table { >
+<tr {>
+  <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td>
+</tr }>
+<tr {>
+  <td col1 colspan=6 >
+    <span xxbig>CentOS Install:</span>
+<pre { >
+<a href="https://wiki.centos.org/SpecialInterestGroup/PaaS/OpenShift-Quickstart">prerequisites</a>
+
+
+  </td>  
+  <td col2 colspan=6 >
+  </td>  
+</tr }>
+</table } >
+
+
+
+
+</body>
+</html>
+
+<!-- {
+
+$ oc get events
+____________________
+$ rol self-provisioning es  lo que permite crear projectos
+______________
+$ Groups:
+  cluster:
+  - cluster-admin "todo"
+  - cluster-view  "ver todo"
+
+ admin     "todo dentro de un proyecto", volume?
+ edit      "no puede manipular secrets, conectar a un contenedor, ..", volume-claim
+ view      "ver proyecto salvo secrets"
+
+______________
+
+$ oc login guarda el token en ~/.kube/config
+______________
+Service Accounts
+
+
+Overview
+
+When a person uses the command line or web console, their API token authenticates them to the OpenShift API. However, when a regular user’s credentials are not available, it is common for components to make API calls independently. For example:
+
+    Replication controllers make API calls to create or delete pods
+
+    Applications inside containers can make API calls for discovery purposes
+
+    External applications can make API calls for monitoring or integration purposes
+
+Service accounts provide a flexible way to control API access without sharing a regular user’s credentials.
+Usernames and groups
+
+Every service account has an associated username that can be granted roles, just like a regular user. The username is derived from its project and name: system:serviceaccount:<project>:<name>
+
+For example, to add the view role to the robot service account in the top-secret project:
+
+$ oc policy add-role-to-user view system:serviceaccount:top-secret:robot
+
+Every service account is also a member of two groups:
+
+    system:serviceaccounts, which includes all service accounts in the system
+
+    system:serviceaccounts:<project>, which includes all service accounts in the specified project
+
+For example, to allow all service accounts in all projects to view resources in the top-secret project:
+
+$ oc policy add-role-to-group view system:serviceaccounts -n top-secret
+
+To allow all service accounts in the managers project to edit resources in the top-secret project:
+
+$ oc policy add-role-to-group edit system:serviceaccounts:managers -n top-secret
+
+Enable service account authentication
+
+Service accounts authenticate to the API using tokens signed by a private RSA key. The authentication layer verifies the signature using a matching public RSA key.
+
+To enable service account token generation, update the master configuration serviceAccountConfig stanza to specify a privateKeyFile (for signing), and a matching public key file in the publicKeyFiles list:
+
+serviceAccountConfig:
+  ...
+  masterCA: ca.crt 
+  privateKeyFile: serviceaccounts.private.key 
+  publicKeyFiles:
+  - serviceaccounts.public.key 
+  - ...
+
+    CA file used to validate the API server’s serving certificate
+    Private RSA key file (for token signing)
+    Public RSA key files (for token verification). If private key files are provided, then the public key component is used. Multiple public key files can be specified, and a token will be accepted if it can be validated by one of the public keys. This allows rotation of the signing key, while still accepting tokens generated by the previous signer.
+Managed service accounts
+
+Service accounts are required in each project to run builds, deployments, and other pods. The managedNames setting in the master configuration file controls which service accounts are automatically created in every project:
+
+serviceAccountConfig:
+  ...
+  managedNames: 
+  - builder 
+  - deployer 
+  - default 
+  - ...
+
+    List of service accounts to automatically create in every project
+    A builder service account in each project is required by build pods, and is given the system:image-builder role, which allows pushing images to any image stream in the project using the internal Docker registry.
+    A deployer service account in each project is required by deployment pods, and is given the system:deployer role, which allows viewing and modifying replication controllers and pods in the project.
+    A default service account is used by all other pods unless they specify a different service account.
+
+All service accounts in a project are given the system:image-puller role, which allows pulling images from any image stream in the project using the internal Docker registry.
+Infrastructure service accounts
+
+Several infrastructure controllers run using service account credentials. The following service accounts are created in the OpenShift infrastructure namespace at server start, and given the following roles cluster-wide:
+
+    The replication-controller service account is assigned the system:replication-controller role
+
+    The deployment-controller service account is assigned the system:deployment-controller role
+
+    The build-controller service account is assigned the system:build-controller role. Additionally, the build-controller service account is included in the privileged security context constraint in order to create privileged build pods.
+
+To configure the namespace where those service accounts are created, set the openshiftInfrastructureNamespace field in the master configuration file:
+
+policyConfig:
+  ...
+  openshiftInfrastructureNamespace: openshift-infra
+
+Set limitSecretReferences field in master configuration file to true to require pod secret references to be whitelisted by their service accounts. Set its value to false to allow pods to reference any secret in the namespace.
+
+serviceAccountConfig:
+  ...
+  limitSecretReferences: false
+
+i
+Service Accounts
+
+    Overview
+    Usernames and groups
+    Enable service account authentication
+    Managed service accounts
+    Infrastructure service accounts
+
+Overview
+
+When a person uses the command line or web console, their API token authenticates them to the OpenShift API. However, when a regular user’s credentials are not available, it is common for components to make API calls independently. For example:
+
+    Replication controllers make API calls to create or delete pods
+
+    Applications inside containers can make API calls for discovery purposes
+
+    External applications can make API calls for monitoring or integration purposes
+
+Service accounts provide a flexible way to control API access without sharing a regular user’s credentials.
+Usernames and groups
+
+Every service account has an associated username that can be granted roles, just like a regular user. The username is derived from its project and name: system:serviceaccount:<project>:<name>
+
+For example, to add the view role to the robot service account in the top-secret project:
+
+$ oc policy add-role-to-user view system:serviceaccount:top-secret:robot
+
+Every service account is also a member of two groups:
+
+    system:serviceaccounts, which includes all service accounts in the system
+
+    system:serviceaccounts:<project>, which includes all service accounts in the specified project
+
+For example, to allow all service accounts in all projects to view resources in the top-secret project:
+
+$ oc policy add-role-to-group view system:serviceaccounts -n top-secret
+
+To allow all service accounts in the managers project to edit resources in the top-secret project:
+
+$ oc policy add-role-to-group edit system:serviceaccounts:managers -n top-secret
+
+Enable service account authentication
+
+Service accounts authenticate to the API using tokens signed by a private RSA key. The authentication layer verifies the signature using a matching public RSA key.
+
+To enable service account token generation, update the master configuration serviceAccountConfig stanza to specify a privateKeyFile (for signing), and a matching public key file in the publicKeyFiles list:
+
+serviceAccountConfig:
+  ...
+  masterCA: ca.crt 
+  privateKeyFile: serviceaccounts.private.key 
+  publicKeyFiles:
+  - serviceaccounts.public.key 
+  - ...
+
+    CA file used to validate the API server’s serving certificate
+    Private RSA key file (for token signing)
+    Public RSA key files (for token verification). If private key files are provided, then the public key component is used. Multiple public key files can be specified, and a token will be accepted if it can be validated by one of the public keys. This allows rotation of the signing key, while still accepting tokens generated by the previous signer.
+Managed service accounts
+
+Service accounts are required in each project to run builds, deployments, and other pods. The managedNames setting in the master configuration file controls which service accounts are automatically created in every project:
+
+serviceAccountConfig:
+  ...
+  managedNames: 
+  - builder 
+  - deployer 
+  - default 
+  - ...
+
+    List of service accounts to automatically create in every project
+    A builder service account in each project is required by build pods, and is given the system:image-builder role, which allows pushing images to any image stream in the project using the internal Docker registry.
+    A deployer service account in each project is required by deployment pods, and is given the system:deployer role, which allows viewing and modifying replication controllers and pods in the project.
+    A default service account is used by all other pods unless they specify a different service account.
+
+All service accounts in a project are given the system:image-puller role, which allows pulling images from any image stream in the project using the internal Docker registry.
+Infrastructure service accounts
+
+Several infrastructure controllers run using service account credentials. The following service accounts are created in the OpenShift infrastructure namespace at server start, and given the following roles cluster-wide:
+
+    The replication-controller service account is assigned the system:replication-controller role
+
+    The deployment-controller service account is assigned the system:deployment-controller role
+
+    The build-controller service account is assigned the system:build-controller role. Additionally, the build-controller service account is included in the privileged security context constraint in order to create privileged build pods.
+
+To configure the namespace where those service accounts are created, set the openshiftInfrastructureNamespace field in the master configuration file:
+
+policyConfig:
+  ...
+  openshiftInfrastructureNamespace: openshift-infra
+
+Set limitSecretReferences field in master configuration file to true to require pod secret references to be whitelisted by their service accounts. Set its value to false to allow pods to reference any secret in the namespace.
+
+serviceAccountConfig:
+  ...
+  limitSecretReferences: false
+
+
+
+} -->

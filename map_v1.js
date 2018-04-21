@@ -12,6 +12,64 @@ var zoom=0.1
 var idxXXXsmallRule=-1;
 var idxXXsmallRule =-1;
 var idxXsmallRule  =-1;
+
+
+var longPress = {
+   longpress : false,
+   presstimer : null,
+
+   click : function(e) {
+       if (longPress.presstimer !== null) {
+           clearTimeout(longPress.presstimer);
+           longPress.presstimer = null;
+       }
+   
+       this.classList.remove("longpress");
+   
+       if (longPress.longpress) {
+           return false;
+       }
+   },
+   start : function(e) {
+       var self = this
+   
+       if (e.type === "click" && e.button !== 0) {
+           return;
+       }
+   
+       longPress.longpress = false;
+   
+       this.classList.add("longpress");
+   
+       if (longPress.presstimer === null) {
+           longPress.presstimer = setTimeout(function() {
+               doOpenZoom.call(self, longPress.element);
+               longPress.longpress = true;
+           }, 1000);
+       }
+   
+       return false;
+   },
+   cancel : function(e) {
+       if (longPress.presstimer !== null) {
+           clearTimeout(longPress.presstimer);
+           longPress.presstimer = null;
+       }
+   
+       this.classList.remove("longpress");
+   },
+   enableLongTouch : function (node) { 
+       node.addEventListener('dblclick',doOpenZoom, false)
+       node.addEventListener("mousedown", longPress.start);
+       node.addEventListener("touchstart", longPress.start);
+       node.addEventListener("click", longPress.click);
+       node.addEventListener("mouseout", longPress.cancel);
+       node.addEventListener("touchend", longPress.cancel);
+       node.addEventListener("touchleave", longPress.cancel);
+       node.addEventListener("touchcancel", longPress.cancel);
+   }
+}
+
 function onZoomOut(){
   zoom=zoom - 0.05
   document.styleSheets[0]['cssRules'][idxXXXsmallRule].style['font-size']=zoom+'rem';
@@ -21,27 +79,15 @@ function onZoomIn(){
   document.styleSheets[0]['cssRules'][idxXXXsmallRule].style['font-size']=zoom+'rem';
 }
 function doOpenZoom(e)      { 
+
   zoomDivDOM.innerHTML = 
-     "<span style='font-size:1.0rem; color:blue;'>('Esc' to close)<br/></span>" 
+     "<span style='font-size:1.0rem; color:blue;' onClick='doCloseZoom()'>(click here or press 'Esc' to close)<br/></span>" 
    + this.outerHTML; 
   zoomDivDOM.style.display="block";
+  window.zoomDivDOM.scrollTop = 0;
+  return false;
   e.stopPropagation();
 }
-
-function removeToLeftMarginInPre() {
-  // TODO:(0) Not working
-  // nodeList = document.querySelectorAll('pre')
-  // for (idx in nodeList) { 
-  //   var node = nodeList[idx]
-  //   var html = node.innerHTML
-  //   var pattern = html.match(/^\s*[|]/)
-  //   var regEx = new RegExp(pattern, "")
-  //   console.log(html)
-  //   node.innerHTML = html.replace(regEx,''))
-  //    
-  // }
-}
-
 
 function onPageLoaded() {
   zoomDivDOM = document.getElementById('zoomDiv')
@@ -57,15 +103,13 @@ function onPageLoaded() {
   nodeList = document.querySelectorAll('td')
   for (idx in nodeList) { 
      if (!!! nodeList[idx].addEventListener) continue;
-     nodeList[idx].addEventListener('dblclick',doOpenZoom, false)
+     longPress.enableLongTouch(nodeList[idx]);
   }
   nodeList = document.querySelectorAll('*[zoom]')
   for (idx in nodeList) { 
      if (!!! nodeList[idx].addEventListener) continue;
-     nodeList[idx].addEventListener('dblclick',doOpenZoom, false)
+     longPress.enableLongTouch(nodeList[idx]);
   }
-
-  removeToLeftMarginInPre();
 
   for (idx=0; idx<document.styleSheets[0]['cssRules'].length; idx++){
       if( document.styleSheets[0]['cssRules'][idx].selectorText == "[xxxsmall]") {

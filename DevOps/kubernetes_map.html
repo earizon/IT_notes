@@ -19,28 +19,67 @@
 
 <table { >
 <tr {>
-  <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td>
-</tr }>
-<tr {>
-  <td col1 colspan=3 >
-     <ul>
-       <li>Kubernetes orchestates pools of CPUs, storage and networks</li>
-       <li>The <b>Kubernet Master</b> is responsible for managing the cluster, coordinates all activities in your cluster, such as scheduling applications, maintaining applications' desired state, scaling applications, and rolling out new updates</li>
-       <li>A <b>node</b> is a (VM) computer serving as a worker machine. Each node has a Kubelet agent plus tools like Docker or rkt.</li>
-       <li>A cluster handling <b>production traffic</b> should have a <b>minimum of three nodes</b>(3,5,..."odd" number) since <a href="https://raft.github.io/">Raft("voting")</a> consensus is used.</li>
-     </ul>
-     See also: <a href="https://www.youtube.com/watch?v=PH-2FfFD2PU">Desired State management"</a>
-  </td>  
-  <td col3 colspan=8 >
-       <span xxbig>kubectl &lt;action&gt; &lt;resource&gt;</span>
-<pre xsmall zoom {>
+<td>
+  <a href="https://kubernetes.io/">Kubernetes</a>  summary
+  <ul xxxsmall zoom >
+  <li>Kubernetes orchestates pools of CPUs, storage and networks</li>
+  <li>The <b>Kubernet Master</b> is responsible for managing the cluster, coordinates all activities in your cluster, such as scheduling applications, maintaining applications' desired state, scaling applications, and rolling out new updates</li>
+  <li>Services offered by kubernetes orchestation :
+    <ul>
+    <li>Load balancing a set of containers with or without session affinity</li>
+    <li>Mounting persistent storage inside of the containers</li>
+    <li>Placement and scheduling of containers on the infrastructure</li>
+    <li>Rolling deployments and other operational considerations that traditional 
+        developers are not experts on</li>
+    </ul>
+  </li>
+  <li>A <b>node</b> is a (VM) computer serving as a worker machine. Each node has a Kubelet agent plus tools like Docker or rkt.</li>
+  <li>A cluster handling <b>production traffic</b> should have a <b>minimum of three nodes</b>(3,5,..."odd" number) since <a href="https://raft.github.io/">Raft("voting")</a> consensus is used.</li>
+  </ul>
+  External Links:
+  <ul xxxsmall zoom>
+  <li><a href="https://www.youtube.com/watch?v=PH-2FfFD2PU">Desired State management"</a></li>
+  <li><a href="https://www.digitalocean.com/community/tutorials/an-introduction-to-kubernetes">Digital Ocean  tutorial</a></li>
+
+  </ul>
+
+  Kubernetes Cluster Components
+<pre xxxsmall zoom>
+- Etcd : distributed key-value store (can be distributed across multiple nodes).
+
+- API Server: main management point of the entire cluster
+   + allows users to configure many of Kubernetes' workloads and 
+     organizational units. 
+   + implements a RESTful interface (kubecfg)
+
+- Controller Manager Service: 
+   + general service with responsibilities handling a 
+     a number of controllers that regulate the state 
+     of the cluster and perform routine tasks 
+     (ensures number of replicas for a service, ...)
+
+- Scheduler Service
+   + Assigns workloads to nodes: 
+   + It is responsible for tracking resource utilization on each host.
+   + It must know the total resources available on each server
+     as well as the resources allocated to existing workloads 
+     assigned on each server. 
+
+- Nodes
+
+</pre>
+  
+</td>  
+<td>
+  <a href="https://kubernetes.io/docs/reference/kubectl/overview/">
+  kubectl &lt;action&gt; &lt;resource&gt;
+  </a>
+<pre xxxsmall zoom {>
 <a href='https://github.com/kubernetes/kubernetes/tree/master/docs/user-guide/kubectl'>kubectl manual</a> command line interface to Kubernetes API
  <b>get     </b>: list resources
  <b>describe</b>: show detailed info for resource
  <b>logs    </b>: print container logs 
  <b>exec    </b>: exec command on container
-
-
 
     clusters            │podtemplates               │statefulsets
 (cs)componentstatuses   │(rs)replicasets            │(pvc)persistentvolumeclaims
@@ -53,16 +92,110 @@
 (ing)ingresses          │networkpolicies            │storageclasses
                         │(no)nodes                  │thirdpartyresources
 </pre } >
-  </td>
-  <td col3 colspan=1 >
-    <span xbig>Pod</span>
+</td>
+
+</tr }>
+</table } >
+
+<table { >
+<tr {>
+  <th colspan=12 header_delimit {   ><a href='https://kubernetes.io/docs/concepts/'>Building Blocks</a></th>
+</tr }>
+<tr {>
+<td>
+  <a href="https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/">Namespace</a>
+  <ul xxxsmall>
+  <li TODO><a href='https://kubernetes.io/docs/tasks/administer-cluster/namespaces/'>
+    Admin Guide for Namespaces</a>
+  </li>
+  <li>Kubernetes supports multiple virtual clusters backed by the same physical
+      cluster. These virtual clusters are called namespaces</li>
+  <li>Provie a scope for names</li>
+  <li>Namespaces are intended for use in environments with many users spread 
+    across multiple teams, or projects. For clusters with a few to tens of users,
+    you should not need to create or think about namespaces at all. Start 
+    using namespaces when you need the features they provide.</li>
+  <li>use labels, not namespaces, to distinguish resources within the same namespace</li>
+  <li>Services are created with DNS entry
+    "service-name"."namespace".svc.cluster.local</li>
+  </ul>
+  <hr/>
+  <ul xxxsmall>
+  <li> Initial namespaces:
+<pre xxxsmall { >
+$ kubectl get namespaces
+NAME          STATUS    AGE
+default       Active    1d 
+kube-system   Active    1d 
+</pre>
+  </li>
+  <li>create namespace:
+<pre { >
+$ kubectl create namespace my-namespace
+</pre>
+  </li>
+  <li>temporarily set the NS for a request:
+<pre { >
+$ kubectl --namespace=my-namespace \
+    run nginx --image=nginx
+</pre } >
+  </li>
+  <li>permanently save the NS:
+<pre { >
+$ kubectl config set-context \
+    $(kubectl config current-context) \
+    --namespace=MyFavouriteNS
+$ kubectl config view | \
+    grep namespace: # Validate
+</pre } >
+  </li>
+  </ul>
+</td>
+<td>
+  <a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-overview/">Pods</a>
+  <ul xxxsmall>
+  <li>Kubernetes abstraction that represents a group of one or more application
+    containers (such as Docker or rkt), and some shared resources for those 
+    containers. Those resources include:
+    <ul>
+    <li>Shared storage, as Volumes</li>
+    <li>Networking, as a unique cluster IP address</li>
+    <li>Information about how to run each container, such as the container image
+        version or specific ports to use</li>
+    </ul>
+  </li>
+  <li>A Pod models an application-specific "logical host" and can contain 
+    different application containers which are relatively tightly coupled. 
+    For example, a Pod might include both the container with your Node.js app 
+    as well as a different container that feeds the data to be published by the
+    Node.js webserver. The containers in a Pod share an IP Address and port 
+    space, are always co-located and co-scheduled, and run in a shared context 
+    on the same Node.</li>
+  <li>Pods are the atomic unit on the Kubernetes platform. When we create a 
+    Deployment on Kubernetes, that Deployment creates Pods with containers 
+    inside them (as opposed to creating containers directly). Each Pod is tied 
+    to the Node where it is scheduled, and remains there until termination 
+    (according to restart policy) or deletion. In case of a Node failure, 
+    identical Pods are scheduled on other available Nodes in the cluster.</li>
+  <li>The containers in a Pod are automatically co-located and co-scheduled 
+    on the same physical or virtual machine in the cluster. The containers 
+    can share resources and dependencies, communicate with one another, and 
+    coordinate when and how they are terminated.</li>
+  <li>Note that grouping multiple co-located and co-managed containers in a 
+    single Pod is a relatively advanced use case. You should use this pattern 
+    only in specific instances in which your containers are tightly coupled. 
+    The one container per pod is the recomended use-case.</li>
+  <li>Pods do not, by themselves, self-heal. Thus, while it is possible to use Pod directly, 
+    it’s far more common in Kubernetes to manage your pods using a Controller to 
+    implement Pod scaling and healing.  </li>
+  </ul>
 <pre xxxsmall zoom {>
 apiVersion: v1
 kind: Pod
 metadata:
-  name: test-pd
+name: test-pd
 spec:
-  containers:
+containers:
   - image: gcr.io/google_containers/test-webserver
     name: test-container
     volumeMounts:
@@ -80,100 +213,67 @@ spec:
       # this field is optional
       type: Directory
 </pre } >
+   <a TODO href="">RestartPolicy</a>
+</td>  
+<td>
+  <a href="https://kubernetes.io/docs/concepts/services-networking/service/">Service</a>
+  <ul xxxsmall>
+  <li>abstraction defining a logical set of Pods and a policy by which to access them.<br/></li>
+  <li>The set of Pods targeted by a Service is (usually) determined by a Label Selector</li>
+  <li>Kubernetes-native applications: Kubernetes offers a simple Endpoints API
+    non-native        applications: Kubernetes offers virtual-IP-based-2-Service bridge</li>
+  <li>For some parts of your application (e.g. frontends) you may want to expose a
+    Service onto an external (outside of your cluster) IP address.<br/>
+    ServiceTypes allow you to specify what kind of service you want.
+    <ul>
+    <li>ClusterIP: (default) Exposes the service on a cluster-internal IP.<br/>
+      Service only reachable from within the cluster.</li>
+    <li>NodePort: Exposes service on each Node’s IP @ static NodePort.<br/>
+      Externably visible by requesting &lt;NodeIP&gt;:&lt;NodePort&gt;</li>
+    <li>LoadBalancer: Exposes service externally using a cloud provider load balancer.
+      Externably visible by requesting &lt;ClusterIP&gt;:&lt;NodePort&gt;</li>
+    <li>ExternalName: Maps the service to the contents of the "externalName" field
+      (e.g. foo.bar.example.com), by returning a CNAME record.
+      requires version 1.7 or higher of kube-dns</li>
+    </ul>
+  <li><p>externalIPs:  Traffic that ingresses into the cluster with the 
+    external IP (as destination IP), on the service port, will be routed to 
+    one of the service endpoints.  externalIPs can be specified along with 
+    any of the ServiceTypes.</p>
+  </li>
+  <li>As of Kubernetes v1.0, Services are a “layer 4” (TCP/UDP over IP) construct.
+    In Kubernetes v1.1 the Ingress API was added (beta) to represent “layer 7” (HTTP) services.</li>
+  <li>By default, the choice of backend is round robin. Client-IP based session affinity can be selected
+    by setting service.spec.sessionAffinity to "ClientIP" (the default is "None"), and you can set
+    the max session sticky time by setting the field 
+    <code>service.spec.sessionAffinityConfig.clientIP.timeoutSeconds</code>
+    if you have already set service.spec.sessionAffinity to "ClientIP" (the default is “10800”). </li>
+  <li>ou can specify your own cluster IP address as part of a Service creation 
+    request. To do this, set the spec.clusterIP field </li>
+  <li>When a Pod is run on a Node, the kubelet adds a set of environment 
+    variables for each active Service.<br/>
+    example, Service "redis-master" exposing TCP:6379 allocated to cluster IP address 10.0.0.11:
+<pre>
+REDIS_MASTER_SERVICE_HOST=10.0.0.11
+REDIS_MASTER_SERVICE_PORT=6379
+REDIS_MASTER_PORT=tcp://10.0.0.11:6379
+REDIS_MASTER_PORT_6379_TCP=tcp://10.0.0.11:6379
+REDIS_MASTER_PORT_6379_TCP_PROTO=tcp
+REDIS_MASTER_PORT_6379_TCP_PORT=6379
+REDIS_MASTER_PORT_6379_TCP_ADDR=10.0.0.11
+</pre>
+  </li>
+  <li>DNS server: optional (strongly recommended) add-on.
+    The DNS server watches the Kubernetes API for new Services and creates a set of DNS records for each.
+    For example, if you have a Service called "my-service" in Kubernetes Namespace "my-ns" a DNS record 
+    "my-service.my-ns" is created.</li>
+  <li>Sometimes you don’t need or want load-balancing and a single service IP.
+    In this case, you can create "headless" services by specifying "None" in spec.clusterIP</li>
+  <li>This does imply an ordering requirement - any Service that a Pod wants to access
+    must be created before the Pod itself, or else the environment variables will not be populated.
+    DNS does not have this restriction.</li>
+  </ul>
 
-
-    <span xbig>Deployment</span>
-<pre xxxsmall zoom {>
-apiVersion: extensions/v1beta1
-kind: Deployment
-metadata:
-  # Change the name
-  name: ws-coordinates-be
-  # Set it to the production environment
-  namespace: nightswatch-pro
-spec:
-  replicas: 1
-  strategy:
-    rollingUpdate:
-      maxSurge: 2
-      maxUnavailable: 0
-    type: RollingUpdate
-  template:
-    metadata:
-      labels:
-        # Change the name
-        app: ws-coordinates-be
-    spec:
-      containers:
-      # Change the name
-      - name: ws-coordinates-be
-        # Change the URL of the docker image
-        image: registry.nw.kube.everis.com/nightswatch/ws-coordinates-be
-        imagePullPolicy: Always
-        livenessProbe:
-          httpGet:
-            # Change to Application Path (see note below)
-            path: /graphreader/healthz
-            port: 8080
-            scheme: HTTP                           :
-          initialDelaySeconds: 30
-        env:
-
-        - name: MONGO_HOST
-          value: mongodb
-        - name: MONGO_PORT
-          value: "27017"
-        - name: MONGO_DATABASE
-          value: nightswatch
-      imagePullSecrets:
-      - name: nwregistrykey
-</pre }>
-
-    <span xbig>ReplicationController</span>
-<pre xxxsmall zoom {>
-apiVersion: v1
-kind: ReplicationController
-metadata:
-  # Change name
-  name: ws-coordinates-be
-  # Set to dev namespace
-  namespace: nightswatch-dev
-spec:
-  replicas: 1
-  selector:
-    # Change selectior
-    app: ws-coordinates-be
-  template:
-    metadata:
-      labels:
-        # Change label
-        app: tcp-graph-reader
-    spec:
-      containers:
-        # Change container name
-      - name: tcp-graph-reader
-        # Change docker registry path
-        image: nwregistry-on.azurecr.io/nightswatch/ws-coordinates-be
-        imagePullPolicy: Always
-        livenessProbe:
-          httpGet:
-            # Change to Application Path
-            path: /healthz
-            port: 8080
-            scheme: HTTP
-          initialDelaySeconds: 30
-         env:
-        - name: MONGO_HOST
-          value: mongodb
-                               - name: MONGO_PORT
-          value: "27017"
-        - name: MONGO_DATABASE
-          value: nightswatch
-      imagePullSecrets:
-      - name: registrykey
-</pre }>
-
-    <span xbig>Service</span>
 <pre xxxsmall zoom { >
 kind: Service
 apiVersion: v1
@@ -197,12 +297,30 @@ spec:
     port: 443
     targetPort: 9377
 </pre } >
-
-    <span xbig>PersistentVolume</span><br/>
-(using local volume):
+</td>  
+<td>
+  <a href="https://kubernetes.io/docs/concepts/storage/persistent-volumes/">Persistent Volumes</a>
+  <ul xxxsmall zoom>
+  <li>piece of storage in the cluster <b orange>provisioned by an administrator</b>. </li>
+  <li>While Volumes lifecycle is dependent of pod's lifecyles, Persistent Volumes lifecycle is independent of any individual pod.</li>
+  <li>This API object captures the details of the implementation of 
+    the storage (NFS, iSCSI, cloud-provided, ...)</li>
+  </ul>
+  PersistentVolumeClaim (PVC) 
+  <ul xxxsmall >
+  <li>Request for storage by a user</li>
+  <li>As an anology, if Pods consume node resources,
+      PVCs consume PV resources.<br/>
+      Pods can request specific levels of resources (CPU and Memory). 
+      Claims can request specific size and access modes 
+      (e.g., can be mounted once read/write or many times read-only)</li>
+  <li>PV contains max size, PVC contains min size. PVC size must be 
+      smaller  than PV size</li>
+  </ul>
+Ex. PV using local volume
 <pre xxxsmall zoom { >
 apiVersion: v1
-kind: PersistentVolume
+kind: <b>PersistentVolume</b>
 metadata:
   name: example-pv
   annotations:
@@ -217,196 +335,52 @@ metadata:
           ]}
          ]}
         }'
-spec:
+<b>spec:</b>
   capacity:
     storage: 100Gi
   accessModes:
   - ReadWriteOnce
   persistentVolumeReclaimPolicy: Delete
-  storageClassName: local-storage
+  <b orange>storageClassName: local-storage
   local:
-    path: /mnt/disks/ssd1
+    path: /mnt/disks/ssd1</b>
 </pre } >
-
-  </td>
-  <td col3 colspan=2 >
-  </td>
-</tr }>
-</table } >
-
-<table { >
-<tr {>
-  <th colspan=12 header_delimit {   ><a href='https://kubernetes.io/docs/concepts/'>Building Blocks</a></th>
-</tr }>
-<tr {>
-  <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td>
-</tr }>
-<tr {>
-  <td col4 colspan=3 >
-    <span xxbig><a href="https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/">Namespace</span>
-     <ul xxxsmall>
-       <li TODO><a href='https://kubernetes.io/docs/tasks/administer-cluster/namespaces/'>
-         Admin Guide for Namespaces</a>
-       </li>
-       <li>Kubernetes supports multiple virtual clusters backed by the same physical cluster. These virtual clusters are called namespaces</li>
-       <li>Provie a scope for names</li>
-       <li>Namespaces are intended for use in environments with many users spread across multiple teams, or projects. For clusters with a few to tens of users, you should not need to create or think about namespaces at all. Start using namespaces when you need the features they provide.</li>
-       <li>use labels, not namespaces, to distinguish resources within the same namespace</li>
-       <li>Services are created with DNS entry
-           "service-name"."namespace".svc.cluster.local</li>
-     </ul>
-  <hr/>
-     <ul xxxsmall>
-       <li> Initial namespaces:
-         <pre xxxsmall { >
-$ kubectl get namespaces
-NAME          STATUS    AGE
-default       Active    1d 
-kube-system   Active    1d 
-       </li>
-       <li>create namespace:
-         <pre { >
-$ kubectl create namespace my-namespace
-         </pre>
-       </li>
-       <li>temporarily set the NS for a request:
-         <pre { >
-$ kubectl --namespace=my-namespace \
-    run nginx --image=nginx
-         </pre } >
-       </li>
-       <li>permanently save the NS:
-         <pre { >
-$ kubectl config set-context \
-    $(kubectl config current-context) \
-    --namespace=MyFavouriteNS
-$ kubectl config view | \
-    grep namespace: # Validate
-         </pre } >
-       </li>
-         </pre } >
-     </ul>
-  </td>
-  <td col1 colspan=3 >
-            
-    <span xxbig><a href="https://kubernetes.io/docs/concepts/workloads/pods/pod-overview/">Pods</a></span> 
-     <ul xxxsmall>
-       <li>Kubernetes abstraction that represents a group of one or more application containers (such as Docker or rkt), and some shared resources for those containers. Those resources include:
-         <ul>
-           <li>Shared storage, as Volumes</li>
-           <li>Networking, as a unique cluster IP address</li>
-           <li>Information about how to run each container, such as the container image version or specific ports to use</li>
-         </ul>
-       </li>
-       <li>A Pod models an application-specific "logical host" and can contain different application containers which are relatively tightly coupled. For example, a Pod might include both the container with your Node.js app as well as a different container that feeds the data to be published by the Node.js webserver. The containers in a Pod share an IP Address and port space, are always co-located and co-scheduled, and run in a shared context on the same Node.</li>
-       <li>Pods are the atomic unit on the Kubernetes platform. When we create a Deployment on Kubernetes, that Deployment creates Pods with containers inside them (as opposed to creating containers directly). Each Pod is tied to the Node where it is scheduled, and remains there until termination (according to restart policy) or deletion. In case of a Node failure, identical Pods are scheduled on other available Nodes in the cluster.</li>
-       <li>The containers in a Pod are automatically co-located and co-scheduled on the same physical or virtual machine in the cluster. The containers can share resources and dependencies, communicate with one another, and coordinate when and how they are terminated.</li>
-       <li>Note that grouping multiple co-located and co-managed containers in a single Pod is a relatively advanced use case. You should use this pattern only in specific instances in which your containers are tightly coupled. The one container per pod is the recomended use-case.</li>
-
-       <li>Pods do not, by themselves, self-heal. Thus, while it is possible to use Pod directly, 
-           it’s far more common in Kubernetes to manage your pods using a Controller to 
-           implement Pod scaling and healing.
-       </li>
-
-     </ul>
-  </td>
-  </td>  
-  <td col2 colspan=3 >
-  <span xxbig><a href="https://kubernetes.io/docs/concepts/services-networking/service/">Service</a></span> 
-     <ul xxxsmall>
-       <li>abstraction defining a logical set of Pods and a policy by which to access them.<br/></li>
-       <li>The set of Pods targeted by a Service is (usually) determined by a Label Selector</li>
-       <li>Kubernetes-native applications: Kubernetes offers a simple Endpoints API
-           non-native        applications: Kubernetes offers virtual-IP-based-2-Service bridge</li>
-       <li>For some parts of your application (e.g. frontends) you may want to expose a
-           Service onto an external (outside of your cluster) IP address.<br/>
-           ServiceTypes allow you to specify what kind of service you want.
-           <ul>
-             <li>ClusterIP: (default) Exposes the service on a cluster-internal IP.<br/>
-                 Service only reachable from within the cluster.</li>
-             <li>NodePort: Exposes service on each Node’s IP @ static NodePort.<br/>
-                 Externably visible by requesting &lt;NodeIP&gt;:&lt;NodePort&gt;
-             </li>
-             <li>LoadBalancer: Exposes service externally using a cloud provider load balancer.
-                 Externably visible by requesting &lt;ClusterIP&gt;:&lt;NodePort&gt;
-             </li>
-             <li>ExternalName: Maps the service to the contents of the "externalName" field
-                 (e.g. foo.bar.example.com), by returning a CNAME record.
-                 requires version 1.7 or higher of kube-dns
-             </li>
-           </ul>
-       <li><p>externalIPs:  Traffic that ingresses into the cluster with the external IP (as destination IP),
-              on the service port, will be routed to one of the service endpoints. 
-              externalIPs can be specified along with any of the ServiceTypes. 
-           </p>
-       </li>
-     </ul>
-
-     <ul xxxsmall>
-       <li>As of Kubernetes v1.0, Services are a “layer 4” (TCP/UDP over IP) construct.
-          In Kubernetes v1.1 the Ingress API was added (beta) to represent “layer 7” (HTTP) services.</li>
-       <li>By default, the choice of backend is round robin. Client-IP based session affinity can be selected
-           by setting service.spec.sessionAffinity to "ClientIP" (the default is "None"), and you can set
-           the max session sticky time by setting the field service.spec.sessionAffinityConfig.clientIP.timeoutSeconds
-           if you have already set service.spec.sessionAffinity to "ClientIP" (the default is “10800”). </li>
-       <li>ou can specify your own cluster IP address as part of a Service creation request. To do this, set the spec.clusterIP field </li>
-       <li>When a Pod is run on a Node, the kubelet adds a set of environment variables for each active Service.<br/>
-           example, Service "redis-master" exposing TCP:6379 allocated to cluster IP address 10.0.0.11:
-         <pre xxxsmall { >
-REDIS_MASTER_SERVICE_HOST=10.0.0.11
-REDIS_MASTER_SERVICE_PORT=6379
-REDIS_MASTER_PORT=tcp://10.0.0.11:6379
-REDIS_MASTER_PORT_6379_TCP=tcp://10.0.0.11:6379
-REDIS_MASTER_PORT_6379_TCP_PROTO=tcp
-REDIS_MASTER_PORT_6379_TCP_PORT=6379
-REDIS_MASTER_PORT_6379_TCP_ADDR=10.0.0.11
-         </pre } >
-       </li>
-       <li>DNS server: optional (strongly recommended) add-on.
-         The DNS server watches the Kubernetes API for new Services and creates a set of DNS records for each.
-         For example, if you have a Service called "my-service" in Kubernetes Namespace "my-ns" a DNS record 
-         "my-service.my-ns" is created. 
-       </li>
-       <li>Sometimes you don’t need or want load-balancing and a single service IP.
-           In this case, you can create "headless" services by specifying "None" in spec.clusterIP
-       </li>
-       <li>This does imply an ordering requirement - any Service that a Pod wants to access
-            must be created before the Pod itself, or else the environment variables will not be populated.
-            DNS does not have this restriction.
-DNS
-</li>
-     </ul>
-
-
-  </td>  
-  <td col3 colspan=3 >
-  <span xxbig><a href="https://kubernetes.io/docs/concepts/storage/volumes/">Volume</a></span> 
-     <ul xxxsmall>
-       <li>A Kubernetes volume (vs a Docker volume)  has the lifetime of the pod. Consequently, a volume outlives any containers that run within the Pod, and data is preserved across Container restarts. </li>
-       <li>Kubernetes supports many types of volumes, and a Pod can use any number of them simultaneously.</li>
-       <li>a pod specifies what volumes to provide for the pod (spec.volumes) and where to mount those into containers(spec.containers.volumeMounts).</li>
-       <li>Each container in the Pod must independently specify where to mount each volume</li>
-       <li>Kubernetes supports several types of Volumes:</p>
-        <ul xxxsmall { >
-          <li>emptyDir</li>
-          <li>hostPath: mounts from hots node's filesystem. Types
-              Permissions: Those of the kubelet user
-              <ul { >
-                <li>DirectoryOrCreate: </li>
-                <li>Directory:</li>
-                <li>FileOrCreate:</li>
-                <li>File:</li>
-                <li>Socket:</li>
-                <li>CharDevice:</li>
-                <li>BlockDevice:</li>
-              </ul } >
-          </li>
-          <li>local: represents a mounted local storage device such as a disk, partition or directory. <br/> 
-              Local volumes can only be used as a statically created PersistentVolume.<br/>
-              Compared to HostPath volumes, local volumes can be used in a durable manner without manually scheduling pods to nodes, as the system is aware of the volume’s node constraints.
-          </li>
-          <li>awsElasticBlockStore
-          <pre xxxsmall {>
+</td>
+<td>
+  <a href="https://kubernetes.io/docs/concepts/storage/volumes/">Volume</a>
+  <ul xxxsmall>
+  <li>A Kubernetes volume (vs a Docker volume)  has the lifetime of the pod. 
+    Consequently, a volume outlives any containers that run within the Pod, and
+    data is preserved across Container restarts. </li>
+  <li>Kubernetes supports many types of volumes, and a Pod can use any number 
+    of them simultaneously.</li>
+  <li>a pod specifies what volumes to provide for the pod (spec.volumes) and 
+    where to mount those into containers(spec.containers.volumeMounts).</li>
+  <li>Each container in the Pod must independently specify where to mount each volume</li>
+  <li>Kubernetes supports several types of Volumes:</p>
+    <ul xxxsmall { >
+    <li>emptyDir</li>
+    <li>hostPath: mounts from hots node's filesystem. Types
+      Permissions: Those of the kubelet user
+      <ul>
+      <li>DirectoryOrCreate: </li>
+      <li>Directory:</li>
+      <li>FileOrCreate:</li>
+      <li>File:</li>
+      <li>Socket:</li>
+      <li>CharDevice:</li>
+      <li>BlockDevice:</li>
+      </ul>
+    </li>
+    <li>local: represents a mounted local storage device such as a disk, 
+      partition or directory. <br/> 
+      Local volumes can only be used as a statically created PersistentVolume.<br/>
+      Compared to HostPath volumes, local volumes can be used in a durable 
+      manner without manually scheduling pods to nodes, as the system is aware 
+      of the volume’s node constraints.
+    </li>
+    <li>awsElasticBlockStore
+<pre>
   # STEP 1:
   aws ec2 create-volume \
      --availability-zone=eu-west-1a \
@@ -421,29 +395,23 @@ DNS
     awsElasticBlockStore:
       volumeID: <volume-id>
       fsType: ext4
-          </pre }>
-
-          </li>
-          <li>nfs</li>
-          <li>iscsi</li>
-          <li>glusterfs</li>
-          <li>gitRepo</li>
-
-          <li TODO >persistenVolumeClaim</br>
-              https://kubernetes.io/docs/concepts/storage/persistent-volumes/
-          </li>
-          <li>...</li>
-        </ul }>
-       </li>
-       <li>Sometimes, it is useful to share one volume for 
-           multiple uses in a single pod. The volumeMounts.subPath
-           property can be used to specify a sub-path inside the
-           referenced volume instead of its root.
-       </li>
-     </ul>
-
-  </td>
-
+</pre>
+    </li>
+    <li>nfs</li>
+    <li>iscsi</li>
+    <li>glusterfs</li>
+    <li>gitRepo</li>
+    <li><a href="https://kubernetes.io/docs/concepts/storage/persistent-volumes/">persistenVolumeClaim</a></li>
+    <li>...</li>
+    </ul }>
+  </li>
+  <li>Sometimes, it is useful to share one volume for 
+    multiple uses in a single pod. The volumeMounts.subPath
+    property can be used to specify a sub-path inside the
+    referenced volume instead of its root.
+  </li>
+  </ul>
+</td>
 </tr }>
 </table } >
 
@@ -452,23 +420,25 @@ DNS
   <th colspan=12 header_delimit {   >Controllers (higher-level abstractions build upon building blocks)</th>
 </tr }>
 <tr {>
-  <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td>
-</tr }>
-<tr {>
-  <td col1 colspan=2 >
-    <span xxbig><a href="https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/">ReplicaSet</a></span>
-     <ul xxxsmall>
-       <li> If you want to scale your application horizontally (e.g., run multiple instances), you should use multiple Pods, one for each instance.</li>
-       <li>In Kubernetes, this is generally referred to as replication. Replicated Pods are usually created and managed as a group by an abstraction called a Controller.</li>
-       <li>A ReplicaSet ensures that a specified number of pod replicas are running at any given time. However, a Deployment is a higher-level concept that manages ReplicaSets and provides declarative updates to pods along with a lot of other useful features. Therefore, we recommend using Deployments instead of directly using ReplicaSets, unless you require custom update orchestration or don’t require updates at all.</li>
-     </ul>
-  </td>  
-  <td col2 colspan=2 >
-    <span xxbig ><a href="https://kubernetes.io/docs/concepts/workloads/controllers/deployment/">Deployment</a></span>
-    <ul xxxsmall>
-      <li>A Deployment controller provides declarative updates for Pods and ReplicaSets.</li>
-      <li>Ex. Deployment:
-<pre xxxsmall zoomm {>
+<td>
+  <a href="https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/">ReplicaSet</a>
+  <ul xxxsmall>
+  <li> If you want to scale your application horizontally (e.g., run multiple 
+    instances), you should use multiple Pods, one for each instance.</li>
+  <li>In Kubernetes, this is generally referred to as replication. Replicated 
+    Pods are usually created and managed as a group by an abstraction called a Controller.</li>
+  <li>A ReplicaSet ensures that a specified number of pod replicas are running 
+    at any given time. However, a Deployment is a higher-level concept that 
+    manages ReplicaSets and provides declarative updates to pods along with a 
+    lot of other useful features. Therefore, we recommend using Deployments 
+    instead of directly using ReplicaSets, unless you require custom update 
+    orchestration or don’t require updates at all.</li>
+  </ul>
+  <a href="https://kubernetes.io/docs/concepts/workloads/controllers/deployment/">Deployment</a>
+  Declarative updates for Pods and ReplicaSets
+  <ul xxxsmall>
+  <li>Ex. Deployment:
+<pre>
 # for versions before 1.7.0 use apps/v1beta1
 apiVersion: apps/v1beta2 
 kind: Deployment
@@ -476,10 +446,18 @@ metadata:
   name: nginx-deployment
   labels:
     app: nginx
+# namespace: production
 spec:
   replicas: 3                  &lt;-- 3 replicated Pods
   strategy: 
    - type : Recreate           &lt;-- Recreate | RollingUpdate*
+  # Alt. strategy example
+  # strategy:
+  #   rollingUpdate:
+  #     maxSurge: 2
+  #     maxUnavailable: 0
+  #   type: RollingUpdate
+
   selector:
     matchLabels:
       app: nginx
@@ -493,6 +471,11 @@ spec:
         image: nginx:1.7.9
         ports:
         - containerPort: 80
+        livenessProbe:
+          httpGet:
+          path: /heartbeat
+          port: 80
+          scheme: HTTP
 
 $ kubectl create -f nginx-deployment.yaml
 
@@ -508,9 +491,9 @@ $ kubectl rollout status deployment/nginx-deployment
 $ kubectl get deployments
 NAME             DESIRED CURRENT ...
 nginx-deployment 3       3       
-</pre }>
-      </li>
-      <li>To see the ReplicaSet (rs) created by the deployment:
+</pre>
+  </li>
+  <li>To see the ReplicaSet (rs) created by the deployment:
 <pre { >
 $ kubectl get rs
 NAME                     DESIRED ...
@@ -518,8 +501,8 @@ nginx-deployment-...4211 3
 ^*1
 </pre }>
 *1:format [deployment-name]-[pod-template-hash-value]
-      </li>
-      <li>To see the labels automatically generated for each pod
+  </li>
+  <li>To see the labels automatically generated for each pod
 <pre {>
 $ kubectl get pods --show-labels
 NAME          ... LABELS
@@ -527,14 +510,14 @@ nginx-..7ci7o ... app=nginx,...,
 nginx-..kzszj ... app=nginx,...,
 nginx-..qqcnn ... app=nginx,...,
 </pre }>
-      </li>
-      <li>Update nginx Pods from nginx:1.7.9 to nginx:1.9.1:
+  </li>
+  <li>Update nginx Pods from nginx:1.7.9 to nginx:1.9.1:
 <pre {>
 $ kubectl set image deployment/nginx-deployment \
    nginx=nginx:1.9.1
 </pre }>
-      </li>
-      <li>Check the revisions of deployment:
+  </li>
+  <li>Check the revisions of deployment:
 <pre {>
 $ kubectl rollout history deployment/nginx-deployment
 deployments "nginx-deployment"
@@ -548,8 +531,8 @@ R CHANGE-CAUSE
 $ kubectl rollout undo deployment/nginx-deployment \
    --to-revision=2
 </pre }>
-      </li>
-      <li>Scale Deployment:
+  </li>
+  <li>Scale Deployment:
 <pre {>
 $ kubectl scale deployment \
   nginx-deployment --replicas=10
@@ -557,25 +540,581 @@ $ kubectl scale deployment \
 $ kubectl autoscale deployment nginx-deployment \
   --min=10 --max=15 --cpu-percent=80
 </pre }>
-      </li>
-     </ul>
-  </td>
-  <td col3 colspan=2 >
-  <span xxbig><a href="https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/">StatefulSet</a><br/>
-  <span TODO></span>
-  </td>
-  <td col4 colspan=2 >
-  <span xxbig><a href="https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/">DaemonSet</a><br/>
-  <span TODO></span>
-  </td>
-  <td colspan=2>
-    <span xxbig><a href="https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/">Job</span><br/>
-  <span TODO></span>
-  </td>
-  <td colspan=2>
-  <span xxbig><a href="https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors/">Working with objects</a></span><br/>
-  <span TODO></span>
-  </td>
+  </li>
+  </ul>
+</td>
+<td>
+  <a href="https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/">StatefulSet (v:1.9+)</a><br/>
+  Manages stateful apps:
+  <ul xxxsmall zoom>
+  <li>Useful for apps requiring one+ of: 
+    <ul>
+    <li>Stable, unique network identifiers.</li>
+    <li>persistent storage across Pod (re)scheduling</li>
+    <li>Ordered, graceful deployment and scaling.</li>
+    <li>Ordered, graceful deletion and termination.</li>
+    <li>Ordered, automated rolling updates.</li>
+    </ul>
+  </li>
+  <li>Manages the deploy+scaling of Pods providing
+      guarantees about ordering and uniqueness</li>
+  <li>Unlike Deployments, a StatefulSet maintains a sticky identity for each 
+    of their Pods. These pods are created from the same spec, but are not 
+    interchangeable: each has a persistent identifier that it maintains 
+    across any rescheduling</li>
+  <li>Pod Identity: StatefulSet Pods have a unique identity that is comprised 
+    of [ordinal, stable network identity, stable storage] that sticks even
+    if Pods is rescheduled on another node.
+    <ol>
+    <li>Ordinal:Each Pod will be assigned an unique integer ordinal,
+       from 0 up through N-1, where N = number of replicas</li>
+    <li> Stable Network Pod host-name = <code>$(statefulset name)-$(ordinal)</code>
+     Ex. full DNS using Stateless service:
+<pre>
+Pod full DNS  (web == StatefullSet.name)
+<span orange>← pod-host →</span> <span blue>← service ns    →</span> <span brown>←clusterDoma→</span>
+<span orange>web-{0..N-1}</span>.<span blue>nginx.default.svc</span>.<span brown>cluster.local</span>
+<span orange>web-{0..N-1}</span>.<span blue>nginx.foo    .svc</span>.<span brown>cluster.local</span>
+<span orange>web-{0..N-1}</span>.<span blue>nginx.foo    .svc</span>.<span brown>kube.local   </span>
+
+*1: Cluster Domain defaults to cluster.local
+</pre>
+    </li>
+    <li>Pod Name Label: When the controller creates a Pod,
+      it adds a label <code>statefulset.kubernetes.io/"pod-name" set to
+      the name of the pod, allowing to attach a Service to an unique Pod
+    </li>
+
+    </ol>
+  </li>
+  </ul>
+
+  Limitations
+  <ul xxxsmall zoom>
+  <li>The storage for a given Pod must either be provisioned by a 
+    PersistentVolume Provisioner based on the requested storage class, or 
+    pre-provisioned by an admin.</li>
+  <li>Deleting and/or scaling a StatefulSet down will not delete the 
+      volumes associated with the StatefulSet in order to ensure data safety,
+      which is generally more valuable than an automatic purge of all related 
+      StatefulSet resources.</li>
+  <li>StatefulSets currently require a <span TODO>Headless Service</span> to be
+    responsible for the network identity of the Pods. You are responsible for 
+    creating this Service.</li>
+  </ul>
+
+  Example StatefulSet
+<pre xxxsmall zoom>
+The <span blue>headless Service (named nginx)</span>, is used to control the network domain
+The <span orange>StatefulSet(named web)</orange>, has a Spec that indicates 
+that 3 replicas of the nginx container will be launched in unique Pods.
+The <span green>volumeClaimTemplates</span> will provide stable storage 
+using PersistentVolumes provisioned by a PersistentVolume Provisioner.
+
+<span blue>apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  ports:
+  - port: 80
+    name: web
+  clusterIP: None
+  selector:
+    app: nginx</span>
+---
+<span orange>apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web
+spec:
+  replicas: 3 # by default is 1
+
+  selector:
+    matchLabels:
+      <span brown>app: nginx # has to match .spec.template.metadata.labels</span>
+  serviceName: "nginx"
+  template:
+    metadata:
+      labels:
+        <span>app: nginx # has to match .spec.selector.matchLabels</span>
+</span>spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: nginx
+        image: k8s.gcr.io/nginx-slim:0.8
+        ports:
+        - containerPort: 80
+          name: web
+        volumeMounts:
+        - name: www
+          mountPath: /usr/share/nginx/html
+<span green><b>volumeClaimTemplates</b>:
+  # Kubernetes creates one PersistentVolume for each VolumeClaimTemplate
+  - metadata:
+      name: www
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      # each Pod will receive a single PersistentVolume 
+      # When a Pod is (re)scheduled onto a node, its volumeMounts mount 
+      # the PersistentVolumes associated with its PersistentVolume Claims.
+      storageClassName: "my-storage-class"
+      resources:
+        requests:
+          storage: 1Gi</span>
+</span>
+</pre>
+  Deployment and Scaling Guarantees
+  <ul xxxsmall zoom>
+  <li>Pods are deployed sequentially in order from {0..N-1}.</li>
+  <li>When Pods are deleted they are terminated in reverse order, from {N-1..0}</li>
+  <li>Before a scaling operation is applied to a Pod, all of its predecessors must be Running and Ready</li>
+  <li>Before a Pod is terminated, all of its successors must be completely shutdown</li>
+  <li><def>Ordering Policies</def> guarantees can be relaxed via  <code>.spec.podManagementPolicy</code>(K8s 1.7+)
+    <ol>
+    <li>OrderedReady: Defaults, implements the behavior described above</li>
+    <li>Parallel Pod Management: launch/terminate all Pods in parallel, not
+       waiting for Pods to become Running and Ready or completely terminated</li>
+    <li></li>
+    </ol>
+  </li>
+  <li><def><code>.spec.updateStrategy</code></def> allows to configure and disable
+    automated rolling updates for containers, labels, resource request/limits,
+    and annotations for the Pods in a StatefulSet.
+    <ol>
+    <li>"OnDelete" implements the legacy (1.6 and prior) behavior.
+      StatefulSet controller will not automatically update the Pods in a StatefulSet.
+      Users must manually delete Pods to cause the controller to create new Pods
+      that reflect modifications made to a StatefulSet’s .spec.template.</li>
+    <li>"RollingUpdate" (default 1.7+) implements automated, rolling update for Pods.
+       The StatefulSet controller will delete and recreate each Pod proceeding
+       in the same order as Pod termination (largest to smallest ordinal), updating
+       each Pod one at a time waiting until an updated Pod is Running and Ready
+       prior to updating its predecessor.<br/>
+       Partitions
+       <ul>
+       <li>RollingUpdate strategy can be partitioned, by specifying a
+         <code>.spec.updateStrategy.rollingUpdate.partition</li>
+       <li>If specified all Pods with an ordinal greater than or equal to
+          the partition will be updated when the StatefulSet’s .spec.template
+          is updated. All Pods with an ordinal that is less than the partition
+          will not be updated, and, even if they are deleted, they will be
+          recreated at the previous version.</li>
+       <li>If it is greater than its .spec.replicas, updates to its 
+          .spec.template will not be propagated to its Pods.
+       </li>
+       <li>In most cases you will not need to use a partition, but they 
+         are useful if you want to stage an update, roll out a canary,
+         or perform a phased roll out.</li>
+       </ul>
+    </ol>
+  </li>
+  </li>
+  </ul>  
+
+  DONT'S
+  <ul xxxsmall zoom>
+  <li>The StatefulSet should NOT specify a pod.Spec.TerminationGracePeriodSeconds of 0.<br/>
+      Unsafe and <b>strongly discouraged</b> </li>
+  </ul>  
+
+</td>
+<td>
+  <a href="https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/">DaemonSet</a><br/>
+  ensures "N" Nodes run a Pod instance<br/>
+  <span xsmall>typical uses include cluster storage, log collection or monitoring</span> 
+  <ul xxxsmall zoom>
+  <li>As nodes are added to the cluster, Pods are added to them. As nodes are removed from the cluster, those Pods are garbage collected. Deleting a DaemonSet will clean up the Pods it created.</li>
+  <li>Ex (simple case): one DaemonSet, covering all nodes, would be used 
+    for each type of daemon. A more complex setup might use multiple DaemonSets
+    for a single type of daemon, but with different flags and/or different memory
+    and cpu requests for different hardware types.</li>
+  <li></li>
+  </ul>
+  Ex.  DaemonSet for <span blue>fluentd-elasticsearch</span>:
+<pre xxxsmall> 
+$ cat daemonset.yaml 
+apiVersion: apps/v1
+kind: <b>DaemonSet</b>
+metadata:
+  name: fluentd-elasticsearch
+  namespace: kube-system
+  labels:
+    k8s-app: fluentd-logging
+spec:
+  selector:
+    matchLabels:
+      name: fluentd-elasticsearch
+  template: # Pod template
+    # Pod Template must have RestartPolicy equal to Always (default if un-specified)
+    metadata:
+      labels:
+        name: fluentd-elasticsearch
+    spec:
+      tolerations:
+      - key: node-role.kubernetes.io/master
+        effect: NoSchedule
+      containers:
+      - name: fluentd-elasticsearch
+        image: <span blue>k8s.gcr.io/fluentd-elasticsearch:1.20</span>
+        resources:
+          limits:
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 200Mi
+        volumeMounts:
+        - name: varlog
+          mountPath: /var/log
+        - name: varlibdockercontainers
+          mountPath: /var/lib/docker/containers
+          readOnly: true
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: varlibdockercontainers
+        hostPath:
+          path: /var/lib/docker/containers
+</pre>
+  <!--
+The .spec.selector field is a pod selector. It works the same as the .spec.selector of a Job.
+
+As of Kubernetes 1.8, you must specify a pod selector that matches the labels of the .spec.template. The pod selector will no longer be defaulted when left empty. Selector defaulting was not compatible with kubectl apply. Also, once a DaemonSet is created, its spec.selector can not be mutated. Mutating the pod selector can lead to the unintentional orphaning of Pods, and it was found to be confusing to users.
+
+The spec.selector is an object consisting of two fields:
+
+    matchLabels - works the same as the .spec.selector of a ReplicationController.
+    matchExpressions - allows to build more sophisticated selectors by specifying key, list of values and an operator that relates the key and values.
+
+When the two are specified the result is ANDed.
+
+If the .spec.selector is specified, it must match the .spec.template.metadata.labels. Config with these not matching will be rejected by the API.
+
+Also you should not normally create any Pods whose labels match this selector, either directly, via another DaemonSet, or via other controller such as ReplicaSet. Otherwise, the DaemonSet controller will think that those Pods were created by it. Kubernetes will not stop you from doing this. One case where you might want to do this is manually create a Pod with a different value on a node for testing.
+Running Pods on Only Some Nodes
+
+If you specify a .spec.template.spec.nodeSelector, then the DaemonSet controller will create Pods on nodes which match that node selector. Likewise if you specify a .spec.template.spec.affinity, then DaemonSet controller will create Pods on nodes which match that node affinity. If you do not specify either, then the DaemonSet controller will create Pods on all nodes.
+How Daemon Pods are Scheduled
+
+Normally, the machine that a Pod runs on is selected by the Kubernetes scheduler. However, Pods created by the DaemonSet controller have the machine already selected (.spec.nodeName is specified when the Pod is created, so it is ignored by the scheduler). Therefore:
+
+    The unschedulable field of a node is not respected by the DaemonSet controller.
+    The DaemonSet controller can make Pods even when the scheduler has not been started, which can help cluster bootstrap.
+
+Daemon Pods do respect taints and tolerations, but they are created with NoExecute tolerations for the following taints with no tolerationSeconds:
+
+    node.kubernetes.io/not-ready
+    node.alpha.kubernetes.io/unreachable
+
+This ensures that when the TaintBasedEvictions alpha feature is enabled, they will not be evicted when there are node problems such as a network partition. (When the TaintBasedEvictions feature is not enabled, they are also not evicted in these scenarios, but due to hard-coded behavior of the NodeController rather than due to tolerations).
+
+They also tolerate following NoSchedule taints:
+
+    node.kubernetes.io/memory-pressure
+    node.kubernetes.io/disk-pressure
+
+When the support to critical pods is enabled and the pods in a DaemonSet are labeled as critical, the Daemon pods are created with an additional NoSchedule toleration for the node.kubernetes.io/out-of-disk taint.
+
+Note that all above NoSchedule taints above are created only in version 1.8 or later if the alpha feature TaintNodesByCondition is enabled.
+
+Also note that the node-role.kubernetes.io/master NoSchedule toleration specified in the above example is needed on 1.6 or later to schedule on master nodes as this is not a default toleration.
+Communicating with Daemon Pods
+
+Some possible patterns for communicating with Pods in a DaemonSet are:
+
+    Push: Pods in the DaemonSet are configured to send updates to another service, such as a stats database. They do not have clients.
+    NodeIP and Known Port: Pods in the DaemonSet can use a hostPort, so that the pods are reachable via the node IPs. Clients know the list of node IPs somehow, and know the port by convention.
+    DNS: Create a headless service with the same pod selector, and then discover DaemonSets using the endpoints resource or retrieve multiple A records from DNS.
+    Service: Create a service with the same Pod selector, and use the service to reach a daemon on a random node. (No way to reach specific node.)
+
+Updating a DaemonSet
+
+If node labels are changed, the DaemonSet will promptly add Pods to newly matching nodes and delete Pods from newly not-matching nodes.
+
+You can modify the Pods that a DaemonSet creates. However, Pods do not allow all fields to be updated. Also, the DaemonSet controller will use the original template the next time a node (even with the same name) is created.
+
+You can delete a DaemonSet. If you specify --cascade=false with kubectl, then the Pods will be left on the nodes. You can then create a new DaemonSet with a different template. The new DaemonSet with the different template will recognize all the existing Pods as having matching labels. It will not modify or delete them despite a mismatch in the Pod template. You will need to force new Pod creation by deleting the Pod or deleting the node.
+
+In Kubernetes version 1.6 and later, you can perform a rolling update on a DaemonSet.
+Alternatives to DaemonSet
+Init Scripts
+
+It is certainly possible to run daemon processes by directly starting them on a node (e.g. using init, upstartd, or systemd). This is perfectly fine. However, there are several advantages to running such processes via a DaemonSet:
+
+    Ability to monitor and manage logs for daemons in the same way as applications.
+    Same config language and tools (e.g. Pod templates, kubectl) for daemons and applications.
+    Running daemons in containers with resource limits increases isolation between daemons from app containers. However, this can also be accomplished by running the daemons in a container but not in a Pod (e.g. start directly via Docker).
+
+Bare Pods
+
+It is possible to create Pods directly which specify a particular node to run on. However, a DaemonSet replaces Pods that are deleted or terminated for any reason, such as in the case of node failure or disruptive node maintenance, such as a kernel upgrade. For this reason, you should use a DaemonSet rather than creating individual Pods.
+Static Pods
+
+It is possible to create Pods by writing a file to a certain directory watched by Kubelet. These are called static pods. Unlike DaemonSet, static Pods cannot be managed with kubectl or other Kubernetes API clients. Static Pods do not depend on the apiserver, making them useful in cluster bootstrapping cases. Also, static Pods may be deprecated in the future.
+Deployments
+
+DaemonSets are similar to Deployments in that they both create Pods, and those Pods have processes which are not expected to terminate (e.g. web servers, storage servers).
+
+Use a Deployment for stateless services, like frontends, where scaling up and down the number of replicas and rolling out updates are more important than controlling exactly which host the Pod runs on. Use a DaemonSet when it is important that a copy of a Pod always run on all or certain hosts, and when it needs to start before other Pods.
+-->
+</td>
+<td>
+  <a href="https://kubernetes.io/docs/concepts/workloads/controllers/jobs-run-to-completion/">Job</a><br/>
+  reliably run one+ Pod to "N" completions
+  <ul xxxsmall zoom>
+  <li>creates one+ pods and ensures that a specified number of them successfully terminate</li>
+  <li>Jobs are complementary to Deployment Controllers. A Deployment Controller
+    manages pods which are not expected to terminate (e.g. web servers), and 
+    a Job manages pods that are expected to terminate (e.g. batch jobs).</li>
+  <li>As pods successfully complete, the job tracks the successful completions. When a specified number of successful completions is reached, the job itself is complete. Deleting a Job will cleanup the pods it created.</li>
+  <li>Pod Backoff failure policy: ifyou want to fail a Job after N retries set 
+      <code>.spec.backoffLimit</code> (defaults to 6).</li>
+  <li>Pods are not deleted on completion in order to allow view logs/output/errors for completed pods. They will show up with <code>kubectl get pods <b>-a</b></code>. 
+    Neither the job object in order to allow viewing its status.</li>
+  <li> Another way to terminate a Job is by setting an active deadline
+    in <code>.spec.activeDeadlineSeconds</code> or <code>.specs.template.specs.activeDeadlineSeconds</code></li>
+
+  </ul>
+  example. Compute  2000 digits of "pi" 
+<pre xxxsmall>
+$ cat job.yaml
+
+apiVersion: batch/v1
+kind: <b>Job</b>
+metadata:
+  name: pi
+spec:
+  template: # Required (== Pod template - apiVersion - kind)
+    spec:
+      containers:
+      - name: pi
+        <b>image: perl</b>
+        <b>command: ["perl",  "-Mbignum=bpi", "-wle", "print bpi(2000)"]</b>
+      <b orange>restartPolicy: Never</b> # Only Never/OnFailure allowed
+  backoffLimit: 4
+
+# <b>Run job using:</b>
+# $ kubectl create -f ./job.yaml
+
+# <b>Check job current status like:</b>
+# $ kubectl describe jobs/pi
+# output will be similar to:
+# Name:             pi
+# Namespace:        default
+# Selector:         controller-uid=b1db589a-2c8d-11e6-b324-0209dc45a495
+# Labels:           controller-uid=b1db589a-2c8d-11e6-b324-0209dc45a495
+#                   job-name=pi
+# Annotations:      <none>
+# Parallelism:      1
+# Completions:      1
+# Start Time:       Tue, 07 Jun 2016 10:56:16 +0200
+# Pods Statuses:    0 Running / 1 Succeeded / 0 Failed
+# Pod Template:
+#   Labels:       controller-uid=b1db589a-2c8d-11e6-b324-0209dc45a495
+#                 job-name=pi
+#   Containers:
+#    pi:
+#     Image:      perl
+#     Port:
+#     Command:
+#       perl
+#       -Mbignum=bpi
+#       -wle
+#       print bpi(2000)
+#     Environment:        <none>
+#     Mounts:             <none>
+#   Volumes:              <none>
+# Events:
+#   FirstSeen LastSeen  Count From            SubobjectPath  Type    Reason            Message
+#   --------- --------  ----- ----            -------------  ------- ------            -------
+#   1m        1m        1     {job-controller}               Normal  SuccessfulCreate  Created pod: pi-dtn4q
+# 
+# <b>To view completed pods of a job, use </b>
+# $ kubectl get pods
+
+# <b>To list all pods belonging to job in machine-readable-form</b>:
+# 
+# $ pods=$(kubectl get pods --selector=<b>job-name=pi</b> --output=<b>jsonpath={.items..metadata.name}</b>)
+# $ echo $pods
+pi-aiw0a
+
+
+# <b>View the standard output of one of the pods:</b>
+# $ kubectl logs $pods
+# 3.1415926535897a....9
+</pre>
+
+  Parallel Jobs
+  <ul xxxsmall zoom>
+  <li>Parallel Jobs with a fixed completion count <code>(.spec.completions greater than zero)</code>. the job is complete when there is one successful pod for each value in the range 1 to .spec.completions.
+</li>
+  <li>Parallel Jobs with a work queue: do not specify <code>.spec.completions</code>:<br/>
+     pods must coordinate with themselves or external service to determine
+     what each should work on.<br/>
+     each pod is independently capable of determining whether or not all its peers 
+     are done, thus the entire Job is done.<br/>
+  </li>
+  <li>For Non-parallel job, leave both <code>.spec.completions</code> and 
+      <code>.spec.parallelism</code> unset.</li>
+  <li>Actual parallelism (number of pods running at any instant) may be more or less than requested parallelism, for a variety of reasons</li>
+  <li>(read official K8s docs for Job Patterns ussages)</li>
+  </ul>
+  <hr/>
+  <a href="https://kubernetes.io/docs/concepts/workloads/controllers/cron-jobs/">Cron Jobs (1.8+)</a>
+  <ul xxxsmall zoom>
+  <li>written in Cron format (question mark (?) has the same meaning as an asterisk *)</li>
+  <li>Concurrency Policy
+    <ol>
+    <li>Allow (default): allows concurrently running jobs</li>
+    <li>Forbid: forbids concurrent runs, skipping next
+      if previous still running</li>
+    <li>Replace: cancels currently running job and replaces with new one</li>
+    </ol>
+  </li>
+  </ul>
+<pre xxxsmall zoom>
+$ cat cronjob.yaml
+apiVersion: batch/v1beta1
+kind: CronJob
+metadata:
+  name: hello
+spec:
+  schedule: <b orange>"*/1 * * * *"</b>
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          <b orange>- name: hello
+            image: busybox
+            args:
+            - /bin/sh
+            - -c
+            - date; echo Hello from the Kubernetes cluster</b>
+          restartPolicy: OnFailure
+
+# Alternatively:
+$ kubectl run hello \
+    --schedule="*/1 * * * *"  \
+    --restart=OnFailure \
+    --image=busybox \
+    -- /bin/sh -c "date; echo Hello from the Kubernetes cluster"
+
+# get status:
+
+$ kubectl get cronjob hello
+NAME      SCHEDULE      SUSPEND   ACTIVE    LAST-SCHEDULE
+hello     */1 * * * *   False     0         <none>
+
+# Watch for the job to be created:
+$ kubectl get jobs --watch
+NAME               DESIRED   SUCCESSFUL   AGE
+hello-4111706356   1         1         2s
+</pre>
+  
+
+</td>
+<td>
+  <a href="https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors/">Working with objects</a><br/>
+  Labels
+  <ul xxxsmall zoom>
+  <li>Labels are key/value pairs attached to objects.</li>
+  <li>Unlike names and UIDs, labels do not provide uniqueness. In general, 
+    we expect many objects to carry the same label(s)</li>
+
+  <li>at creation time and subsequently added and modified at any time. Each 
+    object can have a set of key/value labels defined. Each Key must be unique 
+    for a given object.</li>
+  <li>intended to be used to specify <b>identifying attributes</b> of objects that are
+    <b>meaningful and relevant to users</b>, but do not directly imply semantics to the
+    core system</li>
+  <li>Normally used to organize and to select subsets of objects.</li>
+  <li>Label format:
+<pre>
+("prefix"/)name
+  name : [a-z0-9A-Z\-_.]{1,63}
+  prefix : must be a DNS subdomain no longer than 253 chars
+</pre>
+  </li>
+  <li>Example labels:
+<pre>  
+"release"    : "stable" # "canary" ...
+"environment": "dev" # "qa", "pre",  "production"
+"tier"       : "frontend" # "backend" "cache"
+"partition"  : "customerA", "partition" : "customerB"
+"track"      : "daily" # "weekly" "monthly" ...
+</pre>
+  </li>
+  </ul>
+
+  Label selectors
+  <ul xxxsmall zoom>
+  <li>used by  client/user to identify a set of objects. The 
+    label selector is the core grouping primitive in Kubernetes.</li>
+  <li>The API currently supports two types of selectors: equality-based and set-based.</li>
+  <li>multiple "AND" selectors are comma-separated.</li>
+  <li>(in)Equality-based selectors
+<pre>
+environment=production,tier!=frontend
+</pre>
+</li>
+  <li>Set-based, filtering keys according to a set of values.
+      (<code>in, notin and exists</code> )
+<pre>
+# key equal to environment and value equal to production or qa
+environment in (production, qa)
+# selects all resources with key equal to "tier" and values other
+# than frontend and backend, and all resources with no labels with the tier key
+tier notin (frontend, backend)
+# selects all resources including a label with key partition
+partition
+# selects all resources without a label with key "partition"
+!partition
+# select resources with a "partition" key (no matter the value)
+#  and with environment different than  qa 
+partition,environment notin (qa)
+<pre>
+  </li>
+  <li>Set-based requirements can be mixed with equality-based requirements.
+<pre>
+partition in (customerA, customerB),environment!=qa.
+</pre>
+  </li>
+  <li>
+Newer resources, such as Job, Deployment, Replica Set, and Daemon Set, support set-based requirements as well.
+<pre>
+selector:
+  # All the requirements from matchLabels +  matchExpressions are ANDed together
+  matchLabels:
+    component: redis # == matchExpression {key: component, operator: In, values: [redis]}
+  matchExpressions:  # list  of pod selector requirements
+    - {key: tier, operator: In, values: [cache]}  # In, NotIn, Exists, and DoesNotExist
+    - {key: environment, operator: NotIn, values: [dev]}
+</pre>
+  </li>
+  <li>LIST and WATCH operations may specify label selectors to filter the sets 
+    of objects returned using a query parameter. Both requirements are permitted
+   (presented here as they would appear in a URL query string). Ex:
+<pre xxxsmall zoom>
+?<b>labelSelector</b>=environment%3Dprod,tier%3Dfrontend ← equality-based:
+?<b>labelSelector</b>=environment+in+%28prod%2Cqa%29%2Ctier+in+%28FE%29 ← set-based
+</pre>
+  </li>
+  <li>
+<pre>
+# targeting apiserver with kubectl 
+$ kubectl get pods -l environment=production,tier=frontend # equality-based
+$ kubectl get pods -l 'environment in (production),tier in (frontend)' # set-based
+$ kubectl get pods -l 'environment in (production, qa)' # "OR" only set-based
+$ kubectl get pods -l 'environment,environment notin (frontend)' "NOTIN"
+</pre>
+  </li>
+  </ul>
+</td>
 </tr }>
 </table } >
 
@@ -585,12 +1124,9 @@ $ kubectl autoscale deployment nginx-deployment \
   <th colspan=12 header_delimit {   >Non-ordered notes</th>
 </tr }>
 <tr {>
-  <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td>
-</tr }>
-<tr {>
-  <td col1 colspan=6 >
-    <pre xsmall { >
-Kubectl Autocomplete
+<td >
+   setup Kubectl Autocomplete
+   <pre xxxsmall { >
 
 $ source <(kubectl completion bash)
 $ source <(kubectl completion zsh)
@@ -603,12 +1139,10 @@ $ kubectl config use-context my-cluster-name
 
 $ kubectl run nginx --image=nginx
 $ kubectl explain pods,svc
+<pre } >
 
-    <pre } >
-    <hr/>
-
-    <pre xxxsmall { >
-INTERACTING WITH RUNNING PODS:
+  Interacting with running pods:
+<pre xxxsmall { >
 $ kubectl logs my-pod (-c my-container) (-f)
                                          ^"tail -f"
 $ kubectl run -i --tty busybox --image=busybox -- sh
@@ -616,11 +1150,10 @@ $ kubectl attach my-pod -i
 $ kubectl port-forward my-pod 5000:6000  # Forward port 6000 of Pod -> 5000 local machine
 $ kubectl exec my-pod (-c my-container) -- ls / # Run command in existing pod 
 $ kubectl top pod POD_NAME --containers
+<pre } >
 
-    <pre } >
-
-    <pre xxxsmall { >
-# GET COMMANDS WITH BASIC OUTPUT
+get commands with basic output
+<pre xxxsmall { >
 $ kubectl (get   | describe) (services|pods|deployment)
            ^basic  ^verbose
     --all-namespaces
@@ -629,132 +1162,132 @@ $ kubectl (get   | describe) (services|pods|deployment)
     --sort-by=.metadata.name
     --sort-by='.status.containerStatuses[0].restartCount'
     --selector=app=cassandra  # filter
+<pre } >
 
-EDITING RESOURCES
+editing resources
+<pre xxxsmall { >
 $ KUBE_EDITOR="nano" kubectl edit svc/my-service-1
-    <pre } >
+<pre } >
 
-    <pre xxxsmall { >
-# Get ExternalIPs of all nodes
+Get External IPs of all nodes
+<pre xxxsmall { >
 $ kubectl get nodes -o jsonpath=\
     '{.items[*].status.addresses[?(@.type=="ExternalIP")].address}'
-    <pre } >
+<pre } >
+</td>  
+<td>  
+<a TODO href="https://kubernetes.io/docs/tasks/run-application/run-stateless-application-deployment/">Run stateless app. deployments</a>
+</td>  
+<td>
+  <a TODO href="https://www.infoq.com/news/2018/01/gpu-workflows-kubernetes">GPU and Kubernetes</a>
+</td>  
+<td>  
+  <a TODO href="https://opensource.com/article/17/12/storage-services-kubernetes?elqTrackId=6b7560db7aa24ea28978ac2a7e110c4c&elq=b9bc524fe6af48e38828609c30c593bc&elqaid=45485&elqat=1&elqCampaignId=148699">Running storage services (GlusterFS, iSCSI, ....)</a>
+</td>  
+<td>  
+  <a TODO href="https://github.com/kubernetes/kops/blob/master/README.md">KOPS - KUBERNETES OPERATIONS</a><br/>
+  <span cite>The easiest way to get a production grade Kubernetes cluster up and
+    running.</span>
+  <ul xxxsmall zoom>
+  <li>What is kops?  """We like to think of it as kubectl for clusters."""</li>
+  <li> kops helps you create, destroy, upgrade and maintain production-grade, 
+    highly available, Kubernetes clusters from the command line.<br/>
+    AWS is currently officially supported, with GCE in beta support,
+    and VMware vSphere in alpha, and other platforms planned.</li>
+  </ul>
 
-  </td>  
-  <td col2 colspan=6 >
-   <span TODO xxbig><a href="https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors">label selectors</a></span> 
-   <hr/>
-   <span TODO xxbig><a href="https://kubernetes.io/docs/concepts/storage/persistent-volumes/">Persistent Volumes</a></span>
-     A PersistentVolume (PV) is a piece of storage in the cluster that has been provisioned by an administrator. It is a resource in the cluster just like a node is a cluster resource. PVs are volume plugins like Volumes, but have a lifecycle independent of any individual pod that uses the PV. This API object captures the details of the implementation of the storage, be that NFS, iSCSI, or a cloud-provider-specific storage system.
-     
-     A PersistentVolumeClaim (PVC) is a request for storage by a user. It is similar to a pod. Pods consume node resources and PVCs consume PV resources. Pods can request specific levels of resources (CPU and Memory). Claims can request specific size and access modes (e.g., can be mounted once read/write or many times read-only).
+</td>  
+</tr }>
+<tr {>
+<td>  
+  <a TODO href="https://HELM.sh">Ericsson HEML</a><br/>
+    Package manager for Kubernetes
+  <hr/>
+  <a TODO href="https://kubeapps.com/">Kubeapps</a><br/>
+    The Easiest Way to Deploy Applications in Your Kubernetes Cluster 
+</td>  
+<td>  
+  <a TODO href="https://github.com/kubernetes/community/blob/master/sig-apps/README.md">SIG-Apps</a><br/>
+  Special Interest Group for deploying and operating apps in Kubernetes.
 
- PV contains max size, PVC contains min size. PVC size must be < PV size
-   <hr/>
-  </td>  
+  <ul xxxsmall zoom>
+  <li>They meet each week to demo and discuss tools and projects.</li>
+  <li cite>Covers deploying and operating applications in Kubernetes. We focus 
+    on the developer and devops experience of running applications in 
+    Kubernetes. We discuss how to define and run apps in Kubernetes, demo 
+    relevant tools and projects, and discuss areas of friction that can lead 
+    to suggesting improvements or feature requests</li>
+  </ul>
+<td> 
+  <a TODO href="https://www.infoq.com/news/2018/03/skaffold-kubernetes">Skaffold</a><br/>
+  Tool to facilitate Continuous Development with Kubernetes
+
+</td>  
+<td> 
+  <a TODO href="https://www.infoq.com/articles/tips-running-scalable-workloads-kubernetes">6 Tips for Running Scalable Workloads on K8s</a><br/>
+    
+</td>  
+<td> 
+  <a TODO href="https://github.com/GoogleContainerTools/kaniko">Kanifo</a><br/>
+    tool to build container images inside an unprivileged container or
+    Kubernetes cluster.
+  <ul xxxsmall zoom>
+  <li>Although kaniko builds the image from a supplied Dockerfile, it does 
+    not depend on a Docker daemon, and instead executes each command completely
+    in userspace and snapshots the resulting filesystem changes. 
+  </li>
+  <li>The majority of Dockerfile commands can be executed with kaniko, with 
+    the current exception of SHELL, HEALTHCHECK, STOPSIGNAL, and ARG. 
+    Multi-Stage Dockerfiles are also unsupported currently. The kaniko team 
+    have stated that work is underway on both of these current limitations.
+  </li>
+  </ul>
+</td>  
+</tr }>
+<tr {>
+<td>  
+  <a TODO href="https://www.infoq.com/news/2018/02/dist-system-patterns-burns?utm_source=infoqEmail&utm_medium=SpecialNL_EditorialContent&utm_campaign=04052018_SpecialNL&forceSponsorshipId=1598gtgt">K&A with Kubernetes ...</a><br/>
+  <span xxxsmall zoom>
+Distributed Systems programming is not for the faint of heart, and despite the evolution of platforms and tools from COM, CORBA, RMI, Java EE, Web Services, Services Oriented Architecture (SOA) and so on, it's more of an art than a science.<br/>
+
+Brendan Burns outlined many of the patterns that enables distributed systems programming in the blog he wrote in 2015. He and David Oppenheimer, both original contributors for Kubernetes, presented a paper at Usenix based around design patterns and containers shortly after.  <br/>
+InfoQ caught up with Burns, who recently authored an ebook titled Designing Distributed Systems, Patterns and Paradigms for Scaleable Microservices. He talks about distributed systems patterns and how containers enable it.<br/>
+  </span>
+</td>  
+<td>  
+  <a TODO href="https://www.infoq.com/news/2018/02/kubecon-kafka-clusters-kubernete?utm_source=infoqEmail&utm_medium=SpecialNL_EditorialContent&utm_campaign=04052018_SpecialNL&forceSponsorshipId=1598">Kafka on K8s</a><br/>
+   <span xxxsmall zoom>
+They use Kafka for log and events collection as well as a streaming platform. Each broker in the Kafka cluster has an identity which can be used to find other brokers in the cluster. The brokers also need some type of a database to store partition logs. It's important to configure a Persistent Volume (PV) for Kafka, otherwise you will lose the logs.</span>
+
+</td>  
+<td>  
+  <a TODO href="XXX">XXX</a><br/>
+</td>  
+<td>  
+  <a TODO href="XXX">XXX</a><br/>
+</td>  
+<td>  
+  <a TODO href="XXX">XXX</a><br/>
+</td>  
 </tr }>
 </table } >
 
 </body>
 <!--
+TODO_Start
+_______________________
 
+K8s admin:
+Adding nodes to a cluster
+_______________
+____________
+....Job patterns..
+One example of this pattern would be a Job which starts a Pod which runs a script that in turn starts a Spark master controller (see spark example), runs a spark driver, and then cleans up.
 
-https://kubernetes.io/docs/tutorials/object-management-kubectl/object-management/
-___________________________________
-https://kubernetes.io/docs/tasks/run-application/run-stateless-application-deployment/
 ___________________________________
 TODO:(1) Kubernetes + Photon Platform? 
-_________________________________
-GPU and Kubernetes
-https://www.infoq.com/news/2018/01/gpu-workflows-kubernetes  
-_________________________________
-Running storage services on Kubernetes (GlusterFS, iSCSI, ....)
-https://opensource.com/article/17/12/storage-services-kubernetes?elqTrackId=6b7560db7aa24ea28978ac2a7e110c4c&elq=b9bc524fe6af48e38828609c30c593bc&elqaid=45485&elqat=1&elqCampaignId=148699
-______________________
-https://github.com/kubernetes/kops/blob/master/README.md
-
-KOPS - KUBERNETES OPERATIONS  """The easiest way to get a production grade Kubernetes cluster up and running."""
-What is kops?  """We like to think of it as kubectl for clusters."""
-
-kops helps you create, destroy, upgrade and maintain production-grade, highly available, Kubernetes clusters from the command line. 
-AWS (Amazon Web Services) is currently officially supported, with GCE in beta support,
-and VMware vSphere in alpha, and other platforms planned.
-_________________
-Ericsson HEML https://HELM.sh: Package manager for Kubernetes
-
-https://kubeapps.com/:  The Easiest Way to Deploy Applications in Your Kubernetes Cluster 
-__________________
-SIG-Apps. https://github.com/kubernetes/community/blob/master/sig-apps/README.md
-
-SIG-Apps is a Special Interest Group for deploying and operating apps in Kubernetes. They meet each week to demo and discuss tools and projects.
-""" Covers deploying and operating applications in Kubernetes. We focus on the developer and devops experience of running applications in Kubernetes. We discuss how to define and run apps in Kubernetes, demo relevant tools and projects, and discuss areas of friction that can lead to suggesting improvements or feature requests."""
-
-_______________
-https://www.digitalocean.com/community/tutorials/an-introduction-to-kubernetes
-
-Kubernetes Cluster: 
-
-  - Etcd : distributed key-value store (can be distributed across multiple nodes).
-
-  - API Server: main management point of the entire cluster
-     + allows users to configure many of Kubernetes' workloads and organizational units. 
-     + implements a RESTful interface (kubecfg)
-
-  - Controller Manager Service: 
-     + general service with responsibilities handling a 
-       a number of controllers that regulate the state 
-       of the cluster and perform routine tasks 
-       (ensures number of replicas for a service, ...)
-
-  - Scheduler Service
-k    + Assigns workloads to nodes: 
-     + It is responsible for tracking resource utilization on each host.
-     + It must know the total resources available on each server
-       as well as the resources allocated to existing workloads 
-       assigned on each server. 
-
-  - Nodes
-
-______________
-Kube-proxy: 
-
-When a change is seen, the controller reads the new information and implements the procedure that fulfills the desired state. This can involve scaling an application up or down, adjusting endpoints, etc.
-______________
-Services offered by kubernetes orchestation :
-
-    Load balancing a set of containers with or without session affinity
-
-    Mounting persistent storage inside of the containers
-
-    Placement and scheduling of containers on the infrastructure
-
-    Rolling deployments and other operational considerations that traditional developers are not experts on
 
 ________________
-
-REF:   https://www.infoq.com/news/2018/03/skaffold-kubernetes
-  Google Releases “Skaffold”, a Tool That Facilitates Continuous Development with Kubernetes:
-
 https://www.infoq.com/news/2018/03/skaffold-kubernetes?utm_source=infoqEmail&utm_medium=SpecialNL_EditorialContent&utm_campaign=04052018_SpecialNL&forceSponsorshipId=1598
-_________________
-6 Tips for Running Scalable Workloads on Kubernetes:
-    https://www.infoq.com/articles/tips-running-scalable-workloads-kubernetes
-_________________
-K&A with Kubernetes ...
-https://www.infoq.com/news/2018/02/dist-system-patterns-burns?utm_source=infoqEmail&utm_medium=SpecialNL_EditorialContent&utm_campaign=04052018_SpecialNL&forceSponsorshipId=1598gtgt
-Distributed Systems programming is not for the faint of heart, and despite the evolution of platforms and tools from COM, CORBA, RMI, Java EE, Web Services, Services Oriented Architecture (SOA) and so on, it's more of an art than a science.
-
-Brendan Burns outlined many of the patterns that enables distributed systems programming in the blog he wrote in 2015. He and David Oppenheimer, both original contributors for Kubernetes, presented a paper at Usenix based around design patterns and containers shortly after.
-
-InfoQ caught up with Burns, who recently authored an ebook titled Designing Distributed Systems, Patterns and Paradigms for Scaleable Microservices. He talks about distributed systems patterns and how containers enable it.
-________________
-
-https://www.infoq.com/news/2018/02/kubecon-kafka-clusters-kubernete?utm_source=infoqEmail&utm_medium=SpecialNL_EditorialContent&utm_campaign=04052018_SpecialNL&forceSponsorshipId=1598
-
-They use Kafka for log and events collection as well as a streaming platform. Each broker in the Kafka cluster has an identity which can be used to find other brokers in the cluster. The brokers also need some type of a database to store partition logs. It's important to configure a Persistent Volume (PV) for Kafka, otherwise you will lose the logs.
-
-______________
-
-
 -->
 </html>

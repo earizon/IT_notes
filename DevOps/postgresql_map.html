@@ -4,7 +4,7 @@
 https://www.pg-versus-ms.com/
 -->
    <meta charset="UTF-8">
-   <title>PostgreSQL  (ignore)</title>
+   <title>PostgreSQL  (alpha)</title>
 <head>
 <script src="/IT_notes/map_v1.js"></script>
 <link rel="stylesheet" type="text/css" href="/IT_notes/map_v1.css" />
@@ -23,77 +23,112 @@ https://www.pg-versus-ms.com/
 
 <table { >
 <tr {>
-  <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td> <td> </td>
-</tr }>
-<tr {>
-  <td col1 colspan=6 >
-<pre { >
-ENV.VARS:
+<td>
+  Ext. Links
+  <ul zoom>
+  <li><a href="https://www.postgresql.org/docs/manuals/">Manuals</a></li>
+  </ul>
+  ENV.VARS:
+<pre>
 PGPORT
 PGUSER  (alt. -U option)
+</pre>
 
-
-1 Server 1<--> N Databases 
-
-
-Create new Database Cluster:
-OS admin -> shell:<b># initdb -D /usr/local/pgsql/data</b>
-                  alternatively
-                  <b># pg_ctl -D /usr/local/pgsql/data initdb</b>
-                  ('postgres' and 'template1' ddbbs will be created inside)
-
-                   init ddbb storage area (data directory in file-system terms) 
-                 This is the database/catalog cluster:
-                 Collection of DDBB managed by a single instance
-
-                 
-the default client authentication setup allows any local user
-to connect to the database and even become the database superuser.
- If you do not trust them:
-  - use one initdb -W, --pwprompt or --pwfile options 
-    to assign a password to the database superuser.
-  - also, specify -A md5 or -A password so that the 
-    default trust authentication mode is not used; 
-    or modify the generated <b>pg_hba.conf</b> file after running initdb
-    , but before you start the server for the first time.
-
-Starting the SErver
-OS admin -> shell: <b># su postgres -c 'postgres -D /usr/local/pgsql/data 1>/var/log/postgresql/logfile 2>&1 &'</b>
-                   alternatively (using pg_ctl "easy" wrapper)
-                   <b># su postgres -c 'postgres@~$ pg_ctrl start -l /var/log/postgresql/logfile'
-
-Create new DDBB:
-"admin" -> PostgreSQL: create user account
-("admin" ussually match postgres OS user)
-...
-user -> shell: $ createdb mydb
-
-Many tools assume ddbb names == (-U,PGUSER) username by default
-Drop existing DDBB:
-user -> shell: $ dropdb mydb # warn can NOT be undon
-
-Console access:
-user -> shell: $ psql mydb
-</pre }>
-  <td col1 colspan=6 >
-<pre { >
+<pre xsmall zoom { >
 mydb=> SELECT version();
 mydb=> SLECT current_date;
 psql commands:
 \?
 \h
-\q
-\dt
+\l            list databases
+\c db_name    connect to ddbb
+\q            quit
+\dt           show all tables in ddbb
+\dt *.*.      show all tables globally
+\d  table     show table schema
+\d+ table                      
+\du           list current user's permissions
+\u
+SELECT current_database();
 
+SELECT rolname       list users
+   FROM pg_roles;
 </pre }>
-  </td>  
-</tr }>
-</table } >
-</body>
-<!--
-COPY weather FROM '/home/user/weather.txt';
+</td>
 
+<td>
+  Create DB Cluster (initdb):<br/>
+  Init storage area (data directory in file-system terms) 
+<pre xxxsmall zoom>
+Server 1 → N Databases 
+OS admin → shell:<b># initdb -D /usr/local/pgsql/data</b>
+                  alternatively
+                  <b># pg_ctl -D /usr/local/pgsql/data initdb</b>
+                  ('postgres' and 'template1' ddbbs will be created inside)
 
+                  This is the database/catalog cluster:
+                  Collection of DDBB managed by a single instance
+</pre>
+  <br/>
+   Starting the Server
+<pre xxxsmall zoom>
+OS admin → shell: <b># su postgres -c 'postgres -D /usr/local/pgsql/data 1>/var/log/postgresql/logfile 2>&1 &'</b>
+                   alternatively (using pg_ctl "easy" wrapper)
+                   <b># su postgres -c 'postgres@~$ pg_ctrl start -l /var/log/postgresql/logfile'</b>
+</pre>
+  CRUD Users:
+<pre xxxsmall zoom>
+$ sudo su postgres # change to postgres user
+$ psql
+#- CREATE USER my_user_login WITH PASSWORD 'my_user_password';
+#- ALTER ROLE my_user_login WITH PASSWORD 'my_new_password';
+#- DROP USER IF EXISTS my_user_login;
+# TODO: switch to given ddbb
+</pre>
+  Granting privileges to users
+<pre xxxsmall zoom>
+GRANT ALL PRIVILEGES ON table TO my_user_login;
+
+-- grant all permissions to ddbb
+GRANT ALL PRIVILEGES ON DATABASE my_db_name TO my_user_name;
+
+-- grant connection permissions on database
+GRANT CONNECT ON DATABASE my_db_name TO my_user_name;
+
+-- grant permissions on schema
+GRANT USAGE ON SCHEMA public TO my_user_name;
+
+-- grant permissions to functions
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA public TO my_user_name;
+
+-- grant permissions to select, update, insert, delete, on a all tables
+GRANT SELECT, UPDATE, INSERT ON ALL TABLES IN SCHEMA public TO my_user_name
+
+-- grant permissions, on a table
+GRANT SELECT, UPDATE, INSERT ON table_name TO my_user_name;
+
+-- grant permissions, to select, on a table
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO my_user_name;
+
+</pre>
+  <br/>
+   Create new DDBB:
+<pre xxxsmall zoom>
+"admin" → PostgreSQL: create user account
+("admin" ussually match postgres OS user)
+...
+user → shell: $ createdb mydb
+
+Many tools assume ddbb names == (-U,PGUSER) username by default
+Drop existing DDBB:
+user → shell: $ dropdb mydb # warn can NOT be undon
+
+Console access:
+user → shell: $ psql mydb
+</pre }>
+  <br/>
+  CREATE TABLE example
+<pre xxxsmall>
 -- DO $$
 -- BEGIN
 --   EXECUTE 'ALTER DATABASE ' || current_database() || ' SET TIMEZONE TO UTC';
@@ -105,68 +140,209 @@ CREATE TABLE devices (
   CREATED_AT TIMESTAMP    DEFAULT NOW() NOT NULL,
   UPDATED_AT TIMESTAMP    DEFAULT NOW() NOT NULL,
   OWNER_ID   VARCHAR(40)                NOT NULL,
--- PUB_KEY NOT YET USED. Can be used to cipher message and decipher using device private key
+- - PUB_KEY NOT YET USED. Can be used to cipher message and decipher using device private key
   PUB_KEY    VARCHAR(88)                NOT NULL UNIQUE
+  PARENT_ID  VARCHAR(40)                NULL CONSTRAINT DEVICE_FK3 REFERENCES devices (ID),
 );
 CREATE INDEX DEVICE_PUB_KEY_IDX ON devices   (PUB_KEY);
+CREATE INDEX OWNER_IDX          ON devices   (OWNER_ID);
 
-CREATE TABLE coupons (
-  ID         VARCHAR(40)                NOT NULL CONSTRAINT COUPON_PK PRIMARY KEY,
-  TYPE       VARCHAR(10)                NOT NULL,
-  STATUS     VARCHAR(10)                NOT NULL,
-  CREATED_AT TIMESTAMP    DEFAULT NOW() NOT NULL,
-  UPDATED_AT TIMESTAMP    DEFAULT NOW() NOT NULL,
-  AMOUNT     INTEGER      DEFAULT     1 NOT NULL,
-  TARGET     VARCHAR(88)                NOT NULL,
--- TODO:(0) Remove Null in Database!!!
-  DEVICE_ID  VARCHAR(40)                NULL CONSTRAINT COUPON_FK3 REFERENCES devices (ID),
-  COUPON     VARCHAR(255)               NOT NULL
-); 
-CREATE INDEX COUPON_TYPE_IDX    ON coupons     (TYPE);
-CREATE INDEX COUPON_TARGET_IDX  ON coupons   (TARGET);
--->
+-- (Alt) ALTER TABLE tableName ADD PRIMARY KEY (id);
+-- (Alt) CREATE UNIQUE INDEX indexName ON tableName (columnNames);
+</pre> 
 
-<--
-pg_upgrade
--->
+</td>
 
-<--
-http://www.time-travellers.org/shane/papers/NFS_considered_harmful.html
-...  this can cause reliability problems (see http://www.time-travellers.org/shane/papers/NFS_considered_harmful.html). Specifically, delayed (asynchronous) writes to the NFS server can cause data corruption problems. If possible, mount the NFS file system synchronously (without caching) to avoid this hazard. Also, soft-mounting the NFS file system is not recommended.
--->
+<td>
+   <a href="https://www.postgresql.org/docs/devel/static/auth-pg-hba-conf.html"><b>pg_hba.conf</b></a><br/> (AAAr+Encryption)
+   <ul xxxsmall zoom>
+   <li>the default client authentication setup allows any local user
+      to connect to the database and even become the database superuser.<br/>
+      If you do not trust them:
+     <ol>
+     <li>use one initdb -W, --pwprompt or --pwfile options 
+       to assign a password to the database superuser.</li>
+     <li>also, specify -A md5 or -A password so that the 
+       default trust authentication mode is not used; 
+       or modify the generated <b>pg_hba.conf</b> file after running initdb
+       , but before you start the server for the first time.</li>
+     </ol>
+   </li>
 
-<!--
-Tunning OS resources (Shared Memory/Semaphores/...):
-https://www.postgresql.org/docs/10/static/kernel-resources.html
+   <li><a  href="https://www.postgresql.org/docs/10/static/ssl-tcp.html">TSL </a>
+      allows both the client and server to provide SSL certificates to each other. 
+   </li>
+   <li><a TODO href="https://www.postgresql.org/docs/10/static/encryption-options.html">Encryp. Options </a>
+     <ul>
+     <li>The pg_hba.conf file allows administrators to specify which hosts can use
+       non-encrypted connections (host) and which require SSL-encrypted 
+       connections (hostssl). Also, clients can specify that they connect to 
+       servers only via SSL.
+     </li>
+     <li>The pgcrypto module allows certain fields to be stored encrypted. This 
+       is useful if only some of the data is sensitive. The client supplies the 
+       decryption key and the data is decrypted on the server and then sent to the client.
+     </li>
+     </ul>
+   </ul>
+</td>
+
+<td>
+  <span>Backups:</span>
+<pre xxxsmall>
+# backup ddbb
+$ pg_dump ${dbName} &gt; dbName.sql
+# backup ddbb , only data
+$ pg_dump --data-only ${dbName} &gt; dbName.sql
+# backup ddbb , only schema
+$ pg_dump --schema-only ${dbName} &gt; dbName.sql
+
+# backup all ddbb
+$ pg_dumpall &gt; pgbackup.sql
+</pre>
+  <span>Restore:</span>
+<pre xxxsmall>
+$ pg_restore -d ddbb_name               -a backup.sql
+$ pg_restore -d ddbb_name --data-only   -a backup.sql
+$ pg_restore -d ddbb_name --schema-only -a backup.sql
+</pre>
 
 
-Upgrading the server: (pg_dumpall, pg_upgrade, replication)
-https://www.postgresql.org/docs/10/static/upgrading.html
-https://www.postgresql.org/docs/10/static/encryption-options.html
+  <hr/>
+  EXPORT/Import (COPY) file
+<pre xxxsmall zoom>
+\copy table_name            TO   '/home/user/weather.csv' CSV
+\copy table_name(col1,col2) TO   '/home/user/weather.csv' CSV
 
-____________________________
-Encryption Options
-https://www.postgresql.org/docs/10/static/encryption-options.html
- The pg_hba.conf file allows administrators to specify which hosts can use non-encrypted connections (host) and which require SSL-encrypted connections (hostssl). Also, clients can specify that they connect to servers only via SSL.
+\copy table_name            FROM '/home/user/weather.csv' CSV
+\copy table_name(col1,col2) FROM   '/home/user/weather.csv' CSV
+</pre>
+  <hr/>
+  Table Maintenance
+<pre xxxsmall zoom>
+-- VACUUM
+VACUUM ANALYZE table;
 
+-- Reindex a database, table or index
+REINDEX DATABASE dbName;
 
-The pgcrypto module allows certain fields to be stored encrypted. This is useful if only some of the data is sensitive. The client supplies the decryption key and the data is decrypted on the server and then sent to the client.
+-- <a href="https://www.postgresql.org/docs/current/static/using-explain.html">Show query plan</a>
 
-  It is possible for both the client and server to provide SSL certificates to each other. 
-Secure TCP/IP connections with SSSecure TCP/IP connections with SSLL
-https://www.postgresql.org/docs/10/static/ssl-tcp.html
-_____________
+EXPLAIN SELECT * FROM table;
+</pre>
+  <hr/>
+  <span TODO>Rotate logs</span>
+</td>  
+</tr }>
+</table } >
 
-Server instance configuration:
-(/usr/local/pgsql/data/...)postgresql.conf
-(Re-read with SIGHUP signal, alt. $ pg_ctl reload)
+<table } >
+<tr }>
+<td>
 
-<a href='https://www.postgresql.org/docs/10/static/view-pg-file-settings.html'>pg_file_settings</a> can be used to debug or pre-test changes in conf.
+  <a href="https://www.postgresql.org/docs/10/static/config-setting.html">postgresql.conf</a><br/>
+  Config Settings for logs, buffers, ...
+  <ul xxxsmall zoom>
+  <li>Re-read changes with <code>SIGHUP signal or $ pg_ctl reload</code></li>
+  </ul>
+
+   <a href="https://www.postgresql.org/docs/10/static/view-pg-file-settings.html"><code>pg_file_settings</code></a><br/>
+  Server instance configuration
+<pre xxxsmalll>
+
+can be used to debug or pre-test changes in conf.
 
 @ma: https://www.postgresql.org/docs/10/static/config-setting.html
-_________________
-Developing an Intelligent Analytics App with PostgreSQL
-https://www.infoq.com/vendorcontent/show.action?vcr=4727
+</pre>
 
+</td>
+<td>
+  <a TODO href="http://dalibo.github.io/pgbadger/">pgbadger</a>
+  <a xsmall href="https://www.dalibo.org/_media/pgconf.eu.2013.conferences-pgbadger_v.4.pdf">PPT</a>
+  log analyzer with detailed reports from PSQL log files (syslog, stderr or csvlog) with in-browser zoomable graph
+  <ul xxxsmall>
+  <li>designed to parse huge log files as well as gzip compressed file</li>
+  </ul>
+</td>
+<td>
+  Upgrading the server: 
+  <a href="https://www.postgresql.org/docs/10/static/upgrading.html">Upgrading</a>(pg_dumpall, pg_upgrade, replication)
+
+</td>
+</tr }>
+</table } >
+
+
+<table } >
+<tr }>
+<td>
+  <a href="https://www.postgresql.org/docs/10/static/kernel-resources.html">Tunning OS</a><br/>
+  (Shared Memory/Semaphores/...):<br/>
+  <ul xxxsmall zoom>
+  <li>Show all runtime parameters: <code>#- SHOW ALL;</code>
+  </li>
+  </ul>
+
+
+
+  Performance Optimization:
+  <ul xxxsmall zoom>
+  <li>Enable autovacuum. The working memory for autovacuum should be no more than 2% of
+    the total available memory.</li>
+  <li>Enable database caching with an effective cache size between 6% and 8% of the total
+    available memory.</li>
+  <li>To increase performance, the working memory should be at least 10% of the total
+    available</li>
+  <li>Set SERVER_ENCODING , LC_COLLATE and LC_CTYPE as :
+server_encoding = UTF8
+lc_collate = en_US.UTF-8
+lc_ctype = en_US.UTF-8
+  </li>
+  </ul>
+</td>
+
+<td TODO>
+  Docker
+</td>
+
+<td TODO>
+  <a href="https://www.infoq.com/vendorcontent/show.action?vcr=4727">PSQL for Analytics Apps</a>
+
+
+</td>
+</tr }>
+</table } >
+</body>
+<!--
+
+
+ql -U <username> -d <database> -h <hostname>ELECT rolname       list users
+   FROM pg_roles;
+_________________
+TODO: dif. between schema and ddbb
+
+Schema
+list schemas
+
+\dn
+
+SELECT schema_name FROM information_schema.schemata;
+
+SELECT nspname FROM pg_catalog.pg_namespace;
+
+create schema
+
+http://www.postgresql.org/docs/current/static/sql-createschema.html
+
+CREATE SCHEMA IF NOT EXISTS <schema_name>;
+
+drop schema
+
+http://www.postgresql.org/docs/current/static/sql-dropschema.html
+
+DROP SCHEMA IF EXISTS <schema_name> CASCADE;
+_________________
+Error Reporting and Logging
+https://www.postgresql.org/docs/current/static/runtime-config-logging.html
 -->
 </html>

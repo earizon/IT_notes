@@ -3,6 +3,7 @@ import SocketServer
 
 PORT = 8000
 HOST = "localhost"
+# HOST = ""
 
 Handler = SimpleHTTPServer.SimpleHTTPRequestHandler
 

@@ -11,7 +11,6 @@ If this project was useful to you, consider making a donation to my Bitcoin addr
 <image style='width:100px' src='./btc_address_1JXPKbYJwfbMfFCWbRdiKRgw8H2JaPboUK.png' />
 </p>
 EOF
-# REGEX_IGNORE=`cat ignore_list`
 REGEX_IGNORE="index"
 find -name "*html"  -type f | egrep -v "${REGEX_IGNORE}" | sort | while read f ; do
 title=`head $f | grep "<title>" | sed "s/<title>//g" | sed "s/<.title>//g" `

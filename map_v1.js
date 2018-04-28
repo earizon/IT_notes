@@ -58,8 +58,10 @@ var longPress = {
    
        this.classList.remove("longpress");
    },
-   enableLongTouch : function (node) { 
+   enableDblClick : function (node) { 
        node.addEventListener('dblclick',doOpenZoom, false)
+   },
+   enableLongTouch : function (node) { 
        node.addEventListener("mousedown", longPress.start);
        node.addEventListener("touchstart", longPress.start);
        node.addEventListener("click", longPress.click);
@@ -79,7 +81,6 @@ function onZoomIn(){
   document.styleSheets[0]['cssRules'][idxXXXsmallRule].style['font-size']=zoom+'rem';
 }
 function doOpenZoom(e)      { 
-
   zoomDivDOM.innerHTML = 
      "<span style='font-size:1.0rem; color:blue;' onClick='doCloseZoom()'>(click here or press 'Esc' to close)<br/></span>" 
    + this.outerHTML; 
@@ -103,12 +104,15 @@ function onPageLoaded() {
   nodeList = document.querySelectorAll('td')
   for (idx in nodeList) { 
      if (!!! nodeList[idx].addEventListener) continue;
+     longPress.enableDblClick(nodeList[idx]);
      longPress.enableLongTouch(nodeList[idx]);
   }
   nodeList = document.querySelectorAll('*[zoom]')
   for (idx in nodeList) { 
      if (!!! nodeList[idx].addEventListener) continue;
-     longPress.enableLongTouch(nodeList[idx]);
+     longPress.enableDblClick(nodeList[idx]);
+     // Touch screen do not have enough resolution to click on
+     //  internal td elements
   }
 
   for (idx=0; idx<document.styleSheets[0]['cssRules'].length; idx++){

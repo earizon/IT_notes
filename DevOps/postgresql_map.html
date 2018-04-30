@@ -1,8 +1,5 @@
 <!DOCTYPE html>
 <html>
-<!--
-https://www.pg-versus-ms.com/
--->
    <meta charset="UTF-8">
    <title>PostgreSQL  (alpha)</title>
 <head>
@@ -27,6 +24,7 @@ https://www.pg-versus-ms.com/
   Ext. Links
   <ul zoom>
   <li><a href="https://www.postgresql.org/docs/manuals/">Manuals</a></li>
+  <li><a href="http://www.interdb.jp/pg/index.html">PostgreSQL internals</a> (Hironobu SUZUKI)</li>
   </ul>
   ENV.VARS:
 <pre>
@@ -305,10 +303,185 @@ lc_ctype = en_US.UTF-8
   Docker
 </td>
 
-<td TODO>
-  <a href="https://www.infoq.com/vendorcontent/show.action?vcr=4727">PSQL for Analytics Apps</a>
+<td>
+  <a href="https://www.pg-versus-ms.com/">PSQL vs MSQL</a> comparative<br/>
+   <span xsmall>(features relevant to data analytics)</span>
+  <ul xxxsmall zoom>
+  <li>A data analytics platform which cannot handle CSV robustly is a broken, useless liability</li>
+  <li>PostgreSQL's CSV support is top notch. The COPY TO and COPY FROM commands support the spec outlined in
+     RFC4180 (which is the closest thing there is to an official CSV standard) as well as a multitude of common
+    and not-so-common variants and dialects. These commands are fast and robust. When an error occurs, they give
+    helpful error messages. Importantly, they will not silently corrupt, misunderstand or alter data. If PostgreSQL 
+    says your import worked, then it worked properly. The slightest whiff of a problem and it abandons the import
+    and throws a helpful error message.
+  </li>
+  <li>
+<pre>
+PostgreSQL                     | MS SQL Server:
+DROP TABLE IF EXISTS my_table; | 
+                               | IF OBJECT_ID (N'dbo.my_table', N'U') IS NOT NULL
+                               | DROP TABLE dbo.my_table;
+</pre>
+  </li>
+  <li>PostgreSQL supports DROP SCHEMA CASCADE, which drops a schema and all the database objects inside it. This is very, very important for a robust analytics delivery methodology, where tear-down-and-rebuild is the underlying principle of repeatable, auditable, collaborative analytics work.</li>
+  <li>
+<pre>
+PostgreSQL                  |  MS SQL Server
+CREATE TABLE good_films AS  |  SELECT
+SELECT                      |    *
+  *                         |  INTO
+FROM                        |    good_films
+  all_films                 |  FROM
+WHERE                       |    all_films
+  imdb_rating >= 8;         |  WHERE
+</pre>                      |    imdb_rating >= 8;
+  </li>
+  <li>In PostgreSQL, you can execute as many SQL statements as you like in one batch; as long as you've ended each statement with a semicolon, you can execute whatever combination of statements you like. For executing automated batch processes or repeatable data builds or output tasks, this is critically important functionality.</li>
+  <li>PostgreSQL supports the RETURNING clause, allowing UPDATE, INSERT and DELETE statements to return values from affected rows. This is elegant and useful. MS SQL Server has the OUTPUT clause, which requires a separate table variable definition to function. This is clunky and inconvenient and forces a programmer to create and maintain unnecessary boilerplate code.</li>
+  <li>PostgreSQL supports $$ string quoting, like so:
+<pre>
+SELECT $$Hello, World$$ AS greeting;
+</pre>
+    This is extremely useful for generating dynamic SQL because (a) it allows the user to avoid tedious and unreliable manual quoting and escaping when literal strings are nested and (b) since text editors and IDEs tend not to recogniise $$ as a string delimiter, syntax highlighting remains functional even in dynamic SQL code.</li>
+  <li>PostgreSQL lets you use procedural languages simply by submitting code to the database engine; you write procedural code in Python or Perl or R or JavaScript or any of the other supported languages (see below) right next to your SQL, in the same script. This is convenient, quick, maintainable, easy to review, easy to reuse and so on.</li>
+  <li>"Pure" declarative SQL is good at what it was designed for – relational data manipulation and querying. You quickly reach its limits if you try to use it for more involved analytical processes, such as complex interest calculations, time series analysis and general algorithm design. SQL database providers know this, so almost all SQL databases implement some kind of procedural language. This allows a database user to write imperative-style code for more complex or fiddly tasks.</li>
+  <li>
+  PostgreSQL's procedural language support is exceptional:
+    <ul>
+    <li>PL/PGSQL: this is PostgreSQL's native procedural language. It's like Oracle's PL/SQL, but more modern and feature-complete.</li>
+    <li>PL/V8: the V8 JavaScript engine from Google Chrome is available in PostgreSQL.<br/>
+      Even better, PL/V8 supports global (i.e. cross-function call) state, 
+      allowing the user to selectively cache data in RAM for fast random access.
+      Suppose you need to use 100,000 rows of data from table A on each of 1,000,000 
+      rows of data from table B. In traditional SQL, you either need to join 
+      these tables (resulting in a 100bn row intermediate table, which will 
+      kill any but the most immense server) or do something akin to a scalar 
+      subquery (or, worse, cursor-based nested loops), resulting in crippling 
+      I/O load if the query planner doesn't read your intentions properly. 
+      <b>In PL/V8 you simply cache table A in memory and run a function on each
+      of the rows of table B – in effect giving you RAM-quality access (
+      negligible latency and random access penalty; no non-volatile I/O load) 
+      to the 100k-row table. I did this on a real piece of work recently – my 
+      PostgreSQL/PLV8 code was about 80 times faster than the MS T-SQL solution
+      and the code was much smaller and more maintainable. Because it took about
+      23 seconds instead of half an hour to run, I was able to run 20 run-test-modify
+      cycles in an hour, resulting in feature-complete, properly tested, bug-free
+      code.</b>
+      (All those run-test-modify cycles were only possible because of DROP SCHEMA CASCADE
+       and freedom to execute CREATE FUNCTION statements in the middle of a statement
+       batch, as explained above. See how nicely it all fits together?)
+    </li>
+    <li>PL/Python: Fancy running a SVM from scikit-learn or some arbitrary-precision arithmetic provided by gmpy2 in the middle of a SQL query? No problem!</li>
+    <li>PL/R</li>
+    <li>C: doesn't quite belong in this list because you have to compile it separately, but it's worth a mention. In PostgreSQL
+    it is trivially easy to create functions which execute compiled, optimised C (or C++ or assembler) in the database backend. </li>
+    </ul>
+  </li>
+  <li>In PostgreSQL, custom aggregates are convenient and simple to use, resulting in fast problem-solving and maintainable code:
+<pre>
+CREATE FUNCTION interest_sfunc(state JSON, movement FLOAT, rate FLOAT, dt DATE) RETURNS JSON AS
+$$
+state.balance += movement;  //payments into/withdrawals from account
+if (0 === dt.getUTCDate()) //compound interest on 1st of every month
+{
+  state.balance += state.accrual;
+  state.accrual = 0;
+}
+state.accrual += state.balance * rate;
+return state;
+$$ LANGUAGE plv8;
 
+CREATE AGGREGATE interest(FLOAT, FLOAT, DATE)
+(
+  SFUNC=interest_sfunc,
+  STYPE=JSON,
+  INITCOND='{"balance": 0, "accrual": 0}'
+);
 
+--assume accounts table has customer ID, date, interest rate and account movement for each day
+CREATE TABLE cust_balances AS
+SELECT
+  cust_id,
+  (interest(movement, rate, dt ORDER BY dt)->>'balance')::FLOAT AS balance
+FROM
+  accounts
+GROUP BY
+  cust_id;
+</pre>
+Elegant, eh? A custom aggregate is specified in terms of an internal state and a way to modify that state when we push new values into the aggregate function. In this case we start each customer off with zero balance and no interest accrued, and on each day we accrue interest appropriately and account for payments and withdrawals. We compound the interest on the 1st of every month. Notice that the aggregate accepts an ORDER BY clause (since, unlike SUM, MAX and MIN, this aggregate is order-dependent) and PostgreSQL provides operators for extracting values from JSON objects. So, in 28 lines of code we've created the framework for monthly compounding interest on bank accounts and used it to calculate final balances. If features are to be added to the methodology (e.g. interest rate modifications depending on debit/credit balance, detection of exceptional circumstances), it's all right there in the transition function and is written in an appropriate language for implementing complex logic. (Tragic side-note: I have seen large organisations spend tens of thousands of pounds over weeks of work trying to achieve the same thing using poorer tools.)
+  </li>
+  <li>
+    Date/Time
+    <ul>
+    <li>PostgreSQL: you get DATE, TIME, TIMESTAMP and TIMESTAMP WITH TIME ZONE, all of which do exactly what you would expect. They also have fantastic range and precision, supporting microsecond resolution from the 5th millennium BC to almost 300 millennia in the future. They accept input in a wide variety of formats and the last one has full support for time zones</li>
+    <li>They can be converted to and from Unix time, which is very important for interoperability with other systems.</li>
+    <li>They also support the INTERVAL type, which is so useful it has its own section right after this one.</li>
+    <li>
+<pre>
+        SELECT to_char('2001-02-03'::DATE, 'FMDay DD Mon YYYY');  --this produces the string "Saturday 03 Feb 2001"
+
+        and, going in the other direction,
+
+        SELECT to_timestamp('Saturday 03 Feb 2001', 'FMDay DD Mon YYYY');  --this produces the timestamp value 2001-02-03 00:00:00+00
+</pre>
+    </li>
+    <li>PostgreSQL: the INTERVAL type represents a period of time, such as "30 microseconds" or "50 years". It can also be negative, which may seem counterintuitive until you remember that the word "ago" exists. PostgreSQL also knows about "ago", in fact, and will accept strings like '1 day ago' as interval values (this will be internally represented as an interval of -1 days). Interval values let you do intuitive date arithmetic and store time durations as first-class data values. They work exactly as you expect and can be freely casted and converted to and from anything which makes sense</li>
+    </ul>
+  </li>
+  <li>
+    PostgreSQL arrays are supported as a first-class data type
+    <ul>
+    <li>eaning fields in tables, variables in PL/PGSQL, parameters to functions and so on can be arrays. Arrays can contain any data type you like, including other arrays. This is very, very useful. Here are some of the things you can do with arrays:
+            
+    <li>Store the results of function calls with arbitrarily-many return values, such as regex matches</li>
+    <li>Represent a string as integer word IDs, for use in fast text matching algorithms</li>
+    <li>Aggregation of multiple data values across groups, for efficient cross-tabulation</li>
+    <li>Perform row operations using multiple data values without the expense of a join</li>
+    <li>Accurately and semantically represent array data from other applications in your tool stack</li>
+    <li>Feed array data to other applications in your tool stack</li>
+    </ul>
+  </li>
+  <li>PostgreSQL: full support for JSON, including a large set of utility functions for
+     transforming between JSON types and tables (in both directions)</li>
+  <li>PostgreSQL: HSTORE is a PostgreSQL extension which implements a fast key-value store as a data type.
+     Like arrays, this is very useful because virtually every high-level programming language has such
+     a concept (associative arrays, dicts, std::map ...)<br/>
+     There are also some fun unexpected uses of such a data type. A colleague recently asked me if there was a good way to deduplicate a text array. Here's what I came up with:
+<pre>
+        SELECT akeys(hstore(my_array, my_array)) FROM my_table;
+</pre>
+     i.e. put the array into both the keys and values of an HSTORE, forcing a 
+     dedupe to take place (since key values are unique) then retrieve the keys 
+     from the HSTORE. There's that PostgreSQL versatility again.
+  </li>
+  <li>PostgreSQL:<a href="https://www.postgresql.org/docs/9.3/static/rangetypes.html">range types</a>.
+    Every database programmer has seen fields called start_date and end_date, 
+    and most of them have had to implement logic to detect overlaps. Some have even found, the hard way,
+    that joins to ranges using BETWEEN can go horribly wrong, for a number of reasons.<br/>
+    PostgreSQL's approach is to treat time ranges as first-class data types. Not only can you put a
+    range of time (or INTs or NUMERICs or whatever) into a single data value, you can use a host of
+    built-in operators to manipulate and query ranges safely and quickly. You can even apply specially-developed
+    indices to them to massively accelerate queries that use these operators. </li>
+  <li>PostgreSQL: NUMERIC (and DECIMAL - they're symonyms) is near-as-dammit arbitrary 
+    precision: it supports 131,072 digits before the decimal point and 16,383 digits after the decimal point.</li>
+  <li>PostgreSQL: XML/Xpath querying is supported</li>
+  <li>PostgreSQL's logs, by default, are all in one place. By changing a couple of settings in a text file,
+  you can get it to log to CSV (and since we're talking about PostgreSQL, it's proper CSV, not broken CSV).
+  You can easily set the logging level anywhere from "don't bother logging anything" to "full profiling and debugging output".
+  The documentation even contains DDL for a table into which the CSV-format logs can be conveniently imported.
+   You can also log to stderr or the system log or to the Windows event log (provided you're running PostgreSQL in Windows, of course).  <br/>
+  The logs themselves are human-readable and machine-readable and contain data likely to be of great value to a sysadmin.
+  Who logged in and out, at what times, and from where? Which queries are being run and by whom?
+  How long are they taking? How many queries are submitted in each batch? Because the data is well-formatted CSV,
+  it is trivially easy to visualise or analyse it in R or PostgreSQL itself or Python's matplotlib or whatever you like.</li>
+  <li>PostgreSQL comes with a set of extensions called contrib modules. There are libraries of functions,
+    types and utilities for doing certain useful things which don't quite fall 
+    into the core feature set of the server. There are libraries for fuzzy 
+    string matching, fast integer array handling, external database connectivity,
+    cryptography, UUID generation, tree data types and loads, loads more. A few
+    of the modules don't even do anything except provide templates to allow 
+    developers and advanced users to develop their own extensions and custom functionality.</li>
+  </ul>
 </td>
 </tr }>
 </table } >
@@ -316,11 +489,8 @@ lc_ctype = en_US.UTF-8
 <!--
 
 
-ql -U <username> -d <database> -h <hostname>ELECT rolname       list users
-   FROM pg_roles;
+ql -U <username> -d <database> -h <hostname>SELECT rolname       list users FROM pg_roles;
 _________________
-TODO: dif. between schema and ddbb
-
 Schema
 list schemas
 
@@ -344,5 +514,52 @@ DROP SCHEMA IF EXISTS <schema_name> CASCADE;
 _________________
 Error Reporting and Logging
 https://www.postgresql.org/docs/current/static/runtime-config-logging.html
+_____________________
+1.5. Native regular expression support
+
+Regular expressons (regexen or regexes) are as fundamental to analytics work as arithmetic – they are the first choice (and often only choice) for a huge variety of text processing tasks. A data analytics tool without regex support is like a bicycle without a saddle – you can still use it, but it's painful.
+
+PostgreSQL has smashing out-of-the-box support for regex. Some examples:
+
+Get all lines starting with a repeated digit followed by a vowel:
+
+SELECT * FROM my_table WHERE my_field ~ E'^([0-9])\\1+[aeiou]';
+
+Get the first isolated hex string occurring in a field:
+
+SELECT SUBSTRING(my_field FROM E'\\y[A-Fa-f0-9]+\\y') FROM my_table;
+
+Break a string on whitespace and return each fragment in a separate row:
+
+SELECT REGEXP_SPLIT_TO_TABLE('The quick brown fox', E'\\s+');
+- - Returns this:
+
+- - | column |
+- - 
+- - | The    |
+- - | quick  |
+- - | brown  |
+- - | fox    |
+
+Case-insensitively find all words in a string with at least 10 letters:
+
+SELECT REGEXP_MATCHES(my_string, E'\\y[a-z]{10,}\\y', 'gi') FROM my_table;
+____________________________
+PostgreSQL's documentation is excellent. Everything is covered comprehensively but the documents are not merely reference manuals – they are full of examples, hints, useful advice and guidance. If you are an advanced programmer and really want to get stuck in, you can also simply read PostgreSQL's source code, all of which is openly and freely available. The docs also have a sense of humour:
+
+    The first century starts at 0001-01-01 00:00:00 AD, although they did not know it at the time. This definition applies to all Gregorian calendar countries. There is no century number 0, you go from -1 century to 1 century. If you disagree with this, please write your complaint to: Pope, Cathedral Saint-Peter of Roma, Vatican.
+
+MS SQL Server's documentation is all on MSDN, which is an unfriendly, sprawling mess. Because Microsoft is a large corporation and its clients tend to be conservative and humourless, the documentation is "business appropriate" – i.e. officious, boring and dry. Not only does it lack amusing references to the historical role of Catholicism in the development of date arithmetic, it is impenetrably stuffy and hidden behind layers of unnecessary categorisation and ostentatiously capitalised official terms. Try this: go to the product documentation page for MS SQL Server 2012 and try to get from there to something useful. Or try reading this gem (not cherry-picked, I promise):
+
+    A report part definition is an XML fragment of a report definition file. You create report parts by creating a report definition, and then selecting report items in the report to publish separately as report parts.
+
+Has the word "report" started to lose its meaning yet?
+
+(And, of course, MS SQL Server is closed source, so you can't look at the source code. Yes, I know source code is not the same as documentation, but it is occasionally surprisingly useful to be able to simply grep the source for a relevant term and cast an eye over the code and the comments of the developers. It's easy to think of our tools as magical black boxes and to forget that even something as huge and complex as an RDBMS engine is, after all, just a list of instructions written by humans in a human-readable language.)
+____________________
+
+  <a  TODO href="https://www.infoq.com/vendorcontent/show.action?vcr=4727">PSQL for Analytics Apps</a>
+   https://aws.amazon.com/rds/postgresql/ 
+
 -->
 </html>

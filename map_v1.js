@@ -8,7 +8,7 @@ var zoomDivFH = true; // FW Full Height
 var zoomDivTop = true; 
 var zoomDivLft = true; 
 
-var zoom=0.1
+var zoom=0.05
 var idxXXXsmallRule=-1;
 var idxXXsmallRule =-1;
 var idxXsmallRule  =-1;
@@ -86,8 +86,8 @@ function doOpenZoom(e)      {
    + this.outerHTML; 
   zoomDivDOM.style.display="block";
   window.zoomDivDOM.scrollTop = 0;
-  return false;
   e.stopPropagation();
+  return false;
 }
 
 function onPageLoaded() {

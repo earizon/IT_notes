@@ -543,8 +543,82 @@ Map&lt;String, String&gt; test = ImmutableMap.&lt;String, String&gt;builder()
 </pre>
 </td>
 <td>
-  <span TODO>Walk-over/iterate</span>
+  Walk-over/iterate
 <pre xxxsmall zoom>
+for (int idx = 0; idx < collection<span orange>.length</span>; idx++) {
+    // WARN: Very slow for LinkedLists
+    //       Fastest for other List implementations
+  type array_element = collection<span orange>.get(idx);</span>
+
+}
+
+// Useful when we also want to remove elements at iteration time
+for (Iterator iterator = collection<span orange>.iterator()</span>; <span orange>iterator.hasNext();</span>) {
+  type type = (type) iterator<span orange>.next()</span>;   
+}
+
+// Best option when not removing or modifying elements
+for (iterable_type iterable_element <span orange>: collection</span>) { ...  }
+
+
+// Streams (Java 8+)
+collection<span orange>.forEach</span>((<span orange>it</span>) -> { System.out::println(<span orange>it</span>) });
+// Even Shorter: 
+collection<span orange></span>.forEach<span orange></span>(<span orange>System.out::println<span orange></span>);
+
+---------- WALK-OVER/ITERATE OVER MAP ----------
+Map<String, String> map = ...
+// Alt 1: Java 5+
+for (<span orange>Map.Entry&lt;String, String></span> entry : map<span orange>.entrySet()</span>)
+{
+    System.out.println(entry.getKey() + "/" + entry.getValue());
+}
+
+// Alt 2: Using iterators:
+long i = 0;
+Iterator&lt;Map.Entry&lt;Integer, Integer>> it = map.entrySet()<span orange>.iterator()</span>;
+while (it<span orange>.hasNext()</span>) {
+    Map.Entry<Integer, Integer> pair = it<span orange>.next()</span>;
+    i += pair.getKey() + pair.getValue();
+}
+
+// Alt 3: Using for-each
+long i = 0;
+for (Map.Entry&lt;Integer, Integer> pair : map<span orange>.entrySet()</span>) {
+    i += pair.getKey() + pair.getValue();
+}
+
+// Alt 4: forEach (java 8+)
+final long[] i = {0};
+map<span orange>.forEach</span>((k, v) -&lt; i[0] += k + v);
+
+// Alt 5: iterating over keySet:
+long i = 0;
+Iterator&lt;Integer> itr2 = map<span orange>.keySet().iterator()</span>;
+while (itr2.hasNext()) {
+    Integer key = itr2.next();
+    i += key + map.get(key);
+}
+
+// Alt 6: for + Map.Entry
+Using for and Map.Entry
+
+long i = 0;
+for (Iterator&lt;Map.Entry&lt;Integer, Integer&gt;&gt; entries = 
+    map.entrySet().iterator(); entries.hasNext(); ) {
+    Map.Entry&lt;Integer, Integer&gt; entry = entries.next();
+    i += entry.getKey() + entry.getValue();
+}
+// Alt 7: Using the Java 8 Stream API
+final long[] i = {0};
+map<span orange>.entrySet().stream()</span>.forEach(
+  e -&gt; i[0] += e.getKey() + e.getValue());
+
+// Alt 8: Using java 8+ Stream API parallel
+final long[] i = {0};
+map<span orange>.entrySet().stream().parallel().forEach</span>(
+  e -&gt; i[0] += e.getKey() + e.getValue())
+
 </pre>
   <a href="https://docs.oracle.com/javase/7/docs/api/java/util/Collections.html">java.util.Collections</a>
 <pre xxxsmall zoom>
@@ -961,12 +1035,27 @@ while(keyIterator.hasNext()) {
  * first you obtain a FileChannel via an (Input|Output)Stream or a RandomAccessFile
  */
 RandomAccessFile aFile     = new RandomAccessFile("data/nio-data.txt", "rw");
-FileChannel      inChannel = aFile.getChannel();
-
-// Reading Data: call one of the read() methods
-ByteBuffer buf = ByteBuffer.allocate(48);
-int bytesRead = inChannel<b orange>.read</b>(buf); // The return tells how many bytes were witten: -1 → end-of-file reached
-channel.close();    
+// Reading from channel 
+try (  /* try-with 1.7+ */
+  RandomAccessFile aFile = new RandomAccessFile("data/nio-data.txt", "rw") 
+) throws IOException {
+  FileChannel inChannel = aFile.getChannel();
+ 
+  ByteBuffer buf = ByteBuffer.allocate(48 /* capacity*/);
+  
+  int bytesRead = inChannel.read(buf); // buf now in write mode
+  while (bytesRead != -1) {
+    buf.flip();                            // buf now in read mode
+    while(buf.hasRemaining()){
+        // alt. read data directly, 1 byte at a time
+        System.out.print((char) buf.get()); 
+        // alt. read data in channel
+        // anotherChannel.write(buf)
+    }
+  
+    buf.clear(); //make buffer ready for writing
+    bytesRead = inChannel.read(buf); // buf now in write mode
+  }
 </pre>
   <li>Writing to a FileChannel (reading from buffer)
 <pre>
@@ -1617,6 +1706,21 @@ ListenableFuture listenable = service.submit(...);   | CompletableFuture complet
   </li>
   <li>Reactive Streams plays an important role for interoperability. It is of interest to libraries and infrastructure components but less useful as an application API because it is too low level. What applications need is a higher level and richer, functional API to compose async logic — similar to the Java 8 Stream API but not only for collections. This is the role that reactive libraries play.
   </li>
+  </ul>
+</td>
+<td>
+  <a href="https://docs.oracle.com/javase/9/docs/api/java/util/concurrent/Flow.html">java.util.concurrent.Flow (1.9+)</a><br/>
+  <ul xxxsmall zoom>
+  <li>Reactive Streams was adopted by the JDK in the form of the java.util.concurrent.Flow API.
+  <li>It allows two different libraries that support asynchronous streaming to connect to each other,
+    with well specified semantics about how each should behave, so that backpressure, completion, cancellation 
+    and error handling is predictably propagated between the two libraries. </li>
+  <li>There is a rich ecosystem of open source libraries that support Reactive Streams, 
+    and since its inclusion in JDK9, there are a few in development implementations that are
+    targetting the JDK, including the incubating <a href="http://openjdk.java.net/jeps/321">JDK9 HTTP Client</a>,
+    and the <a href="https://twitter.com/brunoborges/status/915302682939711488">Asynchronous Database Adapter (ADBA)</a> 
+    effort that have also adopted it</li>
+  <li>(See also <a href="http://www.eclipse.org/community/eclipse_newsletter/2018/may/reactivestreams-ee4j.php">What can Reactive Streams offer to EE4J</a>)</li>
   </ul>
 </td>
 <td>
@@ -2756,6 +2860,26 @@ Found in String.class source code: What's the @Contract annotation?
 @NotNull @Contract(pure=true)
     public String[] split(String regex) {
 ___________________
+https://dzone.com/articles/5-things-java-programmer-should-learn-in-2018
+______________
+about:reader?url=https%3A%2F%2Fdzone.com%2Farticles%2Fmicroprofile-5-things-you-need-to-know
+__________________
+https://stackoverflow.com/questions/29787684/java-8-stream-vs-collection-storage
+____________________
+https://www.logicbig.com/tutorials/core-java-tutorial/java-collections/java-collection-cheatsheet/images/choosing.png
+______
+https://docs.oracle.com/javase/8/docs/api/java/util/NavigableMap.html
+From: https://stackoverflow.com/questions/46898/how-to-efficiently-iterate-over-each-entry-in-a-map
+NavigableMap is another useful extension - this is a SortedMap with 
+additional methods for finding entries by their ordered position in the key 
+set. So potentially this can remove the need for iterating in the first place 
+- you might be able to find the specific entry you are after using the 
+higherEntry, lowerEntry, ceilingEntry, or floorEntry methods. The 
+descendingMap method even gives you an explicit method of reversing the 
+traversal order.
+_____________________
+http://www.oracle.com/technetwork/java/javaseproducts/mission-control/java-mission-control-1998576.html
+https://www.infoq.com/news/2018/06/open-source-jmc
 -->
 
 </html>

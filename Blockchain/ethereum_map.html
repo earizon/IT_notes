@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
    <meta charset="UTF-8">
-   <title>Ethereum Map (ignore)</title>
+   <title>Ethereum Map (beta)</title>
 <head>
 <script src="/IT_notes/map_v1.js"></script>
 <link rel="stylesheet" type="text/css" href="/IT_notes/map_v1.css" />
@@ -19,28 +19,113 @@
 
 <table style='width:100%'{>
 <tbody>
-<tr {>
+<tr>
 <th></th>
 <td colsep></td>
-<th colspan=3 header_delimit {   >Ethereum VM</th>
-</tr }>
-<tr {>
+<th colspan=4 header_delimit>
+  <a href="https://github.com/pirapira/awesome-ethereum-virtual-machine">Ethereum VM</a>,
+  <a href="https://ethereum.github.io/yellowpaper/paper.pdf">Formal Spec</a>,
+  <a href="https://github.com/ethereum/go-ethereum/tree/master/core/vm">Geth VM</a>
+  </th>
+</tr>
+<tr>
 <td>
   External Links
   <ul xxxsmall zoom>
+  <li><a TODO href="https://github.com/ethereum/wiki/wiki/Design-Rationale">Design Rationale</a></li>
   <li><a href="https://theethereum.wiki/w/index.php/Main_Page">Ethereum Wiki</a></li>
+  <li><a href="https://solidity.readthedocs.io/">Solidity</a></li>
+  <li><a href="./EEA-TS-0001-0-v1.00-EEA-Enterprise-Ethereum-Specification-R1.pdf">EEA Client Specification</a></li>
+  <li><a href="https://entethalliance.org/resources/">Enterprise Ethereum Alliance Resources</a></li>
+  <li><a href="https://github.com/bkrem/awesome-solidity">Awesome Solidity</a>: Curated list of libraries,
+     auditing/secuirity tools, dev tools, security tutorial links, ...
+  </li>
+  <li><a href="https://github.com/pirapira/awesome-ethereum-virtual-machine">Awesome EVM</a></li>
+  <li><a href="https://ethereum.stackexchange.com/users/87/afri">"Afri" Ethereum FAQ answers on Stackoverflow</a></li>
   </ul>
+wei → ... ether → Units
+<pre xxxsmall zoom>
+wei                         :                                1 wei      <--- discussion around APIs ...
+gwei(shannon|nanoether|nano):                    1.000.000.000 weis     <--- gas prices
+szabo|microether|micro      :                            1.000 gweis
+finney|milliether|milli     :                        1.000.000 gweis    <--- micropayments
+ether                       :                    1.000.000.000 gweis    <--- main unit
+kether(grand|einstein)      :                            1.000 ethers 
+mether                      :                        1.000.000 ethers
+gether                      :                    1.000.000.000 ethers
+tether                      :                1.000.000.000.000 ethers
+</pre>
+
+<a href="https://en.wikipedia.org/wiki/Ethereum#Milestones">Pub. Network Versions</a>
+<pre xxxsmall zoom>
+Homestead → Metropolis → Serenity →
+
+Homestead : January 2016, ~80% complete 
+            block reward set to 5 ether
+
+Metropolis Part 1,Byzantium     : "Ethereum" for the masses.
+Metropolis Part 2,Constantinople: Planned. Lay the fundations of PoS(Casper consensus)
+ 
+Serenity  : "last phase", one key principle: switch to proof of stake
+
+</pre>
+
 </td>
 <td colsep></td>
 <td>
+  Summary
+<pre xxxsmall zoom>
+- EVM is a 256bit machine. It is most natural to manipulate data in chunks of 32 bytes.
+- Persistent storage is quite expensive.
+- The Solidity compiler makes interesting choices in order to minimize gas usage.
+
+- To interact with a Smart Contract, you send it raw bytes.
+- It does some computation, possibly changing its own state, 
+  and then sends you raw bytes in return. 
+- Method calling does not actually exist. It is a collective 
+  illusion created by the ABI.
+- The ABI is specified like a low-level format, but in function
+  it's more like a serialization format for a cross-language RPC framework.
+- We could draw analogies between the architectural tiers of DApp and Web App:
+  - The blockchain is like the backing database
+  - A contract is like a web service
+  - A transaction is like a request
+  - ABI is the data-interchange format, like Protocol Buffer
+
+
+ EVM Events:
+ - In the wild, there are three main uses for event logs:
+   - As ersatz return values, because a transaction does not record a method's return values.
+   - As a kind of cheaper alternative data storage, as long as the contract does not need access to it.
+   - Events that DApp clients can subscribe to.
+ - Event logging map to EVM logging primitives.
+
+event Deposit( address indexed _from, bytes32 indexed _id, uint _value);
+
+ - limitations:
+   - There may be at most 3 indexed parameters.
+   - If the type of an indexed parameter is larger than 32 bytes, 
+     only the KECCAK256 digest of the data is stored.
+ -  EVM Log Primitives
+   - log0, log1, ..., log4 EVM instructions.
+ - The EVM logging facility uses different terminologies than Solidity:
+   "topics": There may be up to 4 topics exactly 32 bytes each
+            Solidity consumes one topic for the event's signature so only 3 are available
+   "data"  : Payload of the event. It may be arbitrary number of bytes
+
+ - Bloom filters are used to speed up search-by-topic
+
+
+</pre>
+  <hr xxxsmall />
   Ethereum Account
-<pre {>
+<pre xxxsmall zoom>
 Account:
 ---------
 address
 wei balance
 Map&lt;256b,256b> storage
-</pre }>
+</pre>
   <ul xxxsmall zoom>
   <li>There are two kinds of accounts in Ethereum which share the same address space:
     <ul>
@@ -62,7 +147,7 @@ Map&lt;256b,256b> storage
 </td>
 <td>
   Message Calls
-<pre>
+<pre xxxsmall zoom>
 Message Calls
 -------------
 sender
@@ -135,26 +220,38 @@ return data
     <li>storage & code are removed from the blockchain state</li>
     </ul>
   </li>
-  </td>  
-</tr }>
+  <hr/>
+  <a href="https://github.com/ethereum/go-ethereum/blob/master/core/vm/instructions.go">(EVM) Instructions</a>
+</td>  
+</tr>
 </table>
 
 <table>
-<tr {>
+<tr>
 <td>
   <b>Transactions</b>
-<pre {>
+<pre xxxsmall zoom>
 Transaction
 -------------
 address sender
 target
-payload
+payload        "message" sent from src. account to a target (account or code)
 wei ether
-wei gasPrice?
+
+wei gasPrice
 wei gas
+
 return data
-</pre }>
-"message" sent from src. account to a target (account or code)
+
+
+What are the v, r, s values for the TX's signature?
+- r and s are outputs of an ECDSA signature
+- v is the recovery id.
+<a href="https://bitcoin.stackexchange.com/questions/38351/ecdsa-v-r-s-what-is-v">Bitcoin REF</a> 
+  applies also to Ethereum. Ethereum makes further adjustments to v, as explained in 
+<a href="https://github.com/ethereum/EIPs/issues/155">EIP 155</a>, to prevent replay attack.
+
+</pre>
   <ul xxxsmall zoom>
   <li>Note that a TX in blockchain is an intention to modify the state of the ddbb.
     It's up to the consensus algorithm to decide when and/or whether the TX will
@@ -169,7 +266,7 @@ if target == "zero.."
       step 2: transaccion.payload is executed 
       step 3: exec. output stored as contract.code
       (=> trans.payload == code factory of contract code)
-</pre }>
+</pre>
   </li>
   <li>transaction.ether: Price in Wei of one unit of gas, in which VM operations are priced.<br/>
 - The product of gasPrice and gas represents the maximum amount of Wei we are willing to pay for executing the transaction. gasPrice is used by miners to rank transactions for inclusion in the blockchain. 
@@ -187,7 +284,27 @@ if target == "zero.."
       once mined, any subsequent submissions will be rejected.
   </li>
   </ul>
-</td>  
+  <b>block validation algorithm (Consensus)</b><br/>
+  <ol xxxsmall zoom>
+  <li>Check if the previous block referenced exists and is valid</li>
+  <li>Check that the timestamp of the block is greater than that of the referenced previous
+  block and less than 15 minutes into the future.</li>
+  <li>Check that the block number, difficulty, transaction root, uncle root and gas limit 
+  (various low-level Ethereum-specific concepts) are valid.</li>
+  <li>Check that the proof of work on the block is valid</li>
+  <li>Let S[0] be the STATE_ROOT of the previous block</li>
+  <li>Let TX be the block's transaction list, with n transactions. For all "i" in 
+  0,...n-1, set S[i+1] = APPLY (S[i],TX[i]). If any applications returns an error, or
+  if the total gas consumed in the block up until this point exceeds the GASLIMIT, 
+  return an error</li>
+  <li>Let S_FINAL be S[n], but adding the block reward paid to the miner</li>
+  <li>Check if S_FINAL is the same as the STATE_ROOT. If it is, the block is valid;
+      otherwise, it is not.</li>
+  <li>Note: coinbase: In a mining node indicates the address where rewards will go.
+        Must be set to an account owned by miner</li>
+  </ol>
+</td>
+<td colsep></td>
 <td>
   <ul xxxsmall zoom>
   <li><def>Calls vs Transactions:</def>
@@ -226,7 +343,7 @@ if target == "zero.."
   Transactions in solidity:
   <ul xxxsmall zoom>
   <li>
-<pre { >
+<pre>
 addressInstance.balance (uint256): balance in Wei
 addressInstance.transfer(uint256 amount): 
     msg.sender ->(amount in wei) ->addressInstance
@@ -235,7 +352,7 @@ addressInstance.transfer(uint256 amount):
 addressInstance.send(uint256 amount): returns (bool):
     msg.sender ->(amount in wei) ->addressInstance
     returns true/false, does NOT throw an exception
-</pre } >
+</pre>
   In addressInstance.transfer (or send), if addressInstance
   is a contract address, its code (more specifically: its fallback function, if present) 
   will be executed together with the transfer call. This is a limitation of the EVM and
@@ -245,6 +362,7 @@ addressInstance.send(uint256 amount): returns (bool):
   </li>
   </ul>
 </td>  
+<td colsep></td>
 <td>
   <b>Events &amp; LOGS</b>
   <ul xxxsmall zoom>
@@ -263,15 +381,15 @@ addressInstance.send(uint256 amount): returns (bool):
   </li>
   </ul>
   Solidity code:
-<pre xxxsmall zoom { >
+<pre xxxsmall zoom>
 event EventDepositLog(
     uint256 indexed _market,
     address indexed _sender,
     uint256 _amount,
      uint256 _time);
-</pre } >
+</pre>
   JS Client Log monitoring:
-<pre xxxsmall zoom { >
+<pre xxxsmall zoom>
 var depositEvent =
   cryptoExContract.EventDepositLog(
      {_sender: userAddress} /* filter */, 
@@ -288,120 +406,103 @@ depositEvent.watch
        + "_sender:"+result.args._sender );
   }
 )
-</pre } >
+</pre>
 </td>  
+<td colsep>  </td>  
 <td>
-  <b>block validation algorithm (Consensus)</b><br/>
-  <ol xxxsmall zoom>
-  <li>Check if the previous block referenced exists and is valid</li>
-  <li>Check that the timestamp of the block is greater than that of the referenced previous
-  block and less than 15 minutes into the future.</li>
-  <li>Check that the block number, difficulty, transaction root, uncle root and gas limit 
-  (various low-level Ethereum-specific concepts) are valid.</li>
-  <li>Check that the proof of work on the block is valid</li>
-  <li>Let S[0] be the STATE_ROOT of the previous block</li>
-  <li>Let TX be the block's transaction list, with n transactions. For all in i in 
-  0,...n-1, set S[i+1] = APPLY (S[i],TX[i]). If any applications returns an error, or
-  if the total gas consumed in the block up until this point exceeds the GASLIMIT, 
-  return an error</li>
-  <li>Let S_FINAL be S[n], but adding the block reward paid to the miner</li>
-  <li>Check if S_FINAL is the same as the STATE_ROOT. If it is, the block is valid;
-      otherwise, it is not.</li>
-  <li>Note: coinbase: In a mining node indicates the address where rewards will go.
-        Must be set to an account owned by miner</li>
-  </ol>
-</td>  
-</tr }>
+  <a href="https://ens.domains/">Ethereum Name Service</a> <a TODO href="https://docs.ens.domains/en/latest/userguide.html">ENS User Guide</a>
+  <ul xxxsmall zoom>
+  <li>goal: resolve human-readable names to Ethereum addresses, Swarm/IPFS hashes, ....<br/>
+      provide also metadata about names (contracts ABIs, whois info,...)</li>
+  <li>ENS operates on a system of <b orange>dot-separated hierarchial names called domains</b>, 
+      with the owner of a domain having full control over the distribution of subdomains.</li>
+  <li> Top-level domains (.eth, .test,...) owned by 'registrars' smart contracts
+    Anyone may, by following the rules imposed by these registrar contracts, 
+    obtain ownership of a second-level domain for their own use.</li>
+  <li>"""No more long addresses: ENS eliminates the need to copy - and worse, type - long hexadecimal addresses."""<br/> 
+         With ENS, you'll be able to send money to your friend at <code>'aardvark.eth'</code> instead of <code>'0x4cbe58c50480...'</code>,
+         interact with your favorite contract at <code>'mycontract.eth</code>', or visit a Swarm-hosted site at 'swarmsite.eth'."""
+  </li>
+  <li>Secure: ENS is built on smart contracts on the Ethereum blockchain, meaning
+      it doesn't suffer from the insecurity of the DNS system.  You can be confident
+      names you enter work the way their owner intended.</li>
+  <li>Truly Distributed: ENS operates in a distributed fashion for both its infrastructure
+     and governance. Anyone can register a .eth domain name for themselves by participating
+     in an auction process, mediated by the blockchain.</li>
+  <li>Terminology
+    <ul>
+    <li>domain     : complete, human-readable form of a name; eg, ‘vitalik.wallet.eth’.</li>
+    <li>label      : a single component of a domain; eg, ‘vitalik’, ‘wallet’, or ‘eth’ </li>
+    <li>label hash : keccak-256(label) eg, keccak256(‘eth’) = 0x4f5b812789fc606be1b3b16908db13fc7a9adf7ca72641f84d75b47069d3d7f0</li>
+    <li>node       : namehash function output used to uniquely identify a name in ENS</li>
+    </ul>
+  </li>
+  </ul>
+  Architecture: 
+<pre xxxsmall zoom>
+DOMAIN            | REGISTRY CONTRACT                  | RESOLVER(S) INTERFACE
+------            | -----------------                  | ---------------------
+- owner (address) | - owned (sub)domains list          | translate name → address
+- resolver        | ----------------                   +-------------------------
+- time-to-live    | + issues subdomains to users  *1 
+  for all records |   following logic in contract *1   | RECORD:
+                  | + Set resolver+TTL for domain *1   | -------
+                  | + Transfer ownership               | - type: (Ethereum address, Swarm content hash, ...)
+                  | *1 Only owner of affected domain   |          New record types may be defined via EIP
+                                                       |          with no need to make changes to the registry or resolvers
+                                                       |
+                                                       | - Namehash: 32-byte hash of name (compaq storage+privacy)
+                                                       |             defined recursively to preserve the hierarchal nature
+                                                       | ----------
+                                                       | - Iface method/s to be implemented by resolver
+                                                       |    in order to provide records of that kind.
+</pre>
+  MainNet/... Deployments
+<pre xxxsmall zoom>
+General-purpose resolver implementations are offered for users whose requirements are straightforward, 
+such as serving an infrequently changed address for a name.
+
+  MAINNET DEPLOYMENT: 0x314159265dd8dbb310642f98f50c066173c1259b
+                      users may register names under the eth TLD using an auction based registrar.
+  ROPSTEN 
+  TESTNET DEPLOYMENT: 0x112234455c3a32fd11230c42e7bccd4a84e02010
+                      users may register names under two top level domains:
+                      .eth , auction based 
+                      .test, allows anyone to claim an unused name for test purposes expiring after 28 days
+  RINKEBY
+  TESTNET DEPLOYMENT: 0xe7410170f87102df0055eb195163a03b7f2bff4a
+                      .test supported
+</pre>
+
+
+  Ext. Links
+  <ul xxxsmall zoom>
+  <li><a href="https://github.com/ethereum/EIPs/issues/137">EIP137</a> - Ethereum Name Service</li>
+  <li><a href="https://github.com/ethereum/EIPs/issues/162">EIP162</a> - Initial ENS Registrar Specification</li>
+  <li><a href="https://www.npmjs.com/package/ethereum-ens">ethereum-ens</a> Javascript library</li>
+  <li>Nick’s talk on ENS at DevCon 2: <a href="https://www.youtube.com/watch?v=pLDDbCZXvTE">https://www.youtube.com/watch?v=pLDDbCZXvTE</a></li>
+  <li><a href="https://arachnid.github.io/devcon2/#/title">DevCon 2 talk slides</a></li>
+  <li><a class="reference external" href="https://registrar.ens.domains">https://registrar.ens.domains</a></li>
+  </ul>
+
+</td></tr>
 </table>
 
 <table>
-<tr {>
-  <th colspan=3 header_delimit }   ><a href='http://solidity.readthedocs.io/en/develop/'>SOLIDITY LANGUAGE</a>, See also <a href='https://github.com/ConsenSys/smart-contract-best-practices'>Smart-Contracts Best Practices</a>
+<tr>
+  <th colspan=4 header_delimit><a href='http://solidity.readthedocs.io/en/develop/'>SOLIDITY LANG.</a>, See also <a href='https://github.com/ConsenSys/smart-contract-best-practices'>Best Practices</a>
   </th>
-</tr }>
-<tr {>
-<td>
-  FUNCTIONS:
-  <ul xxxsmall zoom>
-  <li>
-<pre { >
-modifier inState(State _state)    { if (state != _state) throw;  _;  }
-modifier require(bool _condition) { if (!_condition) throw; _;       }
+  <td colsep></td>
+  <th colspan=2 header_delimit><a href='https://github.com/ConsenSys/smart-contract-best-practices'>Tokens</a>
 
-function confirmPurchase(<parameter_list types>)
-    inState(State.Created)          // precondition
-    require(msg.value == 2 * value) // precondition
-    // VISIBILITY MODIFIERS {
-    [internal]  only this contract and child ones
-    [private]   only this contract
-    [external]
-    [public]
-    // }
-    // MUTABILITY MODIFIERS {
-    [payable]  /* allows funct to receive ether when called as:
-                * myContractInstance.myPayableFunction.call. \
-                *   value("ETH_TO_BE_SENT")("ADDITIONAL_DATA")
-                * Ej:
-                *   function deposit() payable {
-                *     deposits[msg.sender] += msg.value;
-                *   };
-                */
-    [pure]      /* does NOT modify the contract storage 
-                 * and storage can NOT be accesed 
-                 * (utility libraries, ...)*/
-    [view] /* does NOT modify the contract storage 
-              but storage can be accesed  ("getters")*/
-    [constant] /* alias for pure */
-    // }
-    [returns ('return types')]
-    { 
-      ... 
-    }
-</pre } >
-  Fallback function (function called when no other function matches):
-<pre xxxsmall zoom { >
-event EventFallback(address from, int256 amount);
-...
-function () payable {
-  if (! this.owner.send(amount)) { throw ; }
-  EventFallback(msg.sender, receiver, amount);
-}; 
-</pre } >
-  To use and external function f as an internal function,
-  just use f, if you want to use its external form, use this.f (not recomended) <br/>
-  external vs public: (Best practice) use external if function will only ever be 
-  called externally and use public if function will also be called internally.
-  external avoid copying parameters twice (very important with big arrays)<br/>
-</li>
-  <li>IMPORTS:
-<pre { >
-import ""filename"";
-import * as symbolName from ""filename"";
-import {symbol1 as alias, symbol2} from ""filename"";
-import ""filename"" as symbolName;
-</pre } >
-  </li>
-  <li>STRUCTS, ENUMS
-<pre { >
-struct Voter {   ┃ enum State {
-  uint weight;   ┃    Created,
-  bool voted;    ┃    Locked,
-}                ┃    Inactive 
-                 ┃ }
-</pre } >
-  </li>
-  <li>
-<pre { >
-var x = 1/4; // x type: ufixed0x8 
-var x = 1/3  // x type: ufixed0x256, no finity bin.repre
-</pre } >
-  </li>
-  </ul>
-</td>  
+  <th colspan=2 header_delimit><a href='https://gist.githubusercontent.com/mingderwang/33994fddda49a45671e093b321912cbd/raw/eeec75f34f1b311d88337f2e0ce6d8fa58ed175a/wallet.sol'>OnlyOwned+Min.Sig.Num</a>
+
+</tr>
+<tr>
 <td>
-  Grammar summary extracted from 
-  <a href='https://github.com/ethereum/solidity/blob/develop/docs/grammar.txt'>https://github.com/ethereum/solidity/blob/develop/docs/grammar.txt</a>
-<pre  xxxsmall zoom { >
+  Grammar summary 
+<pre  xxxsmall zoom>
+REF: <a href='https://github.com/ethereum/solidity/blob/develop/docs/grammar.txt'>https://github.com/ethereum/solidity/blob/develop/docs/grammar.txt</a>
 {
 Elementary:
 Identifier = [a-zA-Z_$] [a-zA-Z_$0-9]*
@@ -516,11 +617,166 @@ ContractDefinition = ( 'contract' | 'library' ) Identifier
                      ( 'is' InheritanceSpecifier (',' InheritanceSpecifier )* )?
                      '{' ContractPart* '}'
 }
-</pre } >
+</pre>
+</td>
+<td colsep></td>
+<td>
+  FUNCTIONS:
+  <ul xxxsmall zoom>
+  <li>
+<pre>
+modifier inState(State _state)    { if (state != _state) throw;  _;  }
+modifier require(bool _condition) { if (!_condition) throw; _;       }
+
+function confirmPurchase(<parameter_list types>)
+    inState(State.Created)          // precondition
+    require(msg.value == 2 * value) // precondition
+    // VISIBILITY MODIFIERS {
+    [internal]  only this contract and child ones
+    [private]   only this contract
+    [external]
+    [public]
+    // }
+    // MUTABILITY MODIFIERS {
+    [payable]  /* allows funct to receive ether when called as:
+                * myContractInstance.myPayableFunction.call. \
+                *   value("ETH_TO_BE_SENT")("ADDITIONAL_DATA")
+                * Ej:
+                *   function deposit() payable {
+                *     deposits[msg.sender] += msg.value;
+                *   };
+                */
+    [pure]      /* does NOT modify the contract storage 
+                 * and storage can NOT be accesed 
+                 * (utility libraries, ...)*/
+    [view] /* does NOT modify the contract storage 
+              but storage can be accesed  ("getters")*/
+    [constant] /* alias for pure */
+    // }
+    [returns ('return types')]
+    { 
+      ... 
+    }
+</pre>
+  Fallback function (function called when no other function matches):
+<pre xxxsmall zoom>
+event EventFallback(address from, int256 amount);
+...
+function () payable {
+  if (! this.owner.send(amount)) { throw ; }
+  EventFallback(msg.sender, receiver, amount);
+}; 
+</pre>
+To use and external function f as an internal function,
+  just use f, if you want to use its external form, use this.f (not recomended) <br/>
+  external vs public: (Best practice) use external if function will only ever be 
+  called externally and use public if function will also be called internally.
+  external avoid copying parameters twice (very important with big arrays)<br/>
+</li>
+  <li>IMPORTS:
+<pre>
+import ""filename"";
+import * as symbolName from ""filename"";
+import {symbol1 as alias, symbol2} from ""filename"";
+import ""filename"" as symbolName;
+</pre>
+  </li>
+  <li>STRUCTS, ENUMS
+<pre>
+struct Voter {   ┃ enum State {
+  uint weight;   ┃    Created,
+  bool voted;    ┃    Locked,
+}                ┃    Inactive 
+                 ┃ }
+</pre>
+  </li>
+  <li>
+<pre>
+var x = 1/4; // x type: ufixed0x8 
+var x = 1/3  // x type: ufixed0x256, no finity bin.repre
+</pre>
+  </li>
+  </ul>
 </td>  
+<td bgorange>  
+  <a href="https://solidity.readthedocs.io/en/v0.4.24/control-structures.html#error-handling-assert-require-revert-and-exceptions">ERROR CONTROL</a><br/>
+<pre bgorange xxxsmall zoom>
+Solidity uses state-reverting exceptions to handle errors:
+ - Capturing ("catch-ing") Exceptions IS NOT (YET?) POSSIBLE (2018-06-11)!.
+ - EVM rollbacks any stat change in current call and all its sub-calls
+   including events pending to register.
+   (there is no safe way to continue execution while warrantying atomicity
+    and reproducibility of results)
+ - TX is still mined and TXReceipt status flaged with "fail" error
+   See <a href="https://etherscan.io/tx/0x9f00a37416a64735b02ab76da4477ea297bfd4923b1564c1b3579d542b3f4071">Example failed TX mined</a>
+
+PROGRAMATICALLY TRIGGERING EXCEPTIONS:                       
+EXCEPTION ┌────────────────────────────────────────────────────────┬──────────────────────────────────────────────────────┬──────────────────────────────────────────────────┐
+ TYPE   → │      assert                                            │     require                                          │   revert                                         │
+          ├────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+          │ (programming error)                                    │ (pre/post check in in/out-data)                      │ (business logic exceptions)                      │
+          ├────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+          │ - Check for conditions and throw an exception          │ - Check for conditions and throw an exception        │ - replaces deprecated 'throw'                    │
+          │   if the condition is not met                          │   if the condition is not met                        │ - can be used to flag an error and revert the    │
+          │ - Should only be used to test for internal             │ - Should be used to ensure valid conditions,         │   current call.                                  │
+          │   errors, and to check invariants                      │   such as inputs, or contract state variables        │ - It is possible to provide a string message     │
+          │ - If used properly, analysis tools can                 │   are met, or to validate return values from         │   containing details about the error that will   │
+          │   evaluate your contract to identify                   │   calls to external contracts                        │   be passed back to the caller.                  │
+          │   the conditions and function calls which will         │ - optionally a message-string can be provided        │                                                  │
+          │   reach a failing assert.                              │                                                      │                                                  │
+          │   Properly functioning code should never reach         │                                                      │                                                  │
+          │   a failing assert statement                           │                                                      │                                                  │
+          ├────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+          │ - compiles to INVALID 0xfe instruction                 │  - compiles to REVER 0xfd instruction                │                                                  │
+          ├────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
+          │ assert( "my code-logic assertion")                     │ if ("not condtion for input") revert("....")         │ require("required cond.", "messsage");           │
+          └────────────────────────────────────────────────────────┴──────────────────────────────────────────────────────┴──────────────────────────────────────────────────┘
+
+┌─────────┬────────────────────────────────────────────────────────┬──────────────────────────────────────────────────────┐   ┌─────────────────────────────────────────────────────┐
+│         │ assert-style exception                                 │ revert/require-style exception                       │   │low level ops (return false, no exception raised)    │
+├─────────┼────────────────────────────────────────────────────────│──────────────────────────────────────────────────────│   │─────────────────────────────────────────────────────│
+│Condition│ - access array at index greater than array             │ - Calling throw (deprecated)                         │   │- create a contract using "new" but contract creation│
+│that     │  length (or negative)                                  │ - Calling require evaluating to false                │   │  does not finish properly.                          │
+│triggers │ - access fixed-length bytes"N" at a too large or       │ - call a function via a message call but it does not │   │- perform external function call targeting a contract│
+│exception│   negative index                                       │   finish properly (i.e. it runs out of gas, has no   │   │  that contains no code                              │
+│in the   │ - divide or modulo by zero (ex.: 5 / 0 , 23 % 0)       │   matching function, or throws an exception itself), │   │- contract receives Ether via public function        │
+│at (EVM) │ - shift by a negative amount                           │   except when a low level operation call, send,      │   │  without payable modifier (including constructor    │
+│runtime  │ - convert a value too big|negative into an enum type   │   delegatecall or callcode is used.                  │   │  or fallback                                        │
+│         │ - call to zero-initialized variable of internal        │                                                      │   │- contract receives Ether via public getter function │
+│         │   function type                                        │                                                      │   │- .transfer() fails                                  │
+│         │ - call assert with an argument that evaluates to false │                                                      │   │                                                     │
+│         │ - call function not matching any func. in contract     │                                                      │   │                                                     │
+├─────────┼────────────────────────────────────────────────────────│──────────────────────────────────────────────────────│   │─────────────────────────────────────────────────────│
+│Gas ussag│ Consume all gas available to the call                  │ - Do NOT consume any gas (v.Metrópolis+)             │   │                                                     │
+├─────────┼────────────────────────────────────────────────────────│──────────────────────────────────────────────────────│   │─────────────────────────────────────────────────────│
+│Propagati│ - Rethrown ("bubble up") in sub-calls                  │ - Rethrown ("bubble up") in sub-calls                │   │- return false *1                                    │
+└─────────┴────────────────────────────────────────────────────────┴──────────────────────────────────────────────────────┘   └─────────────────────────────────────────────────────┘
+                                                                                                                                 *1 or true if called account is non-existent
+                                                                                                                                    Existence must be checked prior to call
+
+Solidity compiler automatically generate exceptions (assert or require/revert?) if:
+ - If your contract receives Ether via a public function without payable modifier 
+   (including the constructor and the fallback function)
+ - If your contract receives Ether via a public getter function
+ - If you call a zero-initialized variable of internal function type
+ - If a addressInstance.transfer() fails</li>
+
+
+The provided string in require/revert will be abi-encoded as if it were a call to a function Error(string).
+For example:
+   revert("Not enough Ether provided."); will cause the following hexadecimal data be set as error return data:
+
+0x08c379a0                                                         // Function selector for Error(string)
+0x0000000000000000000000000000000000000000000000000000000000000020 // Data offset
+0x000000000000000000000000000000000000000000000000000000000000001a // String length
+0x4e6f7420656e6f7567682045746865722070726f76696465642e000000000000 // String data
+</pre>
+</td>
+
+<td colsep></td>
 <td>
   Simple Coin
-<pre  xxxsmall zoom { >
+<pre  xxxsmall zoom>
 pragma solidity ^0.4.0;
 contract /*Simple*/Coin {
 
@@ -556,9 +812,9 @@ contract /*Simple*/Coin {
     o_product = _a * _b;
   }
 }
-</pre } >
+</pre>
   JS to use it:
-<pre  xxxsmall zoom { >
+<pre  xxxsmall zoom>
 Coin.Sent().watch(
  {},
  '',
@@ -573,142 +829,255 @@ Coin.Sent().watch(
        ""Receiver: "" + Coin.balances.call(result.args.to));
    }
 }
-</pre } >
-</td>  
-<td>
+</pre>
+  <hr xxxsmall zoom />
   <b><a href='https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20-token-standard.md'>ERC20 Coin</a></b><br/>
-  Fungible Assets Contract Interface
-  <ul>
+  <ul xxxsmall zoom>
+  <li>Estándar interface to Fungible Assets Contracts that different wallets will understand out-of-the-box</li>
   <li><a href='https://theethereum.wiki/w/index.php/ERC20_Token_Standard'>ERC20 @ Ethereum WiKi</a></li>
   <li><a href='https://edcon.io/ppt/two/Dmitry%20Khovratovich_Secure%20Token%20Development%20and%20Deployment_EDCON.pdf'>Problems with the Standard</a></li>
   <li><a href='https://tokenmarket.net/what-is/ethereum-token-wallets/'>ERC20 compliant wallets</a></li>
   </ul>
   Example implementations
-  <ul>
+  <ul xxxsmall zoom>
   <li><a href="https://github.com/OpenZeppelin/zeppelin-solidity/blob/master/contracts/token/StandardToken.sol">OpenZeppelin StandardToken.sol</a></li>
   <li><a href="https://github.com/ConsenSys/Tokens/blob/master/contracts/StandardToken.sol">ConsenSys StandardToken.sol</a></li>
+  <li><a href='https://etherscan.io/tokens'>Popular Token List @ Etherscan</a></li>
   </ul>
-  <a href='https://etherscan.io/tokens'>Popular Token List @ Etherscan</a>
-  </td>
-</tr }>
+</td>
+<td colsep></td>
+<td>
+<pre xxxsmall zoom>
+Inheritable "property" contract:
+USAGE:
+   use modifiers onlyowner (just own owned) or onlymanyowners(hash), whereby
+   the same hash must be provided by some number (specified in constructor)
+   of the set of owners (specified in the constructor, modifiable) before the
+   interior is executed.
+
+<b>enables methods to be protected by requiring the acquiescence of either a
+   single, or, crucially, each of a number of, designated owners.</b>
+// sol Wallet
+// SRC: https://gist.githubusercontent.com/mingderwang/33994fddda49a45671e093b321912cbd/raw/eeec75f34f1b311d88337f2e0ce6d8fa58ed175a/wallet.sol
+// @authors: Gav Wood <g@ethdev.com>
+contract multiowned {
+
+    struct PendingState { uint yetNeeded; uint ownersDone; uint index; }
+
+    uint public minimum_required; // minimum owners confirmations for same operation
+    mapping(uint /* address */ => uint /*idx*/) m_ownerIndex; // index on the list of owners <b>to allow reverse lookup</b>
+    mapping(bytes32 /* operation_hash */ => PendingState) m_pending; // ongoing operations.
+    bytes32[] m_pendingIndex;
+
+    modifier onlyowner { if (isOwner(msg.sender)) _ } // MODIFIERS: 
+
+<b> /* ¡¡¡MULTI-SIG MODIFIER:!!!
+     *   operation must have an intrinsic hash in order
+     *   that later attempts can be realised as the same 
+     *   underlying operation and thus count as confirmations.
+     */
+    modifier  onlymanyowners(bytes32 _operation_hash) { if (confirmAndCheck(_operation_hash)) ;  _ }</b>
+
+    // METHODS
+<b>    constructor(address[] _owners /* "who" can confirm */, uint minimum_required /*minimum. confirmations*/) {</b>
+        m_ownerIndex[uint(msg.sender)] = 1;
+        for (uint i = 0; i < _owners.length; ++i) { m_ownerIndex[uint(_owners[i])] = 2 + i; }
+        minimum_required = minimum_required;
+    }
+
+    function <b>isOwner(address _addr)</b> returns (bool) {
+        return m_ownerIndex[uint(_addr)] > 0;
+    }
+
+    function <b>hasConfirmed(bytes32 _operation_hash, address _owner)</b> constant returns (bool) {
+        var pending = m_pending[_operation_hash];
+        uint ownerIndex = m_ownerIndex[uint(_owner)];
+        if (ownerIndex == 0) return false; // make sure they're an owner
+
+        // determine the bit to set for this owner.
+        uint ownerIndexBit = 2**ownerIndex;
+        return (pending.ownersDone & ownerIndexBit == 0) ? false : true;
+    }
+
+    // INTERNAL METHODS
+    function confirmAndCheck(bytes32 _operation_hash) internal returns (bool) {
+        // determine what index the present sender is:
+        uint ownerIndex = m_ownerIndex[uint(msg.sender)];
+        // make sure they're an owner
+        if (ownerIndex == 0) return;
+
+        var pending = m_pending[_operation_hash];
+        // if we're not yet working on this operation, switch over and reset the confirmation status.
+        if (pending.yetNeeded == 0) {
+            // reset count of confirmations needed.
+            pending.yetNeeded = minimum_required;
+            // reset which owners have confirmed (none) - set our bitmap to 0.
+            pending.ownersDone = 0;
+            pending.index = m_pendingIndex.length++;
+            m_pendingIndex[pending.index] = _operation_hash;
+        }
+        // determine the bit to set for this owner.
+        uint ownerIndexBit = 2**ownerIndex;
+        // make sure we (the message sender) haven't confirmed this operation previously.
+        if (pending.ownersDone & ownerIndexBit == 0) {
+            // ok - check if count is enough to go ahead.
+            if (pending.yetNeeded <= 1) {
+                // enough confirmations: reset and run interior.
+                delete m_pendingIndex[m_pending[_operation_hash].index];
+                delete m_pending[_operation_hash];
+                return true;
+            } else {
+                // not enough: record that this owner in particular confirmed.
+                pending.yetNeeded--;
+                pending.ownersDone |= ownerIndexBit;
+            }
+        }
+    }
+}
+</pre>
+</td>
+</tr>
 </table>
 
 <table>
-<tr {>
+<tr>
 <td>
-  Library ArrayUtils
-<pre  xxxsmall zoom { >
-pragma solidity ^0.4.5;
+  <a href="https://solidity.readthedocs.io/en/v0.4.24/types.html#arrays">Arrays</a>
+<pre xxxsmall zoom>
+- Fixed   Size Array declaration: T[k] a1 = T[k]
+- Dynamic Size Array declaration: T[ ] a2 = T[]
 
-library ArrayUtils {
-  // internal functions can be used in internal library 
-  // functions because (part of same context)
-  function map(uint[] memory self, function (uint) returns (uint) f)
-    internal
-    returns (uint[] memory r)
+    uint[2**20] m_aLotOfIntegers;
+ +--------+-----------------------+-------------------+----------------------+--------------------+
+ |        | Admited type          | Creation          | Resize               | Delete             |
+ +--------+-----------------------+-------------------+----------------------+--------------------+
+ |Storage | *any*                 | (just declare it) |- set/reassign .length| delete myArray;    |
+ |Arrays  |                       |                   |- push(el)            | myArray.length = 0;|
+ +--------+-----------------------+-------------------+----------------------+--------------------+
+ |Memory  | *any* but mapping     | Use 'new'         | Not allowed          |                    |
+ |Arrays  | (ABI comp. for        | new uint[](7)     |(fix size determined  |                    |
+ |        |  public/extern fun)   | new bytes(len)    | at runtime)          |                    |
+ +--------+-----------------------+-------------------+----------------------+--------------------+
+
+Ex: 
+var x = uint[][5] // fixed-(5)size-array of
+                  // dynamic-uint-arrays
+    x[2][1]       // second uint in third dyn-array
+
+Special (tightly packed in calldata) arrays
+bytes : (tightly packed) byte[]
+string: (UTF-8) similar to bytes, but does not YET allow
+        length/index/push access
+        Use use bytes(myString).length / bytes(myString)[7] = 'x' to
+        access the low-byte-representation of myString 
+
+Array Literals expression (not immediately assigned to a variable)
+   type     : memory array of fixed 
+   base type: common type of array elements.
+
+  ...
+  calledFunction(<b orange>[uint(1), 2, 3]</b>);
+
+
+Limitations:
+- arrays of arrays not (YET) allowed in external functions
+- (EVM limitation): dynamic content from external funct. no allowed in return
+  Workaround: use large statically-sized arrays
+
+</pre>
+  <a href="https://solidity.readthedocs.io/en/v0.4.24/types.html#mappings">Mappings</a>
+<pre xxxsmall zoom>
+Only allowed for state variables (or as storage reference types in internal functions)
+Solidity Mappings are NOT iterable.
+Declaration:
+   mapping(_KeyType => _ValueType) public balance; 
+           ↑
+           almost any type except 
+           mapping,dyn-array,contract,enum,struct
+
+virtually initialized: every possible key exists mapped to zero-byte-repr
+
+</pre>
+</td>
+<td>
+  <a href="https://github.com/ethereum/dapp-bin/blob/master/library/iterable_mapping.sol">Iterable Mappings</a>
+<pre xxxsmall zoom>
+library IterableMapping
+  function insert(itmap storage self, uint key, uint value) returns (bool replaced)
+  function remove(itmap storage self, uint key) returns (bool success)
+  function contains(itmap storage self, uint key) returns (bool)
+  function iterate_start(itmap storage self) returns (uint keyIndex)
+  function iterate_valid(itmap storage self, uint keyIndex) returns (bool)
+  function iterate_next(itmap storage self, uint keyIndex) returns (uint r_keyIndex)
+  function iterate_get(itmap storage self, uint keyIndex) returns (uint key, uint value)
+
+// <b>USSAGE:</b>
+contract User
+{
+  IterableMapping.itmap data; // Just a struct holding our data.
+  function insert(uint k, uint v) returns (uint size) // Insert something
   {
-    r = new uint[](self.length);
-    for (uint i = 0; i &lt; self.length; i++) {
-      r[i] = f(self[i]);
+    IterableMapping.insert(data, k, v);
+    return data.size; // We can still access members of the struct 
+                      // BUT we should take care not to mess with them.
+  }
+
+  function sum() returns (uint s)  // Computes total sum 
+  {
+    for (
+      var i = IterableMapping.iterate_start(data);
+      IterableMapping.iterate_valid(data, i);
+       i = IterableMapping.iterate_next(data, i))
+    {
+        var (key, value) = IterableMapping.iterate_get(data, i);
+        s += value;
     }
   }
+}
+</pre>
+  <hr xxxsmall />
+  <a href="https://raw.githubusercontent.com/ethereum/dapp-bin/master/library/linkedList.sol">Double Linked List</a>
+<pre xxxsmall zoom>
+library DoublyLinkedList
+    function append(data storage self, bytes32 _data) /// Appends `_data` to the end of the list `self`.
+    function remove(data storage self, uint80 _index) /// Removes the element identified by the iterator `_index` from the list `self`.
+    function find(data storage self, bytes32 _value) returns (uint80) /// @return an iterator pointing to the first element whose data
+                                                                      /// is `_value` or an invalid iterator otherwise.
+    function iterate_start(data storage self) returns (uint80)        /// Iterator interface
+    function iterate_valid(data storage self, uint80 _index) returns  (bool)
+    function iterate_prev(data storage self, uint80 _index) returns (uint80)
+    function iterate_next(data storage self, uint80 _index) returns (uint80)
+    function iterate_get(data storage self, uint80 _index) returns (bytes32)
 
-  function reduce(
-    uint[] memory self,
-    function (uint x, uint y) returns (uint) f
-  )
-    internal
-    returns (uint r)
-  {
-    r = self[0];
-    for (uint i = 1; i &lt; self.length; i++) {
-      r = f(r, self[i]);
+// USSAGE:
+contract Test {
+    using DoublyLinkedList for DoublyLinkedList.data;
+    DoublyLinkedList.data public list;
+    function Test() {
+        list.append("abc");
+        list.append("abc");
+        list.append("def");
     }
-  }
-
-  function range(uint length) 
-    internal 
-    returns (uint[] memory r) 
-  {
-    r = new uint[](length);
-    for (uint i = 0; i &lt; r.length; i++) {
-      r[i] = i;
+    function remove(bytes32 data) returns (bool success) {
+        var it = list.find(data);
+        if (list.iterate_valid(it)) { list.remove(it); return true; }
+        return false;
     }
-  }
 }
-</pre } >
-  contract Pyramid {
-<pre  xxxsmall zoom { >
-contract Pyramid {
-  using ArrayUtils for *;
-  function pyramid(uint l) returns (uint) {
-    return ArrayUtils.range(l).map(square).reduce(sum);
-  }
-  function square(uint x) internal returns (uint) {
-    return x * x;
-  }
-  function sum(uint x, uint y) internal returns (uint) {
-    return x + y;
-  }
-}
-</pre } >
-  <hr/>
-  EXTERNAL FUNCTIONS AND CALLBACKS:<br/>
-  Oracle Contract
-<pre xxxsmall zoom { >
-pragma solidity ^0.4.5;
-
-contract Oracle {
-  struct Request {
-    bytes data;
-    function(bytes memory) external callback;
-  }
-  Request[] requests;
-  event NewRequest(uint);
-  function 
-    query(bytes data, function(bytes memory) 
-    external 
-    callback 
-  {
-    requests.push(Request(data, callback));
-    NewRequest(requests.length - 1);
-  }
-
-  function 
-    reply(uint requestID, bytes response) 
-  {
-    // Here goes the check that the
-    // reply comes from a trusted source
-    requests[requestID].callback(response);
-  }
-}
-</pre } >
-   Oracle User Contract
-<pre  xxxsmall zoom { >
-contract OracleUser {
-  // known contract
-  Oracle constant oracle = Oracle(0x1234567);
-  function buySomething() {
-    oracle.query(""USD"", this.oracleResponse);
-  }
-  function oracleResponse(bytes response) {
-    if (msg.sender != address(oracle)) throw;
-    // Use the data
-  }
-}
-</pre } >
-</td>  
+</pre>
+</td>
+<td colsep></td>
 <td>
   GLOBAL METHODS:
-<pre xxxsmall zoom { >
+<pre xxxsmall zoom>
 block.blockhash(uint blockNumber) 
   returns (bytes32): 
   hash of the given block - only works for 256 most
   recent blocks excluding current
-</pre } >
+</pre>
        
   GLOBAL CONTROL METHODS:
-<pre xxxsmall zoom { >
+<pre xxxsmall zoom>
 assert(bool condition): 
   throws if condition not met
 revert()              :
@@ -716,12 +1085,11 @@ revert()              :
 selfdestruct(address recipient):
   destroy current contract
   send its funds to recipient 
-</pre } >
-  <code>this</code>: (current contract’s type), explicitly convertible to Address<br/>
-
-
+</pre>
+</td>
+<td>
   GLOBAL VARIABLES:
-<pre xxxsmall zoom { >
+<pre xxxsmall zoom>
 block.coinbase (address): current block miner’s address
 block.difficulty (uint) : current block difficulty
 block.gaslimit (uint)   : current block gaslimit
@@ -738,9 +1106,9 @@ now (uint)              : current block timestamp
 tx.gasprice (uint)      : gas price of the transaction
 tx.origin (address)     : sender of the transaction 
                           (full call chain)
-</pre } >
+</pre>
   GLOBAL Mathematical and Cryptographic Functions
-<pre  xxxsmall zoom { >
+<pre  xxxsmall zoom>
 addmod(uint x, uint y, uint k) 
   returns (uint): /* compute (x + y) % k */
 mulmod(uint x, uint y, uint k)
@@ -761,37 +1129,70 @@ ecrecover
   returns (address):
     recover the address associated with the public key 
     from elliptic curve signature or return zero on error
-</pre } >
+</pre>
   </li>
   </ul>
-  <span TODO>String manipulation (substring, indexof,... in solidity)</span><br/>
-  <b>ERROR CONTROL</b>
-  <ul xxxsmall zoom >
-  <li>EXCEPTIONS: CATCHING EXCEPTIONS IS NOT YET POSSIBLE (2017-03-01)!
-     <p>The effect of an exception is that the currently executing call is stopped 
-        and reverted (i.e. all changes to the state and balances are undone) and
-        the exception is also “bubbled up” through Solidity function calls
-        (low-level ""send""|""delegatecall""|""callcode"" will return false)
-     </p>
-  <li>Currently, Solidity automatically generates a runtime exception in the following situations:
-    <ul>
-    <li>If your contract receives Ether via a public function without payable modifier (including the constructor and the fallback function)</li>
-    <li>If your contract receives Ether via a public getter function</li>
-    <li>If you call a zero-initialized variable of internal function type</li>
-    <li>If a addressInstance.transfer() fails</li>
-    </ul>
-  <li>a user-provided exception is generated with throw or assert(false condition)<br/>
-        Internally, Solidity performs a revert operation (instruction 0xfd) when a 
-        user-provided exception is thrown.<br/>
-        In contrast, it performs an invalid operation (instruction 0xfe) if a runtime
-        exception is encountered. In both cases, this causes the EVM to revert all
-        changes made to the state.
-  </li>
-  </ul>
-</td>  
+</td>
+<td colsep></td>
 <td>
   <b>PRICE CALCULATION</b>
   <ul xxxsmall zoom>
+  <li><a TODO href="https://github.com/ethereum/wiki/wiki/Design-Rationale#gas-and-fees">Design-Rational: Gas and fees</a></li>
+  <li>
+<pre>
+Instruction cost: <a href="https://blog.qtum.org/diving-into-the-ethereum-vm-6e8d5d2f3c30">REF</a> 
+The most expensive operations by far are storage usage:
+- sstore costs 20000 gas for first write to a new position
+- sstore costs  5000 gas for subsequent writes to an existing position
+- sload  costs   500 gas
+- Most instructions costs 3~10 gases.
+- Gas costs are set somewhat arbitrarily, and could well change in 
+  the future. As costs change, compilers would make different choices.
+
+TX cost: <a href="https://medium.com/@hayeah/how-to-decipher-a-smart-contract-method-call-8ee980311603">REF</a>
+- 21000 paid for every transaction.
+-     4 paid for every zero byte of data or code for a transaction.
+-    68 paid for every non-zero byte of data or code for a transaction.
+
+- Small negative numbers are mostly 1s, costing you quite a lot of gas.
+
+Logging Gas Costs:  <a href="https://blog.qtum.org/how-solidity-events-are-implemented-diving-into-the-ethereum-vm-part-6-30e07b3037b9">REF</a>
+  - The gas costs for the logging primitives depends on how many topics you have and how much data you log:
+    (constants are defined in protocol_params)
+
+LogDataGas       uint64 = 8   // Per byte in a LOG operation's data
+topicLogTopicGas uint64 = 375 // Per LOG 
+LogGas           uint64 = 375 // Per LOG operation
+MemoryGas        uint64 = 3    // Per byte of memory used
+
+If you are passing in the log data as calldata to a TX,
+you’ll need to pay for the transaction data too. The gas costs for calldata are:
+
+TxDataZeroGas      uint64 = 4     // zero tx data abyte
+TxDataNonZeroGas   uint64 = 68    // non-zero tx data byte
+
+Assuming all 32 bytes are non-zero, this is still a lot cheaper than storage:
+
+// cost of 32 bytes of log data
+32 * 68 = 2176 // tx data cost
+32 *  8 =  256 // log data cost
+32 *  3 =   96 // memory usage cost
+375 // log call cost
+----
+total (2176 + 256 + 96 + 375) ~14% of sstore for 32 bytes
+Most of the gas cost is actually spent on transaction data, not for the log operation itself
+
+The reason that a log operation is cheap is because the log data isn’t really stored in the 
+blockchain. Logs, in principle, can be recalculated on the fly as necessary.
+Miners, in particular, can simply throw away the log data, because future calculations 
+can't access past logs anyway.
+
+The network as a whole does not bear the cost of logs. 
+Only the API service nodes need to actually process, store, and index the logs.
+
+So the cost structure of logging is just the minimal cost to prevent log spamming.
+</pre>
+  </li>
   <li>Extracted from stack-overflow:<br/>
    <p>
    Q: """The price of ETH has gone from ~8 USD/ETH to ~90 ETH/USD in 6 months,
@@ -817,18 +1218,8 @@ ecrecover
 <a hef='https://en.bitcoin.it/wiki/Wei_Dai'                                >Wei Dai</a>
   </li>
   </ul>
-  <a hef='http://ethgasstation.info/calculator.php'>http://ethgasstation.info/calculator.php</a>
-<pre  xxxsmall zoom { >
-wei                         :                                1 wei      <--- discussion around APIs ...
-gwei(shannon|nanoether|nano):                    1.000.000.000 weis     <--- gas prices
-szabo|microether|micro      :                            1.000 gweis
-finney|milliether|milli     :                        1.000.000 gweis    <--- micropayments
-ether                       :                    1.000.000.000 gweis    <--- main unit
-kether(grand|einstein)      :                            1.000 ethers 
-mether                      :                        1.000.000 ethers
-gether                      :                    1.000.000.000 ethers
-tether                      :                1.000.000.000.000 ethers
-
+  <a href='http://ethgasstation.info/calculator.php'>eth gas station calc</a>
+<pre  xxxsmall zoom>
 200€/ether:
 Transaction gas price: 21000 gas/tx       32bytes Contract storage: 20000 gas
 +----------+-----------------+--------+   +----------+-----------------+--------+
@@ -866,13 +1257,13 @@ Logs cost: 375 gas for a LOG operation + 8 gas per log data byte + 375 gas for e
 (375 gas/LOG * 1LOG ) + (8 gas/byte *  512byte) + (375 gas/topic * 3 topic) = 375 + 4096 + 1125 = 5596
 (375 gas/LOG * 1LOG ) + (8 gas/byte *  512byte) + (375 gas/topic * 1 topic) = 375 + 2048 +  375 = 2798
 (375 gas/LOG * 1LOG ) + (8 gas/byte *  128byte) + (375 gas/topic * 0 topic) = 375 + 1024        = 1399    
-    </pre } >
+</pre>
   </td>  
-</tr }>
+</tr>
 </table>
 
 <table>
-<tr {>
+<tr>
 <td>
   <a href='http://ethereum.stackexchange.com/questions/269/what-exactly-is-an-ethereum-client-and-what-clients-are-there/335'>Development Tools</a>
   <ul xxxsmall zoom>
@@ -929,10 +1320,10 @@ $ truffle deploy
     <li>Create  ""JS"" front-end app (if profile present)
     <li><code>$ truffle serve # start web server with front-end</code></li>
     </ol>
-<!-- TODO:
+<!-- TODO_START :
 config/app.json: build, deploy and ether-node rpc setup
 ./app: JS front-end app.
-"tuffle compile generated config/development/contracts.json: 
+"truffle compile generated config/development/contracts.json: 
 Contains the JS interface to the Eth. contract."
 test/example.js:
 Note: 
@@ -968,8 +1359,7 @@ null ""0x82e.....""
       directly into development tools to support their use of the Ethereum Package Management ecosystem.
   </li>
   </ul>
-</td>
-<td>
+  <hr xxxsmall />
   Geth Console
 <pre xxxsmall zoom>
 CHECKING ACCOUNT BALANCES
@@ -994,18 +1384,90 @@ function checkAllBalances() {
 </pre>
 </td>
 <td>
+  Troubleshooting
+  <ul xxxsmall zoom>
+  <li><def>solc *bin output is empty, but there are no compilation warnings</def>
+<pre>
+PROBLEM:
+    Next code compiles "OK" using
+    SOLC INPUT               |  SOLC OUTPUT
+    -------------------------|--------------------
+    pragma solidity ^0.4.8;  |  A.bin  6060604...
+    contract A {             |  B.bin  6060604...
+      uint public a1;        |
+    }                        |
+                             |
+    contract B <b>is A</b> { |
+      uint8 public b1;       |
+    }                        |
+
+  <b red>Adding any constructor to the A contract, and keeping same B 
+  generates erroneus empty B.bin</b>
+
+SOLUTION:
+   solc compiler consider the class abstract and does not generate any
+   bin due to some of the following reasons:
+
+ - B will need to provide parent A constructor with a parameter
+   contract B is A {
+     uint8 public b1;
+   
+     <b blue>constructor(address _a) A(_a) { // or A(0x00112...)
+        ...
+     }</b>
+   }
+
+ - B does NOT implementsall mehtods of declared interfaces or base clases
+</pre>
+  </li>
+  </ul>
+</td>
+</tr>
+</table>
+
+  DevOps
+<table>
+<tr>
+<td>
+  Disk Space
+<pre xxxsmall zoom>
+<a href="https://ethereum.stackexchange.com/questions/143/what-are-the-ethereum-disk-space-needs/826#826">REF</a>
+Last Update: May 14th, 2018 / Block ~ 5_600_000
+Geth (Go) 1.8.3 Ubuntu 16.4 LTS,  VPS + SSD | Parity (Rust)
+--------------------------------------------+--------------------------------------------
+Client / Mode    | Block Number |Disk Space | Client / Mode      |Block Number|Disk Space
+=================|==============|========== | ===================|============|==========
+geth light       | 5_600_000    |363M       | parity light       |5_600_000   | 89M
+geth fast full   | 5_600_000    |142G       | parity warp fast   |5_600_000   | 82G
+geth full full   | ?_???_??? [1]|239G + [1] | parity full fast   |5_600_000   | 78G
+geth full archive| 4_980_000 [2]|671G       | parity full archive|5_600_000   |1.1T
+                                            |                                      
+[1] disk was full, I wasn't able to repeat  |
+    this sync mode                          |
+[2] I didn't manage to fully sync           |
+    within 6 weeks, unfortunately.          |
+--------------------------------------------+--------------------------------------------
+</pre>
+</td>
+<td colsep> </td>
+<td>
   <p TODO>EXTERNAL STORAGE (IPFS, Maidsafe, SWARN,...)
+:ta
 <!--
 TODO: Compare with alternative Storage "providers": IPFS , Maidsafe, Storj
-"WARM: Swarm is alpha software. Use at your own risk.
-
-Code is currently at POC 0.2 codename 'sworm'. The source is now in the main branch of the go-ethereum repository. "
-"http://swarm-gateways.net/bzz:/theswarm.eth/
-
-Swarm
-""serverless hosting incentivised peer-to-peer storage and content distribution""
-
-""""""From the end user's perspective, Swarm is not that different from WWW, except that uploads are not to a specific server. The objective is to peer-to-peer storage and serving solution that is DDOS-resistant, zero-downtime, fault-tolerant and censorship-resistant as well as self-sustaining due to a built-in incentive system which uses peer to peer accounting and allows trading resources for payment. Swarm is designed to deeply integrate with the devp2p multiprotocol network layer of Ethereum as well as with the Ethereum blockchain for domain name resolution, service payments and content availability insurance. """"""
+- IPFS is just a protocol like http. It is unmotivated (don't have tokens).
+- Eris is permissioned blockchain thing and use IPFS underneath.
+- Storj, SAFE Network, Sia and Filecoin: motivated storage networks with different underlying protocols and design decisions.
+- Swarm is an organizational idea. A philosophical structure.
+  ""serverless hosting incentivised peer-to-peer storage and content distribution""
+  ""From the end user's perspective, Swarm is not that different from WWW,
+    except that uploads are not to a specific server. The objective is to peer-to-peer
+    storage and serving solution that is DDOS-resistant, zero-downtime, fault-tolerant
+    and censorship-resistant as well as self-sustaining due to a built-in incentive
+    system which uses peer to peer accounting and allows trading resources for payment.
+    Swarm is designed to deeply integrate with the devp2p multiprotocol network layer
+    of Ethereum as well as with the Ethereum blockchain for domain name resolution, 
+    service payments and content availability insurance. """"""
 
 """"""Two major features of swarm that sets it apart from other decentralised distributed storage solutions (bittorent, zeronet, IPFS) are 'upload and disappear' and the incentive system. The former refers to fact that Swarm does not only serve content, but it also provides a cloud storage service. Unlike related systems, you do not only publish the fact you host content, but there is a genuine sense in which you can just upload stuff to the swarm and potentially disappear (drop off as a node, disconnect or just operate without storage entirely) right away. Swarm aspires to be the generic storage and delivery service catering for all usecases ranging from serving low latency realtime interactive web applications as well as acting as guaranteed persistent storage for rarely used content. The incentive system makes sure that participating nodes following their rational self interest nontheless converge on an emergent swarm behaviour that is beneficial for the entire system as well as economically self-sustaining. In particular, it allows nodes in the network to pool their bandwidth and storage resources in the most efficient way to collectively provide services. """""""
 here are two kinds of accounts in Ethereum which share the same address space: External accounts that are controlled by public-private key pairs (i.e. humans) and contract accounts which are controlled by the code stored together with the account.
@@ -1057,12 +1519,14 @@ TODO: Oracle patterns
 -->
   </p>
 </td>
-</tr }>
+</tr>
 </table>
 </body>
 <!--
-TODO:
+TODO_START:
+
 _______________________________________________________
+_____________________________
 See also alternatives to Whisper: "Message Contract" and "Telehash"
 https://github.com/ethereum/wiki/wiki/Whisper
 """""""
@@ -1146,24 +1610,6 @@ using account NON-interactively (not connected to a geth node):
    $ geth --unlock "0x407d73d8a49eeb85d32cf465507dd71d507100c1,0,5,e470b1a7d2c9c5c6f03bbaa8fa20db6d404a0c32"
 
 
-CHECKING ACCOUNT BALANCES FROM GETH CONSOLE
-    $ cat /Users/username/gethload.js
-    function checkAllBalances() {
-        var totalBal = 0;
-        for (var acctNum in eth.accounts) {
-            var acct = eth.accounts[acctNum];
-            var acctBal = web3.fromWei(eth.getBalance(acct), "ether");
-            totalBal += parseFloat(acctBal);
-            console.log("  eth.accounts[" + acctNum + "]: \t" + acct + " \tbalance: " + acctBal + " ether");
-        }
-        console.log("  Total balance: " + totalBal + " ether");
-    };
-    ---------------------
-    > loadScript("/Users/username/gethload.js")
-    > checkAllBalances();
-      eth.accounts[0]: 0xd1ade25ccd3d550a7eb532ac759cac7be09c2719         balance: 63.11848 ether
-      eth.accounts[1]: 0xda65665fc30803cb1fb7e6d86691e20b1826dee0         balance: 0 ether
-      eth.accounts[2]: 0xe470b1a7d2c9c5c6f03bbaa8fa20db6d404a0c32         balance: 1 ether
 _______________________________________________________
  - Libraries / Libraries dispatcher / ...
  https://blog.aragon.one/library-driven-development-in-solidity-2bebcaf88736
@@ -1869,5 +2315,30 @@ Cosmos is also building an ecosystem that relies on the Tendermint consensus mec
 _______________
 https://plasma.io/plasma.pdf
 The orchestrated transaction processing paradigm using the interplay between rootchains, plasma chains, and child chains through a combination of fraud-proof mechanism designs and fidelity bond incentive structures help satisfy dynamics between the block-withholding and mass withdrawal surfaces. It also allows for further cryptoeconomic structures to be filled using mechanisms from systems like Casper or Truebit for mirroring concepts used in erasure coding in terms of the data availability problem that is prevalent in the space. For a multichain architecture, Ethereum would be able to combine the database coordination and throughput capabilities of a distributed database system with the public chain compatible capabilities of an actual blockchain.
+______________________
+<td>
+  EEA Ethereum Network Protocol Sublayer
+  <ul xxxsmall zoom>
+  <li>Nodes MUST be identified and advertised using the Ethereum <a href="https://github.com/ethereum/wiki/wiki/enode-url-format">enode URL format</a></li>
+  <li> Implementations SHOULD use the <a href="https://github.com/ethereum/wiki/wiki/%C3%90%CE%9EVp2p-Wire-Protocol">DEVp2p Wire Protocol</a>
+       for messaging between nodes to establish and maintain a communications channel for use by higher layer protocols. <br/>
+       These higher layer protocols are known as capability protocols</li>
+  <li>The <a href="https://github.com/ethereum/wiki/wiki/Ethereum-Wire-Protocol">Ethereum-Wire-Protocol</a> defines the capability protocols for messaging between Ethereum client
+    nodes to exchange status, including block and transaction information.  [Ethereum Wire Protocol ]</li>
+  <li>messages are sent and received over an already established DEVp2p connection between nodes .</li>
+  <li>Implementations SHOULD support, at a minimum, [Ethereum Wire Protocols ] eth/62 and eth/63</li>
+  <li>Implementations MAY add new protocols or extend existing Ethereum protocols</li>
+  <li>To minimize the number of point -to-point connections needed between private nodes , some private nodes 
+     SHOULD be capable of relaying private transaction data to multiple other private nodes.</li>
+  </ul>
+</td>
+__________________________________________
+http://fc17.ifca.ai/wtsc/Defining%20the%20Ethereum%20Virtual%20Machine%20for%20Interactive%20Theorem%20Provers.pdf
+__________________________________________
+https://github.com/pirapira?utf8=%E2%9C%93&tab=repositories&q=&type=source&language=  
+ ( Lot of interesting repos related to Ethereum)
+_____________________________
+  <span TODO>String manipulation (substring, indexof,... in solidity)</span><br/>
+_________________
 -->
 </html>

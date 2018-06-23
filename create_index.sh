@@ -40,10 +40,20 @@ cat << EOF >>index.html
 Pull-request and bug-reporting contributions welcome!
 </h2>
 
-<p style="text-align:center">
-<code>(BTC: 1JXPKbYJwfbMfFCWbRdiKRgw8H2JaPboUK)</code>:<br/>
-<image style='width:100px' src='./btc_address_1JXPKbYJwfbMfFCWbRdiKRgw8H2JaPboUK.png' />
+<table style="width: 100%; text-align:center" >
+<tr>
+<td style="text-align:center"><code>BTC Address:<br/> 1JXPKbYJwfbMfFCWbRdiKRgw8H2JaPboUK</code></td>
+<td style="text-align:center"><code>XRP Address:<br/> rsT4VLnzsG7qc9i3v7nN3nwE8D34heiYph</code></td>
+<td style="text-align:center"><code>ETH Address:<br/> 0x008b13F53DD1408175f619086cba7Ac2460a1BE9</code></td>
+</tr>
+<tr>
+<td style="text-align:center"><image style='width:100px' src='./btc_address_1JXPKbYJwfbMfFCWbRdiKRgw8H2JaPboUK.png' /></td>
+<td style="text-align:center"><image style='width:100px' src='./xrp_address_rsT4VLnzsG7qc9i3v7nN3nwE8D34heiYph.png' /></td>
+<td style="text-align:center"><image style='width:100px' src='./eth_address_0x008b13F53DD1408175f619086cba7Ac2460a1BE9.png' /></td>
+
+</tr>
 </p>
+</table>
 
 </body>
 </html>

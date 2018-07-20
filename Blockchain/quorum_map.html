@@ -1,7 +1,7 @@
 <html>
 <head>
    <meta charset="UTF-8">
-   <title>Quorum Map(alpha)(ignore)</title>
+   <title>Quorum Map(1.0)</title>
 <head>
 <script src="/IT_notes/map_v1.js"></script>
 <link rel="stylesheet" type="text/css" href="/IT_notes/map_v1.css" />
@@ -18,294 +18,485 @@
 <!-- {{{ START }}} -->
 
 <table>
-<tr header_delimit {>
-  <td topic >topic</td>
-  <td summa >summa</td>
-  <td col1  ></td>
-  <td col2  ></td>
-</tr>
-<tr {>
-  <td topic >Quorum</td>
-  <td summa >
-    <p>The primary features of Quorum, and therefore extensions over public Ethereum, are:</p>
-    <ul>
-      <li>Transaction and contract privacy</li>
-      <li>Multiple voting-based consensus mechanisms</li>
-      <li>Network/Peer permissions management</li>
-      <li>Higher performance</li>
-    </ul>
-    <p>Quorum currently includes the following components:</p>
-    <ul>
-      <li>Quorum Node (modified Geth Client)</li>
-      <li>Constellation - Transaction Manager</li>
-      <li>Constellation - Enclave</li>
-    </ul>
-    <p>The Quorum Node includes the following modifications to geth:</p>
-    <ol>
-      <li>‘Proof of work’ consensus algorithm has been replaced with ‘QuorumChain’ consensus, a vote-based consensus mechanism.</li>
-      <li>The P2P layer has been modified to only allow connections to/from permissioned nodes.</li>
-      <li>The block generation logic has been modified to replace the ‘global state root’ check with a new ‘global public state root’.</li>
-      <li>The block validation logic has been modified to replace the ‘global state root’ in the block header with the ‘global public state root’</li>
-      <li>The State Patricia trie has been split into two: a public state trie and a private state trie.</li>
-      <li>Block validation logic has been modified to handle ‘Private Transactions’</li>
-      <li>Transaction creation has been modified to allow for Transaction data to be replaced by encrypted hashes in order to preserve private data where required</li>
-      <li>The pricing of Gas has been removed, although Gas itself remains</li>
-    </ol>
-  </td>
-  <td col1  >
-    <ul>
-    <li><a href='https://github.com/jpmorganchase/quorum/tree/master/docs'>docs@GitHub</a> Whitepaper (PDF), Design, Privacy, Running, API</li>
-    <li><a href='https://github.com/jpmorganchase/quorum/wiki'>Wiki@GitHub</a></li>
-    <li><a href='https://www.jpmorgan.com/country/ES/en/Quorum'>J.P.Morgan Quorum Home Page</a><br/><br/><br/></li>
-
-    <li TODO><a href='https://github.com/jpmorganchase/quorum-examples/tree/master/examples/7nodes'>7nodes Example</a>
+<tr>
+<td><a href="https://github.com/jpmorganchase/quorum">Quorum Ethereum Extensions</a>
+  <ul xxxsmall zoom>
+  <li>Transaction and contract privacy</li>
+  <li>Multiple voting-based consensus mechanisms</li>
+  <li>Network/Peer permissions management</li>
+  <li>Higher performance</li>
+  </ul>
+  External Links:
+  <ul xxxsmall zoom>
+  <li><a href='https://github.com/jpmorganchase/quorum/tree/master/docs'>docs@GitHub</a> Whitepaper (PDF), Design, Privacy, Running, API</li>
+  <li><a href="https://github.com/jpmorganchase/quorum/releases">Releases</a></li>
+  <li><a href='https://github.com/jpmorganchase/quorum/wiki'>Wiki@GitHub</a></li>
+  <li><a href='https://www.jpmorgan.com/country/ES/en/Quorum'>J.P.Morgan Quorum Home Page</a></li>
+  <li TODO><a href='https://github.com/jpmorganchase/quorum-examples/tree/master/examples/7nodes'>7nodes Example</a>
     configures 7 nodes, each with their own PrivateTransactionManager
-    </li>
-    <li TODO><a href='https://github.com/jpmorganchase/quorum-examples/tree/master/examples/permissions'>Permissioning Example</a>
-    """Node Permissioning is a feature in Quorum that allows only a pre-defined set of nodes (as identified by their remotekey/enodes) to connect to the permissioned network.  This example demonstrates the following:
-       <ul>
-         <li>Sets up a network with a combination of permissioned and
-             non-permissioned nodes in the cluster.</li>
-         <li>Enabling / Disabling the permissions from cmd line</li>
-         <li>Details of permissioned-nodes.json file</li>
-         <li>Demonstrate that only the nodes that are specified in permissioned-nodes.json can connect</li>
-       </ul>
-    </li>
-    <li {>
-        <a href='https://github.com/jpmorganchase/quorum/wiki/Getting-Set-Up'>Getting-Set-Up</a>
-        <ul>
-        <li>Using Quorum requires installing, configuring and running 'Quorum Node' + 'Constellation server'
-        <li>Manually set up Quorum: [ key generation, genesis block , constellation configuration ]</li>
-        <li>Building Quorum Node From Source:
-          <pre>
+  </li>
+  <li><a TODO href="https://github.com/jpmorganchase/quorum/blob/master/docs/api.md">Quorum API</a></li>
+  <li><a href="https://github.com/jpmorganchase/quorum/wiki/Product-Roadmap">Roadmap</a></li>
+  </ul>
+  Who is Who
+  <ul xxxsmall zoom>
+  <li>Brian Marchiony Head of CIB Marketing &amp; Communications brian.j.marchiony@jpmorgan.com</li>
+  <li>Amber Baldet Program Lead, Blockchain Center of Excellence amber.baldet@jpmorgan.com</li>
+  <li>David Voell Engineering Lead, CIB Emerging Technologies david.l.voell@jpmorgan.com</li>
+  </ul>
+
+Quorum Contract Design Considerations
+<pre xxxsmall zoom>
+- Private contracts cannot update public contracts.
+  (not all participants will be able to execute a private contract,
+  and so if that contract can update a public contract, then each
+  participant will end up with a different state for the public contract.
+- Once a contract has been made public, it can't later be made private.
+  You DO need to delete from the blockchain and create a new private contract
+</pre>
+</td>
+<td>
+  Architecture<br/>
+<img xxxsmall zoom src="https://raw.githubusercontent.com/jpmorganchase/quorum-docs/master/images/QuorumTransactionProcessing.JPG" /><br/>
+</td>
+<td>
+  <a href='https://github.com/jpmorganchase/constellation'>Constellation</a>,
+  <a xsmall href='https://github.com/jpmorganchase/quorum/blob/master/docs/privacy.md'>REF: Privacy.md, Quorum+Constellation</a><br/>
+  <ul xxxsmall zoom>
+  <li>self-managing, peer-to-peer network of "key server+PGP+MTAs" nodes</li>
+  <li>Constellation is not blockchain-specific, and potentially applicable
+     in many other types of applications</li>
+  </li>
+  <li>Constellation's current primary application is to implement the 
+   "privacy engine" for Quorum Private transactions (TX with a flag indicating 
+   its pretended privacy and the addressable identifier )
+  </li>
+  </ul>
+<pre xxxsmall>
+Each Constellation node:
+  - Hosts a number of Private/Public key pair Curve25519 - NaCl-
+  - Automatically discovers other nodes on the network after synchronizing 
+    with as little as one other host.
+  - Synchronizes a directory of public keys mapped to recipient hosts with 
+    other nodes on the network.
+  - Exposes public API allowing other nodes to send encrypted bytestrings to 
+    your node, and to synchronize, retrieving information about the nodes 
+    that your node knows about.
+  - Exposes a private API which:
+    - Allows you to send a bytestring to one or more public keys, returning 
+      a content-addressable identifier. This bytestring is encrypted 
+      transparently and efficiently (at symmetric encryption speeds) before 
+      being transmitted over the wire to the correct recipient nodes (and only 
+      those nodes.) The identifier is a hash digest of the encrypted payload 
+      that every receipient node receives. Each recipient node also receives a 
+      small blob encrypted for their public key which contains the Master Key 
+      for the encrypted payload.
+    - Allows you to receive a decrypted bytestring based on an identifier. 
+      Payloads which your node has sent or received can be decrypted and retrieved 
+      in this way.
+
+    - Exposes methods for deletion, resynchronization, and other management functions.
+
+  - Supports a number of storage backends including LevelDB, BerkeleyDB, SQLite,
+    and Directory/Maildir-style file storage suitable for use with any FUSE 
+    adapter, e.g. for AWS S3.
+
+  - Uses mutually-authenticated TLS with modern settings and various trust 
+    models including hybrid CA/tofu (default), tofu (think OpenSSH), and 
+    whitelist (only some set of public keys can connect.)
+
+  - Supports access controls like an IP whitelist.
+</pre>
+
+  Constellation Installation
+<pre xxxsmall zoom>
+Pre-Install supporting libraries:
+  Ubuntu : $ apt-get install libdb-dev libleveldb-dev libsodium-dev zlib1g-dev libtinfo-dev
+  Red Hat: $ dnf install libdb-devel leveldb-devel libsodium-devel zlib-devel ncurses-devel
+  MacOS  : $ brew install berkeley-db leveldb libsodium
+
+Install
+  Alt 1: Precompiled binaries:
+  <a href="https://github.com/jpmorganchase/constellation/releases">Release download</a>
+  
+  Alt 2: from source
+    - First time only: Install Stack:
+      Linux: $ curl -sSL https://get.haskellstack.org/ | sh
+      MacOS: $ brew install haskell-stack
+    - First time only: run stack setup to install GHC, the Glasgow Haskell Compiler
+    - Run stack install
+
+Post-install: Generating key pair "node":
+  $  constellation-node --generatekeys=node # generated keys can be locked with passwd
+</pre>
+
+
+Running
+<pre xxxsmall zoom>
+- can be run as stand-alone daemon via constellation-node, or 
+  imported as a Haskell library, allowing to implement custom
+  storage and encryption logic.
+
+$ constellation-node "path_to_config_file" # or use ENV.VAR
+# More info at <a href="https://github.com/jpmorganchase/quorum/blob/master/private/constellation/node.go">quorum/private/constellation/node.go</a>
+</pre>
+
+Configuration File Format
+<pre xxxsmall zoom>
+<a href="https://github.com/jpmorganchase/constellation/blob/master/sample.conf">REF</a>
+url = "http://127.0.0.1:9001/"
+port = 9001
+workdir = "data"
+socket = "constellation.ipc"
+othernodes = ["http://127.0.0.1:9000/"]
+publickeys = ["foo.pub"]
+privatekeys = ["foo.key"]
+alwayssendto = []
+storage = "dir:storage"
+verbosity = 1
+tls = "strict"
+tlsservercert = "tls-server-cert.pem"
+tlsserverchain = []
+tlsserverkey = "tls-server-key.pem"
+tlsservertrust = "tofu"
+tlsknownclients = "tls-known-clients"
+tlsclientcert = "tls-client-cert.pem"
+tlsclientchain = []
+tlsclientkey = "tls-client-key.pem"
+tlsclienttrust = "ca-or-tofu"
+tlsknownservers = "tls-known-servers"</pre>
+</pre>
+</td>
+<td>
+  Transaction Manager
+  <ul xxxsmall zoom>
+  <li>Quorum’s Transaction Manager is responsible for Transaction privacy. It stores and allows access to encrypted transaction data, exchanges encrypted payloads with other participant's Transaction Managers but does not have access to any sensitive private keys. It utilizes the Enclave for cryptographic functionality (although the Enclave can optionally be hosted by the Transaction Manager itself.)
+</li>
+  <li>"""To send a private transaction, a PrivateTransactionManager must be configured. This is the service which transfers private payloads to their intended recipients, performing encryption and related operations in the process.</li>
+  <li>The Transaction Manager is restful/stateless and can be load balanced easily.</li>
+  </ul>
+  <a href='https://github.com/jpmorganchase/quorum/wiki/Transaction-Processing'>Transaction Processing</a></li>
+  <ul xxxsmall zoom>
+  <li>'Public Transactions' and 'Private Transactions' are a notional concept 
+    only and Quorum does not introduce new Transaction Types, but rather, the 
+    Ethereum Transaction Model has been extended to include an optional 
+    'privateFor' parameter (the population of which results in a Transaction 
+    being treated as private by Quorum) and the Transaction Type has a new 
+    IsPrivate method to identify such Transactions. </li>
+  <li>Public Transactions are those Transactions whose payload is visible to 
+    all participants of the same Quorum network.</li>
+  <li>Private Transactions are those Transactions whose payload is only 
+    visible to the network participants whose public keys are specified in 
+    the privateFor parameter of the Transaction . privateFor can take 
+    multiple addresses in a comma separated list.<br/>
+    Quorum Node sets the Transaction_Signature.V = 37 or 38 (as opposed to 27 or 28)<br/>
+Private Transactions are NOT executed per standard Ethereum: prior to the 
+    sender's Quorum Node propagating the Transaction to the rest of the 
+    network, it replaces the original Transaction Payload with a hash of the 
+    encrypted Payload that it receives from Constellation. Participants that 
+    are party to the Transaction will be able to replace the hash with the 
+    actual payload via their Constellation instance, whilst those 
+    Participants that are not party will only see the hash.</li>
+  </li>
+  </ul>
+  Example priv.TX A←→B:
+<pre xxxsmall zoom orang bgorange>
+Party A and B belongs to TX AB, whilst C doesn't
+Party A → A.Node: TX + payload 
+                TX.privateFor [ pub.key A, pub.keyB]
+A.Node → A TX Manager: Request to store TX payload
+A_TX_Manager → Enclave: - Validate sender with A priv.key
+
+Enclave → Enclave:  performs TX conversion (encrypt payload)
+                    - generating [sym.key, random Nonce]
+                    - encrypting TX.payload+Nonce with sym.key
+                    - generate hash  SHA3-512 (encrypted payload)
+                    - iterate through TX recipients [A, B] encrypting 
+                      sym.key with recipient's pub.key (PGP encryption)
+A_TX_Manager ← Enclave: encrypted payload, SHA3-512 hash, encrypted keys
+A_TX_Manager → A_TX_Manager: store encrypted payload, encrypted sym.key
+                             (using hash as index)
+A_TX_Manager → B_TX_Manager: (via HTTPS) hash, encrypted (payload, sym.key) 
+A_TX_Manager ← B_TX_Manager: Ack 
+A.Node ←  A_TX_Manager: SHA3-512 (encrypted payload) 
+A.Node →  A.Node: - Replace TX.payload with TX.sha3-512
+                  - changes TX.V to 37 or 38 (indicates other nodes that 
+                    hash represents priv.TX)
+A_TX_Manager → Network:  (Ethereum P2P protocol) TX encrypted payload
+Network → Network: +block containing TX AB
+Network → Node N: block containing TX AB
+Node N → Node N: Try validate TX in block
+                 - Recognise TX.V is 37 or 38 
+Node N → Node N TX_Manager: Do nodes holds private TX?
+Node N ← Node N TX_Manager: YES  (continue validation) 
+                         or "NotARecipient" (skip to next TX in block)
+A,B Node → A,B enclave: TX payload
+           A,B enclave: 1. validates signature
+                        2. decrypts sym.key  private key that is held
+                           in The Enclave, decrypts the Transaction Payload using
+                           the now-revealed symmetric key and returns the decrypted
+                           payload to the Transaction Manager.
+A,B TX_Manager → A,B EVM: send decrypted payload 
+A,B EVM → A,B EVM: contract code execution
+                   Update Quorum Node's Private StateDB only. 
+                   NOTE: code discarded once executed.
+</pre>
+  <hr xxxsmall />
+  The Enclave
+  <ul xxxsmall zoom>
+  <li>Distributed Ledger protocols typically leverage cryptographic techniques 
+    for transaction authenticity, participant authentication, and historical 
+    data preservation (i.e. through a chain of cryptographically hashed data
+    .) In order to achieve a separation of concerns, as well as to provide 
+    performance improvements through parallelization of certain crypto-
+    operations, much of the cryptographic work including symmetric key 
+    generation and data encryption/decryption is delegated to the Enclave.</li>
+  <li>The Enclave works hand in hand with the Transaction Manager to 
+    strengthen privacy by managing the encryption/decryption in an isolated 
+    way. It holds private keys and is essentially a “virtual HSM” isolated 
+    from other components.</li>
+  </ul>
+</td>
+<td>
+  <a TODO href='https://github.com/jpmorganchase/quorum/wiki/Getting-Set-Up'>Getting-Set-Up</a>
+  <ul xxxsmall zoom>
+  <li>Using Quorum requires installing, configuring and running 'Quorum Node' + 'Constellation server'
+ <li>Manually set up Quorum: [ key generation, genesis block , constellation configuration ]</li>
+ <li>Building Quorum Node From Source:
+<pre>
 git clone https://github.com/jpmorganchase/quorum.git
 cd quorum
 make all # Binaries output: ./build/bin
 make test
-          </pre>
-        </li>
-        <li {>
-      <p> Extra geth Quorum Options:</p>
-      <pre xsmall>
---voteaccount value         Address  used to vote for blocks
---votepassword value        Password to unlock the voting address
---blockmakeraccount value   Address that is used to create blocks
---blockmakerpassword value  Password to unlock the block maker address
---singleblockmaker          only node creating blocks
---minblocktime value        Set minimum block time (default: 3)
---maxblocktime value        Set max block time (default: 10)
---permissioned              (See topic Network Permissioning)
-      </pre>
-        </li }>
-    </li }>
-    </ul>
-  </td>
-  <td col2  >
-    Using Quorum:
-    <p>REF: <a href='https://github.com/jpmorganchase/quorum/wiki/Using-Quorum'  >Using-Quorum</a><br/>
-            <a href="https://github.com/jpmorganchase/quorum/blob/master/docs/running.md">Running.md@github.com/jpmorganchase</a>
-    <ul {>
-      <li>Initialize chain:
-        <ol {>
-          <li>Generate the genesis block
-           <p>The genesis block should include the Quorum voting contract address '0x0000000000000000000000000000000000000020'</p>
-           <p>The code can be generated with 
-              <a href='http://ethereum.github.io/browser-solidity/#version=soljson-latest.js'>browser solidity</a>
-              or with:
-              <pre>
-solc   --optimize --bin-runtime block_voting.sol
-              </pre>
-           </p>
-           <p>Example genesis file (copy to `genesis.json`):
-             <pre xxxsmall {>
-{
-  "alloc": {
-    "0x0000000000000000000000000000000000000020": {
-      "code": "6060...656",
-      "storage": {
-        "0x0000000000000000000000000000000000000000000000000000000000000001": "0x02",
-        "0x0000000000000000000000000000000000000000000000000000000000000002": "0x04",
-        "0x29ecdbdf95c7f6ceec92d6150c697aa14abeb0f8595dd58d808842ea237d8494": "0x01",
-        "0x6aa118c6537572d8b515a9f9154be55a3377a8de7991cd23bf6e5ceb368688e3": "0x01",
-        "0x50793743212c6f01d326957d7069005b912f8215f10c7536be6b10782c6c44cd": "0x01",
-        "0x38f6c908c5cc7ca668cec2f476abe61b4dbb1df20f0ad8e07ef5dbf6a2f1ffd4": "0x01",
-        "0x0000000000000000000000000000000000000000000000000000000000000004": "0x02",
-        "0xaca3b76ed4968740c3180dd7fa37f4aa229a2c758a848f53920e9ccb4c4bb74e": "0x01",
-        "0xd188ba2dc293670542c1befaf7678b0859e5354a0727d1188b2afb6f47fe24d1": "0x01"
-      }
-    },
-    "0xed9d02e382b34818e88b88a309c7fe71e65f419d": { "balance": "1000000000000000000000000000" },
-    "0xca843569e3427144cead5e4d5999a3d0ccf92b8e": { "balance": "1000000000000000000000000000" },
-    "0x0fbdc686b912d7722dc86510934589e0aaf3b55a": { "balance": "1000000000000000000000000000" },
-    "0x9186eb3d20cbd1f5f992a950d808c4495153abd5": { "balance": "1000000000000000000000000000" },
-    "0x0638e1574728b6d862dd5d3a3e0942c3be47d996": { "balance": "1000000000000000000000000000" }
-  },
-  "coinbase": "0x0000000000000000000000000000000000000000",
-  "config": { "homesteadBlock": 0 },
-  "difficulty": "0x0",
-  "extraData": "0x",
-  "gasLimit": "0x2FEFD800",
-  "mixhash": "0x00000000000000000000000000000000000000647572616c65787365646c6578",
-  "nonce": "0x0",
-  "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-  "timestamp": "0x00"
-}
-             </pre }>
-           </p>
-          </li>
-          <li>initialize geth:
-             <pre> $ geth init genesis.json </pre>
-          </li>
-        </ol }>
-        <hr/>
-      </li>
-    <li {>The storage key for voters and block makers is calculated with 
-      <em>web3.sha3(<256 padded bit aligned key value> + <256 padded bit variable index>)</em> like:
-      <pre xxsmall>
-(geth JS console)
- account_address_voting = "000000000000000000000000ed9d02e382b34818e88b88a309c7fe71e65f419d"
- // REF: <a href='https://github.com/jpmorganchase/quorum/blob/master/core/quorum/block_voting.sol#L42'>block_voting.sol</a>
- // * Period[] periods                        index 0
- // * uint public voteThreshold               index 1
- // * uint public voterCount                  index 2
- // * mapping(address => bool) public canVote index 3
- votingSmartContract_canVote_index_3 = "0000000000000000000000000000000000000000000000000000000000000003"
- key = account_address_voting + votingSmartContract_canVote_index_3
- web3.sha3(key, {"encoding": "hex"})
-"0x29ecdbdf95c7f6ceec92d6150c697aa14abeb0f8595dd58d808842ea237d8494"
-      </pre>
-    </li }>
-    <li>(Optional)  Setup Bootnode that all the other nodes will first connect to in order to find other peers in the network.
-      <ol {>
-        <li>To generate the key for the first time:
-          <pre>
-bootnode -genkey tmp_file.txt  
-            </pre>
-            this will start a bootnode with an enode address and generate a key inside a “tmp_file.txt” file
-          </li>
-          <li>To later restart the bootnode using the same key (and hence use the same enode url):
-            <pre>
-$ bootnode -nodekey tmp_file.txt
-or 
-$ bootnode -nodekeyhex \ 
-    77bd02ffa26e3fb8f324bda24ae588066f1873d95680104de5bc2db9e7b2e510 
-    # Key from tmp_file.txt
-          </pre>
-        </li>
-      </ol }>
-    </li>
-    <li {>Start node:
-      <pre>
-# Start WITHOUT ANY ROLES (makes node an spectator)
-$ geth
+</pre>
+  </li>
+  </ul>
+  <hr xxxsmall >
+   Quorum-docker:
+<pre xxxsmall zoom>
+Build (just first time + updates):
+$ git clone https://github.com/agriessel/quorum-docker
+$ cd quorum-docker
+$ docker build -t quorum .
 
-# Start with VOTING ROLE
-$ geth       --voteaccount 0xed9d02e382b34818e88b88a309c7fe71e65f419d 
+Run
+$ docker run -ti --name quoruminstance quorum bash
+</pre>
 
-# Start with BLOCK MAKER ROLE
-$ geth --blockmakeraccount 0x9186eb3d20cbd1f5f992a950d808c4495153abd5 
-                           ^blocks will be signed with this account
-Optional params:
-#  --bootnodes $BOOTNODE_ENODE : Optional, indicates the booting node
-      </pre>
-      <hr/>
-    </li }>
-    <li>
-      Quorum-docker:
-      <ol>
-        <li>Build
-          <pre>
-git clone https://github.com/agriessel/quorum-docker
-cd quorum-docker
-docker build -t quorum .
-      </pre>
-        </li>
-        <li>Run
-      <pre>
-docker run -ti --name quoruminstance quorum bash
-      </pre>
-        </li>
-        <li>Initialize 7 Nodes, start/stop
-      <pre>
+  Initialize 7 Nodes, start/stop
+<pre xxxsmall zoom>
 root@7cb755d39893:/# cd /quorum-examples/examples/7nodes/
 root@7cb755d39893:/quorum-examples/examples/7nodes# ./init.sh
 root@7cb755d39893:/quorum-examples/examples/7nodes# ./start.sh
 root@7cb755d39893:/quorum-examples/examples/7nodes# ./stop.sh
-      </pre>
-        </li>
-    </li>
-    </ul }>
-  </td>
-</tr }>
+</pre>
+  <a TODO href="https://github.com/jpmorganchase/quorum/blob/master/docs/running.md">Running Quorum</a>
+  <hr xxxsmall />
+  <a TODO href='https://github.com/jpmorganchase/quorum/wiki/Using-Quorum'  >Using Quorum</a><br/>
 
 
-<tr {>
-  <td topic >Raft-based consensus</td> 
-  <td summa >
-   geth --raft 
-     <ul>
-       <li> REF : https://github.com/jpmorganchase/quorum/blob/master/raft/doc.md</li>
+  (Optional) Setup Bootnode
+<pre xxxsmall zoom>
+Bootnode: Node that all other nodes will first connect to find other peers
+generate the key (just once, first time)
+$ bootnode <b orange>-genkey tmp_file.txt</b> # ← will start bootnode with enode address and
+                                     generate a key inside a "tmp_file.txt" file
 
-       <li> Ethereum p2p transport layer: communicate TXs<br/>
-            Raft: communicate blocks.  </li>
+(In order to later restart bootnode with same key (== same enode url):
+$ bootnode <b orange>-nodekey tmp_file.txt</b>
+or 
+$ bootnode <b orange>-nodekeyhex 77bd...e510</b> (# ← Key from tmp_file.txt)
+</pre>
+</td>
 
-       <li>Minting frequency:mint blocks &lt;= 50ms , configurable via the --raftblocktime (raftblockchain in millisecs ) </li>
-       <li>RAFT TRANSPORT LAYER:<br/>
-           We communicate blocks over the HTTP transport layer built in to etcd Raft. <br/>
-           Quorum raft transport default TCP port: 50400 ( --raftport newPort )
-       </li>
-     </ul>
+</tr>
+</table>
 
-  </td>
-  <td col1 >
-     <ul>
-       <li>static-nodes.json: required, <br/>
-           - list of initial nodes in the cluster <br/>
-           - the order of the enodes in the static-nodes.json file
-             *NEEDS TO BE THE SAME ACROSS ALL PEERS*
-           - ID URIs must include a raftport querystring parameter specifying 
-             the raft port for each peer: e.g. enode://abcd@127.0.0.1:30400?raftport=50400
-           - To remove a node from the cluster attach to a JS console and issue:
-             <pre>
-raft.removePeer(raftIdx /* 1-indexed index in the static peer list */)
-             </pre>
-           - To add a node to the cluster:<br/>
-             STEP 1: attach to a JS console and issue:
-             <pre>
-raft.addPeer("enode://abcd@127.0.0.1:30400?raftport=50400")
-             </pre>
-             STEP 2: start the new geth node with the flag --raftjoinexisting RAFTID 
-             in addition to --raft
-       </li>
-     </ul>
-  </td>  
-  <td col2  >
-  </td>
-</tr }>
+<table>
+<tr>
+<td>
+  <a href="https://github.com/ethereum/EIPs/issues/650">(EIP) Istanbul BFT Consensus</a>
+<pre xxxsmall zoom>
+Deeply inspired by<a href="https://github.com/ethereum/EIPs/issues/225">Clique POA (Probe of Authority)</a>, also inspired by Hyperledger's SBFT, Tendermint, HydraChain, and NCCU BFT.
 
-<tr {>
-  <td topic ><a href='https://github.com/jpmorganchase/constellation'>Constellation</a></td>
-  <td summa >
-    <ul>
-      <li>Constellation forms a network of nodes, each of which advertises a list of public keys that they are the recipient for. Each node exposes an API allowing to send a payload to one or more public keys, encrypted for the public key.</li>
-      <li>Constellation is not blockchain-specific, and potentially applicable in many other types of applications</li>
-      <li><p b>Quorum+Constellation:</p>
-      REF: <a href='https://github.com/jpmorganchase/quorum/blob/master/docs/privacy.md'>Privacy.md</a>
-      <p>
-       """To send a private transaction, a PrivateTransactionManager must be configured. This is the service which transfers private payloads to their intended recipients, performing encryption and related operations in the process.
+----------------------------------------------------------------------------------------
+Validator  : Block validation participant.
+Proposer   : A block validation participant that is chosen
+             to propose block in a consensus round.
+Round      : Consensus round. A round starts with the proposer creating
+             a block proposal and ends with a block commitment or round change.
+Proposal   : New block generation proposal which is undergoing consensus processing
+Sequence   : Sequence number of a proposal. A sequence number should be greater than
+             all previous sequence numbers. Currently each proposed block height is its
+             associated sequence number.
+Backlog    : The storage to keep future consensus messages due to the async nature of the
+             network.
+Round state: Consensus messages of a specific sequence and round, including pre-prepare
+             message, prepare message, and commit message.
+Consensus
+      proof: The commitment signatures of a block that can prove the block has gone
+             through the consensus process.
+Snapshot   : The validator voting state from last epoch
+----------------------------------------------------------------------------------------
 
-Currently, constellation is supported out of the box via the PRIVATE_CONFIG environment variable (please note that <span TODO>this integration method will change in the near future</span>) <br/>
- Ej. The TX sent in <a href='https://github.com/jpmorganchase/quorum-examples/blob/master/examples/7nodes/script1.js'>script1.js</a> is private for node 7's PrivateTransactionManager public key.<br/>
-   "privateFor": list of constellation (vs Ethereum) public keys of TX recipient. If not empty the TX will be private.<br/>
-       """
-      </p>
-      </li>
-    </ul>
-  </td>
-  <td col1  >
-    <ul>
-      <li>
-       <pre xsmall { >
+-- VALIDATION ROUND LOOP ---
+[validators] → [validators]: enter validator.state "NEW ROUND"
+[validators] → [validators]: pick one (round-robin by default or sticky) as the proposer
+proposer → proposer : propose new block proposal 
+proposer → network  : broadast block-proposal + PRE-PREPARE
+network  → [validators]: "forward" block-proposal + PRE-PREPARE
+[validators] → [validators]: enter validator.state PRE-PREPARED 
+[validators] → network: broadcast PREPARE message
+                        (make sure all validators are working on the
+                         same sequence and the same round)
+network → [validators]: forward PREPARE
+[validators] → [validators]: Wait until (2F + 1) PREPARE messages are received
+                             then enter validator.state "PREPARED"
+[validators] → network: broadcasts "COMMIT" message.
+                        (inform peers that validator accepts proposed block
+                        and is going to insert the block to the chain)
+[validators] → [validators]: wait for 2F + 1 of COMMIT messages 
+                             enter validator.state "COMMITTED" 
+                             insert the block to the chain
+                             enter validator.state "FINAL COMMITTED" 
+[validators] → [validators]: wait for 2F + 1 of "ROUND CHANGE" messages 
+----------------------------------------------------------------------------------------
+Validator list voting (From Clique EIP):
+
+</pre>
+
+Running Istanbul BFT validators&amp;nodes: 
+<pre xxxsmall zoom>
+(similar to running the official node in a private chain)
+
+Initialize the data folder as (First time only): 
+$ geth  --datadir "/eth" init "/eth/genesis.json"
+
+Start-up validators:
+    $ geth --datadir "/eth" --mine --minerthreads 1 --syncmode "full"
+
+Start-up regular nodes:
+    $ geth --datadir "/eth"
+
+
+ISTANBUL OPTIONS:
+  --istanbul.requesttimeout value  round in milliseconds (default: 10000)
+  --istanbul.blockperiod value     Default min.difference between two consecutive
+                                   block's timestamps in seconds (default: 1)
+</pre>
+
+NODEKEY AND VALIDATOR:
+<pre xxxsmall zoom>
+To be a validator, a node needs to meet the following conditions:
+- Its account (nodekey-derived) address MUST be listed in extraData's validators section
+- validator nodekey is used as priv.key to sign consensus messages
+</pre>
+
+genesis.json
+<pre xxxsmall zoom>
+- config field is required, and the pbft subfield must present. Ex:
+
+{
+  "config": {
+    "chainId": 2016,
+    "istanbul": { "epoch": 30000, "policy" 0 }
+  },
+  "timestamp": "0x0",
+  "parentHash": "0x000...000",
+  "extraData": "0x0000...000f89af85494475...aad0312b84100000...0c0",
+  "gasLimit": "0x47e7c4",
+  "mixhash": "0x6374...6e6365",
+  "coinbase": "0x333...33333",
+  "nonce": "0x0",
+  "difficulity": "0x0",
+  "alloc": {}
+}
+
+<a href="https://github.com/getamis/Istanbul-tools">istanbul-tools repo</a> contains some extraData tools to help developers to manually generate genesis.json
+
+Encoding:
+Before encoding you need to define a toml file with vanity and validators fields
+to define proposer vanity and validator set. Please refer to example.toml for
+the example. The output would be a hex string which can be put into extraData 
+field directly.  Command:
+  $ istanbul encode --config ./config.toml
+
+Decoding:
+Use --extradata option to give the extraData hex string. The output would show
+the following if presents: vanity, validator set, seal, and committed seal.  Command:
+
+  $ istanbul decode --extradata <EXTRA_DATA_HEX_STRING>
+</pre>
+
+Background
+<pre xxxsmall zoom>
+The idea of implementing a byzantine fault tolerance (BFT) consensus came 
+from the challenges we faced while building blockchain solutions for banks. 
+We chose ethereum as the baseline protocol mostly because of its smart 
+contract capability. However, the built-in consensus, proof of work or ethash
+, is not the ideal choice when settlement finality and minimum latency is required.
+
+Banking systems tend to form a private chain or consortium chain to run their 
+applications. PBFT is ideal for these settings. These environments require a 
+higher degree of manageability and higher throughput. In terms of scalability
+, validator scalability is not required. Many of the decentralization 
+benefits of PoW in public chains become drawbacks in a private/consortium 
+chain. On the other hand, designated validators in a PBFT environment maps 
+well to private/consortium chains.
+</pre>
+</td>
+<td colsep></td>
+
+<td>
+   <a href="https://github.com/jpmorganchase/quorum/blob/master/raft/doc.md">Raft-based consensus</a>
+<pre xxxsmall zoom>
+$ geth --raft 
+NON  BYZANTINE FAULT TOLERANCE with next advantages:
+  - faster blocktimes (milliseconds vs seconds)
+  - absence of forking
+  - Compared with QuorumChain, does NOT "unnecessarily" create empty blocks
+
++--------------+----------------+--------------------------------------------------------+
+|Transport     | Ethereum p2p   |  Raft (over HTTP)                                      |
+|Layer         |                |                                                        |
++--------------+----------------+--------------------------------------------------------+
+|DATA TYPE     | communicate TXs|  communicate full blocks                               | 
++--------------+----------------+--------------------------------------------------------+
+|config params |                | Minting blocks frequency:  &lt;= 50ms ,                |
+|              |                |    (--raftblocktime (millisecs)                        |
+|              |                | --raftport newTCPPort default to 50400 )               |
+|              |                |                                                        |
+|              |                |  static-nodes.json: required                           |
+|              |                |  - initial list of nodes in the cluster                |
+|              |                |  - order *MUST BE EQUALS ACROSS PEERS*                 |
+|              |                |                                                        |
+|              |                | - ID URIs must include a raftport querystring param    |
+|              |                |   specifying the raft port for each peer:              |
+|              |                |    e.g. enode://abcd@127.0.0.1:30400?raftport=50400    |
+|              |                |                                                        |
+|              |                |                                                        |
+|              |                |                                                        |
+|              |                |                                                        |
++--------------+----------------+--------------------------------------------------------+
+
+removing a node from the cluster from the JS console:
+# raft.removePeer(raftIdx)
+                  ^
+                  "1-indexed" index in the static peer list
+
+attaching a node to the cluster from the JS console:
+
+# raft.addPeer("enode://abcd@127.0.0.1:30400?raftport=50400")
+Then (outside the JS console) start the new geth node with the
+flag --raftjoinexisting RAFTID in addition to --raft
+</pre>
+</td>  
+<td colsep> </td>  
+<td>
+  JS client <code>privateFor</code> example
+<pre xxxsmall zoom >
+"privateFor": indicates the list of constellation (vs Ethereum) public keys
+              of TX recipient. If not empty the TX will be private.
 web3.eth.defaultAccount = eth.accounts[0];
 var simpleSource = 'contract simplestorage { ... }'
 var simpleCompiled = web3.eth.compile.solidity(simpleSource);
@@ -325,642 +516,21 @@ var simple = simpleContract.new(42,
       }
       console.log("Contract Address: " + contract.address);
     });
-       </pre } >
-      </li>
-      <li><a href='https://github.com/jpmorganchase/constellation'>GitHub</a></li>
-      <li>Ussage:
-       <p> REF: <a href='https://github.com/jpmorganchase/quorum/blob/master/private/constellation/node.go'>constellation/node.go API</a> (more info comming soon)</p>
-         <pre xxxsmall {>
-package constellation
-import ( "bytes" "encoding/base64" "encoding/json" "errors" "fmt" "github.com/tv42/httpunix" "io" "io/ioutil" "net/http" "os" "os/exec" "time")
+</pre>
+  
 
-// **** STRUCTS ****
-type SendRequest struct {             | type SendResponse struct {        | type Client struct {          | func NewClient(publicKeyPath string, nodeSocketPath string)
-    Payload string   `json:"payload"` |     Key string `json:"key"`       |     httpClient   *http.Client |     (*Client, error) {
-    From    string   `json:"from"`    | }                                 |     publicKey    [32]byte     |     b64PublicKey, err := ioutil.ReadFile(publicKeyPath)
-    To      []string `json:"to"`      |                                   |     b64PublicKey string       |     if err != nil { return nil, err }
-}                                     |                                   | }                             |     return &Client{
---------------------------------------+-----------------------------------+                               |         httpClient:   unixClient(nodeSocketPath),
-type ReceiveRequest struct {          | type ReceiveResponse struct {                                     |         b64PublicKey: string(b64PublicKey),
-    Key string `json:"key"`           |     Payload string `json:"payload"`                               |     }, nil
-    To  string `json:"to"`            | }                                                                 | }
-}
+</td>
+</tr>
+</table>
 
+<table>
+<tr>
 
-func launchNode(cfgPath string) (*exec.Cmd, error) {     | func unixTransport(socketPath string) *httpunix.Transport { | func RunNode(cfgPath, nodeSocketPath string) error {
-    cmd := exec.Command("constellation-node", cfgPath)   |     t := &httpunix.Transport{                               |     // launchNode(cfgPath)
-    stderr, err := cmd.StderrPipe()                      |         DialTimeout:           1 * time.Second,             |     c := unixClient(nodeSocketPath)
-    if err != nil {                                      |         RequestTimeout:        5 * time.Second,             |     res, err := c.Get("http+unix://c/upcheck")
-        return nil, err                                  |         ResponseHeaderTimeout: 5 * time.Second,             |     if err != nil {
-    }                                                    |     }                                                       |         return err
-    go io.Copy(os.Stderr, stderr)                        |     t.RegisterLocation("c", socketPath)                     |     }
-    if err := cmd.Start(); err != nil {                  |     return t                                                |     if res.StatusCode == 200 {
-        return nil, err                                  | }                                                           |         return nil
-    }                                                    |                                                             |     }
-    time.Sleep(100 * time.Millisecond)                   |                                                             |     return errors.New("Constellation Node API "
-    return cmd, nil                                      | func unixClient(socketPath string) *http.Client {           |           " did not respond to upcheck request")
-}                                                        |     return &http.Client{                                    | }
-                                                         |         Transport: unixTransport(socketPath),
-                                                         |     }
-                                                         | }
-
-
-func (c *Client) do(path string, apiReq interface{}) (*http.Response, error) {
-    buf := new(bytes.Buffer)
-    err := json.NewEncoder(buf).Encode(apiReq)
-    if err != nil { return nil, err }
-    req, err := http.NewRequest("POST", "http+unix://c/"+path, buf)
-    if err != nil { return nil, err }
-    req.Header.Set("Content-Type", "application/json")
-    res, err := c.httpClient.Do(req)
-    if err == nil && res.StatusCode != 200 {
-        return nil, fmt.Errorf("Non-200 status code: %+v", res)
-    }
-    return res, err
-}
-
-
-
-func (c *Client) ReceivePayload(key []byte) ([]byte, error) {    | func (c *Client) SendPayload(pl []byte, b64From string, b64To []string)
-    b64Key := base64.StdEncoding.EncodeToString(key)             |    ([]byte, error) {
-    req := &ReceiveRequest{                                      |     var from string
-        Key: b64Key,                                             |     if b64From == "" { from = c.b64PublicKey } else { from = b64From }
-        To:  c.b64PublicKey,                                     |     req := &SendRequest{
-    }                                                            |         Payload: base64.StdEncoding.EncodeToString(pl),
-    res, err := c.do("receive", req)                             |         From:    from,
-    if err != nil {                                              |         To:      b64To,
-        return nil, err                                          |     }
-    }                                                            |     res, err := c.do("send", req)
-    defer res.Body.Close()                                       |     if err != nil { return nil, err }
-    rres := new(ReceiveResponse)                                 |     defer res.Body.Close()
-    err = json.NewDecoder(res.Body).Decode(rres)                 |     sres := new(SendResponse)
-    if err != nil {                                              |     err = json.NewDecoder(res.Body).Decode(sres)
-        return nil, err                                          |     if err != nil { return nil, err }
-    }                                                            |     key, err := base64.StdEncoding.DecodeString(sres.Key)
-    pl, err := base64.StdEncoding.DecodeString(rres.Payload)     |     if err != nil { return nil, err }
-    if err != nil {                                              |     return key, nil
-        return nil, err                                          | }
-    }
-    return pl, nil
-}
-         </pre }>
-      </li>
-    </ul>
-  </td>
-  <td col2  >
-    <ul>
-      <li>
-        Installation instructions <a href='https://github.com/jpmorganchase/constellation'>GitHub</a>
-        (sort of outdated, there are some recent dockerfile in the github repository)
-      </li>
-      <li>Binaries available at: <a href='https://github.com/jpmorganchase/constellation/releases'>https://github.com/jpmorganchase/constellation/releases</a> </li>
-      <li>example configuration <a href='https://raw.githubusercontent.com/jpmorganchase/constellation/master/sample.conf'>sample.conf</a>:
-        <pre xxxsmall { >
-# Externally accessible URL for this node (this is what's advertised)
-url = "http://127.0.0.1:9001/"
-
-# Port to listen on for the public API
-port = 9001
-
-# Socket file to use for the private API / IPC
-socket = "foo.ipc"
-
-# Initial (not necessarily complete) list of other nodes in the network.
-# Constellation will automatically connect to other nodes not in this list
-# that are advertised by the nodes below, thus these can be considered the
-# "boot nodes."
-othernodes = ["http://127.0.0.1:9000/"]
-
-# The set of public keys this node will host
-publickeys = ["foo.pub"]
-
-# The corresponding set of private keys
-privatekeys = ["foo.key"]
-
-# Optional comma-separated list of paths to public keys to add as recipients
-# for every transaction sent through this node, e.g. for backup purposes.
-# These keys must be advertised by some Constellation node on the network, i.e.
-# be in a node's publickeys/privatekeys lists.
-# alwayssendto = []
-
-# Optional file containing the passwords to unlock the given privatekeys
-# (one password per line -- add an empty line if one key isn't locked.)
-# passwords = "passwords"
-
-# Where to store payloads and related information
-storage = "data"
-
-# Optional IP whitelist for the public API. If unspecified/empty,
-# connections from all sources will be allowed (but the private API remains
-# accessible only via the IPC socket above.) To allow connections from
-# localhost when a whitelist is defined, e.g. when running multiple
-# Constellation nodes on the same machine, add "127.0.0.1" and "::1" to
-# this list.
-# ipwhitelist = ["10.0.0.1", "2001:0db8:85a3:0000:0000:8a2e:0370:7334"]
-
-# Verbosity level (each level includes all prior levels)
-#   - 0: Only fatal errors
-#   - 1: Warnings
-#   - 2: Informational messages
-#   - 3: Debug messages
-verbosity = 1
-        </pre } >
-      </li>
-    </ul>
-
-  </td>
-</tr }>
-
-<tr {>
-  <td topic >QuorumChain</td> 
-  <td summa >
-     A time-based, majority-voting algorithm where the most recent block with the most
-     votes is considered the canonical head of the chain. A block is only considered
-     valid once a given threshold of votes has been received from valid Voters.
-    <p>It's composed of:
-      <ul>
-        <li {>A Smart Contract <a href='https://github.com/jpmorganchase/quorum/blob/master/core/quorum/block_voting.sol'>BlockVoting</a>  to govern consensus and manage who can partake in consensus
-         <pre xxxsmall {>
-pragma solidity ^0.4.2;
-
-// Implements a block voting algorithm to reach consensus.
-//
-// To vote for a block the sender must be allowed to vote. When deployed the
-// deployer is the only party that is allowed to vote and can add new voters.
-// Note that voters can add new voters and thus have the abbility to add multiple
-// voter accounts that they control. This gives them the possibility to vote
-// multiple times for a particular block. Therefore voters must be trusted.
-contract BlockVoting {
-    // Raised when a vote is made
-    event Vote(address indexed sender, uint blockNumber, bytes32 blockHash);
-    // Raised when a new address is allowed to vote.
-    event AddVoter(address);
-    // Raised when an address is not allowed to make votes anymore.
-    event RemovedVoter(address);
-    // Raised when a new address is allowed to create new blocks.
-    event AddBlockMaker(address);
-    // Raised when an address is not allowed to make blocks anymore.
-    event RemovedBlockMaker(address);
-
-    // The period in which voters can vote for a block that is selected
-    // as the new head of the chain.
-    struct Period {
-        // number of times a block is voted for
-        mapping(bytes32 => uint) entries;
-
-        // blocks up for voting
-        bytes32[] indices;
-    }
-
-    // Collection of vote rounds.
-    Period[] periods;
-
-    // Canonical hash must have at least voteThreshold votes before its considered valid.
-    uint public voteThreshold;
-
-    // Number of addresses that are allowed to make votes.
-    uint public voterCount;
-
-    // Collection of addresses that are allowed to vote.
-    mapping(address => bool) public canVote;
-
-    // Number of addresses that are allowed to create blocks.
-    uint public blockMakerCount;
-
-    // Collection of addresses that are allowed to create blocks.
-    mapping(address => bool) public canCreateBlocks;
-
-    // Only allow addresses that are allowed to make votes.
-    modifier mustBeVoter() {
-        if (canVote[msg.sender]) {
-            _;
-        } else {
-            throw;
-        }
-    }
-
-    // Only allow addresses that are allowed to create blocks.
-    modifier mustBeBlockMaker() {
-        if (canCreateBlocks[msg.sender]) {
-            _;
-        } else {
-            throw;
-        }
-    }
-
-    // Set a new vote threshold. The canonical hash must have at least the given
-    // threshold number of votes before it's considered valid.
-    function setVoteThreshold(uint threshold) mustBeVoter {
-        voteThreshold = threshold;
-    }
-
-    // Make a vote to select a particular block as head for the previous head.
-    // Only senders that are added through the addVoter are allowed to make a vote.
-    // TODO: discuss if we only allow 1 vote per voter
-    // (this can deadlock the system if all voters votes for something different
-    // (nVotes < threshold) and cannot vote anymore, or gas limit is reached).
-    function vote(uint height, bytes32 hash) mustBeVoter {
-        // start new period if this is the first transaction in the new block.
-        if (periods.length < height) {
-            periods.length += height-periods.length;
-        }
-
-        // select the voting round.
-        Period period = periods[height-1];
-
-        // new block hash entry
-        if(period.entries[hash] == 0) period.indices.push(hash);
-
-        // vote
-        period.entries[hash]++;
-
-        // log vote
-        Vote(msg.sender, block.number, hash);
-    }
-
-    // Get canonical head for a given block number.
-    // E.g. [block 124] - [block 125] - [block 126 (pending)]
-    // getCanonHash(126) will return the hash of block 125
-    // (if there are enough votes for it).
-    function getCanonHash(uint height) constant returns(bytes32) {
-        Period period = periods[height-1];
-
-        bytes32 best;
-        for(uint i = 0; i < period.indices.length; i++) {
-            if(period.entries[best] < period.entries[period.indices[i]]
-            && period.entries[period.indices[i]] >= voteThreshold) {
-                best = period.indices[i];
-            }
-        }
-        return best;
-    }
-
-    // Add a party that is allowed to make a vote.
-    // Only current voters are allowed to add a new voter.
-    function addVoter(address addr) mustBeVoter {
-        if (!canVote[addr]) {
-            canVote[addr] = true;
-            voterCount++;
-            AddVoter(addr);
-        }
-    }
-
-    // Remove a party that is allowed to vote.
-    // Note, a voter can remove itself as a voter!
-    function removeVoter(address addr) mustBeVoter {
-        // don't let the last voter remove itself
-        // which can cause the algorithm to stall.
-        if (voterCount == 1) throw;
-
-        if (canVote[addr]) {
-            delete canVote[addr];
-            voterCount--;
-            RemovedVoter(addr);
-        }
-    }
-
-    // isVoter returns an indication if the given address is allowed to vote.
-    function isVoter(address addr) constant returns (bool) {
-        return canVote[addr];
-    }
-
-    // addBlockMaker adds the given list to the collection of addresses that
-    // are allowed to create blocks.
-    function addBlockMaker(address addr) mustBeBlockMaker {
-        if (!canCreateBlocks[addr]) {
-            canCreateBlocks[addr] = true;
-            blockMakerCount++;
-            AddBlockMaker(addr);
-        }
-    }
-
-    // removeBlocksMaker deletes the given address from the collection of
-    // addresses that are allowed to create blocks.
-    function removeBlockMaker(address addr) mustBeBlockMaker {
-        if (blockMakerCount == 1) throw;
-
-        if (canCreateBlocks[addr]) {
-            delete canCreateBlocks[addr];
-            blockMakerCount--;
-            RemovedBlockMaker(addr);
-        }
-    }
-
-    // isBlockMaker returns an indication if the given address can create blocks.
-    function isBlockMaker(address addr) constant returns (bool) {
-        return canCreateBlocks[addr];
-    }
-
-    // Number of voting rounds.
-    function getSize() constant returns(uint) {
-        return periods.length;
-    }
-
-    // Return a blockhash by period and index.
-    function getEntry(uint height, uint n) constant returns(bytes32) {
-        Period period = periods[height-1];
-        return period.indices[n];
-    }
-}
-
-         </pre }>
-       </li }>
-        <li>Ethereum Transactions to propagate votes through the network</li>
-        <li>Ethereum's signature validation to validate signatures received from Maker and Voter nodes</li>
-      </ul>
-    </p>
-
-  </td>
-  <td col1 >
-    <p>Roles:
-    <ul>
-      <li>Voter: votes on which block should be the canonical head at a particular height </li>
-      <li>Maker: can create a block and sign it by setting their signature in the ExtraData 
-          field of the block. <br/>
-          Nodes verify that blocks are signed by one of the nodes that have the Maker role 
-          by looking up the signer's address in the <em>list of valid Makers in the voting contract</em>
-      </li>
-      <li>Observer: no role</li>
-    </ul>
-    </p>
-  </td>  
-  <td col2  >
-    <p { >BlockVoting (smart) contract:
-    <ul>
-      <li>hard-coded in  genesis block at @0x0000000000000000000000000000000000000020</li>
-      <li>Maker and Voter nodes are registered here</li>
-      <li>Updating it means Quorum client needs to be updated</li>
-      <li>member functions allow Voters and Makers to be added or removed, or tunning
-          the minimum number of votes before a block is selected as the winner</li>
-      <li>tracks:<br/> 
-          - votes received are from valid Voters?<br/>
-          - number of votes received for a particular block &gt; voteThreshold ?<br/>
-      </li>
-      <li>As part of block validation, the contract is called to determine the 
-          latest block which meets the required number of votes (the "parent of the proposed block")
-      </li>
-
-    </p }>
-    <p { >Maker Node:
-    <ul>
-      <li>There must be at least 1 Maker Node configured in the contract.</li>
-      <li>The initial set of Maker Nodes is pre-configured in the genesis block via the genesis.json file</li>
-      <li>once the network is established, Maker Nodes can add and remove other Maker Nodes by sending 
-          a Transaction with the appropriate function call to the BlockVoting contract</li>
-      <li>Maker Nodes can also be setup as Voter Nodes</li>
-    </ul>
-    </p }>
-
-    <p { >Voter Node:
-    <ul>
-      <li>once the network is established, Voter Nodes can add and remove other Voter Nodes 
-          by sending a Transaction with the appropriate function call to the BlockVoting contract.
-          Voter Nodes can also set the voteThreshold that must be met before a block will be
-          accepted into the chain.</li>
-    </ul>
-    </p }>
-
-    <p { >Observer Node:
-    <ul>
-      <li>receives and validate blocks</li>
-    </ul>
-    </p }>
- 
-     <p { >Consensus Process Flow:
-    <pre xxsmall>
-Loop:
-    timeout -> Maker_Node:  if the votes for previous block &gt; threshold
-                            creates and signs block
-        (block includes votes for its parent block, which were cast in the previous Period)
-    Maker_Node -> network: publish block
-    network -> Voter_Node: published blocks
-    Voter_Node -> Voter_Node: Validates block
-                             - checks Maker is allowed (through BlockVoting contract)
-                             - checks block's parent block received enough votes (through BlockVoting contract)
-                             - Executes all public TXs + participated Private Transactions in the block
-                               (after retrieving the TX payload from its Transaction Manager,
-                                as defined in the Transaction Processing & Privacy page).
-                             - Validates the public state by comparing the public state root hash
-                               with the state root within the block.
-                             - Hashing all Transactions in the block (Public & Private) and comparing
-                               that hash to the Transaction Hash on the block. 
-                               (ensures that all Voter Nodes agree on the TX list in the block)
-    Voter_Node -> network: TX with vote to BlockVoting contract
-                           Since votes for a given block are cast via standard Transactions,
-                           they can only be processed when the next block is created.
-    ...
-, and then the block creation - > validation -> voting process is repeated.
-
-    </pre>
-    </p }>
-  </td>
-</tr }>
-
-<tr {>
-  <td topic >Transaction Manager</td> 
-  <td summa >
-     <ul>
-       <li>Quorum’s Transaction Manager is responsible for Transaction privacy. It stores and allows access to encrypted transaction data, exchanges encrypted payloads with other participant's Transaction Managers but does not have access to any sensitive private keys. It utilizes the Enclave for cryptographic functionality (although the Enclave can optionally be hosted by the Transaction Manager itself.)
-</li>
-       <li>The Transaction Manager is restful/stateless and can be load balanced easily.</li>
-       <li><a href='https://github.com/jpmorganchase/quorum/wiki/Transaction-Processing'>https://github.com/jpmorganchase/quorum/wiki/Transaction-Processing</a></li>
-     </ul>
-
-  </td>
-  <td col1 >
-     <ul>
-       <li> </li>
-       <li> </li>
-       <li> </li>
-     </ul>
-  </td>  
-  <td col2  >
-  </td>
-</tr }>
-
-<tr {>
-  <td topic >The Enclave</td> 
-
-  <td summa >
-     <ul>
-       <li>Distributed Ledger protocols typically leverage cryptographic techniques for transaction authenticity, participant authentication, and historical data preservation (i.e. through a chain of cryptographically hashed data.) In order to achieve a separation of concerns, as well as to provide performance improvements through parallelization of certain crypto-operations, much of the cryptographic work including symmetric key generation and data encryption/decryption is delegated to the Enclave.</li>
-       <li>The Enclave works hand in hand with the Transaction Manager to strengthen privacy by managing the encryption/decryption in an isolated way. It holds private keys and is essentially a “virtual HSM” isolated from other components.</li>
-     </ul>
-
-  </td>
-  <td col1 >
-  </td>  
-  <td col2  >
-  </td>
-
-</tr }>
-
-<tr {>
-  <td topic >topic</td> 
-  <td summa >
-     <ul>
-       <li> </li>
-       <li> </li>
-       <li> </li>
-     </ul>
-
-  </td>
-  <td col1 >
-     <ul>
-       <li> </li>
-       <li> </li>
-       <li> </li>
-     </ul>
-  </td>  
-  <td col2  >
-  </td>
-
-</tr }>
-
-<tr {>
-  <td topic >Transaction Processing</td> 
-  <td summa >
-     <ul>
-       <li>'Public Transactions' and 'Private Transactions' are a notional concept only and Quorum does not introduce new Transaction Types, but rather, the Ethereum Transaction Model has been extended to include an optional 'privateFor' parameter (the population of which results in a Transaction being treated as private by Quorum) and the Transaction Type has a new IsPrivate method to identify such Transactions. </li>
-       <li>Public Transactions are those Transactions whose payload is visible to all participants of the same Quorum network.</li>
-       <li>Private Transactions are those Transactions whose payload is only visible to the network participants whose public keys are specified in the privateFor parameter of the Transaction . privateFor can take multiple addresses in a comma separated list.<br/>
- Quorum Node sets the Transaction_Signature.V = 37 or 38 (as opposed to 27 or 28)<br/>
-Private Transactions are NOT executed per standard Ethereum: prior to the sender's Quorum Node propagating the Transaction to the rest of the network, it replaces the original Transaction Payload with a hash of the encrypted Payload that it receives from Constellation. Participants that are party to the Transaction will be able to replace the hash with the actual payload via their Constellation instance, whilst those Participants that are not party will only see the hash.
-       </li>
-       <li {>
-         <p>Example: Party A and Party B are party to Transaction AB, whilst Party C is not.</p>
-         <ol>
-         <li>
-         <p>Party A sends a Transaction to their Quorum Node, specifying the Transaction payload and setting <code>privateFor</code> to be the public keys for Parties A and B</p>
-         </li>
-         <li>
-         <p>Party A's Quorum Node passes the Transaction on to its paired Transaction Manager, requesting for it to store the Transaction payload</p>
-         </li>
-         <li>
-         <p>Party A's Transaction Manager makes a call to its associated Enclave to validate the sender and encrypt the payload</p>
-         </li>
-         <li>
-         <p>Party A's Enclave checks the private key for Party A and, once validated, performs the Transaction conversion. This entails:</p>
-         <ol>
-         <li>generating a symmetric key and a random Nonce</li>
-         <li>encrypting the Transaction payload and Nonce with the symmetric key from i.</li>
-         <li>calculating the SHA3-512 hash of the encrypted payload from ii.</li>
-         <li>iterating through the list of Transaction recipients, in this case Parties A and B, and encrypting the symmetric key from i. with the recipient's public key (PGP encryption)</li>
-         <li>returning the encrypted payload from step ii., the hash from step iii. and the encrypted keys (for each recipient) from step iv. to the Transaction Manager</li>
-         </ol>
-         </li>
-         <li>
-         <p>Party A's Transaction manager then stores the encrypted payload (encrypted with the symmetric key) and encrypted symmetric key using the hash as the index, and then securely transfers (via HTTPS) the hash, encrypted payload, and encrypted symmetric key that has been encrypted with Party B's public key to Party B's Transaction Manager.  Party B's Transaction Manager responds with an Ack/Nack response. Note that if Party A does not receive a response/receives a Nack from Party B then the Transaction will not be propagated to the network.  It is a prerequisite for the recipients to store the communicated payload.</p>
-         </li>
-         <li>
-         <p>Once the data transmission to Party B's Transaction Manager has been successful, Party A's Transaction Manager returns the hash to the Quorum Node which then replaces the Transaction's original payload with that hash, and changes the transaction's <code>V</code> value to 37 or 38, which will indicate to other nodes that this hash represents a private transaction with an associated encrypted payload as opposed to a public transaction with nonsensical bytecode.</p>
-         </li>
-         <li>
-         <p>The Transaction is then propagated to the rest of the network using the standard Ethereum P2P Protocol.</p>
-         </li>
-         <li>
-         <p>A block containing Transaction AB is created and distributed to each Party on the network.</p>
-         </li>
-         <li>
-         <p>In processing the block, all Parties will attempt to process the Transaction.  Each Quorum node will recognise a <code>V</code> value of 37 or 38, identifying the Transaction as one whose payload requires decrypting, and make a call to their local Transaction Manager to determine if they hold the Transaction (using the hash as the index to look up).</p>
-         </li>
-         <li>
-         <p>Since Party C does not hold the Transaction, it will receive a <code>NotARecipient</code> message and will skip the Transaction - it will not update its Private StateDB.  Party A and B will look up the hash in their local Transaction Managers and identify that they do hold the Transaction. Each will then make a call to its Enclave, passing in the Encrypted Payload, Encrypted symmetric key and Signature.</p>
-         </li>
-         <li>
-         <p>The Enclave validates the signature and then decrypts the symmetric key using the Party's private key that is held in The Enclave, decrypts the Transaction Payload using the now-revealed symmetric key and returns the decrypted payload to the Transaction Manager.</p>
-         </li>
-         <li>
-         <p>The Transaction Managers for Parties A and B then send the decrypted payload to the EVM for contract code execution.  This execution will update the state in the Quorum Node's Private StateDB only. NOTE: once the code has been executed it is discarded so is never available for reading without going through the above process.</p>
-         </li>
-         </ol>
-       </li }>
-     </ul>
-
-  </td>
-  <td col1 >
-     <ul>
-       <li> </li>
-       <li> </li>
-       <li> </li>
-     </ul>
-  </td>  
-  <td col2  >
-  </td>
-
-</tr }>
-
-<tr {>
-  <td topic >Network Permissioning</td> 
-  <td summa >
-    <ul>
-      <li>feature controling which nodes can connect to a given node and also to which nodes the given node can dial out to.
-</li>
-      <li>--permissioned + data-dir/permissioned-nodes.json (whitelist of enodes that this node can connect to/from)
-        <pre xsmall { >
-[ 
-  "enode://6a...f47@127.0.0.1:30300",
-  "enode://remoteky1@ip1:port1",
-  "enode://remoteky1@ip2:port2",
-  ...
-]
-        </pre } >
-
-<p>Any additions to 'permissioned-nodes.json' will be dynamically picked up by the server when subsequent incoming/outgoing requests are made.</p>
-<p>Removing existing connected nodes from 'permissioned-nodes.json' will NOT immediately drop those existing connected nodes, but when current connections are dropped</p>
-      </li>
-      <li>NOTE: In the current implementation, every node has its own copy of the permissioned-nodes.json file. In this case, if different nodes have a different list of remote keys then each node may have a different list of permissioned nodes - which may have an adverse effect. In a future release, the permissioned nodes list will be moved from the permissioned-nodes.json file to a Smart Contract, thereby ensuring that all nodes will use one global on-chain list to verify network connections. Please see the Product Roadmap for further planned enhancements</li>
-      <li><p TODO>Checkout <a href="https://github.com/jpmorganchase/quorum-examples/tree/master/examples/permissions">permissions example</a> on how to run nodes with permissioning enabled, or see the set up instructions below.</p></li>
-    </ul>
-  </td>
-  <td col1 >
-<!--
-     <ul>
-       <li> </li>
-     </ul>
--->
-  </td>  
-  <td col2  >
-  </td>
-</tr }>
-
-<tr {>
-  <td topic TODO ><a href="https://github.com/jpmorganchase/quorum/blob/master/docs/api.md">Quorum API</a></td> 
-  <td summa >
-  </td>
-  <td col1 >
-  </td>  
-  <td col2  >
-  </td>
-</tr }>
-
-<tr {>
-  <td topic >Alastria.io</td> 
-  <td summa >
-     <ul>
-       <li> </li>
-       <li> </li>
-       <li> </li>
-     </ul>
-
-  </td>
-  <td col1 >
-     <ul>
-       <li><a href='https://alastria.io/'>https://alastria.io/</a></li>
-       <li><a href='https://github.com/marcossanlab/alastria-node'>https://github.com/marcossanlab/alastria-node</a></li>
-     </ul>
-  </td>  
-  <td col2  >
-  </td>
-</tr }>
+</tr>
 </table>
 </body>
 <!--
-_____________________________________________________
-Quorum:
-  Brian Marchiony Head of CIB Marketing & Communications brian.j.marchiony@jpmorgan.com
-  Amber Baldet Program Lead, Blockchain Center of Excellence amber.baldet@jpmorgan.com
-  David Voell Engineering Lead, CIB Emerging Technologies david.l.voell@jpmorgan.com
+TODO_Start:
 _____________________________________________________
 <p>See the <a href="https://github.com/jpmorganchase/quorum/blob/master/docs/api.md#privacy-apis">Quorum API</a> page for details on the <code>sendTransaction</code> call, which includes some modifications to the standard Ethereum call.</p>
     <li>
@@ -985,24 +555,35 @@ _____________________________________________________
 } 
        </pre>
       </p>
-_____________________________________________________
-Quorum Contract Design Considerations
-- Private contracts cannot update public contracts.
-(not all participants will be able to execute a private contract, and so if that contract can update a public contract, then each participant will end up with a different state for the public contract.
-- Once a contract has been made public, it can't later be made private. You DO need to delete from the blockchain and create a new private contract
-_____________________________________________________
-Raft-based consensus: geth --raft
-REF: https://github.com/jpmorganchase/quorum/blob/master/raft/doc.md
-- useful for closed-membership/consortium settings where BYZANTINE FAULT TOLERANCE is NOT A REQUIREMENT
-- faster blocktimes (milliseconds vs seconds)
-- absence of forking: 
-- Compared with QuorumChain, does NOT "unnecessarily" create empty blocks
-
-
 _________________________________
 Youtube Video: Raspeberry Pi java sending telemetry data to quorum.
 https://www.youtube.com/watch?v=64kMWxTaXw8
 ___________________________________________________
 
+
+## Permissioned Network
+Node Permissioning is a feature that controls which nodes can connect to a given node and also to which nodes this node can dial out to. Currently, it is managed at individual node level by the command line flag `--permissioned` while starting the node.
+
+If the `--permissioned` node is present, the node looks for a file named `<data-dir>/permissioned-nodes.json`. This file contains the list of enodes that this node can connect to and also accepts connections only from those nodes. In other words, if permissioning is enabled, only the nodes that are listed in this file become part of the network. It is an error to enable `--permissioned` but not have the `permissioned-nodes.json` file. If the flag is given, but no nodes are present in this file, then this node can neither connect to any node or accept any incoming connections.
+
+The `permissioned-nodes.json` follows following pattern (similar to `static-nodes.json`):
+
+```json
+[
+  "enode://enodehash1@ip1:port1",
+  "enode://enodehash2@ip2:port2",
+  "enode://enodehash3@ip3:port3",
+]
+```
+
+Sample file:
+
+```json
+[
+  "enode://6598638ac5b15ee386210156a43f565fa8c48592489d3e66ac774eac759db9eb52866898cf0c5e597a1595d9e60e1a19c84f77df489324e2f3a967207c047470@127.0.0.1:30300",
+]
+```
+
+In the current release, every node has its own copy of `permissioned-nodes.json`. In a future release, the permissioned nodes list will be moved to a smart contract, thereby keeping the list on chain and one global list of nodes that connect to the network.
 -->
 </html>

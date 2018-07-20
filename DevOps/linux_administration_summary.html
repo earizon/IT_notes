@@ -202,14 +202,62 @@ $ nspawn                   |
                            | display service
 
 </pre>
+FILE NAME EXTENSIONS FOR UNIT TYPES:
+<pre xxxsmall zoom>
+*<b orange>.target     </b>: define groups of units. They achieve little themselves and serve to call
+ <b orange>            </b>  other units that are responsible for services, filesystems ...
+ <b orange>            </b>  (equivalent to the classical SysV runlevels)
+*<b orange>.service    </b>: handle services that SysV-init-based distributions will typically
+ <b orange>            </b>  start or end using init scripts.
+*<b orange>.(auto)mount</b>: mounting and unmounting filesystems
+*<b orange>.path       </b>: allow systemd to monitor files and directories specified
+ <b orange>            </b>  when an access happens in path, systemd will start the appropriate unit
+*<b orange>.socket     </b>: create one or more sockets for socket activation.
+ <b orange>            </b>  service unit associated will start the service when a connection request
+ <b orange>            </b>  is received.
+</pre>
+
+CONFIG. FILE LAYOUT:
+<pre xxxsmall zoom>
+(NOTE: /etc takes precedence over /usr)
+<b orange>Maintainer   </b>: /usr/lib/systemd/system              ( + $ systemctl daemon-reload)
+<b orange>Administrator</b>: /etc/systemd/system/[name.type.d]/ ) ( + $ systemctl daemon-reload)
+<b orange>runtime      </b>: /runtime/systemd/system
+</pre>
+
+<b>Log Filtering (Journalctl):</b>
+<pre xxxsmall zoom>
+# journalctl                      → all logs
+# journalctl -b                   → Boot Messages
+# journalctl -b -1                → Last Boot Messages
+# journalctl --list-boots         → list system boots
+# journalctl --since "3 hour ago" → Time range
+                     "2 days ago"
+    --until "2015-06-26 23:20:00"
+# journalctl -u nginx.service     → by unit (can be specified multiple times)
+# journalctl -f                   → Follow ("tail")
+# journalctl -n 50                → most recent (50) entries
+# journalctl -r                   → reverse chronological order
+# journalctl -b -1  -p "crit"     → By priority: -b -1 : FROM emergency , -p "crit" : TO: Critical
+# journalctl _UID=108             → By _UID
+---------------------------------------------------------------------
+Output Formats ( -o parameter )
+
+   json: json one long-line
+   json-pretty:
+   verbose:
+   cat:  very short form, without any date/time or source server names
+   short: (default), syslog style
+   short-monotonic: similar to short, but the time stamp second value is shown with precision
+</pre>
 </td>  
 </tr>
 </table>
 <table>
 <tr>
 
-  YUM<br/>
-<td TODO>
+<td>
+  <span TODO>YUM <span xsmall>(RedHat/CentOS package manager)</span></span><br/>
   <a href="https://www.softwarecollections.org/en/">Software Collections</a>
   <span xsmall>build,install,use multiple package versions</span>
 <pre xxxsmall zoom>
@@ -322,8 +370,8 @@ $ sudo yum erase myPackage
 </pre>
 </div>
 </td>
-<td TODO >
-APT
+<td>
+  <span TODO>APT <span xsmall>(Debian... package manager)</span></span>
 <pre xxxsmall zoom>
 Installing from testing/unstable:
 /etc/apt/sources.list
@@ -360,6 +408,58 @@ ______________
   <th colspan=12 header_delimit>Storage</th>
 <tr>
 <td>
+Check disk free/used space:
+<pre xxxsmall zoom>
+<a href="https://linux.die.net/man/0/df">man 1 df</a> 
+$ df -kh  # Check free space
+
+<a href="https://linux.die.net/man/1/du">man 1 du</a>
+$ du -sch dir1 dir2  # check disk ussage of dir1 dir2
+</pre>
+
+Monitor files open:
+<pre xxxsmall zoom>
+<a href="https://linux.die.net/man/8/lsof">man 8 lsof</a>
+# list files open by process "pID"
+$ sudo lsof -p <b orange>511</b> #
+(output can be similar ...)
+COMMAND   <b orange>PID</b>  USER   FD      TYPE     DEVICE SIZE/OFF    NODE NAME
+avahi-dae <b orange>511</b> avahi  cwd       DIR        8,1       67 1274283 /etc/avahi
+avahi-dae <b orange>511</b> avahi  rtd       DIR        8,1       67 1274283 /etc/avahi
+avahi-dae <b orange>511</b> avahi  txt       REG        8,1   136264 2568376 /usr/sbin/avahi-daemon
+avahi-dae <b orange>511</b> avahi  DEL       REG        8,1          1713236 /usr/lib64/libnss_sss.so.2;5ae2fcc0
+avahi-dae <b orange>511</b> avahi  DEL       REG        8,1          1390813 /usr/lib64/...
+avahi-dae <b orange>511</b> avahi    0r      CHR        1,3      0t0    1028 /dev/null
+avahi-dae <b orange>511</b> avahi    1u     unix 0xff222c00      0t0   20500 socket
+avahi-dae <b orange>511</b> avahi    3u     unix 0xffb84400      0t0   18699 /var/run/avahi-daemon/socket
+avahi-dae <b orange>511</b> avahi    7w     FIFO        0,8      0t0   20324 pipe
+avahi-dae <b orange>511</b> avahi   11r  a_inode        0,9        0    7017 inotify
+avahi-dae <b orange>511</b> avahi   12u     IPv4      21553      0t0     UDP *:mdns
+avahi-dae <b orange>511</b> avahi   13u     IPv4      21554      0t0     UDP *:44720
+avahi-dae <b orange>511</b> avahi   14u  netlink                 0t0   21555 ROUTE
+...
+
+# list processes using any file in etc
+$ sudo lsof <b orange>/etc/*</b>
+(output can be similar ...)
+COMMAND     PID      USER   FD   TYPE DEVICE SIZE/OFF      NODE NAME
+avahi-dae   511     avahi  cwd    DIR    8,1       67 101274283 <b orange>/etc/</b>avahi
+avahi-dae   511     avahi  rtd    DIR    8,1       67 101274283 <b orange>/etc/</b>avahi
+java      41043 azureuser  296r   REG    8,1      393       154 <b orange>/etc/</b>os-release
+java      41043 azureuser  297r   REG    8,1      393       154 <b orange>/etc/</b>os-release
+</pre>
+Monitor file/dir. access
+<pre xxxsmall zoom>
+<a href="https://linux.die.net/man/1/inotifywait">man 1 inotifywait</a>: Wait for changes, then execute someCommand
+while  true ; do
+    inotifywait -q -e modify fileToMonitor1 fileToMonitor2 ... ;  someCommandToExecute ; done
+done
+
+<a TODO href="https://linux.die.net/man/1/inotifywatch">man 1 inotifywatch</a>: gather filesystem access statistics
+</pre>
+
+</td>
+<td>
   <a TODO href="https://en.wikipedia.org/wiki/Device_mapper">Device Mapper(dm)</a>
 </td>
 <td>
@@ -367,7 +467,10 @@ ______________
   <spam xsmall>Device Mapper target providing logical volume management</a>
 </td>
 <td>
-  <a href="https://opensource.com/article/18/4/stratis-lessons-learned">Stratis</a>
+  BTRFS (By SuSE, Oracle, Facebook, Fujitsu)
+</td>
+<td>
+  <a href="https://opensource.com/article/18/4/stratis-lessons-learned">Stratis (by RedHat)</a>
   <a xxsmall href="https://stratis-storage.github.io/StratisSoftwareDesign.pdf">REF Design(PDF)</a>
   <br/>
 </td>
@@ -1522,4 +1625,40 @@ https://docs.fedoraproject.org/f27/system-administrators-guide/
 
 https://wiki.centos.org/AdditionalResources/Repositories/SCL
 __________
+https://en.wikipedia.org/wiki/Avahi_(software) ZeroConf Linux impl.
+__________
+https://www.2daygeek.com/zstandard-a-super-faster-data-compression-tool-for-linux/
+Zstandard super-fast compression tool
+__________
+TODO: journalctrl
+the journal is "synchronous". Eacth time someone tries to write it checks if
+ther is space or something needs to be deleted. (vs remove each 24 day,...)
+ $ journalctrl [tab] ...
+______________
+https://gluster.readthedocs.io
+____________
+List and sort the versions available in
+your repo:
+
+YUM: sorting by version number:                    | APT:
+                                                   | 
+$ yum list docker-ce --showduplicates | sort -r    | apt-cache madison docker-ce
+________________________
+yum upgrade forces the removal of obsolete packages, while yum update may or may not also do this. The removal of obsolete packages can be risky, as it may remove packages that you use.
+
+This makes yum update the safer option.
+
+From man yum:
+
+    update
+
+    If run without any packages, update will update every currently installed package. If one or more packages or package globs are specified, Yum will only update the listed packages. While updating packages, yum will ensure that all dependencies are satisfied. (See Specifying package names for more information) If the packages or globs specified match to packages which are not currently installed then update will not install them. update operates on groups, files, provides and filelists just like the "install" command. If the main obsoletes configure option is true (default) or the --obsoletes flag is present yum will include package obsoletes in its calculations - this makes it better for distro-version changes, for example: upgrading from somelinux 8.0 to somelinux 9.
+
+    upgrade
+
+    Is the same as the update command with the --obsoletes flag set. See update for more details
+
+
+
+
 </html>

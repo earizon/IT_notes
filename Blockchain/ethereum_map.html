@@ -68,6 +68,8 @@ Metropolis Part 2,Constantinople: Planned. Lay the fundations of PoS(Casper cons
  
 Serenity  : "last phase", one key principle: switch to proof of stake
 
+<a href="https://www.trustnodes.com/2018/06/16/casper-sharding-merger-confirmed-constantinople-back-table">2018/06/17 Casper and sharding merger confirmed</a>
+
 </pre>
 
 </td>
@@ -410,7 +412,7 @@ depositEvent.watch
 </td>  
 <td colsep>  </td>  
 <td>
-  <a href="https://ens.domains/">Ethereum Name Service</a> <a TODO href="https://docs.ens.domains/en/latest/userguide.html">ENS User Guide</a>
+  <a href="https://ens.domains/">Ethereum Name Service</a> <a TODO href="https://docs.ens.domains/en/latest/userguide.html">ENS User Guide</a>, <a href="https://github.com/ethereum/go-ethereum/tree/master/contracts/ens">Geth implementation</a>, <a href="https://github.com/ethereum/EIPs/issues/137">EIPs issue</a>
   <ul xxxsmall zoom>
   <li>goal: resolve human-readable names to Ethereum addresses, Swarm/IPFS hashes, ....<br/>
       provide also metadata about names (contracts ABIs, whois info,...)</li>
@@ -436,6 +438,18 @@ depositEvent.watch
     <li>label hash : keccak-256(label) eg, keccak256(‘eth’) = 0x4f5b812789fc606be1b3b16908db13fc7a9adf7ca72641f84d75b47069d3d7f0</li>
     <li>node       : namehash function output used to uniquely identify a name in ENS</li>
     </ul>
+  </li>
+  <li>JS Client code to register: <a href="https://github.com/ethereum/go-ethereum/wiki/Contract-Tutorial">REF</a> 
+<pre xxxsmall zoom> 
+var name = "MyPersonalDemocracy"
+registrar.reserve.sendTransaction(name, {from: eth.accounts[0]})
+var democracy = eth.contract(daoCompiled.Democracy.info.abiDefinition).at(democracy.address);
+democracy.setup.sendTransaction(registrar.addr("MyFirstCoin"),{from:eth.accounts[0]})
+
+(Wait for the previous transactions to be picked up and then)
+
+registrar.setAddress.sendTransaction(name, democracy.address, true,{from: eth.accounts[0]});
+</pre>
   </li>
   </ul>
   Architecture: 
@@ -493,10 +507,8 @@ such as serving an infrequently changed address for a name.
   <th colspan=4 header_delimit><a href='http://solidity.readthedocs.io/en/develop/'>SOLIDITY LANG.</a>, See also <a href='https://github.com/ConsenSys/smart-contract-best-practices'>Best Practices</a>
   </th>
   <td colsep></td>
-  <th colspan=2 header_delimit><a href='https://github.com/ConsenSys/smart-contract-best-practices'>Tokens</a>
-
-  <th colspan=2 header_delimit><a href='https://gist.githubusercontent.com/mingderwang/33994fddda49a45671e093b321912cbd/raw/eeec75f34f1b311d88337f2e0ce6d8fa58ed175a/wallet.sol'>OnlyOwned+Min.Sig.Num</a>
-
+  <th header_delimit><a href='https://github.com/ConsenSys/smart-contract-best-practices'>Tokens</a>
+  <td colsep></td>
 </tr>
 <tr>
 <td>
@@ -710,27 +722,27 @@ Solidity uses state-reverting exceptions to handle errors:
  - TX is still mined and TXReceipt status flaged with "fail" error
    See <a href="https://etherscan.io/tx/0x9f00a37416a64735b02ab76da4477ea297bfd4923b1564c1b3579d542b3f4071">Example failed TX mined</a>
 
-PROGRAMATICALLY TRIGGERING EXCEPTIONS:                       
-EXCEPTION ┌────────────────────────────────────────────────────────┬──────────────────────────────────────────────────────┬──────────────────────────────────────────────────┐
- TYPE   → │      assert                                            │     require                                          │   revert                                         │
-          ├────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
-          │ (programming error)                                    │ (pre/post check in in/out-data)                      │ (business logic exceptions)                      │
-          ├────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
-          │ - Check for conditions and throw an exception          │ - Check for conditions and throw an exception        │ - replaces deprecated 'throw'                    │
-          │   if the condition is not met                          │   if the condition is not met                        │ - can be used to flag an error and revert the    │
-          │ - Should only be used to test for internal             │ - Should be used to ensure valid conditions,         │   current call.                                  │
-          │   errors, and to check invariants                      │   such as inputs, or contract state variables        │ - It is possible to provide a string message     │
-          │ - If used properly, analysis tools can                 │   are met, or to validate return values from         │   containing details about the error that will   │
-          │   evaluate your contract to identify                   │   calls to external contracts                        │   be passed back to the caller.                  │
-          │   the conditions and function calls which will         │ - optionally a message-string can be provided        │                                                  │
-          │   reach a failing assert.                              │                                                      │                                                  │
-          │   Properly functioning code should never reach         │                                                      │                                                  │
-          │   a failing assert statement                           │                                                      │                                                  │
-          ├────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
-          │ - compiles to INVALID 0xfe instruction                 │  - compiles to REVER 0xfd instruction                │                                                  │
-          ├────────────────────────────────────────────────────────┼──────────────────────────────────────────────────────┼──────────────────────────────────────────────────┤
-          │ assert( "my code-logic assertion")                     │ if ("not condtion for input") revert("....")         │ require("required cond.", "messsage");           │
-          └────────────────────────────────────────────────────────┴──────────────────────────────────────────────────────┴──────────────────────────────────────────────────┘
+PROGRAMATICALLY TRIGGERING EXCEPTIONS: 
+┌───────────────────────────────────────────────┬──────────────────────────────────────────────┬───────────────────────────────────────────────┐
+│      assert                                   │     require                                  │   revert                                      │
+├───────────────────────────────────────────────┼──────────────────────────────────────────────┼───────────────────────────────────────────────┤
+│ (programming error)                           │ (pre/post check in in/out-data)              │ (business logic exceptions)                   │
+├───────────────────────────────────────────────┼──────────────────────────────────────────────┼───────────────────────────────────────────────┤
+│ - Check for conditions and throw an exception │ - Check for conditions and throw an exception│ - replaces deprecated 'throw'                 │
+│   if the condition is not met                 │   if the condition is not met                │ - can be used to flag an error and revert the │
+│ - Should only be used to test for internal    │ - Should be used to ensure valid conditions, │   current call.                               │
+│   errors, and to check invariants             │   such as inputs, or contract state variables│ - It is possible to provide a string message  │
+│ - If used properly, analysis tools can        │   are met, or to validate return values from │   containing details about the error that will│
+│   evaluate your contract to identify          │   calls to external contracts                │   be passed back to the caller.               │
+│   the conditions and function calls which will│ - optionally a message-string can be provided│                                               │
+│   reach a failing assert.                     │                                              │                                               │
+│   Properly functioning code should never reach│                                              │                                               │
+│   a failing assert statement                  │                                              │                                               │
+├───────────────────────────────────────────────┼──────────────────────────────────────────────┼───────────────────────────────────────────────┤
+│ - compiles to INVALID 0xfe instruction        │  - compiles to REVER 0xfd instruction        │                                               │
+├───────────────────────────────────────────────┼──────────────────────────────────────────────┼───────────────────────────────────────────────┤
+│ assert( "my code-logic assertion")            │ require("required cond.", "messsage");       │  if ("not condtion for input") revert("....") │
+└───────────────────────────────────────────────┴──────────────────────────────────────────────┴───────────────────────────────────────────────┘
 
 ┌─────────┬────────────────────────────────────────────────────────┬──────────────────────────────────────────────────────┐   ┌─────────────────────────────────────────────────────┐
 │         │ assert-style exception                                 │ revert/require-style exception                       │   │low level ops (return false, no exception raised)    │
@@ -847,92 +859,123 @@ Coin.Sent().watch(
 </td>
 <td colsep></td>
 <td>
+<a href='https://gist.githubusercontent.com/mingderwang/33994fddda49a45671e093b321912cbd/raw/eeec75f34f1b311d88337f2e0ce6d8fa58ed175a/wallet.sol'>Minimum Signature.Num.</a>
 <pre xxxsmall zoom>
 Inheritable "property" contract:
-USAGE:
-   use modifiers onlyowner (just own owned) or onlymanyowners(hash), whereby
-   the same hash must be provided by some number (specified in constructor)
-   of the set of owners (specified in the constructor, modifiable) before the
-   interior is executed.
-
 <b>enables methods to be protected by requiring the acquiescence of either a
    single, or, crucially, each of a number of, designated owners.</b>
-// sol Wallet
-// SRC: https://gist.githubusercontent.com/mingderwang/33994fddda49a45671e093b321912cbd/raw/eeec75f34f1b311d88337f2e0ce6d8fa58ed175a/wallet.sol
+// REF: <a href="https://gist.githubusercontent.com/mingderwang/33994fddda49a45671e093b321912cbd/raw/eeec75f34f1b311d88337f2e0ce6d8fa58ed175a/wallet.sol">Wallet.sol gist</a>
 // @authors: Gav Wood <g@ethdev.com>
 contract multiowned {
-
     struct PendingState { uint yetNeeded; uint ownersDone; uint index; }
-
+    mapping(bytes32 /* operation_hash */ => PendingState) <b orange>mapPendingOps</b>; // ongoing ops
     uint public minimum_required; // minimum owners confirmations for same operation
-    mapping(uint /* address */ => uint /*idx*/) m_ownerIndex; // index on the list of owners <b>to allow reverse lookup</b>
-    mapping(bytes32 /* operation_hash */ => PendingState) m_pending; // ongoing operations.
+   
+    mapping(address => uint /*<b brown>bit idx</b>*/) <b brown>mapOwner2Idx</b>; // <b>allow reverse lookup</b>
     bytes32[] m_pendingIndex;
 
-    modifier onlyowner { if (isOwner(msg.sender)) _ } // MODIFIERS: 
+    modifier onlyOwner { if (<b brown>mapOwner2Idx</b>[msg.sender] == 0) throw ; _ }
 
-<b> /* ¡¡¡MULTI-SIG MODIFIER:!!!
-     *   operation must have an intrinsic hash in order
-     *   that later attempts can be realised as the same 
-     *   underlying operation and thus count as confirmations.
-     */
-    modifier  onlymanyowners(bytes32 _operation_hash) { if (confirmAndCheck(_operation_hash)) ;  _ }</b>
+       /* same operation hash must be signed/accepted by a minimum number 
+        * of the set of owners (specified in the constructor) before execution */
+<b>    modifier  <b blue>onlyMany/*¡¡SIGNATURE!!*/Owners</b>(bytes32 _operation_hash) {
+        if (!<b blue>confirmAndCheck</b>(_operation_hash)) throw ;  _ }</b>
 
-    // METHODS
-<b>    constructor(address[] _owners /* "who" can confirm */, uint minimum_required /*minimum. confirmations*/) {</b>
-        m_ownerIndex[uint(msg.sender)] = 1;
-        for (uint i = 0; i < _owners.length; ++i) { m_ownerIndex[uint(_owners[i])] = 2 + i; }
+<b>    constructor(address[] _owners /* "who" can confirm */,
+           uint minimum_required /*minimum. confirmations*/) {</b>
+        <b brown>mapOwner2Idx</b>[msg.sender] = 1;
+        for (uint i = 0; i &lt; _owners.length; ++i) 
+            { <b brown>mapOwner2Idx</b>[_owners[i]] = 2 + i; }
         minimum_required = minimum_required;
     }
 
-    function <b>isOwner(address _addr)</b> returns (bool) {
-        return m_ownerIndex[uint(_addr)] > 0;
-    }
-
     function <b>hasConfirmed(bytes32 _operation_hash, address _owner)</b> constant returns (bool) {
-        var pending = m_pending[_operation_hash];
-        uint ownerIndex = m_ownerIndex[uint(_owner)];
-        if (ownerIndex == 0) return false; // make sure they're an owner
-
-        // determine the bit to set for this owner.
-        uint ownerIndexBit = 2**ownerIndex;
-        return (pending.ownersDone & ownerIndexBit == 0) ? false : true;
+        var pending = <b orange>mapPendingOps</b>[_operation_hash];
+        uint ownerIndex = <b brown>mapOwner2Idx</b>[_owner];
+        uint <b green>ownerIdxBit</b> = 2**ownerIndex; // determine bit to set
+        return (pending.ownersDone &<b green>ownerIdxBit</b> == 0) ? false : true;
     }
 
-    // INTERNAL METHODS
-    function confirmAndCheck(bytes32 _operation_hash) internal returns (bool) {
-        // determine what index the present sender is:
-        uint ownerIndex = m_ownerIndex[uint(msg.sender)];
-        // make sure they're an owner
-        if (ownerIndex == 0) return;
-
-        var pending = m_pending[_operation_hash];
-        // if we're not yet working on this operation, switch over and reset the confirmation status.
+    function <b blue>confirmAndCheck</b>(bytes32 _operation_hash) internal returns (bool) {
+        uint ownerIndex = <b brown>mapOwner2Idx</b>[msg.sender]; // get idx for msg.sender
+        var pending = <b orange>mapPendingOps</b>[_operation_hash];
         if (pending.yetNeeded == 0) {
-            // reset count of confirmations needed.
-            pending.yetNeeded = minimum_required;
-            // reset which owners have confirmed (none) - set our bitmap to 0.
-            pending.ownersDone = 0;
+            pending.yetNeeded = minimum_required; // reset confirmations needed
+            pending.ownersDone = 0; // reset owners confirmed to none (bitmap→0)
             pending.index = m_pendingIndex.length++;
             m_pendingIndex[pending.index] = _operation_hash;
         }
-        // determine the bit to set for this owner.
-        uint ownerIndexBit = 2**ownerIndex;
-        // make sure we (the message sender) haven't confirmed this operation previously.
-        if (pending.ownersDone & ownerIndexBit == 0) {
+        uint <b green>ownerIdxBit</b> = 2**ownerIndex; // determine the bit to set
+        if (pending.ownersDone & <b green>ownerIdxBit</b> == 0) {
             // ok - check if count is enough to go ahead.
-            if (pending.yetNeeded <= 1) {
-                // enough confirmations: reset and run interior.
-                delete m_pendingIndex[m_pending[_operation_hash].index];
-                delete m_pending[_operation_hash];
+            if (pending.yetNeeded <= 1 /* enough confirmations. reset→run*/) {
+                delete m_pendingIndex[<b orange>mapPendingOps</b>[_operation_hash].index];
+                delete <b orange>mapPendingOps</b>[_operation_hash];
                 return true;
             } else {
-                // not enough: record that this owner in particular confirmed.
                 pending.yetNeeded--;
-                pending.ownersDone |= ownerIndexBit;
+                pending.ownersDone |= <b green>ownerIdxBit</b>;
+                return false;
             }
         }
     }
+}
+</pre>
+<a href='https://github.com/ethereum/go-ethereum/wiki/Contract-Tutorial'>Voting</a>
+<pre xxxsmall zoom>
+contract Voting {
+  uint       public <b orange>MIN_QUORUM</b>  ;
+  uint       public <b orange>DEBATING_PERIOD</b> ;
+  address    public <b green>FOUNDER</b>        ;
+  Proposal[] public proposals      ;
+  uint       public numProposals   ;
+  
+  struct <b blue>Vote     { int UpOrDown; address voter; }</b>
+  struct Proposal {
+    <b blue>Vote[]  votes</b>      ; mapping (address => bool) voted;
+    bytes32 data        ; string  description;
+    uint    creationDate; bool    active     ;
+    boolean result;
+  }
+  
+  constructor(uint _minimumQuorum, uint _debating_period) {
+    <b green>FOUNDER</b>          = msg.sender;  
+    <b orange>MIN_QUORUM</b>      = _minimumQuorum || 10;
+    <b orange>DEBATING_PERIOD</b> = _debating_period * 1 minutes || 30 days;
+  }
+
+  function newProposal(bytes32 _data, string _descrip) returns (uint <b yellow>proposalID</b>) {
+      <b yellow>proposalID</b>     = proposals.length++;
+      Proposal p     = proposals[<b yellow>proposalID</b>];
+      p.data         = _data;
+      p.description  = _descrip  ;    p.creationDate = now;
+      p.active       = true      ;    numProposals   = <b yellow>proposalID</b>+1;
+  }
+  
+  function vote(uint _<b yellow>proposalID</b>, int _UpOrDown /*+1|-1*/) returns (uint <b brown>voteID</b>){
+      if (_UpOrDown < -1 && _UpOrDown > 1 ) revert("UpOrDown is not valid") ;
+      Proposal p = proposals[_<b yellow>proposalID</b>];
+      if (p.voted[msg.sender] == true) return;
+      <b brown>voteID</b> = p.<b blue>votes</b>.length++;
+      p.<b blue>votes[<b brown>voteID</b>] = /*new*/Vote({UpOrDown: _UpOrDown, voter: msg.sender})</b>;
+      p.voted[msg.sender] = true;
+  }
+  
+  function executeProposal(uint _<b yellow>proposalID</b>) returns (int <b brown>result</b>) {
+      Proposal proposal = proposals[_<b yellow>proposalID</b>];
+      if (/*timeout?*/ now &gt; (proposal.creationDate + <b orange>DEBATING_PERIOD</b>) &amp;&amp; proposal.active){   
+          uint quorum = 0;
+          for (uint i = 0; i &lt;  proposal.<b blue>votes</b>.length; ++i) {
+              Vote v = proposal.<b blue>votes</b>[i];
+              quorum += 1;
+              <b brown>result</b> += v.UpOrDown;
+          }
+          if (quorum &gt; <b orange>MIN_QUORUM</b>) {
+              proposal.active = false;
+              proposal.result = result &gt;=0 ? true : false;
+          }
+      }
+  }
 }
 </pre>
 </td>
@@ -984,6 +1027,9 @@ Limitations:
 - (EVM limitation): dynamic content from external funct. no allowed in return
   Workaround: use large statically-sized arrays
 
+- Deleting an enement in the array (delete myArray[idx1]) generates gaps over time
+- This can lead to unpredictable gas costs if a contract itself has to search 
+  through those gaps.
 </pre>
   <a href="https://solidity.readthedocs.io/en/v0.4.24/types.html#mappings">Mappings</a>
 <pre xxxsmall zoom>
@@ -996,6 +1042,106 @@ Declaration:
            mapping,dyn-array,contract,enum,struct
 
 virtually initialized: every possible key exists mapped to zero-byte-repr
+
+Can we get all elements stored in a mapping in the contract? <a href="https://ethereum.stackexchange.com/questions/15337/can-we-get-all-elements-stored-in-a-mapping-in-the-contract">REF</a>
+<b>Mappings do not store their keys, only the value which is stored at the state
+ memory address calculated by a sha3 hash of the the key itself. Any lookup into
+ a mapping has to provide that original key or be able to calculate it.
+
+This means that a contract has no way of discovering mapped data without 
+assistance which can lead to orphaned data bloating the state database, 
+particularly after a contract is selfdestructed.
+</b>
+
+contract authors are responsible for garbage collection writing total discoverable 
+data contracts in which all data can be discovered and deleted if and when required.
+
+The simplest pattern to key storage is a simple lookup table:
+
+Solution 1: Using aux. array to store keys. (Can generate gaps when removing in the array)
+ +-------------------------------------------+------------------------------------------+
+ |ETHEREUM CODE                              | CLIENT CODE                              |
+ +-------------------------------------------+------------------------------------------+
+ |mapping (address =&gt; uint) public balances; | for(i = 0; i < k.size(); i++) {          |
+ |address[] public mapKeys   ;               |     someFunc( k.balances(k.mapKeys(i)) );|
+ |function size() public returns (uint) {    | }                                        |
+ |    return mapKeys.length;                 |                                          |
+ |}                                          |                                          |
+ +-------------------------------------------+------------------------------------------+
+Solution 2: Using Linked List Indexes
+ +---------------------------------------------+------------------------------------------+
+ |ETHEREUM CODE                                | CLIENT CODE                              |
+ +---------------------------------------------+------------------------------------------+
+ |mapping (address =&gt; address) llIndex;     | var current = k.llIndex(0);              |
+ |mapping (address =&gt; uint) public balances;| while (current) {                        |
+ |function add(address _addr_as_idx) public    |     console.log( k.balances(current) );  |
+ |{                                            |     current = k.llIndex(current);        |
+ |    llIndex[_addr_as_idx] = llIndex[0x0];    | }                                        |
+ |    llIndex[0x0] = _addr_as_idx;             |                                          |
+ |}                                            |                                          |
+ +---------------------------------------------+------------------------------------------+
+Note: llIndex will grow as:
+| STEP 1         | STEP 2         | STEP 3         | STEP 4 ...
+| 0x      addr01 | 0x      addr02 | 0x      addr03 | 
+|                | addr02  addr01 | addr02  addr01 | 
+|                                 | addr03  addr02 | 
+
+
+// Deleting: No gaps but require a search to find parent node
+ +---------------------------------------------+
+ |ETHEREUM CODE                                |
+ +---------------------------------------------+
+ |function remove(address _addr) {
+ |    address parent;
+ |    // Warning: unbounded gas loop
+ |    while (llIndex[parent] != _addr) parent = llIndex[parent];
+ |
+ |    llIndex[parent] = llIndex[ llIndex[parent]];
+ |    delete llIndex[address];
+ |    delete balances[address];
+ |}
+
+Double Linked List indexes
+In such cases it's worth removing search loops altogether at the expense of an 
+extra storage slot per indexed element. For this we can use a Double Linked List
+index using a nested bool mapping for bidirectional links where we interpret
+PREV == false and NEXT == true):
+
+mapping(address => ( mapping(bool => address) ) dllIndex;
+mapping(address => uint) balances;
+function add(address _addr)
+{
+    // Link the new node 
+    dllIndex[_addr][PREV] = 0x0;
+    dllIndex[_addr][NEXT] = dllIndex[0x0][NEXT];
+
+    // Insert the new node
+    dllIndex[dllIndex[0x0][NEXT]][PREV] = _addr;
+    dllIndex[0x0][NEXT] = _addr;
+}
+
+function remove(address _addr)
+{
+    // Stitch the neighbours together
+    dllIndex[ dllIndex[_addr][PREV] ][NEXT] = dllIndex[_addr][TRUE];
+    dllIndex[ dllIndex[_addr][NEXT] ][PREV] = dllIndex[_addr][PREV];
+
+    // Delete state storage
+    delete dllIndex[_addr][PREV];
+    delete dllIndex[_addr][NEXT];
+    delete balances[_addr];
+}
+
+We now have a directly addressable and fully iterable storage structure, which is not just a Double Linked List but a Circular Double Linked List by default with the head at 0x0. This gives us two very desirable properties for free...
+FIFO and FILO Queues
+
+First In First Out (FIFO) and First In Last Out (FILO) queues are a very common concept in computing. FIFO can be used for task queues while FILO is also used for memory 'stacks'.
+
+FIFO's can be used in any contracts that require atomic sequential order processing. Here a new order is simply inserted previous to the head, while the oldest order is simply taken from next to the head. No search loops required.
+
+If you think these structures might be useful, check out my Circular Double Linked List Index Library which is used by my Intrinsically Tradable Tokens (ITT) contract.
+
+
 
 </pre>
 </td>
@@ -1068,6 +1214,46 @@ contract Test {
 </td>
 <td colsep></td>
 <td>
+  Strings
+<pre xxxsmall zoom>
+CAN NOTs:                               |  CANs:
+ - Can NOT be concatenated.             |  - Can be used as keys for mappings
+ - *Can NOT be check for equality*      |
+   Something like can be used instead:  |
+   sha3("string1") == sha3("string2")   |
+   or                                   |
+   keccak256(bytes("string1")) ==       |
+   keccak256(bytes("string2"))          |
+
+check if string is empty: 
+   bytes memory tempEmptyStringTest = bytes(emptyStringTest);
+   require(tempEmptyStringTest.length &gt; 0, "string can not be empty/null");
+</pre>
+
+  String Libraries:
+  <ul xxxsmall zoom>
+  <li><a href="https://github.com/Arachnid/solidity-stringutils">Arachnid StringUtils</a></li>
+  </ul>
+</td>
+<td>
+   Date/Time
+<pre xxxsmall zoom>
+// DateTime is stored as uint
+
+// "<b orange>now</b>" returns the (uint) current block timestamp (alias for block.timestamp)
+
+uint <b brown>timeOutWindow</b> = <b brown>_inputTimeOutWindow</b> <b orange>* 1 minutes || 30 days</b>;
+uint <b brown>time_origin</b> = ...
+
+function myTimeOutDependentFunction(...) returns (...) {
+    ...
+    if (<b orange>now</b> &gt; (<b brown>time_origin + timeOutWindow</b>) throw;
+    ... Do something ...
+}
+</pre>
+</td>
+<td colsep></td>
+<td>
   GLOBAL METHODS:
 <pre xxxsmall zoom>
 block.blockhash(uint blockNumber) 
@@ -1075,20 +1261,8 @@ block.blockhash(uint blockNumber)
   hash of the given block - only works for 256 most
   recent blocks excluding current
 </pre>
-       
-  GLOBAL CONTROL METHODS:
-<pre xxxsmall zoom>
-assert(bool condition): 
-  throws if condition not met
-revert()              :
-  abort execution, revert state changes 
-selfdestruct(address recipient):
-  destroy current contract
-  send its funds to recipient 
-</pre>
-</td>
-<td>
-  GLOBAL VARIABLES:
+
+  GLOBAL VARS:
 <pre xxxsmall zoom>
 block.coinbase (address): current block miner’s address
 block.difficulty (uint) : current block difficulty
@@ -1107,7 +1281,7 @@ tx.gasprice (uint)      : gas price of the transaction
 tx.origin (address)     : sender of the transaction 
                           (full call chain)
 </pre>
-  GLOBAL Mathematical and Cryptographic Functions
+  GLOBAL Math.&amp;Crypto Functs
 <pre  xxxsmall zoom>
 addmod(uint x, uint y, uint k) 
   returns (uint): /* compute (x + y) % k */
@@ -1133,7 +1307,228 @@ ecrecover
   </li>
   </ul>
 </td>
-<td colsep></td>
+
+</tr>
+</table>
+
+<table>
+<tr>
+<td>
+  <a href='http://ethereum.stackexchange.com/questions/269/what-exactly-is-an-ethereum-client-and-what-clients-are-there/335'>Development Tools</a>
+  <ul xxxsmall zoom>
+  <li><a href='http://ethereum.github.io/browser-solidity'><def>Browser Solidity</def></a></li>
+  <li><a href='https://plugins.jetbrains.com/plugin/9475-intellij-solidity'>Solidity IntelliJ plugin</a> (alpha/bet/betaa state, not using latest compiler versions)</li>
+  <li TODO><a href="https://remix.ethereum.org/"><def>Remix Online Solidity IDE</def></a> </li>
+  <li>Start ethereum Node in test network:
+<pre xxxsmall zoom>
+$ geth --rpcapi personal,db,eth,net,web3 --rpc --rinkeby
+or
+$ parity --chain testnet
+</pre>
+  </li>
+  <li><a href='http://truffleframework.com/docs/'><def>Truffle Framework</def></a>
+    smart contract compile, link, deploy, binary management, testing, 
+    interactive console, auto-rebuild on-change, external script runner that executes scripts 
+    within a Truffle environment. Ussage:
+<pre>
+$ mkdir demo &amp;&amp; cd demo # create project working dir:
+$ truffle init # Init truffle.
+Dapp work:
+$ cp .../""MyContract"".sol contracts
+(remove default example contracts in ./contracts and migrations/2_deploy_contracts.js  if desired)
+
+$ "edit" migrations/2_deploy_contracts.js to add MyContract
+WARN: ¡¡¡do not touch 1_initial_migration.js!!!
+
+
+Compile sol to json: WARN: (requires solc installed)
+$ truffle compile
+(compiles /contracts/*.sol → build/contracts/*.json )
+JS clients apps can then use the contract with code similar to:
+import metacoin_artifacts from '../../build/contracts/MetaCoin.json'
+
+Migrate to default network defined in truffle.js (localhost:8545)
+(Ussually this correspond to the testrpc daemon)
+$ truffle migrate
+$ truffle test 
+---------------------------
+Deploy to ""real""/""test"" network
+
+$ truffle deploy 
+# sends contract to the Ethe. network. Will also update
+# contracts.json adding the {""address"":...""} for the
+#deployed contract
+---------------------------
+Create  ""JS"" front-end app (if profile present)
+$ truffle serve # start web server with front-end
+<!-- TODO_START :
+config/app.json: build, deploy and ether-node rpc setup
+./app: JS front-end app.
+"truffle compile generated config/development/contracts.json: 
+Contains the JS interface to the Eth. contract."
+test/example.js:
+Note: 
+ contract.value.call() -> NO new transactions => NO Eth expended
+ contract.setValue(5) -> new transaction => eth expended     
+      
+contract('Example', function(accounts) {
+  it('should do more complex interaction', function(done) {
+    var example = Example.at(Example.deployed_address);
+    example.value.call().then( function(value) {
+      assert.equal(value, 0, 'Value should be zero after deployment');
+    }).then(function() {
+      return example.setValue(5);
+    }).then(function(tx) {
+      return example.value.call();
+    }).then(function(value) {
+      assert.equal(value, 5, 'Value should be five');
+    })
+    .then(done).catch(done);
+  });
+});
+Deploying new contract:
+> web3.eth.getCoinbase(function(e,r) { console.log(e, r); })
+null ""0x82e.....""
+> Example.new({ from: ""=x82e..."" }).then(function(instance) { ... })
+-->
+</pre>
+  </li>
+  <li TODO><a href='https://github.com/ethpm/ethpm-js'>https://github.com/ethpm/ethpm-js</a>
+      Javascript library for publishing and consuming Ethereum packages,
+      provides utilities for publishing and consuming Ethereum packages based
+      on the Ethereum Package Manager specification. It is meant to be integrated
+      directly into development tools to support their use of the Ethereum Package Management ecosystem.
+  </li>
+  <li><a href="https://etherscan.io/pushTx"><def>https://etherscan.io/pushTx</def></a>: Send raw-transactions</li>
+  </ul>
+  <hr xxxsmall />
+  Geth Console
+<pre xxxsmall zoom>
+CHECKING ACCOUNT BALANCES
+$ cat /Users/username/gethload.js
+function checkAllBalances() {
+  var totalBal = 0;
+  for (var acctNum in eth.accounts) {
+    var acct = eth.accounts[acctNum];
+    var acctBal = web3.fromWei(eth.getBalance(acct), "ether");
+    totalBal += parseFloat(acctBal);
+    console.log("  eth.accounts[" + acctNum + "]:" + acct 
+              + "  balance: " + acctBal + " ether");
+  }
+  console.log("  Total balance: " + totalBal + " ether");
+};
+---------------------
+&gt; loadScript("/Users/username/gethload.js")
+&gt; checkAllBalances();
+  eth.accounts[0]: 0xd1ade25ccd3d550a7eb532ac759cac7be09c2719 	balance: 63.11848 ether
+  eth.accounts[1]: 0xda65665fc30803cb1fb7e6d86691e20b1826dee0 	balance: 0 ether
+  eth.accounts[2]: 0xe470b1a7d2c9c5c6f03bbaa8fa20db6d404a0c32 	balance: 1 ether
+</pre>
+</td>
+<td>
+  <a href="https://docs.web3j.io/">Web3J</a><br/>
+<pre xxxsmall zoom>
+<a href="https://docs.web3j.io/getting_started.html">pom / gradle dependencies</a>
+<a href="https://github.com/web3j/sample-project-gradle/blob/master/src/main/java/org/web3j/sample/Application.java">Example app</a>
+<a href="https://docs.web3j.io/infura.html">Using infura</a>
+
+
+SYNC. REQUESTS                        | CompletableFuture (Future ON ANDROID): | RXJAVA OBSERVABLE:
+Web3ClientVersion web3ClientVersion = | Web3ClientVersion web3ClientVersion =  | web3.web3ClientVersion()
+    web3.web3ClientVersion()          |     web3.web3ClientVersion()           |     .observable().subscribe(x -&gt; {
+    .send().getWeb3ClientVersion();   |     .sendAsync().get();                |     String clientVersion = 
+                                      |                  ^blocking             |         x.getWeb3ClientVersion();
+                                      |                                        | });
+
+
+TRANSACT WITH A SMART CONTRACT WRAPPER:       | CALL A SMART CONTRACT WRAPPER:
+----------------------------------------------+---------------------------------------------
+(changes status in blockchain, needs mining)  | (local query, no mining needed)
+TransactionReceipt transactionReceipt =       | Type result = 
+   contract.someMethod(                       |    contract.someMethod(<param1>, ...).send();
+     "param1", ...).send();                   |
+                                              | The "someMethod" in *.sol contract needs to be 
+                                              | marked as "view". Otherwise the java wrapper
+                                              | will generate code for new TXs returning
+                                              | a TX receipt
+</pre>
+FILTERS
+<pre xxxsmall zoom>
+Subscribe for "new-blocks" events:                  | Subscribe for "new-TXs" events:                  | Subscribe for "new pending-TX" events: 
+----------------------------------------------------+--------------------------------------------------+----------------------------------------
+Subscription subscription =                         | Subscription subscription =                      | Subscription subscription = 
+  web3j.blockObservable(false).subscribe(block -> { |   web3j.transactionObservable().subscribe(tx -> {|    web3j.pendingTransactionObservable().
+    ...                        ^                    |       ...                                        |      subscribe(tx -> { ...  });
+  });                          |                    |   });
+                               |
+                            Optionally:
+  catchUpToLatestAndSubscribeToNewBlocksObservable(
+        <startBlockNumber>, <fullTxObjects>)
+        .subscribe(block -> {
+            ...
+});
+
+<b>subscription.unsubscribe(); //when no longer required </b>
+</pre>
+
+<pre xxxsmall zoom>
+<b>TOPIC FILTERS:</b> <b red>not supported on Infura</b>
+
+EthFilter filter = new EthFilter(DefaultBlockParameterName.EARLIEST,
+        DefaultBlockParameterName.LATEST, <contract-address>)
+             .addSingleTopic(...)|.addOptionalTopics(..., ...)|...;
+web3j.ethLogObservable(filter).subscribe(log -> {
+    ...
+});
+</pre>
+</td>
+<td>
+  Troubleshooting Common problems
+  <ul xxxsmall zoom>
+  <li><def>solc *bin output is empty, but there are no compilation warnings</def>
+<pre>
+PROBLEM:
+    Next code compiles "OK" using
+    SOLC INPUT               |  SOLC OUTPUT
+    -------------------------|--------------------
+    pragma solidity ^0.4.8;  |  A.bin  6060604...
+    contract A {             |  B.bin  6060604...
+      uint public a1;        |
+    }                        |
+                             |
+    contract B <b>is A</b> { |
+      uint8 public b1;       |
+    }                        |
+
+  <b red>Adding any constructor to the A contract, and keeping same B 
+  generates erroneus empty B.bin</b>
+
+SOLUTION:
+   solc compiler consider the class abstract and does not generate any
+   bin due to some of the following reasons:
+
+ - B will need to provide parent A constructor with a parameter
+   contract B is A {
+     uint8 public b1;
+   
+     <b blue>constructor(address _a) A(_a) { // or A(0x00112...)
+        ...
+     }</b>
+   }
+
+ - B does NOT implementsall mehtods of declared interfaces or base clases
+</pre>
+  </li>
+  <li>Problem: <def>Transaction with same hash already imported</def> error:
+<pre xxxsmall zoom>
+<a href="https://ethereum.stackexchange.com/questions/9055/cant-broadcast-ethereum-transaction-whats-wrong-with-this-transaction">REF.1</a>, <a href="https://gitter.im/web3j/web3j?at=58d1e9ce5917e26076be161c">REF 2.web3j Gitter</a><br/>
+Solution: This means that the same transaction is sent twice with onley the nonce different.<br/>
+ Probably it's a client error.
+"""
+</pre>
+  </li>
+  </ul>
+</td>
 <td>
   <b>PRICE CALCULATION</b>
   <ul xxxsmall zoom>
@@ -1258,170 +1653,8 @@ Logs cost: 375 gas for a LOG operation + 8 gas per log data byte + 375 gas for e
 (375 gas/LOG * 1LOG ) + (8 gas/byte *  512byte) + (375 gas/topic * 1 topic) = 375 + 2048 +  375 = 2798
 (375 gas/LOG * 1LOG ) + (8 gas/byte *  128byte) + (375 gas/topic * 0 topic) = 375 + 1024        = 1399    
 </pre>
-  </td>  
-</tr>
-</table>
-
-<table>
-<tr>
-<td>
-  <a href='http://ethereum.stackexchange.com/questions/269/what-exactly-is-an-ethereum-client-and-what-clients-are-there/335'>Development Tools</a>
-  <ul xxxsmall zoom>
-  <li><a href='http://ethereum.github.io/browser-solidity'>Browser Solidity</a></li>
-  <li>(NodeJS) TestRPC Ethereum RPC client for testing and development.<br/>
-    It uses ethereumjs to simulate full client behavior and make developing Ethereum applications much faster. <br/>
-    It also includes all popular RPC functions and features (like events) and can be run deterministically to make development a breeze.<br/>
-    Install: <code> npm install -g ethereumjs-testrpc </code>
-    Can also be embeded in JS code like:
-<pre>
-// As a Web3 provider:
-var TestRPC = require(""ethereumjs-testrpc"");
-web3.setProvider(TestRPC.provider());
-// As a general http server:
-var TestRPC = require(""ethereumjs-testrpc"");
-var server = TestRPC.server();
-server.listen(port, function(err, blockchain) {...});
-</pre>
-  </li>
-  <li TODO>Remix (Solidity Browser) https://remix.ethereum.org/</li>
-  <li><a href='http://truffleframework.com/docs/'>Truffle Framework</a>
-   Built-in smart contract compilation, linking, deployment , binary management, testing, <span TODO>Network management for deploying to many public & private networks</span>, Interactive console for direct contract communication, Instant rebuilding of assets during development, External script runner that executes scripts within a Truffle environment.<br/>
-    STEPS:
-    <ol>
-    <li>create working dir for project: <code> $ mkdir demo && cd demo</code></li>
-    <li>Init truffle.<code>$ truffle init</code></li>
-    <li>Dapp work:<br/>
-      <ul>
-      <li><code>$ cp .../""MyContract"".sol contracts</code><br/>
-        (remove default example contracts in ./contracts and migrations/2_deploy_contracts.js  if desired)
-      </li>
-      <li><code>$ "edit" migrations/2_deploy_contracts.js to add MyContract  </code>
-         WARN: ¡¡¡do not touch 1_initial_migration.js!!!
-      </li>
-      </ul>
-    </li>
-    <li>Compile sol to json: WARN: requires solc installed.<br/><code>$ truffle compile</code>
-        (compiles /contracts/*.sol -> build/contracts/*.json )
-         JS clients apps can then use the contract with code similar to:
-         import metacoin_artifacts from '../../build/contracts/MetaCoin.json'
-    </li>
-    <li>Migrate to default network defined in truffle.js (localhost:8545)
-        (Ussually this correspond to the testrpc daemon)
-    </li>
-    <li>$ truffle migrate</li>
-    <li>$ truffle test </li>
-    <li>Deploy to ""real""/""test"" network<br/>
-<pre>
-$ truffle deploy 
-# sends contract to the Ethe. network. Will also update
-# contracts.json adding the {""address"":...""} for the
-#deployed contract"</li>
-</pre>
-    <li>Create  ""JS"" front-end app (if profile present)
-    <li><code>$ truffle serve # start web server with front-end</code></li>
-    </ol>
-<!-- TODO_START :
-config/app.json: build, deploy and ether-node rpc setup
-./app: JS front-end app.
-"truffle compile generated config/development/contracts.json: 
-Contains the JS interface to the Eth. contract."
-test/example.js:
-Note: 
- contract.value.call() -> NO new transactions => NO Eth expended
- contract.setValue(5) -> new transaction => eth expended     
-      
-contract('Example', function(accounts) {
-  it('should do more complex interaction', function(done) {
-    var example = Example.at(Example.deployed_address);
-    example.value.call().then( function(value) {
-      assert.equal(value, 0, 'Value should be zero after deployment');
-    }).then(function() {
-      return example.setValue(5);
-    }).then(function(tx) {
-      return example.value.call();
-    }).then(function(value) {
-      assert.equal(value, 5, 'Value should be five');
-    })
-    .then(done).catch(done);
-  });
-});
-Deploying new contract:
-> web3.eth.getCoinbase(function(e,r) { console.log(e, r); })
-null ""0x82e.....""
-> Example.new({ from: ""=x82e..."" }).then(function(instance) { ... })
-
--->
-  </li>
-  <li TODO><a href='https://github.com/ethpm/ethpm-js'>https://github.com/ethpm/ethpm-js</a>
-      Javascript library for publishing and consuming Ethereum packages,
-      provides utilities for publishing and consuming Ethereum packages based
-      on the Ethereum Package Manager specification. It is meant to be integrated
-      directly into development tools to support their use of the Ethereum Package Management ecosystem.
-  </li>
-  </ul>
-  <hr xxxsmall />
-  Geth Console
-<pre xxxsmall zoom>
-CHECKING ACCOUNT BALANCES
-$ cat /Users/username/gethload.js
-function checkAllBalances() {
-  var totalBal = 0;
-  for (var acctNum in eth.accounts) {
-    var acct = eth.accounts[acctNum];
-    var acctBal = web3.fromWei(eth.getBalance(acct), "ether");
-    totalBal += parseFloat(acctBal);
-    console.log("  eth.accounts[" + acctNum + "]:" + acct 
-              + "  balance: " + acctBal + " ether");
-  }
-  console.log("  Total balance: " + totalBal + " ether");
-};
----------------------
-&gt; loadScript("/Users/username/gethload.js")
-&gt; checkAllBalances();
-  eth.accounts[0]: 0xd1ade25ccd3d550a7eb532ac759cac7be09c2719 	balance: 63.11848 ether
-  eth.accounts[1]: 0xda65665fc30803cb1fb7e6d86691e20b1826dee0 	balance: 0 ether
-  eth.accounts[2]: 0xe470b1a7d2c9c5c6f03bbaa8fa20db6d404a0c32 	balance: 1 ether
-</pre>
 </td>
-<td>
-  Troubleshooting
-  <ul xxxsmall zoom>
-  <li><def>solc *bin output is empty, but there are no compilation warnings</def>
-<pre>
-PROBLEM:
-    Next code compiles "OK" using
-    SOLC INPUT               |  SOLC OUTPUT
-    -------------------------|--------------------
-    pragma solidity ^0.4.8;  |  A.bin  6060604...
-    contract A {             |  B.bin  6060604...
-      uint public a1;        |
-    }                        |
-                             |
-    contract B <b>is A</b> { |
-      uint8 public b1;       |
-    }                        |
 
-  <b red>Adding any constructor to the A contract, and keeping same B 
-  generates erroneus empty B.bin</b>
-
-SOLUTION:
-   solc compiler consider the class abstract and does not generate any
-   bin due to some of the following reasons:
-
- - B will need to provide parent A constructor with a parameter
-   contract B is A {
-     uint8 public b1;
-   
-     <b blue>constructor(address _a) A(_a) { // or A(0x00112...)
-        ...
-     }</b>
-   }
-
- - B does NOT implementsall mehtods of declared interfaces or base clases
-</pre>
-  </li>
-  </ul>
-</td>
 </tr>
 </table>
 
@@ -1452,7 +1685,6 @@ geth full archive| 4_980_000 [2]|671G       | parity full archive|5_600_000   |1
 <td colsep> </td>
 <td>
   <p TODO>EXTERNAL STORAGE (IPFS, Maidsafe, SWARN,...)
-:ta
 <!--
 TODO: Compare with alternative Storage "providers": IPFS , Maidsafe, Storj
 - IPFS is just a protocol like http. It is unmotivated (don't have tokens).
@@ -1474,7 +1706,7 @@ here are two kinds of accounts in Ethereum which share the same address space: E
 -->
 
   </p>
-  <p TODO>FORMAL VERIFICATION
+  <b TODO TODO>FORMAL VERIFICATION</b>
 <!--
 FORMAL Verification
 https://github.com/pirapira/eth-isabelle
@@ -1491,33 +1723,24 @@ Only a small subset of Solidity is supported for now, but that makes it already 
 https://gist.github.com/chriseth/0c671e0dac08c3630f47""""""
 
 """"""How to use it on the example
-The solidity compiler (only solc at latest develop for now) can translate the source code into a different programming language which can be understood by why3 (the language is a dialect of ocaml). To do that, call it as ""solc --formal -o /tmp/output_directory/ source.sol"". Furthermore, using special tags in the Solidity comments of the form ""///@why3 ..."" you can formulate assertions and requirements that can be understood by the why3 framework and will be literally inserted into the generated code.
+The solidity compiler (only solc at latest develop for now) can translate the source code into a different programming language which can be understood by why3 (the language is a dialect of ocaml). To do that, call it as ""solc \-\-formal -o /tmp/output_directory/ source.sol"". Furthermore, using special tags in the Solidity comments of the form ""///@why3 ..."" you can formulate assertions and requirements that can be understood by the why3 framework and will be literally inserted into the generated code.
 
 After that, you can use ""why3 ide /tmp/output_directory/solidity.mlw"" to start a graphical version of the toolkit and perform the verification.
 How to install why3
 I am not aware of any binary packages, so you have to download the source from the website.
 As why3 itself is only a frontend to the real workhorses, the provers, you need to install a prover. I tried ""alt-ergo"" and Z3 - the first is part of the ubuntu distribution, the second has binaries for most platforms.
 
-After installing the prover (and making sure it is in the PATH), call ""why3 config --detect"" and it should detect your prover. """""""
+After installing the prover (and making sure it is in the PATH), call ""why3 config \-\-detect"" and it should detect your prover. """""""
 "Video Tutorial:
 https://www.youtube.com/watch?v=Mzh4fyoaBJ0&feature=youtu.be&list=PL9oaY6Y4QxRZybj86eGItGVApxLXVIXHz"
 https://gitter.im/ethereum/formal-methods
 "https://en.wikipedia.org/wiki/Logical_harmony
 
 Logical harmony, a name coined by Sir Michael Dummett, is a supposed constraint on the rules of inference (https://en.wikipedia.org/wiki/Rules_of_inference) that can be used in a given logical system(https://en.wikipedia.org/wiki/Logical_system)"
-
 -->
-  </p>
-
-  <p> External Inputs (Oracles)
-<!--
-http://ethereumj.io/blog/2015/09/09/friendly-ether-bot/
-
-""Ethereum is a great system to achieve consensus between an independent peers, but if we want to pump data from the real world into the system , how exactly we do it ?"""
-TODO: Microsoft Cryplets
-TODO: Oracle patterns
--->
-  </p>
+  <hr xxxsmall />
+  <a TODO href="http://ethereumj.io/blog/2015/09/09/friendly-ether-bot/">External Inputs (Oracles)</a>
+  <a href="https://azure.microsoft.com/en-us/blog/cryptletsdd/">MS.Bletchley Cryplets</a>
 </td>
 </tr>
 </table>
@@ -2292,7 +2515,7 @@ for (uint i = 0; i < namesInUse.length; i++) {
    require(namesInUse[i] != username);
 }
 ____________________________
-Solidity: https://ethereum.stackexchange.com/questions/15337/can-we-get-all-elements-stored-in-a-mapping-in-the-contract
+
 _______________________________
 Solidity: https://gist.github.com/ethers/7e6d443818cbc9ad2c38efa7c0f363d1
 __________________
@@ -2311,8 +2534,8 @@ Cosmos and Tendermint
 
 Cosmos is also building an ecosystem that relies on the Tendermint consensus mechanism that relies heavily upon Byzantine Fault Tolerance algorithms. The platform depends on validators that have similar roles as miners in the bitcoin network. The validators have staking tokens called Atoms which are used to secure the network via a proof of stake mechanism that relies upon the trust generated by the bonded validators. The interplay between the players in the ecosystem is also indicative of a game theoretical structure where validators can lose their tokens or the tokens delegated to them if discovered to be violating the protocol. Due to this bonded deposit design of stakeholders within this system, the consensus mechanism allows for an incentivization mechanism that secures the network. This security design allows for the proper functioning of the Application Blockchain Interface (ABCI), the Inter-Blockchain Communication protocol (IBC) as well as the varying interactions between the Cosmos hub and zones.
 ....
-:tae
 _______________
+
 https://plasma.io/plasma.pdf
 The orchestrated transaction processing paradigm using the interplay between rootchains, plasma chains, and child chains through a combination of fraud-proof mechanism designs and fidelity bond incentive structures help satisfy dynamics between the block-withholding and mass withdrawal surfaces. It also allows for further cryptoeconomic structures to be filled using mechanisms from systems like Casper or Truebit for mirroring concepts used in erasure coding in terms of the data availability problem that is prevalent in the space. For a multichain architecture, Ethereum would be able to combine the database coordination and throughput capabilities of a distributed database system with the public chain compatible capabilities of an actual blockchain.
 ______________________
@@ -2337,8 +2560,331 @@ http://fc17.ifca.ai/wtsc/Defining%20the%20Ethereum%20Virtual%20Machine%20for%20I
 __________________________________________
 https://github.com/pirapira?utf8=%E2%9C%93&tab=repositories&q=&type=source&language=  
  ( Lot of interesting repos related to Ethereum)
-_____________________________
-  <span TODO>String manipulation (substring, indexof,... in solidity)</span><br/>
+
 _________________
+selfdestruct(address recipient):
+  destroy current contract
+  send its funds to recipient 
+________________________________
+Are there well-solved and simple storage patterns for Solidity?
+<a href="https://ethereum.stackexchange.com/questions/13167/are-there-well-solved-and-simple-storage-patterns-for-solidity">REF</a>
+
+
+ 100
+down vote
+accepted
+
+Here are some simple and useful patterns in increasing order of utility.
+
+Event logs are omitted for brevity. In practice, it's desirable to emit events for every important state change.
+
+Simple List Using Array
+
+Strengths
+
+    Reliably chronological order
+    Provides a count
+    Random access by Row Number (not Id)
+
+Weaknesses
+
+    No random access by Id
+    No assurance of uniqueness
+    No check for duplicates
+    Uncontrolled growth of the list
+
+Example:
+
+pragma solidity ^0.4.6;
+
+contract simpleList {
+
+  struct EntityStruct {
+    address entityAddress;
+    uint entityData;
+    // more fields
+  }
+
+  EntityStruct[] public entityStructs;
+
+  function newEntity(address entityAddress, uint entityData) public returns(uint rowNumber) {
+    EntityStruct memory newEntity;
+    newEntity.entityAddress = entityAddress;
+    newEntity.entityData    = entityData;
+    return entityStructs.push(newEntity)-1;
+  }
+
+  function getEntityCount() public constant returns(uint entityCount) {
+    return entityStructs.length;
+  }
+}
+
+Mapping with Struct
+
+Strengths
+
+    Random access by unique Id
+    Assurance of Id Uniqueness
+    Enclose arrays, mappings, structs within each "record"
+
+Weaknesses
+
+    Unable to enumerate the keys
+    Unable to count the keys
+    Needs a manual check to distinguish a default from an explicitly "all 0" record
+
+Example:
+
+contract mappingWithStruct {
+
+  struct EntityStruct {
+    uint entityData;
+    bool isEntity;
+  }
+
+  mapping (address => EntityStruct) public entityStructs;
+
+  function isEntity(address entityAddress) public constant returns(bool isIndeed) {
+    return entityStructs[entityAddress].isEntity;
+  }
+
+  function newEntity(address entityAddress, uint entityData) public returns(bool success) {
+    if(isEntity(entityAddress)) throw; 
+    entityStructs[entityAddress].entityData = entityData;
+    entityStructs[entityAddress].isEntity = true;
+    return true;
+  }
+
+  function deleteEntity(address entityAddress) public returns(bool success) {
+    if(!isEntity(entityAddress)) throw;
+    entityStructs[entityAddress].isEntity = false;
+    return true;
+  }
+
+  function updateEntity(address entityAddress, uint entityData) public returns(bool success) {
+    if(!isEntity(entityAddress)) throw;
+    entityStructs[entityAddress].entityData = entityData;
+    return true;
+  }
+}
+
+Array of Structs with Unique Ids
+
+Strengths
+
+    Random access by Row number
+    Assurance of Id uniqueness
+    Enclose arrays, mappings and structs with each "record"
+
+Weaknesses
+
+    No random access by Id
+    Uncontrolled growth of the list
+
+Example:
+
+contract arrayWithUniqueIds {
+
+  struct EntityStruct {
+    address entityAddress;
+    uint entityData;
+  }
+
+  EntityStruct[] public entityStructs;
+  mapping(address => bool) knownEntity;
+
+  function isEntity(address entityAddress) public constant returns(bool isIndeed) {
+    return knownEntity[entityAddress];
+  }
+
+  function getEntityCount() public constant returns(uint entityCount) {
+    return entityStructs.length;
+  }
+
+  function newEntity(address entityAddress, uint entityData) public returns(uint rowNumber) {
+    if(isEntity(entityAddress)) throw;
+    EntityStruct memory newEntity;
+    newEntity.entityAddress = entityAddress;
+    newEntity.entityData = entityData;
+    knownEntity[entityAddress] = true;
+    return entityStructs.push(newEntity) - 1;
+  }
+
+  function updateEntity(uint rowNumber, address entityAddress, uint entityData) public returns(bool success) {
+    if(!isEntity(entityAddress)) throw;
+    if(entityStructs[rowNumber].entityAddress != entityAddress) throw;
+    entityStructs[rowNumber].entityData    = entityData;
+    return true;
+  }
+}
+
+Mapped Structs with Index
+
+Strengths
+
+    Random access by unique Id or row number
+    Assurance of Id uniqueness
+    Enclose arrays, mappings and structs within each "record"
+    List maintains order of declaration
+    Count the records
+    Enumerate the Ids
+    "Soft" delete an item by setting a boolean
+
+Weaknesses
+
+    Uncontrolled growth of the list
+
+Example:
+
+contract MappedStructsWithIndex {
+
+  struct EntityStruct {
+    uint entityData;
+    bool isEntity;
+  }
+
+  mapping(address => EntityStruct) public entityStructs;
+  address[] public entityList;
+
+  function isEntity(address entityAddress) public constant returns(bool isIndeed) {
+      return entityStructs[entityAddress].isEntity;
+  }
+
+  function getEntityCount() public constant returns(uint entityCount) {
+    return entityList.length;
+  }
+
+  function newEntity(address entityAddress, uint entityData) public returns(uint rowNumber) {
+    if(isEntity(entityAddress)) throw;
+    entityStructs[entityAddress].entityData = entityData;
+    entityStructs[entityAddress].isEntity = true;
+    return entityList.push(entityAddress) - 1;
+  }
+
+  function updateEntity(address entityAddress, uint entityData) public returns(bool success) {
+    if(!isEntity(entityAddress)) throw;
+    entityStructs[entityAddress].entityData    = entityData;
+    return true;
+  }
+}
+
+Mapped Structs with Delete-enabled Index
+
+Strengths
+
+    Random access by unique Id or row number
+    Assurance of Id uniqueness
+    Enclose arrays, mapping and structs within each "record"
+    Count the records
+    Enumerate the ids
+    Logically control the size of the active list with delete function
+
+Weaknesses
+
+    Marginally increased code complexity
+    Marginally higher storage costs
+    Key list is inherently unordered
+
+Example:
+
+contract mappedWithUnorderedIndexAndDelete {
+
+  struct EntityStruct {
+    uint entityData;
+    uint listPointer;
+  }
+
+  mapping(address => EntityStruct) public entityStructs;
+  address[] public entityList;
+
+  function isEntity(address entityAddress) public constant returns(bool isIndeed) {
+    if(entityList.length == 0) return false;
+    return (entityList[entityStructs[entityAddress].listPointer] == entityAddress);
+  }
+
+  function getEntityCount() public constant returns(uint entityCount) {
+    return entityList.length;
+  }
+
+  function newEntity(address entityAddress, uint entityData) public returns(bool success) {
+    if(isEntity(entityAddress)) throw;
+    entityStructs[entityAddress].entityData = entityData;
+    entityStructs[entityAddress].listPointer = entityList.push(entityAddress) - 1;
+    return true;
+  }
+
+  function updateEntity(address entityAddress, uint entityData) public returns(bool success) {
+    if(!isEntity(entityAddress)) throw;
+    entityStructs[entityAddress].entityData = entityData;
+    return true;
+  }
+
+  function deleteEntity(address entityAddress) public returns(bool success) {
+    if(!isEntity(entityAddress)) throw;
+    uint rowToDelete = entityStructs[entityAddress].listPointer;
+    address keyToMove   = entityList[entityList.length-1];
+    entityList[rowToDelete] = keyToMove;
+    entityStructs[keyToMove].listPointer = rowToDelete;
+    entityList.length--;
+    return true;
+  }
+
+}
+
+This last one has an explainer here: https://medium.com/@robhitchens/solidity-crud-part-2-ed8d8b4f74ec#.ekc22r5lf
+
+and here: https://bitbucket.org/rhitchens2/soliditycrud/src/83703dcaf4d0c4b0d6adc0377455c4f257aa29a7/docs/?at=master
+
+Folder Tree Example: How can we organize storage of a folder or object tree in Solidity?
+
+Linked List example shows a way to maintain an ordered list using a library. https://github.com/ethereum/dapp-bin/blob/master/library/linkedList.sol 0
+shareimprove this answer
+edited Sep 11 '17 at 4:09
+answered Mar 16 '17 at 22:13
+Rob Hitchens B9lab
+19.6k33263
+
+    2
+    Linked lists are quite useful too: they allow enumeration, random access by ID and by index, are inherently ordered, etc. Only downside is O(n) lookup/insertion/deletion by index – Tjaden Hess♦ Mar 22 '17 at 22:54
+    1
+    This makes me think of renaming the function because it appears the purpose of the function is misunderstood. It doesn't validate the input. It's not necessary to do so since anything successfully passed in will be a valid address. Instead, it's checking if the key is already used/ a;ready exists to ensure unique keys. No duplicate keys are allowed. Possibly I should change the function name to something like function keyExists() to prevent confusion. – Rob Hitchens B9lab May 20 '17 at 12:25
+    1
+    It's only a con in certain cases where the data is transient. Suppose you have a case where 90% or more of the data is to be logically deleted. You would end up with an unpruned list pointing to many obsolete records and this might not be ideal. – Rob Hitchens B9lab Sep 26 '17 at 17:28
+    1
+    Not even close. Have a look at medium.com/@robhitchens/solidity-crud-part-1-824ffa69509a and web3 example. JS will fetch the length, iterate, and fetch the rows one at a time. – Rob Hitchens B9lab Sep 26 '17 at 17:59
+    1
+    Suppose you have a dataset where rows are appended and consumed then routinely set to inactive or usedUp. You could end up with clients that have to iterate over an ever-increasing list of obsolete information. Sometimes (not majority) it makes sense to truly remove something from the list. The delete-enabled pattern solves for that. – Rob Hitchens B9lab Apr 18 at 16:37
+
+_____________________
+https://entethalliance.org/enterprise-ethereum-alliance-advances-web-3-0-era-public-release-enterprise-ethereum-architecture-stack/
+ The Enterprise Ethereum Alliance (EEA), with over 500 members, today unveiled the next phase of its Enterprise Ethereum specification strategy, with the public release of its Enterprise Ethereum Architecture Stack. This stack defines the building blocks needed to drive the Web 3.0 era of decentralized, connective intelligence ? the next generation of Enterprise Ethereum applications that, like the Internet, will work anywhere, and are capable of facilitating smart contracts without intermediaries. The stack, available as a free public document to download, incorporates components developed by the Ethereum Foundation.
+_________________________
+https://entethalliance.org/resources/
+_________________________
+Signing transactions Flow:
+ - Identify the next available nonce for the sender account
+ - Create the RawTransaction object
+ - Encode the RawTransaction object using Recursive Length Prefix encoding
+ - Sign the RawTransaction object
+ - Send the RawTransaction object to a node for processing
+
+The nonce is an increasing numeric value which is used to uniquely identify transactions. A nonce can only be used once and until a transaction is mined, it is possible to send multiple versions of a transaction with the same nonce, however, once mined, any subsequent submissions will be rejected.
+_______________________
+Tooling:
+https://github.com/adridadou/eth-contract-api
+
+ EthereumJ native API or how to call contracts easily and with type safety http://www.davidroon.com/ethcontractapi/
+____________________________
+ERC223: Safer ERC20 token standard:
+https://github.com/ethereum/EIPs/issues/223
+____________________________
+https://github.com/paritytech/parity/issues/6342___________________________
+____________________________
+https://github.com/oraclize/ethereum-examples
+http://www.oraclize.it/
+_______________________________
+Solidity Arrays vs Linked-lists:
+https://ethereum.stackexchange.com/questions/51399/deleting-index-of-an-array-in-terms-of-optimization-for-looping
+
 -->
 </html>

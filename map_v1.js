@@ -126,9 +126,6 @@ function onPageLoaded() {
           idxXsmallRule=idx;
       }
   }
-  // Simulate initial dblclick to show help
-  var event = new MouseEvent('dblclick', { 'view': window, 'bubbles': true, 'cancelable': true });
-  document.getElementById('initialMessage').dispatchEvent(event);
 
   // Append search:
   var searchDiv = document.createElement('spam');

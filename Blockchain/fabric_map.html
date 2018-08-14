@@ -8,7 +8,6 @@
 </head>
 
 <body onLoad='onPageLoaded()'>
-<b id='initialMessage' orange>Hint double-click/long-press on elements to zoom!!</b>
 <div id='zoomDiv'></div>
 <div style="position:fixed; right:0.3%; bottom:0; width:auto;">
 <b style="font-size:1.5rem" orange><a onclick="onZoomOut()">[-A]</a></b>
@@ -20,8 +19,12 @@
 <table>
 <tr>
 <td>
+<div bgorange>
+<a href="https://hyperledger-fabric.readthedocs.io/en/release-1.1/command_ref.html">Commands Reference</a>
+</div>
+  <hr xxxsmall />
   External Links:
-  <ul xxxsmall zoom>
+  <ul xxxsmall>
   <li><a href='https://godoc.org/github.com/hyperledger/fabric'>GoLang API DOC</a></li>
   <li><a href='https://stackoverflow.com/questions/tagged/hyperledger-fabric'>Stack OverFlow</a></li>
   <li><code>git clone <a href='https://github.com/hyperledger/fabric-samples.git'>Fabric Samples@Github</a></code><br/>
@@ -33,7 +36,7 @@
   <li><a href="https://hyperledger-fabric.readthedocs.io/en/latest/status.html">Status</a>                    </li>
   </ul>
   <a href='https://hyperledger-fabric.readthedocs.io/en/latest/prereqs.html'>Prerequisites:</a>
-  <ul xxxsmall zoom>
+  <ul xxxsmall>
   <li><a href='https://docs.docker.com/engine/installation/linux/docker-ce/centos/#prerequisites'>Docker CE for Centos</a></li>
   <li>Dependencies: cURL, git,<br/>
          docker 17.06.02-ce+ (2017-09-05)(docker engine 1.13.x NOT supported),
@@ -50,7 +53,7 @@
   <li>Python 2.7 (sudo apt-get install python)</li>
   </ul>
   Development and contributing:
-  <ul xxxsmall zoom>
+  <ul xxxsmall>
   <li><a href="https://hyperledger-fabric.readthedocs.io/en/latest/CONTRIBUTING.html">Contributions Welcome!</a></li>
   <li><a href="https://hyperledger-fabric.readthedocs.io/en/latest/MAINTAINERS.html">Maintainers</a></li>
   <li><a href="https://hyperledger-fabric.readthedocs.io/en/latest/jira_navigation.html">Using Jira to understand current work items</a></li>
@@ -71,11 +74,15 @@
   </ul>
 
   Prebuilt docker images:
-<pre xxxsmall zoom>
-Base:
-  hyperledger/fabric-peer
-  hyperledger/fabric-orderer
-  hyperledger/fabric-ccenv           Fabric chaincode environment
+<pre xxxsmall>
+Base:                          TCP
+                               PORTS
+  hyperledger/fabric-peer      7050 ← (linux ps) $ <a href="https://github.com/hyperledger/fabric/blob/release-1.1/core/peer/peer.go">peer node start</a>
+  hyperledger/fabric-orderer   7051 ← (linux ps) $ <a href="https://github.com/hyperledger/fabric/blob/release-1.1/...">orderer</a>
+                               7053  (Clients)
+                               6060  (???)
+  hyperledger/fabric-ccenv           Fabric chaincode container/environment
+  hyperledger/fabric-ca        7054  Default Fabric CA (linux ps) $ fabric-ca-server start --ca.certfile /etc/... --ca.keyfile /etc/... -b admin:adminpw -d
   hyperledger/fabric-javaenv         Fabric Java chaincode environment
   hyperledger/fabric-tools           "command line shell"
                                      It must mount volumes in a way similar to:
@@ -89,7 +96,6 @@ Base:
 
 Extra:
   hyperledger/fabric-membersrvc      Fabric Member Service docker image
-  hyperledger/fabric-ca              Fabric CA
   hyperledger/fabric-couchdb         Fabric Couchdb docker image
   hyperledger/fabric-kafka           Fabric Kafka docker image 
   hyperledger/fabric-zookeeper       Fabric Zookeeper docker image
@@ -98,12 +104,53 @@ Dev:
   hyperledger/fabric-baseimage       base image for https://gerrit.hyperledger.or…
   hyperledger/fabric-baseos          Fabric base OS
 </pre>
+
+ENV.VARS:
+<pre xxxsmall>
+CORE_PEER_GOSSIP_USELEADERELECTION=true
+CORE_PEER_GOSSIP_ORGLEADER=false
+CORE_PEER_PROFILE_ENABLED=true
+CORE_PEER_ID=peer0.exporterorg.trade.com
+CORE_PEER_ADDRESS=peer0.exporterorg.trade.com:7051
+CORE_PEER_GOSSIP_BOOTSTRAP=peer0.exporterorg.trade.com:7051
+CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.exporterorg.trade.com:7051
+CORE_PEER_LOCALMSPID=ExporterOrgMSP
+
+
+ORDERER_GENERAL_LOGLEVEL=INFO
+ORDERER_GENERAL_LISTENADDRESS=0.0.0.0
+ORDERER_GENERAL_GENESISMETHOD=file
+ORDERER_GENERAL_GENESISFILE=/var/hyperledger/orderer/orderer.genesis.block
+ORDERER_GENERAL_LOCALMSPID=TradeOrdererMSP
+ORDERER_GENERAL_LOCALMSPDIR=/var/hyperledger/orderer/msp
+
+FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+FABRIC_CA_SERVER_CA_NAME=ca-exporterorg
+
+
+# TLS RELATED
+       CORE_PEER_TLS_ENABLED=true
+ ORDERER_GENERAL_TLS_ENABLED=true
+FABRIC_CA_SERVER_TLS_ENABLED=true
+
+        CORE_PEER_TLS_KEY_FILE=/etc/.../server.key
+  FABRIC_CA_SERVER_TLS_KEYFILE=/etc/.../355f8e6...cb_sk
+ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
+
+CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
+ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
+
+  FABRIC_CA_SERVER_TLS_CERTFILE=/etc/...
+ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
+        CORE_PEER_TLS_CERT_FILE=/etc/.../server.crt
+</pre>
+
 MINIMUM DEPLOYMENT (DEV.MODE, Extracted from <a href="https://github.com/hyperledger/fabric-samples/tree/release-1.1/chaincode-docker-devmode">chaincode-docker-devmode/docker-compose-simple.yaml</a>)
-<pre xxxsmall zoom>
+<pre xxxsmall>
  +-------------------------------------------------+
  |ORDERER: PORTS: 7050:7050                        |
  +-------------------------------------------------+-------------------------------------------------+
- |image: hyperledger/fabric-orderer                |PEER: PORTS: 7051 7053                           |
+ |image: hyperledger/fabric-orderer                |PEER: PORTS: 7051 7053 6060                      |
  |ORDERER_GENERAL_LOGLEVEL=debug                   |-------------------------------------------------+-------------------------------------------------+
  |ORDERER_GENERAL_LISTENADDRESS=orderer            |image: hyperledger/fabric-peer                   |CHAINCODE:                                       |
  |ORDERER_GENERAL_GENESISMETHOD=file               |CORE_PEER_ID=peer                                |-------------------------------------------------+
@@ -135,9 +182,10 @@ MINIMUM DEPLOYMENT (DEV.MODE, Extracted from <a href="https://github.com/hyperle
                                                    |depends-on: orderer, peer                        |
                                                    +-------------------------------------------------+
 </pre>
-
+</td>
+<td>
   Consortium Network Schema:
-<pre bgorange xxxsmall zoom>
+<pre bgorange xxxsmall>
 CONSORTIUM NETWORK IS DEFINED THROUGH CHANNELs:  Network 1 ←────→ (1...n) MSP
 
     Peer N ←────→ M  Channel    1 ←────→ 1 Ledger       1 ←────→ 1 blockchain      
@@ -185,19 +233,6 @@ NODES ("logical" communication entities)
 *3 Endorser Peer: (or endorser vs a particular chaincode). Signs TXs
 *4 Orderer  runs the communication service that implements an atomic or total order broadcast
 </pre>
-  Commands Reference
-<ul xxxsmall zoom>
-  <li><a href="https://hyperledger-fabric.readthedocs.io/en/release-1.1/commands/peercommand.html">peer</a></li>
-  <li><a href="https://hyperledger-fabric.readthedocs.io/en/release-1.1/commands/peerchaincode.html">peer chaincode</a></li>
-  <li><a href="https://hyperledger-fabric.readthedocs.io/en/release-1.1/commands/peerchannel.html">peer channel</a></li>
-  <li><a href="https://hyperledger-fabric.readthedocs.io/en/release-1.1/commands/peerversion.html">peer version</a></li>
-  <li><a href="https://hyperledger-fabric.readthedocs.io/en/release-1.1/commands/peerlogging.html">peer logging</a></li>
-  <li><a href="https://hyperledger-fabric.readthedocs.io/en/release-1.1/commands/peernode.html">peer node</a></li>
-  <li><a href="https://hyperledger-fabric.readthedocs.io/en/release-1.1/commands/configtxgen.html">configtxgen</a></li>
-  <li><a href="https://hyperledger-fabric.readthedocs.io/en/release-1.1/commands/configtxlator.html">configtxlator</a></li>
-  <li><a href="https://hyperledger-fabric.readthedocs.io/en/release-1.1/commands/cryptogen.html">cryptogen</a></li>
-  <li><a href="https://hyperledger-fabric.readthedocs.io/en/release-1.1/commands/fabric-ca-commands.html">Fabric-CA Commands</a></li>
-  </ul>
 </td>
 <td colsep></td>
 <td>
@@ -1724,6 +1759,46 @@ fabric network. (TODO: Added to X.509 certs?).
 Capabilities apply to both orderers and peers and must be supported by both.
 _____________________________________
 You will have to install the Composer playground in addition then the Composer rest server during the lab.
+_____________________________________
+In an ideal trade scenario, only the process of preparing and shipping the goods would take time. Recently, the adoption of SWIFT messaging over manual communication has made the document application and collection processes more efficient, but it has not fundamentally changed the game. A blockchain, on the other hand, with its (almost) instantaneous transaction commitments and assurance guarantees, opens possibilities that did not previously exist.
+
+As an example, the one variation we introduced in our use case was payment by installments, which cannot be implemented in the legacy framework because there is no guaranteed way of knowing and sharing information about a shipment's progress. Such a variation would be deemed too risky in this case, which is why payments are linked purely to documentary evidence. By getting all participants in a trade agreement on a single blockchain implementing a common smart contract, we can provide a single shared source of truth that will minimize risk and simultaneously increase accountability
+
+The criterion for the approval of a transaction (or invocation) is an endorsement policy (which we will revisit later in this chapter). It is framed in terms of the organizations that are participating in the application network, and not the peers themselves
+_________________________________
+https://github.com/HyperledgerHandsOn/
+_________________________________
+Every chaincode must implement the Chaincode interface, whose methods are called in response to the received transaction proposals. The Chaincode interface defined in the SHIM package is shown in the following listing:
+type Chaincode interface {
+     Init(stub ChaincodeStubInterface) pb.Response
+     Invoke(stub ChaincodeStubInterface) pb.Response 
+}
+
+ As you can see, the Chaincode type defines two functions: Init and Invoke.Both functions have a single argument, stub, of the type ChaincodeStubInterface.The stub
+ argument is the main object that we will use when implementing the chaincode functionality, as it provides functions for accessing and modifying the ledger, obtaining invocation arguments, and so on.Additionally, the SHIM package provides other types and functions in order to build chaincodes; you can inspect the whole package at: https://godoc.org/github.com/hyperledger/fabric/core/chaincode/shim.
+_________________________
+
+Fabric CA issues Enrollment Certificates (ecerts) for network users. 
+  The ecert represents the identity of the user and is used as a signed 
+transaction when a user submits to Fabric. Prior to invoking a transaction, 
+the user must therefore first register and obtain an ecert from the Fabric CA.
+_________________________
+Attribute-based Access Control (ABAC):
+can be used by the chaincode to control access to its functions and data. The 
+ABAC allows the chaincode to make access control decisions based on 
+attributes associated with user identity. Users with an ecert can also access 
+a series of additional attributes (that is, name/value pairs).
+
+In the following steps, we will show you how to register a user and create an 
+ecert with attributes. We will then retrieve the user identity and the 
+attributes in the chaincode to validate access control. We will then 
+integrate this functionality into our tutorial chaincode.First, we must 
+register a new user with the Fabric CA. As part of the registration process, 
+we have to define the attributes that will be used once the ecert is generated
+. A user is registered by running the command, fabric-ca-client register. The 
+access control attributes are added by using the suffix :ecert.
+_________________________
+
 -->
 
 </html>

@@ -131,14 +131,17 @@ function onPageLoaded() {
   document.getElementById('initialMessage').dispatchEvent(event);
 
   // Append search:
-  var searchDiv = document.createElement('div');
+  var searchDiv = document.createElement('spam');
       searchDiv.innerHTML = 
      '<form action="" method="" id="search" name="search">'
    + '  <input name="query" id="query" type="text" size="30" maxlength="30">'
-   + '  <input name="searchit" type="button" value="Search" onClick="highlightSearch()">'
+   + '  <input name="searchit" type="button" value="Regex Search" onClick="highlightSearch()">'
    + '</form>'
+   + '<b id="initialMessage" orange xsmall>Hint double-click/long-press on elements to zoom!!</b>';
 
-  document.body.appendChild(searchDiv);
+
+  document.body.insertBefore(searchDiv,document.body.children[0]);
+  // document.body.appendChild(searchDiv);
 }
 
 function highlightSearch() {

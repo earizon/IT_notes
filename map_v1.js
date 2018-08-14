@@ -129,5 +129,33 @@ function onPageLoaded() {
   // Simulate initial dblclick to show help
   var event = new MouseEvent('dblclick', { 'view': window, 'bubbles': true, 'cancelable': true });
   document.getElementById('initialMessage').dispatchEvent(event);
+
+  // Append search:
+  var searchDiv = document.createElement('div');
+      searchDiv.innerHTML = 
+     '<form action="" method="" id="search" name="search">'
+   + '  <input name="query" id="query" type="text" size="30" maxlength="30">'
+   + '  <input name="searchit" type="button" value="Search" onClick="highlightSearch()">'
+   + '</form>'
+
+  document.body.appendChild(searchDiv);
 }
 
+function highlightSearch() {
+  var text = document.getElementById("query").value;
+  var nodeList = document.querySelectorAll('td')
+  if (/^\s*$/.test(text)) {
+     for (idx in nodeList) {
+       nodeList[idx].setAttribute("textFound", "false");
+     }
+     return;
+  }
+  var query = new RegExp("(" + text + ")", "gim");
+  var e = document.getElementById("query").innerHTML;
+  for (idx in nodeList) { 
+    var node = nodeList[idx];
+    if (node.innerHTML == null) continue;
+    node.setAttribute("textFound", node.innerHTML.match(query)?"true":"false");
+    console.log("2"/*node.innerHTML.match(query)*/);
+  }
+}

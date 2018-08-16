@@ -133,6 +133,8 @@ function onPageLoaded() {
      '<form action="" method="" id="search" name="search">'
    + '  <input name="query" id="query" type="text" size="30" maxlength="30">'
    + '  <input name="searchit" type="button" value="Regex Search" onClick="highlightSearch()">'
+   + '  <input id="singleLineOnly" type="checkbox"><code xsmall>single-line</code>'
+   + '  <input id="caseSensitive"  type="checkbox"><code xsmall>Case-match</code>'
    + '</form>'
    + '<b id="initialMessage" orange xsmall>Hint double-click/long-press on elements to zoom!!</b>';
 
@@ -142,20 +144,28 @@ function onPageLoaded() {
 }
 
 function highlightSearch() {
-  var text = document.getElementById("query").value;
+  var text = document.getElementById("query").value.replace(/ +/g,".*");
+
   var nodeList = document.querySelectorAll('td')
-  if (/^\s*$/.test(text)) {
+  if (/^\s*$/.test(text) /*empty string -> reset and return */) {
      for (idx in nodeList) {
        nodeList[idx].setAttribute("textFound", "false");
      }
      return;
   }
-  var query = new RegExp("(" + text + ")", "gim");
-  var e = document.getElementById("query").innerHTML;
+  var caseSensitive  = document.getElementById("singleLineOnly").checked;
+  var singleLineOnly = document.getElementById("caseSensitive").checked;
+  var regexFlags = "g";
+  if (!caseSensitive) regexFlags += "i";
+  if (!singleLineOnly) regexFlags += "m";
+  var query = new RegExp("(" + text + ")", regexFlags);
+  // var e = document.getElementById("query").innerHTML;
   for (idx in nodeList) { 
     var node = nodeList[idx];
     if (node.innerHTML == null) continue;
-    node.setAttribute("textFound", node.innerHTML.match(query)?"true":"false");
-    console.log("2"/*node.innerHTML.match(query)*/);
+    var htmlContent = (singleLineOnly) 
+         ? node.innerHTML 
+         : node.innerHTML.replace(/\n/gm, '');
+    node.setAttribute("textFound", htmlContent.match(query)?"true":"false");
   }
 }

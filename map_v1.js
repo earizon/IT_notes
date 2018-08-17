@@ -13,7 +13,6 @@ var idxXXXsmallRule=-1;
 var idxXXsmallRule =-1;
 var idxXsmallRule  =-1;
 
-
 var longPress = {
    longpress : false,
    presstimer : null,
@@ -140,12 +139,28 @@ function onPageLoaded() {
 
 
   document.body.insertBefore(searchDiv,document.body.children[0]);
-  // document.body.appendChild(searchDiv);
+  var query = getParameterByName("query");
+  if (query != null) {
+    document.getElementById("query").value = getParameterByName("query");
+    highlightSearch();
+  }
 }
 
+function getParameterByName(name, url) {
+    if (!url) url = window.location.href;
+    name = name.replace(/[\[\]]/g, '\\$&');
+    var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
+        results = regex.exec(url);
+    if (!results) return null;
+    if (!results[2]) return '';
+    return decodeURIComponent(results[2].replace(/\+/g, ' '));
+}
+
+var searchFound = false;
 function highlightSearch() {
   var text = document.getElementById("query").value.replace(/ +/g,".*");
 
+  searchFound = false;
   var nodeList = document.querySelectorAll('td')
   if (/^\s*$/.test(text) /*empty string -> reset and return */) {
      for (idx in nodeList) {
@@ -158,6 +173,7 @@ function highlightSearch() {
   var regexFlags = "g";
   if (!caseSensitive) regexFlags += "i";
   if (!singleLineOnly) regexFlags += "m";
+console.log("deleteme :"+ regexFlags);
   var query = new RegExp("(" + text + ")", regexFlags);
   // var e = document.getElementById("query").innerHTML;
   for (idx in nodeList) { 
@@ -166,6 +182,7 @@ function highlightSearch() {
     var htmlContent = (singleLineOnly) 
          ? node.innerHTML 
          : node.innerHTML.replace(/\n/gm, '');
-    node.setAttribute("textFound", htmlContent.match(query)?"true":"false");
+    searchFound = htmlContent.match(query);
+    node.setAttribute("textFound", searchFound?"true":"false");
   }
 }

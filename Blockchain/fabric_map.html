@@ -35,6 +35,13 @@
   <li><a href="https://hyperledger-fabric.readthedocs.io/en/latest/questions.html">Still Have Questions?</a>  </li>
   <li><a href="https://hyperledger-fabric.readthedocs.io/en/latest/status.html">Status</a>                    </li>
   </ul>
+
+  Bibliography
+  <ul xxxsmall zoom>
+  <li> <a href="https://www.safaribooksonline.com/library/view/hands-on-blockchain-with/9781788994521/">Hands-On Blockchain with Hyperledger</a>
+  </li>
+  </ul>
+
   <a href='https://hyperledger-fabric.readthedocs.io/en/latest/prereqs.html'>Prerequisites:</a>
   <ul xxxsmall>
   <li><a href='https://docs.docker.com/engine/installation/linux/docker-ce/centos/#prerequisites'>Docker CE for Centos</a></li>
@@ -233,6 +240,105 @@ NODES ("logical" communication entities)
 *3 Endorser Peer: (or endorser vs a particular chaincode). Signs TXs
 *4 Orderer  runs the communication service that implements an atomic or total order broadcast
 </pre>
+
+  <b>APPLICATION DEVELOPMENT &AMP; TRANSACTION PIPELINE</b>
+<pre bgorange xxxsmall zoom>
+PRE-SETUP:
+     ┎─                                  ┒
+     ┃0. Create cryptographic matherial  ┃
+     ┖  with cryptogen+crypto-config.yml ┚
+_______________________________________________________________________________
+
+ ┎─                ┒        ┎                 ┒        ┎                         ┒
+ ┃1. Instantiate   ┃─────→  ┃2. Join peers to ┃ ─────→ ┃3. Install smart contract┃
+ ┖  the blockchain ┚        ┖  the blockchain ┚        ┖   on the peers          ┚
+        ↑                    ↑                           │ 
+        ┆                    ┆                           │
+        ┆                    ↓                           │
+        ┆                 ╭──────╮                       │
+        └╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌→│LEDGER│                       │
+                          │ DDBB │←╌╌╌╌╌╌╌╌╌╌┐           │
+    ┌─────┐       ┌╌╌╌╌╌╌→└──────┘           ┆           │
+    │     ↓       ┆                          ┆           │
+    │    ┎        ┆                 ┒      ┎             ↓              ┒
+    └─── ┃5. Write to, or read from,┃ ←──  ┃4. Initialize smart contract┃
+         ┖   the smart contract     ┚      ┖   Ledger state             ┚
+                  │
+                  ↓
+            Communitcate result to
+            (ser/application
+
+1. Instantiation in Fabric means the creation of a channel and bootstrapping of the ordering service
+   In Fabric we use the configtxgen+config.yml (or config.json) to describe the (channel) network.
+   (genesis.block and orderer+members config.tx)config.tx)
+
+2. Joining the blockchain (channel in Fabric) allows each peer to maintain a copy of the ledger
+   initialized to a blank key-value store. 
+   Every peer that's joined to the channel will possess ledger commitment privileges and may
+   participate in a gossip protocol in order to sync ledger state with each other.
+   Endorsement policies are defined here indicating the list of principals and stating the 
+   policy attributes
+
+3. A subset of the peers joined to the channel will be selected to run the smart contract;
+   , that is, such peers will possess endorsement privileges. The contract code will
+   be deployed to these peers and built for subsequent operation. 
+
+4. Once step 4 finish the application is "up and running".
+</pre>
+
+  "Standard" three-layer architecture
+<pre xxxsmall zoom>
+                      ╭─────────╮ 
+1.APPLICATION         │User     │ 
+                      │Interface│
+                      ╰─────────╯
+                          ┃
+                          ┃ Middleware API
+2.MIDDLEWARE              ┃
+╭───────────────────────────────────────────────────────────────────────────────────────╮ 
+│Channel       Registration&amp;   Chaincode    Transaction    Chaincode    Event       │
+│Operations    enrollement         Setup        Submission     Queries      Subscription│
+╰───────────────────────────────────────────────────────────────────────────────────────╯
+                     ┃               ↑
+     Chain invocation┃               ┃ Transaction
+     and Queries     ┃               ┃ Result Events
+                     ↓               ┃
+                   ╭─────────────────────╮
+3.SMART-CONTRACT   │LEDGER     CHAINCODE │
+                   ╰─────────────────────╯
+
+Fabric provides a (Node.js and Java) SDK for the Middleware operations as well ase the "peer" CLI,
+generated upon building ($ make peer) the Fabric source code.
+</pre>
+
+  Example integration
+<pre xxxsmall zoom>
+channel.sendTransactionProposal();   protocol-specific transaction
+          ┊                                    ┊
+╭────╮←────────── ╭───────╮ ←───────────────────────────────╭────────────────╮
+│Peer│←────────── │Adaptor│                                 │Entrepise system│
+╰────╯    ┊       ╰───────╯ ─────┐business            ┌────→│/Integration bus│
+  │ eventHub.registerTXEvent();  │event               │     ╰────────────────╯
+  │                               │     ╭─────────╮   │
+  ├─ Ledger                       └───→ │Messaging│───┘
+  │                                     │System   │
+  └─ World state                        ╰─────────╯
+</pre>
+
+  <a  href='https://hyperledger-fabric.readthedocs.io/en/latest/msp.html'>Membership Service Providers (MSP)</a>
+  <ul xxxsmall zoom>
+  <li>
+  Membership Service Provider (MSP) is a component that aims to offer an abstraction of a membership operation architecture.<br/>
+  In particular, MSP abstracts away all cryptographic mechanisms and protocols behind issuing and validating certificates, 
+  and user authentication. An MSP may define their own notion of identity.
+  <!--
+    The MSP is a peer component that allows them to verify transaction requests 
+    arriving from clients and to sign transaction results(endorsements).
+    The Writing policy is defined at channel creation time, and determines
+    which user is entitled to submit a transaction to that channel.
+  -->
+  </li>
+  </ul>
 </td>
 <td colsep></td>
 <td>
@@ -354,7 +460,26 @@ config_system_chaincode → + genesis_block
   <li>Read-only queries using a rich query language (if using CouchDB as state database)</li>
   <li>Read-only history queries - Query ledger history for a key, enabling data provenance scenarios</li>
   <li>TRANSACTIONS CONSIST OF THE VERSIONS OF KEYS/VALUES THAT WERE READ IN CHAINCODE 
-      (READ SET) AND KEYS/VALUES THAT WERE WRITTEN IN CHAINCODE (WRITE SET)</li>
+      (READ SET) AND KEYS/VALUES THAT WERE WRITTEN IN CHAINCODE (WRITE SET).<br/>
+      Note: Golang chaincode use next functions for read-sets and and write-sets:
+<pre xxxsmall zoom>
++-------------------------------------+---------------------------------------------------------------
+|GetState(key string) ([]byte, error) | Returns the value of the `key` from the Worldstate. 
+|                                     | If the key does not exist in the Worldstate the function 
+|                                     | returns (nil, nil). 
+|                                     | The function does not read data from the WriteSet and
+|                                     | hence uncommitted values modified by PutState are not returned. 
++-------------------------------------+---------------------------------------------------------------
+|PutState(key string, value []byte)   | Records the specified `key` and `value` into the WriteSet. 
+|                                     | The function does not affect the ledger until the transaction 
+|                                     | is committed into the ledger. 
++-------------------------------------+---------------------------------------------------------------
+|DelState(key string) error           | Marks the the specified `key` as deleted in the WriteSet. 
+|                                     | The key will be marked as deleted and removed from Worldstate  
+|                                     | once the transaction is committed into the ledger. 
++-------------------------------------+---------------------------------------------------------------
+</pre>
+  </li>
   <li>Transactions contain signatures of every endorsing peer and are submitted to ordering service</li>
   </ul>
   Deploy vs Invoke TX
@@ -462,7 +587,7 @@ _________________________________________
 T2 → Read(k1,1,v1)
       Write k3 → (k3,3,v3')
    Result:
-     validation ERROR  (reads k1 version1 &lt; current version 2')
+     validation ERROR  (reads k1 v1 &lt; current version v1')
 _________________________________________
 T3 → Write  k2 → (k2, v2'')
    Result:
@@ -801,24 +926,59 @@ $ govendor add +external               // Add all external package, or
 $ govendor add github.com/external/pkg // Add specific external package
 </pre>
 </td>
-<td colsep></td>
 <td>
-  <a  href='https://hyperledger-fabric.readthedocs.io/en/latest/msp.html'>Membership Service Providers (MSP)</a><br/>
-  <ul xxxsmall zoom>
-  <li>
-  Membership Service Provider (MSP) is a component that aims to offer an abstraction of a membership operation architecture.<br/>
-  In particular, MSP abstracts away all cryptographic mechanisms and protocols behind issuing and validating certificates, 
-  and user authentication. An MSP may define their own notion of identity.
-  <!--
-    The MSP is a peer component that allows them to verify transaction requests 
-    arriving from clients and to sign transaction results(endorsements).
-    The Writing policy is defined at channel creation time, and determines
-    which user is entitled to submit a transaction to that channel.
-  -->
-  </li>
-  </ul>
+   SHIM API
+<pre xxxsmall zoom bgorange>
++-------------------------------------+---------------------------------------------------------------
+|GetState(key string) ([]byte, error) | Returns the value of the `key` from the Worldstate. 
+|                                     | If the key does not exist in the Worldstate the function 
+|                                     | returns (nil, nil). 
+|                                     | The function does not read data from the WriteSet and
+|                                     | hence uncommitted values modified by PutState are not returned. 
++-------------------------------------+---------------------------------------------------------------
+|PutState(key string, value []byte)   | Records the specified `key` and `value` into the WriteSet. 
+|                                     | The function does not affect the ledger until the transaction 
+|                                     | is committed into the ledger. 
++-------------------------------------+---------------------------------------------------------------
+|DelState(key string) error           | Marks the the specified `key` as deleted in the WriteSet. 
+|                                     | The key will be marked as deleted and removed from Worldstate  
+|                                     | once the transaction is committed into the ledger. 
++-------------------------------------+---------------------------------------------------------------
+|GetTxID() string                     | Returns an unique Id of the transaction proposal. 
++-------------------------------------+---------------------------------------------------------------
+|GetChannelID() string                | Returns an Id of the channel the transaction proposal was sent to. 
++-------------------------------------+---------------------------------------------------------------
+|InvokeChaincode(                     | Calls an Invoke function on a specified chaincode, in the context 
+| chaincodeName string, args [][]byte,| of the current transaction. 
+| channel string) pb.Response         | - If the invoked chaincode is on the same channel, the ReadSet and
+|                                     |   WriteSet will be added into the same transaction. 
+|                                     | - If the invoked chaincode is on a different channel, 
+|                                     |   the invocation can be used only as a query. 
++-------------------------------------+---------------------------------------------------------------
+|func GetHistoryForKey(key string)    | Returns a list of historical states, timestamps and transactions ids. 
+|  (HistoryQueryIteratorInterface, error) 
++-------------------------------------+---------------------------------------------------------------
+|func GetCreator() ([]byte, error)    | Returns the identity of the user submitting the transaction proposal. 
++-------------------------------------+---------------------------------------------------------------
+|GetTransient()                       | Returns a map of fields containing cryptographic material which
+|   (map[string][]byte, error)        | may be used to implement custom privacy layer in the chaincode. 
++-------------------------------------+---------------------------------------------------------------
+|GetBinding() ([]byte, error)         | Returns data which can be used to enforce a link between
+|                                     | application data and the transaction proposal. 
++-------------------------------------+---------------------------------------------------------------
+|GetDecorations() map[string][]byte   | Returns data produced by peer decorators which modified the chaincode input. 
++-------------------------------------+---------------------------------------------------------------
+|GetSignedProposal()                  | Returns data elements of a transaction proposal. 
+|    (*pb.SignedProposal, error)      |
++-------------------------------------+---------------------------------------------------------------
+|GetTxTimestamp()                     | Returns a timestamp of the transaction creation 
+|    (*timestamp.Timestamp, error)    | by the client. The timestamp is consistent across all endorsers. 
++-------------------------------------+---------------------------------------------------------------
+|SetEvent(name string, payload []byte)| Sets an event attached to the transaction proposal response. 
+|    error                            | This event will be be included in the block and ledger. 
++-------------------------------------+---------------------------------------------------------------
+</pre>
 </td>
-<td colsep></td>
 <td>
 <a href='http://hyperledger-fabric.readthedocs.io/en/latest/build_network.html'>Build Your First Network</a>,
 <pre xxxsmall zoom>
@@ -1260,8 +1420,8 @@ if (response.status === 'SUCCESS') {
 <table>
 <tr>
 <td>
-  <a href='https://fabric-sdk-node.github.io/'>NodeJS SDK</a> available to:
-  <ul xxxsmall zoom >
+  <a href='https://fabric-sdk-node.github.io/'>Client NodeJS SDK</a> available to:
+  <ul xxxsmall>
   <li>create <a href="http://hyperledger-fabric.readthedocs.io/en/latest/fabric_model.html#privacy-through-channels">channels</a></li>
   <li>ask <a href="http://hyperledger-fabric.readthedocs.io/en/latest/arch-deep-dive.html#peer">peer nodes</a> to join the channel</li>
   <li>install <a href="http://hyperledger-fabric.readthedocs.io/en/latest/fabric_model.html#chaincode">chaincodes</a> in peers using the consensus process (can be preinstalled in setup scripts)</li>
@@ -1273,19 +1433,19 @@ if (response.status === 'SUCCESS') {
   <li TODO >receive ledger updates</li>
   </ul>
   APIs are split between two npm modules:
-  <ul xxsmall>
-    <li>COMPOSER-CLIENT:<br/>
+  <ul xxxsmall>
+  <li>COMPOSER-CLIENT:<br/>
       - submits TXs to a network, CRUD opts on assets and participants<br/>
       - installed as local dependency for app.<br/>
       - When in production this is only module that needs to be added
         as a direct dependency of the application.</li>
-    <li>COMPOSER-ADMIN:<br/>
+  <li>COMPOSER-ADMIN:<br/>
       - manages business networks (creation/deploy, undeploy)<br/>
       - installed as a local dependency of admin. apps</li>
   </ul>
 </td>
 <td>
-  <a href="https://github.com/hyperledger/fabric-sdk-java">Java SDK</a>
+  <a href="https://github.com/hyperledger/fabric-sdk-java">Client Java SDK</a>
   <ul xxxsmall zoom>
   <li>manage the lifecycle of Hyperledger channels and user chaincode</li>
   <li>execute user chaincode, query channel blocks and TXs</li>
@@ -1368,11 +1528,17 @@ $ configtxgen -outputCreateChannelTx foo.tx -profile TwoOrgsChannel_v11 -channel
 </td>
 </tr>
 </table>
-
+<br/>
 <table>
 <tr>
+  <th colspan=10>
+    <a href="https://hyperledger.github.io/composer/latest/introduction/introduction">COMPOSER</a>
+    (Incubation, <a href='https://www.hyperledger.org/projects/composer'>project page</a>),
+    (<a href="https://github.com/jt-nti/composer-devenv">Vagrant VirtBox Provisioning</a>)
+  </th>
+</tr>
+<tr>
 <td>
-  <a href='https://www.hyperledger.org/projects/composer'>COMPOSER</a><br/>
   Composer enables to quickly create business logic running on the blockchain + REST APIs
   <ul xxxsmall zoom>
   <li>Development toolset and framework to develop blockchain apps (model, gui, roles, ...).</li>
@@ -1381,7 +1547,7 @@ $ configtxgen -outputCreateChannelTx foo.tx -profile TwoOrgsChannel_v11 -channel
   <li><a href='https://hyperledger.github.io/composer/tutorials/tutorials.html'>
         Playgorund, Developer, Queries Tutorials, deploying to a single/multiple org. in Fabric</a></li>
   </ul>
-  Businness Networks core concepts
+  Businness Networks <a href="https://hyperledger.github.io/composer/latest/introduction/key-concepts">core concepts</a>
 <pre xxxsmall zoom { >
  INPUT             OUTPUT
 ┌──────────────┐   ┌───────────────────────┐
@@ -1391,13 +1557,13 @@ $ configtxgen -outputCreateChannelTx foo.tx -profile TwoOrgsChannel_v11 -channel
 │- Transactions│   │ to deploy "somewhere")│
 ├──────────────┤   └───────────────────────┘
 │*.js          │
-│- Transaction │
-│  Functions   │
-├──────────────┤
-│*.acl         │
+│- Transaction │  - Identities&amp;ID cards can be associated with
+│  Functions   │    Participants
+├──────────────┤  - ID cards are a combination of identity, 
+│*.acl         │    connection profile and metadata
 │- Access      │
-│  Control     │
-├──────────────┤
+│  Control     │  - Transaction processor functions can emit Events
+├──────────────┤    to notify external systems about "anything"
 │*.qry         │
 │- Query defini│
 │  rules       │
@@ -1497,36 +1663,21 @@ rule NetworkAdminSsytem {
   action: ALLOW
 }
 </pre } >
-  </td>
-</tr>
-</table>
 
-<!--
-<table>
-<tr>
+  <a href="https://github.com/hyperledger/composer-tools">Composer Tools@GitHub</a>
+</td>
 <td>
-  <ul>
-  <li>(PLUGGABLE) EXECUTION RUNTIMES
-    <ul xxsmall>
-    <li>Hyperledger Fabric version 1.0.  State is stored on the distributed ledger.</li>
-    <li>Web, which executes within a web page, and is used by Playground.
-       State is stored in browser local storage.</li>
-    <li>Embedded, which executes within a Node.js process, 
-   used primarily for unit testing business logic.
-   State is stored in an in-memory key-value store.</li>
-    </ul>
-  </li>
-  <li>CONNECTION PROFILES
-    <ul xxsmall>
-    <li>Used across Hyperledger Composer to specify how to connect to an execution runtime.</li>
-    <li>There are different configuration options for each type of execution runtime. For example, the profile for 
-      an Hyperledger Fabric version 1.0 runtime will contain the TCP/IP addresses and ports for the Fabric peers,
-      as well as cryptographic certificates etc.</li>
-    <li>Connection Profiles are referred to by name (in both code and on the command line) and the connection profile documents
-     (in JSON format) are resolved from the user's home directory.</li>
-    </ul>
-  </li>
-  <li>REST SERVER: automatically generates a Open API (Swagger) REST API 
+  CONNECTION PROFILES
+  <ul xxxsmall zoom>
+  <li>Used across Hyperledger Composer to specify how to connect to an execution runtime.</li>
+  <li> json document in user's home diretory containing info such as IP addresses&amp;ports of
+     fabric-peers, cryptographic certs,...</li>
+  </ul>
+</td>
+<td>
+  Rest Server:
+  <ul xxxsmall zoom>
+  <li>automatically generates a Open API (Swagger) REST API 
     At runtime implements CRUD support for assets/participants 
     and allows TXs to be submitted for processing or retrieved</li>
   <li>LOOPBACK CONNECTOR
@@ -1536,21 +1687,33 @@ rule NetworkAdminSsytem {
     <li>Can also be used with the LoopBack tools to create more sophisticated customizations of the REST APIs.</li>
     </ul>
   </li>
-  <li>PLAYGROUND WEB USER INTERFACE
+</td>
+<td>
+  <li><a href="https://hyperledger.github.io/composer/latest/tutorials/playground-tutorial.html">PLAYGROUND WEB "IDE"</a>
     <ul xxsmall >
     <li>GUI to define and test business networks.</li>
+    <li><a href="https://composer-playground.mybluemix.net/">public-online</a> or <a href="https://hub.docker.com/r/hyperledger/composer-playground/">docker-local-online</a></li>
+
     <li>Allows business analyst to quickly import samples and prototype business logic that executes on the Web or Hyperledger Fabric runtime.</li>
     </ul>
   </li>
-  <li>YEOMAN CODE GENERATORS to create skeleton projects:
-    <ul xxsmall>
-    <li> Angular web application  </li>
-    <li> Node.js application      </li>
-    <li> Skeleton business network</li>
-    </ul>
-  </li>
+</td>
+<td>
+  YEOMAN CODE GENERATORS 
+  <ul xxxsmall zoom>
+  <li>Used to create skeleton projects</li>
+  <li> Angular web application  </li>
+  <li> Node.js application      </li>
+  <li> Skeleton business network</li>
   </ul>
 </td>
+</tr>
+</table>
+
+<!--
+<table>
+<tr>
+
 <td>
   <ul xxxsmall zoom >
   <li>BLOCKCHAIN STATE STORAGE:<br/>
@@ -1798,7 +1961,9 @@ we have to define the attributes that will be used once the ecert is generated
 . A user is registered by running the command, fabric-ca-client register. The 
 access control attributes are added by using the suffix :ecert.
 _________________________
-
--->
+Plugable consensus include:
+PBFT, No-Op, SIEVE, ... more
+_________________________
+Who is Who: https://www.hyperledger.org/about/leadership
 
 </html>

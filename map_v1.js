@@ -173,7 +173,6 @@ function highlightSearch() {
   var regexFlags = "g";
   if (!caseSensitive) regexFlags += "i";
   if (!singleLineOnly) regexFlags += "m";
-console.log("deleteme :"+ regexFlags);
   var query = new RegExp("(" + text + ")", regexFlags);
   // var e = document.getElementById("query").innerHTML;
   for (idx in nodeList) { 

@@ -73,6 +73,165 @@ Tag& Parameter         | Usage                               | Applies to       
 -----------------------+-------------------------------------+-------------------------+-------
 </pre }>
 </td>
+<td>
+MEMORY(<a href="https://dzone.com/articles/java-memory-management">REF</a>)
+<br/>
+
+   <span xsmall>strong,soft,.. refs</span>
+<pre xxxsmall zoom>
+JAVA MEMORY MODEL:
+
+         |    STACK ("SMALL")          |   HEAP  ("HUGE")
+         | private to each Thread      |   Shared by Threads
+---------+-----------------------------+--------------------
+Contain  | references ───────────────────→ objects
+         | value types                 |
+
+* 1: Ref(erence) types on the stack point to real object in HEAP memory.
+
+Reference Types regarding how the object on the heap is eligible for garbage collection
+---------+---------------------------------------------------------------------------
+ STRONG  | - Most popular. 
+         | - The object on the heap it is not garbage collected 
+         |   while there is a strong reference pointing to it, or if it is 
+         |   strongly reachable through a chain of strong references.
+---------+---------------------------------------------------------------------------
+ WEAK    | - most likely to not survive after the next garbage collection process. 
+         | - Is created like
+         |    WeakReference&lt;StringBuilder&gt; reference = new WeakReference&lt;&gt;(new StringBuilder());
+         | -  <b>Ex.use case: caching: </b>
+         |   We let the GC remove the object pointed to by the weak reference,
+         |   after which a null will be returned
+         |   See JDK implementation in <a href="https://docs.oracle.com/javase/7/docs/api/java/util/WeakHashMap.html">java.util.WeakHashMap&lt;K,V&gt;</a>
+---------+---------------------------------------------------------------------------
+ SOFT    | - used for more memory-sensitive scenarios
+         | - Will be garbage collected only when the application is running low on memory.
+         | - <b>Java guarantees that all soft referenced objects are cleaned up before throwing OutOfMemoryError</b>
+         | - is created as follows:
+         |   SoftReference&lt;StringBuilder&gt; reference = new SoftReference&lt;&gt;(new StringBuilder());
+---------+---------------------------------------------------------------------------
+ PHANTOM | - Used to schedule post-mortem cleanup actions, since we know for
+         |   sure that objects are no longer alive.                                   
+         | - Used only with a reference queue, since the .get() method of             
+         |   such references will always return null.                                 
+         | - <b>These types of references are considered preferable to finalizers</b> 
+---------+---------------------------------------------------------------------------
+</pre>
+
+<span xsmall>Force string pool reuse</span>
+<pre xxxsmall zoom>
+- Strings are immutable.
+- Stored on the heap
+- Java manages a string pool in memory,
+  reusing strings whenever possible.
+
+String string01 = "297",                                string01 == string02 : true
+       string02 = "297",                                string01 == string03 : <b red>false</b> *1
+       string03 = new Integer(297).toString(),          string01 == string04 : true  *2
+       string04 = new Integer(297).toString()<b>.intern()</b>; *2
+
+*1: <b red>Pool reuse does not work for dynamically created strings</b>
+*2: If we consider that the computed String will be used quite often,
+    we can force the JVM to add it to the string pool by adding the
+    .intern() method at the end of computed string:
+</pre>
+
+<span xsmall>"MARK&amp;SWEEP"</span>
+<pre xxxsmall zoom>
+JVM analyzes the variables from the stack and "marks" all the objects that need to be kept alive.
+Then, all the unused objects are cleaned up.
+
+The more garbage there is, and the fewer that objects are marked alive, the faster the process is. 
+
+To optimize even more heap memory actually consists of multiple parts (Java 8+):
+
+HEAP     | 
+SPACES   |  
+---------+-------------------------------------
+Eden     | - object are place here upon creation.
+         | - "small" -→ gets full quite fast. 
+         | - GC runs on the Eden space and marks objects as alive
+---------+-------------------------------------
+S0       | - Eden Objects surviving 1st GC are moved here
+         |
+---------+-------------------------------------
+S1       | - Eden Objects surviving 2nd GC are moved here 
+         | - S0   Objects surviving     GC are moved here 
+---------+-------------------------------------
+Old      | - Object survives for "N" rounds of GC (N depends on implementation),
+         |   most likely that it will survive forever, and get moved here
+         | - Bigger than Eden and S0,S1. GC doesn't run so often
+---------+-------------------------------------
+Metaspace| - metadata about loaded classes
+         | (PermGen Before Java 8)
+---------+-------------------------------------
+String   |
+  pool   |
+---------+-------------------------------------
+</pre>
+
+GC Types
+<pre xxxsmall zoom>
+- default GC type is based on the underlying hardware
+- programmer can choose which one should be used
+
+   
+   GC TYPE     | Description  / Use-Cases
++--------------+-----------------------------------------------------------------------------
+|Serial GC     | - Single thread collector.
+|              | - <b>Halt all app threads while executing</b>
+|              | - Mostly applies to <b>small apps with small data usage</b>
+|              | - Can be enabled through : <b orange>-XX:+UseSerialGC</b>
++--------------+-----------------------------------------------------------------------------
+|Parallel GC   | - Multiple threads used for GC
+|              | - <b>Halt all app threads while executing</b>
+|              | - Also known as throughput collector
+|              | - Can be enabled through : <b orange>-XX:+UseParallelGC</b>
++--------------+-----------------------------------------------------------------------------
+|Mostly        | - works concurrent to the application, "mostly" not halting threads
+|Concurrent GC | - "mostly": There is a period of time for which the threads are paused.                 
+|              |    Still, the pause is kept as short as possible to achieve the best GC performance.    
+|              | - 2 types of mostly concurrent GCs:                                                     
+|              |   * Garbage First - high throughput with a reasonable application pause time.           
+|              |                   - Enabled with the option: <b orange>-XX:+UseG1GC</b>                 
+|              |   * Concurrent Mark Sweep: app pause is kept to minimum. <b>Deprecated as Java9+</b>    
+|              |                   - Enabled with the option: <b orange>-XX:+UseConcMarkSweepGC</b>      
++--------------+-----------------------------------------------------------------------------
+</pre>
+
+Optimization Tips
+<pre xxxsmall zoom>
+- To minimize the memory footprint, limit the scope of the variables as much as possible.
+- Explicitly refer to null obsolete references making them eligible for GC.
+- Avoid finalizers. They slow down the process and they do not guarantee anything. 
+  Prefer phantom references for cleanup work.
+- Do not use strong references where weak or soft references apply. 
+  <b>The most common memory pitfalls are caching scenarios,when data
+     is held in memory even if it might not be needed.</b>
+
+- Explicitly specify heap size for the JVM when running the application:
+  -  allocate a reasonable initial and maximum amount of memory for the heap. 
+        <b orange>Initial heap size -Xms512m </b> – set initial heap     size to  512 megabytes
+        <b orange>Maximum heap size -Xmx1024m</b> – set maximum heap     size to 1024 megabytes
+        <b orange>Thread stack size -Xss128m </b> – set thread stack     size to  128 megabytes
+        <b orange>Young genera.size -Xmn256m </b> – set young generation size to  256 megabytes
+        
+
+- If app OutOfMemoryError-crashes, extra info about memory leak can be obtained through 
+        <b orange>–XX:HeapDumpOnOutOfMemory</b>, creating a heap dump file 
+
+- Use <b orange>-verbose:gc</b> to get the garbage collection output.
+</pre>
+
+Profiling:
+<pre xxxsmall zoom>
+JVisualVM (standard on the JDK) displays memory usage and other useful things:
+- The only thing you have to do is install a plugin named Visual GC, 
+  which allows you to see how the memory is actually structured.
+- JVisualVM also has the functionality to make a heap dump at a certain point,
+ so you could analyze, per class, how much memory it occupies.
+</pre>
+</td>
 <td colsep> </td>
 <td>
   <code><b orange>java.time</b>.*(1.8+)</code>
@@ -434,8 +593,7 @@ import org.slf4j.LoggerFactory;
 </tr }>
 <tr {>
 <td>
-  <ul xxxsmall zoom> 
-  <li>
+  Comparative
 <pre xxxsmall zoom>
 Standard SDK (non-concurrent):
               ←───────────────────────────────────── IMPLEMENTATIONS   ─────────────────────────────────────────→
@@ -491,8 +649,6 @@ Standard SDK (non-concurrent):
  TreeMap          │  O(log(n))                │ O(log(n))       │ O(log(n))
 
 </pre>
-  </li>
-  </ul>
 </td>
 <td>
   Initialization
@@ -2887,6 +3043,18 @@ _____________________
 https://hc.apache.org/httpcomponents-client-ga/index.html
 ______________
 https://github.com/square/javapoet
+____________________
+https://readytalk.github.io/avian/  ("Embedded java")
+Avian is a lightweight virtual machine and class library designed to provide a useful subset of Java’s features, suitable for building self-contained applications.
+
+From Mike's blog: https://blog.plan99.net/kotlin-native-310ffac94af2
+  | Enter Avian
+  | 
+  |     “Avian is a lightweight virtual machine and class library designed to provide a useful subset of Java’s features, suitable for building self-contained applications.”
+  | 
+  | So says the website. They aren’t joking. The example app demos use of the native UI toolkit on Windows, MacOS X or Linux. It’s not a trivial Hello World app at all, yet it’s a standalone self-contained binary that clocks in at only one megabyte. In contrast, “Hello World” in Go generates a binary that is 1.1mb in size, despite doing much less.
+  | 
+  | Avian can get these tiny sizes because it’s fully focused on doing so: it implements optimisations and features the standard HotSpot JVM lacks, like the use of LZMA compression and ProGuard to strip the standard libraries. Yet it still provides a garbage collector and a JIT compiler.
 -->
 
 </html>

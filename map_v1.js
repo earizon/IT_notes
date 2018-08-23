@@ -95,9 +95,12 @@ function onPageLoaded() {
   // Change default a.target to blank. Ussually this is bad practice 
   // but this is the exception to the rule
   var nodeList = document.querySelectorAll('a')
+  var thisDoc=document.location.origin+document.location.pathname;
   for (idx in nodeList) { 
-      if (!nodeList[idx].href) { continue; }
-      if (nodeList[idx].href && !nodeList[idx].href.startsWith("http")) continue;
+      var nodeHref = nodeList[idx].href;
+      if (!nodeHref) { continue; }
+      if (!nodeHref.startsWith("http")) continue;
+      if (nodeHref.startsWith(thisDoc)) continue;
       nodeList[idx].target='_blank'; 
   }
   nodeList = document.querySelectorAll('td')

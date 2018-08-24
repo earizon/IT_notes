@@ -8,7 +8,7 @@ var zoomDivFH = true; // FW Full Height
 var zoomDivTop = true; 
 var zoomDivLft = true; 
 
-var zoom=0.05
+var idxZoomDivRule=-1;
 var idxXXXsmallRule=-1;
 var idxXXsmallRule =-1;
 var idxXsmallRule  =-1;
@@ -71,13 +71,25 @@ var longPress = {
    }
 }
 
+var cellFontSize=0.05
+var zoomFontSize=1.00
 function onZoomOut(){
-  zoom=zoom - 0.05
-  document.styleSheets[0]['cssRules'][idxXXXsmallRule].style['font-size']=zoom+'rem';
+  if (zoomDivDOM.innerHTML != '') {
+    zoomFontSize = zoomFontSize - 0.05
+    document.styleSheets[0]['cssRules'][idxZoomDivRule].style['font-size']=zoomFontSize+'rem';
+    return;
+  }
+  cellFontSize=cellFontSize - 0.05
+  document.styleSheets[0]['cssRules'][idxXXXsmallRule].style['font-size']=cellFontSize+'rem';
 }
 function onZoomIn(){
-  zoom=zoom + 0.05
-  document.styleSheets[0]['cssRules'][idxXXXsmallRule].style['font-size']=zoom+'rem';
+  if (zoomDivDOM.innerHTML != '') {
+    zoomFontSize = zoomFontSize + 0.05
+    document.styleSheets[0]['cssRules'][idxZoomDivRule].style['font-size']=zoomFontSize+'rem';
+    return;
+  }
+  cellFontSize=cellFontSize + 0.05
+  document.styleSheets[0]['cssRules'][idxXXXsmallRule].style['font-size']=cellFontSize+'rem';
 }
 function doOpenZoom(e)      { 
   zoomDivDOM.innerHTML = 
@@ -118,6 +130,9 @@ function onPageLoaded() {
   }
 
   for (idx=0; idx<document.styleSheets[0]['cssRules'].length; idx++){
+      if( document.styleSheets[0]['cssRules'][idx].selectorText == "#zoomDiv") {
+          idxZoomDivRule=idx;
+      }
       if( document.styleSheets[0]['cssRules'][idx].selectorText == "[xxxsmall]") {
           idxXXXsmallRule=idx;
       }

@@ -71,13 +71,18 @@ body { font-family: sans-serif; }
      information until they are aware that such important information exists, so better place important information
      in the main page</li>
   </ul>
+<p>
+<h2>SPB HOW-TO:</h2>
+  To create your single-page-book project all that needed is to reuse 
+  the <a target="_new" href="https://github.com/earizon/IT_notes/blob/master/map_v1.js">(minimum) javascript</a>,
+  the <a target="_new" href="https://github.com/earizon/IT_notes/blob/master/map_v1.css">css</a> 
+  and the <a target="_new" href="./map_template.html">html template</a> plus some minimum experience with HTML document writing.<br/>
+  Dont' forget to have a look at the <a target="_new" href="demo.html"><b>demo</b></a> for a quick look a different possibilities.
+</p>
 
-Current list of Mind-maps:<br/>
-<ul style="font-family:monospace">
-<li>Next follow a list of example single-page-books I created while working on different topics. The quality varies, based on the time spent and my own experience on each topic</li>
-<li>To create your single-page-book project all that needed is to reuse the <a target="_new" href="https://github.com/earizon/IT_notes/blob/master/map_v1.js">(minimum) javascript</a>, the <a target="_new" href="https://github.com/earizon/IT_notes/blob/master/map_v1.css">css</a> and the <a target="_new" href="./map_template.html">html template</a> plus some minimum experience with HTML document writing. <br/>
-
-
+<h3>Current list of Mind-maps:</h3>
+<ul>
+<li>Next follow a list of example single-page-books I created while working on different topics. The quality varies, based on the time spent and my own experience on each topic.</li>
 <li>Beta state means that related information is in place, but things are still missing/non-validated</li>
 <li>Version 1.0 or higher means that content on the  be used as a reference book, mind map or quick-sheet in daily work</li> 
 </ul>
@@ -96,13 +101,17 @@ done
 cat << EOF >>index.html
 </ul>
 
-</p>
-Dont' forget to have a look at the <a target="_new" href="demo.html"><b>demo</b></a> for a quick look a different possibilities.
-</p>
+<!--
+<h3>Acknowledements</h3>
+  I would like to thanks the Mozilla, WebKit and the w3c guys for the continuous support of the web, my current employer, Everis, for providing a confortable space to work,
+  Bram Moolenaar for the lovely Vim editor, Clement Gonzalez for teaching me how to use CSS seriously, 
+  
+-->
 
 <p>
 <h3>Pull-request and bug-reporting contributions welcome!</h3>
 </p>
+
 </body>
 </html>
 EOF

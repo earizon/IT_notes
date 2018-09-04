@@ -178,28 +178,36 @@ var searchFound = false;
 function highlightSearch() {
   var text = document.getElementById("query").value.replace(/ +/g,".*");
 
-  searchFound = false;
-  var nodeList = document.querySelectorAll('td')
-  if (/^\s*$/.test(text) /*empty string -> reset and return */) {
-     for (idx in nodeList) {
-       nodeList[idx].setAttribute("textFound", "false");
-     }
-     return;
+  var removeNodeList = document.querySelectorAll('*[textFound]');
+  if (removeNodeList.length > 0) {
+      for (idx in removeNodeList) {
+       removeNodeList[idx].setAttribute("textFound", "false"); 
+    }
   }
+
+  if (/^\s*$/.test(text) /*empty string -> reset and return */) { return; }
+
+  
   var caseSensitive  = document.getElementById("singleLineOnly").checked;
   var singleLineOnly = document.getElementById("caseSensitive").checked;
   var regexFlags = "g";
   if (!caseSensitive) regexFlags += "i";
   if (!singleLineOnly) regexFlags += "m";
   var query = new RegExp("(" + text + ")", regexFlags);
-  // var e = document.getElementById("query").innerHTML;
-  for (idx in nodeList) { 
-    var node = nodeList[idx];
-    if (node.innerHTML == null) continue;
-    var htmlContent = (singleLineOnly) 
-         ? node.innerHTML 
-         : node.innerHTML.replace(/\n/gm, '');
-    searchFound = htmlContent.match(query);
-    node.setAttribute("textFound", searchFound?"true":"false");
+
+  var matrix = [
+     document.querySelectorAll('td'),
+     document.querySelectorAll('*[zoom]') ]
+  for (col in matrix) { 
+    var nodeList = matrix[col]
+    for (row in nodeList) { 
+      var node = nodeList[row]
+      if (node.innerHTML == null) continue;
+      var htmlContent = (singleLineOnly) 
+           ? node.innerHTML 
+           : node.innerHTML.replace(/\n/gm, '');
+      var searchFound = htmlContent.match(query);
+      node.setAttribute("textFound", searchFound?"true":"false");
+    }
   }
 }

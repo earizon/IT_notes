@@ -134,6 +134,101 @@ Application Platform for Multi Core and Many Core:
 https://projects.eclipse.org/projects/technology.app4mc
 ___________________
 https://projects.eclipse.org/projects/modeling
+___________________________________________
+Sharding: Powerful but manual scaling
+__________________________________________
+In 1973, Carl Hewitt had an idea inspired by quantum mechanics. He wanted to develop computing machines that were capable of parallel execution of tasks, communicating with each other seamlessly while containing their own local memory and processors.
+The actor model in computer science is a mathematical model of concurrent computation that treats "actors" as the universal primitives of concurrent computation. In response to a message that it receives, an actor can: make local decisions, create more actors, send more messages, and determine how to respond to the next message received. Actors may modify their own private state, but can only affect each other through messages (avoiding the need for any locks).
+The actor model originated in 1973.[1] It has been used both as a framework for a theoretical understanding of computation and as the theoretical basis for several practical implementations of concurrent systems. The relationship of the model to other work is discussed in Actor model and process calculi.
+_________________________
+https://techdecoded.intel.io/resources/understanding-the-instruction-pipeline/?cid=em-elq-35946&utm_source=elq&utm_medium=email&utm_campaign=35946&elq_cid=3023559
+Understanding the Instruction Pipeline
+The Key to Adaptability in Modern Application Programming
+
+Alex Shinsel, Technical Consulting Engineer, Intel Corporation
+Email
+@IntelDevTools| No ratings yet. Rate this
+
+Understanding the instruction pipeline, on at least a basic level, is as critical to achieving high efficiency in modern application programming as understanding color theory is to painting. It\u2019s a fundamental and ubiquitous concept. While sources vary on exact dates and definitions, instruction pipelining as we know it started gaining popularity at some point in the 1970s or 1980s and is omnipresent in modern machines.
+
+Processing an instruction isn\u2019t instantaneous. There are several steps involved. While the exact details of implementation vary from machine to machine, conceptually it boils down to five main steps:
+
+    Fetching an instruction
+    Decoding it
+    Executing it
+    Accesing memory
+    Writing back the results
+
+Without pipelining, each instruction is processed from start to finish before moving on to the next. If we assume that each of the five steps takes one cycle, then it would take 15 cycles to process three instructions (Figure 1).
+
+Figure 1 \u2013 Sequential instruction processing at one step per clock cycle
+
+Because each step is handled by a different section of hardware, modern processors improve efficiency by pipelining the instructions, allowing the various hardware sections to each process a different instruction simultaneously. For instance, in cycle 3 of Figure 2, the processor is fetching instruction C, decoding instruction B, and executing instruction A. All three instructions are completed by the end of cycle seven\u2015eight cycles sooner than if they\u2019d been processed sequentially.
+
+We can compare this to washing a second load of laundry while your first load is in the dryer. While processing an instruction certainly involves more steps than doing laundry, we can still divide it into two sections:
+
+    The Front End, the part of the CPU that fetches and decodes instructions
+    The Back End, the part that executes and retires instructions
+
+Figure 2 \u2013 Pipelined instruction processing
+
+Of course, Figure 2 is an oversimplification of instruction pipelining. In reality, the number of steps in the pipeline varies among implementations, with each of the steps used in the example often being split into multiple substeps. However, this doesn\u2019t affect conceptual understanding, so we\u2019ll continue to use the simplified five-step model. Also, this simplified model doesn\u2019t take into account superscalar design, which results in multiple pipelines per processor core because it duplicates functional units such as arithmetic logic units (ALUs) and fetches multiple instructions at once to keep the extra units busy.
+
+The number of pipelines available is called the width. Figure 3 represents a two-wide design that fetches instructions A and B on the first cycle, and instructions C and D on the second cycle. The width is (theoretically) defined in terms of how many instructions can be issued each cycle, but this is somewhat complicated by the way pipelining is done with CISC designs such as the ever-popular x86.
+
+Pipelining works best with RISC designs, those with a small number of simpler instructions that run quickly. The varying complexity and running times for more elaborate instructions like those found in x86 can make
+pipelining difficult for multiple reasons:
+
+Figure 3 \u2013 A two-wide instruction pipeline
+
+    Slow instructions can bog down the pipeline.
+    Complicated instructions may be more likely to stall on data dependencies.
+
+The solution to this problem was to break down these complex operations into smaller micro-operations, or \u03bcops. For convenience, the \u03bc is often replaced with u\u2015thus, the uop. The x86 instructions are therefore fetched and decoded, converted into uops, and then dispatched from a buffer to be executed and, ultimately, retired. This disconnect between x86 instructions being fetched and uops being dispatched makes it hard to define the width of a processor using this methodology, and this difficulty is exacerbated by the fact that pairs of uops can sometimes be fused together.
+
+The difficulty of precisely defining the processor width in this scenario makes an abstraction appealing. Regardless of semantics or underlying hardware, there\u2019s ultimately a fixed number of uops that can be issued from the Front End per cycle, and a fixed number of uops that can be retired from the Back End per cycle. This is the number of pipeline slots available and, as a general rule of thumb, the magic number is usually four on modern Intel® processors.
+
+The concept of the pipeline slot is useful for application optimization because each slot can be classified into one of four categories on any given cycle based on what happens to the uop it contains (Figure 4). Each pipeline slot category is expected to fall within a particular percentage range for a well-tuned application of a given type (e.g., client, desktop, server, database, scientific). A tool like Intel® VTune\u2122 Amplifier can help to measure the percentage of pipeline slots in an application that fall into each category, which can be compared to the expected ranges. If a category other than Retiring exceeds the expected range for the appropriate application type, it indicates the presence and nature of a performance bottleneck.
+
+Figure 4 \u2013 Pipeline slot categorization flowchart
+
+Much has already been written on the technique of using these measurements for performance optimization, including the Intel VTune Amplifier tuning guides, and these methods are outside the scope of this article, so we won\u2019t cover them here. (See the suggested readings at the end of this article for additional tuning advice.) Instead, we\u2019ll focus on understanding what\u2019s going on within the pipeline in these situations. For the sake of simplicity, our diagrams will have only a single pipeline.
+
+We\u2019ve already discussed the Retiring category. It represents normal functionality of the pipeline, with no stalls or interruptions. The Back-End-Bound and Front-End-Bound categories, on the other hand, both represent situations where instructions weren\u2019t able to cross from the Front End to the Back End due to a stall. The stalls that cause Back-End-Bound and Front-End-Bound slots can have many root causes, including everything from cache misses to overly high demand for a particular type of execution unit. But the effects ultimately boil down to uops not leaving their current stages on schedule.
+
+A Front-End-Bound slot occurs when an instruction fails to move from the Front End into the Back End despite the Back End being able to accommodate it. In Figure 5, instruction B takes an extra cycle to finish decoding, and remains in that stage on cycle 4 instead of passing into the Back End. This creates an empty space that propagates down the pipeline\u2015known as a pipeline bubble\u2015marked here with an exclamation point.
+
+Figure 5 \u2013 Example of a Front-End-Bound slot
+
+A Back-End-Bound slot occurs when the Back End cannot take incoming uops (regardless of whether the Front End is capable of actually supplying them) (Figure 6). In this example, instruction B takes an extra cycle to execute and, because it is still occupying the Execute stage on cycle 5, instruction C can\u2019t move into the Back End. This also results in a pipeline bubble.
+
+Figure 6 \u2013 Example of a Back-End-Bound slot
+
+Note that the delay doesn\u2019t have to occur in the Decode or Execute stages. In Figure 5, if B had taken an extra cycle to fetch, no instruction would have passed into the Decode stage on cycle 3, creating a bubble, so there would be no instruction to pass into the Back End on cycle 4. Likewise, in Figure 6, if instruction A had taken an extra cycle in the Memory stage, then B would have been incapable of moving out of the Execute stage on cycle 5, whether it was ready to or not. Therefore, it would remain where it was, blocking C from proceeding into the Back End.
+
+The final category is Bad Speculation. This occurs whenever partially processed uops are cancelled before completion. The most common reason uops are cancelled is due to branch misprediction, though there are other causes (e.g., self-modifying code). A branch instruction must be processed to a certain point before it\u2019s known whether the branch will be taken or not. Once again, the implementation details vary, but are conceptually similar. For the sake of demonstration, we\u2019ll assume that we\u2019ll know whether to take path X or path Y when the branch instruction reaches the end of the Execute stage (Figure 7). Branches are so common that it\u2019s infeasible to incur a performance penalty every time one is encountered by waiting until it finishes executing to start loading the next instruction. Instead, elaborate algorithms predict which path the branch will take.
+
+Figure 7 \u2013 Instructions from path X being loaded into the pipeline before the branch is resolved
+
+Figure 8 \u2013 Correct branch prediction
+
+From here, there are two possible outcomes:
+
+    The branch prediction is correct (Figure 8) and things proceed as normal.
+    The branch is mispredicted (Figure 9), so the incorrect instructions are discarded, leaving bubbles in their place, and the correct instructions begin entering the pipeline.
+
+The performance penalty is effectively the same as if the pipeline had simply waited for the execution of the branch to resolve before beginning to load instructions, but only occurs when the prediction algorithm is wrong rather than every time a branch is encountered. Because of this, there\u2019s a constant effort to improve prediction algorithms.
+
+Figure 9 \u2013 Branch misprediction
+
+Anyone with a performance analyzer can access Bad Speculation, Front-End-Bound, and Back-End-Bound slot counts for an application. But without understanding where those numbers come from or what they mean, they\u2019re useful for little more than blindly following instructions from a guide, utterly dependent on the author\u2019s recommendations. Understanding is the key to adaptability and, in the fluid world of software, it\u2019s crucial to be able to respond to the unique needs of your own application\u2015because some day, you\u2019ll encounter a scenario that hasn\u2019t been written about.
+Learn More
+
+    Patterson, Jason R. C. \u201cModern Microprocessors: A 90-Minute Guide!\u201d Lighterra, May 2015. Sections 2-7, 12.
+    Walton, Jarred. \u201cProcessor Architecture 101 \u2013 the Heart of your PC.\u201d PCGamer. Future plc, 28 December 2016.
+    \u201cTuning Guides and Performance Analysis Papers.\u201d Intel Developer Zone. Intel.
+    \u201cTuning Applications Using a Top-Down Microarchitecture Analysis Method.\u201d Intel Developer Zone. Intel.
+
 
 -->
 

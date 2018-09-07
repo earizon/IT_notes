@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html>
+   <meta charset="UTF-8">
+   <title>Docker (beta)</title>
+<head>
+<script src="../map_v1.js"></script>
+<link rel="stylesheet" type="text/css" href="../map_v1.css" />
+</head>
+
+<body onLoad='onPageLoaded()'>
+<div id='zoomDiv'></div>
+<div style="position:fixed; right:0.3%; bottom:0; width:auto;">
+<b style="font-size:1.5rem" orange><a onclick="onZoomOut()">[-A]</a></b>
+<b style="font-size:1.5rem"       >                                 </b>
+<b style="font-size:2.0rem" orange><a onclick="onZoomIn ()">[A+]</a></b>
+</div>
+<!-- {{{ START }}} -->
+
+<table>
+<tr>
+<td>
+  External Links:
+  <ul xxxsmall zoom>
+  <li><a href="https://github.com/jdeiviz/docker-training">D.Peman@github</a></li>
+  <li><a href="https://github.com/jpetazzo/container.training">container.training@Github</a></li>
+  <li><a href="http://container.training/">container.training</a></li>
+  </ul>
+</td>
+<td>
+  Proxy settings:
+<pre xxxsmall zoom>
+To configure Docker to work with an HTTP or HTTPS proxy server, follow 
+instructions for your OS:
+
+Windows - <a href="https://docs.docker.com/docker-for-windows/#proxies">Get Started with Docker for Windows</a>
+macOS   - <a href="https://docs.docker.com/docker-for-mac/">Get Started with Docker for Mac</a>
+Linux   - <a href="https://docs.docker.com/engine/admin/systemd/#httphttps-proxy">Control&amp;config. Docker with Systemd</a>
+</pre>
+</ul>
+</td>
+<td>
+  Local ("dev laptop") Setup (<a href="https://github.com/jdeiviz/docker-training/tree/master/e00-environment">REF</a>
+<pre xxxsmall zoom>
+Alt.1: Using Docker Toolbox
+  $ docker-machine create -d virtualbox \
+    --engine-env http_proxy=...  \ 
+    --engine-env https_proxy=... \
+    docker-training
+
+Alt.2: Using (Windows 10+) Hyper-V
+    → Launch Hyper-V Manager
+    → Click Virtual Switch Manager in the right-hand menu
+    → Click Create Virtual Switch of type External
+    → Give it the name myswitch, and check the box to share your host machine’s active network adapter
+    → $ docker-machine create -d hyperv \
+      --hyperv-virtual-switch "myswitch" \
+      --engine-env HTTP_PROXY=... \
+      --engine-env HTTPS_PROXY= \
+      docker-training 
+
+Choose a machine:
+   $ eval $(docker-machine env docker-training --no-proxy)
+
+Check connexion:
+   $ docker --version
+</pre>
+</td>
+<td>
+  Managing containers:
+ <pre xxxsmall zoom>
+Boot-up container:
+   $ docker run --rm -d  --name clock jdeiviz/clock # -d: "Daemon"  mode, --rm: Remove on exit
+   $ docker run --rm -it --name clock jdeiviz/clock # -it: (I)nteractive + (T)erminal
+     (Detach with ^P^Q, attach with 'docker attach clock')
+   $ docker run --rm -it --name clock jdeiviz/clock bashbash
+
+Show container logs:
+   $ docker logs docker 
+   $ logs --tail 3
+   $ docker logs --tail 1 --follow
+
+Stop container:
+   $ docker stop # Espera 10s docker kill
+
+Remove all containers:
+   $ docker container prune
+
+Listar all containers related commands: 
+   $ docker container
+</pre>
+</td>
+
+<td>
+  Managing images
+<pre xxxsmall zoom>
+(List all image related commands with: $ docker image)
+
+List local ("downloaded/instaled") images:
+  $ docker images
+
+Search remote images @ Docker Hub: | Download image from Docker Hub: | Upload image to Docker Hub:
+  $ docker search redis            |   $ docker pull debian:jessie   |   $ docker login
+                                                                     |   $ docker push /clock:1.0
+
+Tag image:                              | Show image change history:    
+  $ docker tag jdeiviz/clock /clock:1.0 |   $ docker history /clock:1.0
+
+Remove (local) image:     
+  $ docker rmi /clock:1.0 
+  $ docker image prune    # Remove *all* non used images
+
+</pre>
+</td>
+<td>
+  Commit image modifications
+<pre xxxsmall zoom>
+host-mach $ docker run -it ubuntu bash     # Boot up existing image
+container # apt-get install ...            # Apply changes to running instance
+host-mach $ docker diff $(docker ps -lq)   # Show changes done in running container
+host-mach $ docker commit $(docker ps -lq) # Commit/Confirm changes
+host-mach $ docker tag figlet              # Tage new image 
+host-mach $ docker run -it figlet          # Boot new image instance
+</pre>
+</td>
+<td>
+  Dockerfile
+<pre xxxsmall zoom>
+$ docker build \
+   --build-arg http_proxy=http://...:8080 \
+   --build-arg https_proxy=https://..:8080 \
+   -t figlet .
+
+$ cat ./Dockerfile
+FROM ubuntu
+
+RUN apt-get update
+# Instalar figlet
+
+ENTRYPOINT ["figlet", "-f", "script"]
+</pre>
+
+<a href="https://github.com/jdeiviz/docker-training/tree/master/e07-dockerfile-optimized">Dockerfile optimized</a>
+</td>
+</tr>
+</table>
+
+<table>
+<tr>
+<td>
+  Docker Networks
+<pre xxxsmall zoom>
+Create new network and use it in containers:
+  $ docker <b>network create</b> <b orange>redisNetwork</b>
+  $ docker run --rm --name redis-server --network <b orange>redisNetwork</b> -d redis 
+  $ docker run --rm --network <b orange>redisNetwork</b> -it redis redis-cli -h redis-server -p 6379
+
+List networks:
+  $ docker network ls
+
+Disconect and connect a container to the network:
+  $ docker disconnect <b orange>redisNetwork</b> redis-server 
+  $ docker connect --alias db <b orange>redisNetwork</b> redis-server
+</pre>
+</td>
+<td>
+  Volumes
+<pre xxxsmall zoom>
+REUSE VOLUME FROM CONTAINER:
+  STEP 0: Create new container with volume
+    host-mach $ docker run -it <b orange>--name alpha</b> <b>-v "hostPath":/var/log</b> ubuntu bash
+    container $ date &gt; /var/log/now
+     
+  STEP 1: Create new container using volume from previous container:
+    host-mach $ docker run --volumes-from <b orange>alpha</b> ubuntu 
+    container $ cat <b>/var/log/</b>now 
+
+CREAR VOLUME FOR REUSE IN DIFFERENT CONTAINERS
+
+  STEP 0: Create Volume
+  host-mach $ docker volume create --name=<b orange>websiteVolume</b>
+  STEP 1: Use volume in new container
+  host-mach $ docker run -d -p 8888:80 \
+              -v <b orange>websiteVolume</b>:/usr/share/nginx/html
+              -v logs:/var/log/nginx nginx 
+  host-mach $ docker run 
+              -v <b orange>websiteVolume</b>:/website
+              -w /website \
+              -it alpine vi index.html
+
+Ex.: Update redis version without loosing data:
+  host-mach $ docker network create dbNetwork
+  host-mach $ docker run -d --network dbNetwork \
+              --network-alias redis \
+              --name redis28 redis:2.8
+  host-mach $ docker run -it --network dbNetwork \
+              alpine telnet redis 6379
+              → SET counter 42 
+              → INFO server
+              → SAVE
+              → QUIT
+  host-mach $ docker stop redis28
+  host-mach $ docker run -d --network dbNetwork \
+              --network-alias redis \
+              --name redis30 \
+              --volumes-from redis28 \
+              redis:3.0
+  host-mach $ docker run -it --network dbNetwork \
+              alpine telnet redis 6379
+              → GET counter
+              → INFO server
+              → QUIT
+</pre>
+</td>
+<td>
+  ONBUILD (base Dockerfile for devel)
+<pre xxxsmall zoom>
+Modify base image adding "ONBUILD" in places that are executed just during build
+in the image extending base image: 
+| Dockerfile.base                | Dockerfile
+| FROM node:7.10-alpine          | FROM node-base
+|                                | 
+| RUN mkdir /src                 | EXPOSE 8000
+| WORKDIR /src
+| 
+| ONBUILD ARG NODE_ENV
+| ONBUILD ENV NODE_ENV $NODE_ENV
+| 
+| COPY package.json /src
+| 
+| RUN npm install
+| 
+| COPY . /src
+| 
+| CMD [ "npm", "start" ]
+
+  $ docker build -t node-base -f Dockerfile.base . # STEP 1: Compile base image
+  $ docker build -t node -f Dockerfile .           # STEP 2: Compile image
+  $ docker run -p 8000:8000 -d node
+</pre>
+</td>
+<td>
+  Multi-Stage
+<pre xxxsmall zoom>
+                   +-------------------------------+------------------------------------------------+
+                   | "STANDARD" BUILD              | multi-stage BUILD                              |
++------------------+-------------------------------+------------------------------------------------+
+|Dockerfile        | Dockerfile                    | Dockerfile.ms                                  |
+|                  | FROM golang:alpine            | FROM <b>golang:alpine</b> AS <b orange>build-env</b>                |
+|                  | WORKDIR /app                  | ADD . /src                                     |
+|                  | ADD . /app                    | RUN cd /src &amp;&amp; go build -o app                 |
+|                  | RUN cd /app &amp;&amp; go build -o app|                                                |
+|                  | ENTRYPOINT ./app              | FROM <b>alpine</b>                                    |
+|                  |                               | WORKDIR /app                                   |
+|                  |                               | COPY --from=<b orange>build-env</b> /src/app /app/           |
+|                  |                               | ENTRYPOINT ./app                               |
++------------------+-------------------------------+------------------------------------------------+
+| Compile image    | $ docker build . -t hello-go  | $ docker build . -f Dockerfile.ms -t hello-goms|
++------------------+-------------------------------+------------------------------------------------+
+| Exec container   | $ docker run hello-go         | $ docker run hello-goms                        |
++------------------+-------------------------------+------------------------------------------------+
+| Check image size | $ docker images               | $ docker images                                |
++------------------+-------------------------------+------------------------------------------------+
+
+</pre>
+</td>
+<td>
+  docker-compose
+<pre xxxsmall zoom>
+version: "3"
+services:
+  web:
+    build: .         # ← use Dockerfile to build image
+    ports:
+      - "8000:8000"
+  redis:
+    image: redis     # ← use DockerHub image
+    volumes:
+      - "redis-data:/data"
+
+volumes:
+  redis-data:
+</pre>
+</td>
+</tr>
+</table>
+
+
+<table>
+<tr>
+<td>
+<code>$ docker help</code>
+<pre xxxsmall zoom>
+Usage:	docker COMMAND
+
+A self-sufficient runtime for containers
+
+Options:
+      --config string      Location of client config files (default "/root/.docker")
+  -D, --debug              Enable debug mode
+  -H, --host list          Daemon socket(s) to connect to
+  -l, --log-level string   Set the logging level ("debug"|"info"|"warn"|"error"|"fatal") (default "info")
+      --tls                Use TLS; implied by --tlsverify
+      --tlscacert string   Trust certs signed only by this CA (default "/root/.docker/ca.pem")
+      --tlscert string     Path to TLS certificate file (default "/root/.docker/cert.pem")
+      --tlskey string      Path to TLS key file (default "/root/.docker/key.pem")
+      --tlsverify          Use TLS and verify the remote
+  -v, --version            Print version information and quit
+
+Management Commands:       | Commands:
+            Manage ...     |   attach      Attach local STDIN/OUT/ERR streams to a running container
+config      Docker configs |   build       Build an image from a Dockerfile
+container   containers     |   commit      Create a new image from a container's changes
+image       images         |   cp          Copy files/folders between a container and the local filesystem
+network     networks       |   create      Create a new container
+node        Swarm nodes    |   diff        Inspect changes to files or directories on a container's filesystem
+plugin      plugins        |   events      Get real time events from the server
+secret      Docker secrets |   exec        Run a command in a running container
+service     services       |   export      Export a container's filesystem as a tar archive
+swarm       Swarm          |   history     Show the history of an image
+system      Docker         |   images      List images
+trust       trust on       |   import      Import the contents from a tarball to create a filesystem image
+            Docker images  |   info        Display system-wide information
+volume      volumes        |   inspect     Return low-level information on Docker objects
+                           |   kill        Kill one or more running containers
+                           |   load        Load an image from a tar archive or STDIN
+                           |   login       Log in to a Docker registry
+                           |   logout      Log out from a Docker registry
+                           |   logs        Fetch the logs of a container
+                           |   pause       Pause all processes within one or more containers
+                           |   port        List port mappings or a specific mapping for the container
+                           |   ps          List containers
+                           |   pull        Pull an image or a repository from a registry
+                           |   push        Push an image or a repository to a registry
+                           |   rename      Rename a container
+                           |   restart     Restart one or more containers
+                           |   rm          Remove one or more containers
+                           |   rmi         Remove one or more images
+                           |   run         Run a command in a new container
+                           |   save        Save one or more images to a tar archive (streamed to STDOUT by default)
+                           |   search      Search the Docker Hub for images
+                           |   start       Start one or more stopped containers
+                           |   stats       Display a live stream of container(s) resource usage statistics
+                           |   stop        Stop one or more running containers
+                           |   tag         Create a tag TARGET_IMAGE that refers to SOURCE_IMAGE
+                           |   top         Display the running processes of a container
+                           |   unpause     Unpause all processes within one or more containers
+                           |   update      Update configuration of one or more containers
+                           |   version     Show the Docker version information
+                           |   wait        Block until one or more containers stop, then print their exit codes
+</pre>
+</td>
+<td colsep></td>
+<td TODO>
+  <a href="https://docs.docker.com/registry/#what-it-is">Registry</a><br/>
+  (server store for images)
+</td>
+<td colsep></td>
+<td>
+   Monitoring (Basic)
+<pre xxxsmall zoom>
+List containers instances:
+   $ docker ps     # only running
+   $ docker ps -a  # also finished, but not yet removed (docker rm ...)
+   $ docker ps -lq # TODO:
+
+"top" containers showing Net IO read/writes, Disk read/writes:
+   $ docker stats
+   | CONTAINER ID   NAME                    CPU %   MEM USAGE / LIMIT     MEM %   NET I/O          BLOCK I/O      PIDS
+   | c420875107a1   postgres_trinity_cache  0.00%   11.66MiB / 6.796GiB   0.17%   22.5MB / 19.7MB  309MB / 257kB  16
+   | fdf2396e5c72   stupefied_haibt         0.10%   21.94MiB / 6.796GiB   0.32%   356MB / 693MB    144MB / 394MB  39
+
+   $ docker top 'containerID'
+   | UID       PID     PPID    C  STIME  TTY   TIME     CMD
+   | systemd+  26779   121423  0  06:11  ?     00:00:00 postgres: ddbbName cache 172.17.0.1(35678) idle
+   | ...
+   | systemd+  121423  121407  0  Jul06  pts/0 00:00:44 postgres
+   | systemd+  121465  121423  0  Jul06  ?     00:00:01 postgres: checkpointer process
+   | systemd+  121466  121423  0  Jul06  ?     00:00:26 postgres: writer process
+   | systemd+  121467  121423  0  Jul06  ?     00:00:25 postgres: wal writer process
+   | systemd+  121468  121423  0  Jul06  ?     00:00:27 postgres: autovacuum launcher process
+   | systemd+  121469  121423  0  Jul06  ?     00:00:57 postgres: stats collector process
+
+</pre>
+</td>
+<td>
+  <span TODO>SysDig</span>
+<pre xxxsmall zoom>
+Container-focused Linux troubleshooting and monitoring tool.
+
+Once Sysdig is installed as a process (or container) on the server,
+it sees every process, every network action, and every file action
+on the host. You can use Sysdig "live" or view any amount of historical 
+data via a system capture file.
+
+Example: take a look at the total CPU usage of each running container:
+   $ sudo sysdig -c topcontainers\_cpu
+   | CPU% container.name 
+   | ---------------------------------------------------- 
+   | 80.10% postgres
+   | 0.14% httpd
+   | ...
+   | 
+
+Example: Capture historical data:
+   $ sudo sysdig -w historical.scap
+
+Example: "Zoom into a client":
+   $ sudo sysdig -pc -c topprocs\_cpu container. name=client
+   | CPU% Process container.name
+   | ----------------------------------------------
+   | 02.69% bash client
+   | 31.04%curl client
+   | 0.74% sleep client
+</pre>
+</td>
+<td TODO>
+<a href="https://dzone.com/refcardz/intro-to-docker-monitoring?chapter=6">
+  "Basic" monitoring with cAdvisor+Prometheus+Grafana
+</a>
+</td>
+<td colsep>
+</td>
+<td TODO>
+  alpine how-to
+</td>
+<td TODO>
+  <a href="https://github.com/GoogleContainerTools/distroless">Distroless</a>
+</td>
+</tr>
+</table>
+</body>
+<!--
+TODO_Start:
+https://kerneltalks.com/virtualization/8-basic-docker-container-management-commands/
+_____________________
+_______________________
+Docker Remote API SDK:
+https://docs.docker.com/develop/sdk/
+__________________
+
+________________________
+-->
+
+</html>

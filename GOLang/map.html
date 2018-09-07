@@ -15,214 +15,232 @@
 <b style="font-size:2.0rem" orange><a onclick="onZoomIn ()">[A+]</a></b>
 </div>
 <!-- {{{ START }}} -->
+<span small>
+<a href="https://golang.org/doc/">Doc</a>,
+<a href="https://golang.org/ref/spec">Spec</a>,
+<a href="https://golang.org/doc/effective_go.html">Effective Go</a>,
+<a href="https://golang.org/pkg/">StdLib</a>,
+<a href="https://golang.org/doc/cmd">cli</a>,
+<a href="https://golang.org/doc/diagnostics.html">Diagnos.</a>
+</span small>
 <table style='width:100%'{>
 <tbody>
 <tr {>
 <td>
-     <a href="https://golang.org/doc/install">Install (GOPATH)</a><br/>
+  <a href="https://golang.org/doc/install">Workspace/packages/GOPATH</a>
 <pre xxxsmall zoom>
-GOPATH ENV.VAR: (default: $HOME/go) location of working workspace
+                  |  SCM     |        
+|workspace|1 ←→ N |repository| 1 ←→ N |package| 
+   ^                                      ^   
+ $GOPATH                               path to package
+ |bin/                                 determines its 
+ |  hello                              import path
+ |  outyet                           
+ |src/                               
+ |  github.com/golang/example/   ←  repository 1
+ |      .git/  
+ |      hello/hello.go           ← package 1.
+ |                               import github.com/golang/example/hello/...
+ |      outyet/                  ← package 2
+ |          main.go
+ |          main_test.go
+ |  golang.org/x/image/          ← repository 2
+ |      .git/
+ |  github.com/"myUser"/...
+           
+<p>GOPATH</p>: (default: $HOME/go) working workspace location 
 $ go env GOPATH # prints the effective current GOPATH
+# setup Environement
+$ export GOPATH=$(go env GOPATH)  # can fix some problems
+$ export PATH=$PATH:${GOPATH}/bin
 </pre>
 <hr/>
-  Hello World
+  Hello World run&amp;build
 <pre xxxsmall zoom>
-# setup Environement
-$ export GOPATH=$(go env GOPATH)
-$ export PATH=$PATH:${GOPATH}/bin
-$ mkdir -p ${GOPATH}\
-  /src/github.com/"myUser"/hello
+(${GOPATH}/src/github.com/"myUser"/hello/hello.go)
+| package main 
+| // ^ must be always the first statement
+| //   Go's convention is that package name is the last element of 
+| //   the import path:
+| //   package importaed as "crypto/rot13" should be named rot13
+| import (
+|   "fmt"
+|   "time"
+|   "math/rand"
+|   m "golang-book/chapter11/math"
+| )
+| func f(n int) {
+|   for i := 0; i < 10; i++ {
+|     fmt.Println(n, ":", i)
+|     amt := time.Duration(rand.Intn(250))
+|     time.Sleep(time.Millisecond * amt)
+|   }
+|   ... m.Average(...)
+| }
+| 
+| func main() {
+|     const (
+|        HELLO = "Hello"
+|        WORLD = "World"
+|     )
+|     
+|     var x string = HELLO + " " + WORLD +"\n"
+|  //     x       := HELLO + " " + WORLD +"\n"  // alt 2. (Type inference)
+|     fmt.Printf(x) // alt 1
+|     fmt.Println("1 + 1 = ", 1.0 + 1.0) // alt 2
+|     <b>go</b> f(1) // go-routine
+|     var inputFromSTDIN float64 
+|     fmt.Scanf ("%f", &amp;inputFromSTDIN) // formated input
+|     fmt.Printf("%f", inputFromSTDIN)      // formated output
+| }
 
-$ vim ${GOPATH}/src/github.com/"myUser"/hello
-  | package main 
-  | // ^ must be always the first statement
-  | 
-  | import (
-  |   "fmt"
-  |   "time"
-  |   "math/rand"
-  |   m "golang-book/chapter11/math"
-  | )
-  | func f(n int) {
-  |   for i := 0; i < 10; i++ {
-  |     fmt.Println(n, ":", i)
-  |     amt := time.Duration(rand.Intn(250))
-  |     time.Sleep(time.Millisecond * amt)
-  |   }
-  |   ... m.Average(...)
-  | }
-  | 
-  | func main() {
-  |     const (
-  |        HELLO = "Hello"
-  |        WORLD = "World"
-  |     )
-  |     
-  |     var x string = HELLO + " " + WORLD +"\n"
-  |         x       := HELLO + " " + WORLD +"\n"  // alt 2
-  |     fmt.Printf(x) // alt 1
-  |     fmt.Println("1 + 1 = ", 1.0 + 1.0) // alt 2
-  |     var input float64 
-  |     go f(1) // go-routine
-  |     fmt.Printf(fmt.Scanf("%f", &amp;input))
-  | }
+$ go <b>run  </b> hello.go                # alt 1.
+→ ...
+$ go <b>build</b>  &amp;&amp; ./hello     # alt 2.
 
-$ <def>go run  </def> hello.go     # alt 1
-$ <def>go build</def>  &amp;&amp; ./hello # alt 2
 
+# INSTALL:
+# "go get" will also install downloading first any missing packages
+$ go install github.com/"myUser"/hello
+Exec like:
+$ $GOPATH/bin/hello
+→ ...
 </pre>
-</td>
-<td>
-  <ul xsmall zoom>
-  <li><a href="https://golang.org/doc/">Golang Doc</a></li>
-  <li><a href="https://golang.org/doc/diagnostics.html">Diagnostics</a></li>
-  <li><a href="https://golang.org/pkg/">Standard lib</a></li>
-  <li><a href="https://golang.org/pkg/builtin/">Builtin library</a>
+
+  Testing
+  <a xsmall href="https://golang.org/cmd/go/#hdr-Test_packages"><code>go test help</code></a>,
+  <a xsmall href="https://golang.org/pkg/testing/">test package</a>
 <pre xxxsmall zoom>
+(vim $GOPATH/src/github.com/user/stringutil/reverse_test.go)
+| package stringutil
+| 
+| import "testing"
+| 
+| func TestReverse(t *testing.T) {
+|   cases := []struct {
+|     in, want string
+|   }{
+|     {"Hello, world", "dlrow ,olleH"},
+|   }
+|   for _, c := range cases {
+|     got := Reverse(c.in)
+|     if got != c.want {
+|       t.Errorf(
+|         "Reverse(%q) == %q, want %q",
+|         c.in, got, c.want)
+|     }
+|   }
+| }
+  
+<b>Running tests:</b>
+$ go test github.com/user/stringutil
+→ ok github.com/user/stringutil 0.165s
+</pre>
+
+  <a href="https://golang.org/pkg/builtin/">Builtin library</a>,
+<a href="https://golang.org/ref/spec#Built-in_functions">Spec</a>
+<pre xxxsmall bgorange zoom>
 functions:
-    append(slice []Type, elems ...Type) []Type
-    cap(v Type) int
-    close(c chan<- Type)
-    complex(r, i FloatType) ComplexType
-    copy(dst, src []Type) int
-    delete(m map[Type]Type1, key Type)
-    imag(c ComplexType) FloatType
-    len(v Type) int
-    make(t Type, size ...IntegerType) Type
-    new(Type) *Type
-    panic(v interface{})
-    print(args ...Type)
-    println(args ...Type)
-    real(c ComplexType) FloatType
-    recover() interface{}
+  append(slice []Type, elems ...Type) []Type
+    - appends elements to the end of a slice.
+      WARN: returns the updated slice.  It is therefore necessary 
+            to store the result of append, often in the variable
+            holding the slice itself.
+       
+      <b>sliceRefInFunc</b> = append(<b>sliceRefInFunc</b>, elem1, elem2)
+      <b>sliceRefInFunc</b> = append(<b>sliceRefInFunc</b>, anotherSlice...)
+
+      It is legal to append a string to a byte slice, like this:
+      slice = append([]byte("hello "), "world"...)
+
+  cap(v Type) int
+   - returns the capacity of v, according to its type
+
+  close(c chan<- Type)
+   - closes a channel, which must be either bidirectional or send-only.
+   WARN: It should be executed only by the sender, never the receiver, 
+        and has the effect of shutting down the channel after the last sent
+        value is received. 
+   WARN: After the last value has been received from a closed channel c,
+        any receive from c will succeed without blocking, returning the
+        zero value for the channel element. 
+   WARN: "x, ok := <-c" will also set ok to false for a closed channel.
+
+  copy(dst, src []Type) int
+   - copies elements from a source slice into a destination slice.
+   -returns number of elements copied, which will be the minimum of len(src) and len(dst).
+   WARN: source and destination may overlap.
+
+  delete(m map[Type]Type1, key Type)
+   - deletes the element with the specified key (m[key]) from the map.
+   If m is nil or there is no such element, delete is a no-op.
+          
+  len(v Type) int
+   - returns the length of v, according to its type:
+
+  make(t Type, size ...IntegerType) Type
+   - allocates and initializes an object of type slice, map, or chan (only).
+   - Like new, the first argument is a type, not a value.
+   - (Unlike "new") return type is the same as the type of its argument, not pointer 
+
+  new(Type) *Type
+   - allocates memory. 
+   - returns pointer to a newly allocated zero value of that type
+
+  panic(v interface{})
+   - stops normal execution of the current goroutine
+   - termination sequence can be controlled by the built-in function recover.
+
+  recover() interface{}
+   - allows a program to manage behavior of a panicking goroutine.
+     Executing a call to recover inside a deferred function (but not any function called by it)
+     stops the panicking sequence by restoring normal execution and retrieves the error
+     value passed to the call of panic.
+   - If recover is called outside the deferred function it will not stop a panicking sequence.
+
+   ...
 
 types
    ComplexType FloatType IntegerType Type Type1 bool byte complex128 complex64 error float32
    float64 int int16 int32 int64 int8 rune string uint uint16 uint32 uint64 uint8 uintptr
 </pre>
-  </li>
-  <li><a href="https://golang.org/doc/effective_go.html">Effective Go</a></li>
-  </ul>
+
+
   <hr/>
-  Install to $GOPATH/bin:
-  <ul xxxsmall zoom>
-  <li><pre xxxsmall zoom>$ go install github.com/"myUser"/hello</pre></li>
-  <li>A workspace contains many version control repositories (Git, ...).</li>
-  <li>Each repository contains one or more packages</li>
-  <li>Each package consists of one or more Go src files in a single directory</li>
-  <li>The directory file path to a package determines <code>import path</code></li>
-  </ul>
-
   Building a library<br/>
-  <ol xxxsmall zoom>
-  <li>
-<pre>$ mkdir $GOPATH/src/github.com/"myUser"/stringutil</pre>
-  </li>
-  <li>
-Edit $GOPATH/src/github.com/"myUser"/stringutil/reverse.go
 <pre xxxsmall zoom>
-// utility functs for strings
-package stringutil
+(edit $GOPATH/src/github.com/"myUser"/stringutil/reverse.go)
+| // utility functs for strings
+| package stringutil
+| 
+| func Reverse(s string) string {
+|     r := []rune(s)
+|     for i, j := 0, <b blue>len</b>(r)-1;
+|         i &lt; <b blue>len</b>(r)/2;
+|         i, j = i+1, j-1 {
+|         r[i], r[j] = r[j], r[i]
+|     }
+|     return string(r)
+| }
 
-func Reverse(s string) string {
-    r := []rune(s)
-    for i, j := 0, <b blue>len</b>(r)-1;
-        i < <b blue>len</b>(r)/2;
-        i, j = i+1, j-1 {
-        r[i], r[j] = r[j], r[i]
-    }
-    return string(r)
-}
+<b>BUILD:</b>
+$ go build github.com/"myUser"/stringutil
+
+<b>INSTALL:</b>
+$ go install github.com/"myUser"/stringutil
+
+<b>IMPORT AND USE INTO CODE:</b>
+(..../hello.go)
+
+| package main
+| import ("fmt"
+|         "github.com/myUser/stringutil"
+| )
+| ...
+|    fmt.Printf(stringutil.Reverse("!oG, olleH"))
 </pre>
-  </li>
-  <li>
-Test build:
-<pre xxxsmall zoom>
-$ go build github.com/"myUser"/stringutil</pre>
-  </li>
-  <li>
-Install:
-<pre xxxsmall zoom>
-$ go install github.com/"myUser"/stringutil</pre>
-  </li>
-  <li>
-Use it in hello.go:
-<pre xxxsmall zoom>
-package main
-import ("fmt"
-        "github.com/myUser/stringutil"
-)
-...
-   fmt.Printf(stringutil.Reverse("!oG, olleH"))
-</pre>
-  </li>
-  </ol>
 </td>  
-<td>
-  Code organization (workspace):<br/>
-<pre xxxsmall zoom>
-  typically keep all Go code in a single workspace ("GOPATH")
-workspace
- | bin/
- |   hello
- |   outyet
- | pkg/
- |   linux_amd64/
- |     github.com/golang/example/
- |       stringutil.a
- | src/
- |   github.com/golang/example/
- |       .git/
- |   golang.org/x/image/
- |       .git/
- |   hello/
- |       hello.go
- |   ...
-</pre>
-<br/>
-<pre xxxsmall zoom>
-# "go get" is similar to "go install" but also downloads
-# from git if the specified packages is not in workspace
-$ go get \
-   github.com/golang/example/hello
-$ $GOPATH/bin/hello
-Hello, Go examples!
-</pre>
-  Testing <a xxsmall href="https://golang.org/cmd/go/#hdr-Test_packages"><br/>
-  <code>go test help</code></a>, <a xxsmall href="https://golang.org/pkg/testing/">testing package</a>
-  <ol xxxsmall zoom>
-  <li>edit <code>$GOPATH/src/github.com/user/stringutil/reverse_test.go</code> (same folder than standar source code)
-<pre xxxsmall zoom>
-package stringutil
-
-import "testing"
-
-func TestReverse(t *testing.T) {
-  cases := []struct {
-    in, want string
-  }{
-    {"Hello, world", "dlrow ,olleH"},
-  }
-  for _, c := range cases {
-    got := Reverse(c.in)
-    if got != c.want {
-      t.Errorf(
-        "Reverse(%q) == %q, want %q",
-        c.in, got, c.want)
-    }
-  }
-}
-</pre>
-  </li>
-  <li>Run tests:
-<pre xxxsmall zoom>
-$ go test \
-  github.com/user/stringutil
-ok github.com/user/stringutil 0.165s
-</pre>
-  </li>
-  </ol>
-</td>  
+  
 <td>
   Types<br/>
 <pre xxxsmall zoom>
@@ -314,7 +332,7 @@ for idx, element := <b orange>range</b> array1 {
   // do something
 }
 </pre>
-  Maps<br/>
+  <a href="https://golang.org/ref/spec#Map_types">Maps</a>
 <pre xxxsmall zoom>
 map1 := <b orange>make</b>(<b orange>map</b>[string]int)
 map1["key"] = 10
@@ -371,8 +389,71 @@ sort.Sort(ByName(kids))
 for e := l.Front(); e != nil; e = e.Next() {
     // do something with e.Value
 }
-
 </pre>
+</td>
+<td>
+  <a href="https://golang.org/ref/spec#Errors">Contemplated Error Handling</a>
+<pre xxxsmall zoom>
+The predeclared type error is defined as
+
+  type error interface {
+      Error() string
+  }
+
+It is the conventional interface for representing an error condition,
+with the nil value representing no error.
+
+For instance, a function to read data from a file might be defined:
+
+  func Read(f *File, b []byte) (n int, err error)
+
+Ex.1:
+
+  f, err := os.Open("/test.txt")
+  if err != nil {
+     // Fix contemplated error
+     // (otherwise panic...)
+  }
+</pre>
+
+  <a href="https://blog.golang.org/defer-panic-and-recover">Non contemplated errors</a>paniq/recover("try"/"catch")
+<pre xxxsmall zoom>
+func goRutine1() (i int) {
+  f, _ := os.Open(filename)
+  <b blue>defer</b> f.Close()   //pushes function call onto a list *1
+  <b blue>defer</b> func() {
+     fmt.Println(<b orange>recover</b>())
+  }
+  <b blue>defer</b> func() {
+      if r := <b orange>recover</b>(); r != nil {
+          fmt.Println("Recovered in f", r)
+      }
+  }()
+  ...
+  if "nonContemplatedError" { panic("RuntimeException") }
+  i = 0;
+  <b blue>defer</b> func() { fmt.Prinlnt(i); }() // Will print 0: i evaluated at this line
+  <b blue>defer</b> func() { i++ }() // goRutine1 caller will receive 2
+  i++ 
+  return i;
+}
+
+*1: The list of saved calls is executed 
+    <b>after</b> the surrounding function returns
+    <b>Deferred functions execute even when panicking.</b>
+
+Ex: deferred func increments return value i on return: 
+    This is convenient for modifying the error return value 
+
+"<b orange>recover</b>" can regain control and stop paniq propagation.
+It's only useful inside deferred functions. 
+Here's an example program that demonstrates the mechanics of panic and <b blue>defer</b>:
+</pre>
+<br/>
+<b xsmall blue>THE CONVENTION IN THE GO LIBRARIES IS THAT EVEN WHEN A PACKAGE
+  USES PANIC INTERNALLY, ITS EXTERNAL API STILL PRESENTS EXPLICIT ERROR
+  RETURN VALUES.</b>
+
 </td>
 </tr>
 </table>
@@ -396,22 +477,11 @@ func                       |func
     return 1,2             |}
 }
 </pre>
-  defer, panic, recover<br/>
-<pre xxxsmall zoom>
-f, _ := os.Open(filename)
-func main() {
-  defer f.Close()
-  defer func() {
-     fmt.Println(recover())
-  }
-  ...
-  if ... { panic("RuntimeException") }
-}
-</pre>
+
 </td>  
  
 <td>
-  Interfaces<br/>
+  <a href="https://golang.org/ref/spec#Interface_types">Interfaces</a>
 <pre xxxsmall zoom>
 type Shape interface {
   area() float64
@@ -663,6 +733,8 @@ this will produce three files:
 that you can deploy to your HTTP server or load directly into a browser.
 The js package can be used for DOM manipulation.
 ______________________
+   "if val, ok := map["key"]; ok { .... }" construct must be used to
+   check for key existence
 -->
 
 </html>

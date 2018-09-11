@@ -15,19 +15,132 @@
 <b style="font-size:2.0rem" orange><a onclick="onZoomIn ()">[A+]</a></b>
 </div>
 <!-- {{{ START }}} -->
-
+<a href="https://linux.die.net/man/">Man Pages</a>
 <table style='width:100%'>
 <tbody>
 <tr>
 <td>
   External Links
   <ul xxxsmall zoom>
-  <li><a href="https://linux.die.net/man/8/">Admin Man Pages (about 1% of them are of current use)</a> </li>
   <li><a href="https://linux.die.net/Linux-CLI/">Command-line Tools  Summary</a> </li>
-
   <li><a href="https://en.wikipedia.org/wiki/Linux_Standard_Base">Linux Standard Base</a> </li>
   <li><a href="http://www.tldp.org/LDP/Linux-Filesystem-Hierarchy/html/etc.html">/etc config directory</a>(see also <a href="www.tldp.org/LDP/Linux-Filesystem-Hierarchy">Full FS Hierarchy</a>)</li>
   </ul>
+  <hr/>
+  <b>Filesystem Basics</b>
+  Moving around FS
+<pre xxxsmall zoom>
+<b>Display current working directory</b>
+$ pwd  # pwd: "P"rint "W"orking "D"irectory
+<b>Change to directory</b>
+$ cd /home/myUser/Dowload
+
+<b>(ls "file or directory") List "file" or "files in directory"</b>
+With no file or directory list info in current working directory
+ls -l :  ("long"), show permissions, file size, modification date, ownership
+ls -a :  ("all" ), shows also hidden files (files/dirs starting with ".") 
+ls -d :  Show only directory entry, do NOT display directory contents 
+ls -F :  ("format") append helper graphical symbol like '*' for executable files
+ls -S :  sort by size output in descending order
+ls -R :  ("recursive") list recursively children directories
+
+</pre>
+
+  handling files/dirs
+<pre xxxsmall zoom>
+<b>Create directory</b>
+mkdir -p /home/myUser/work/project01 # -p: will create any non-existing directory up to project01
+                                     #     Withouth -p mkdir will fail if /home/myUser/work does not exists
+
+<b>Moving files</b>
+$ mv /my/path01/myFile1  /my/path02/   # move myFile1 from path01 to path02 directory
+<b>Rename file</b>
+$ mv myOriginalName  myFinalName   # use the mv (move) command to rename
+<b>copying files</b>
+$ cp    /tmp/fileToCopy       /home/myUser/ # copy to destination directory
+$ cp -R /tmp/directoryToCopy  /home/myUser/ # copy recursively (-R) directory to destination directory
+
+
+<b>Remove files/directories</b>
+$ rm -f file       # force (-f) file deletion.  The -f option is useful for automated scripts
+$ rm -rf directory # force (-f) directory deletion recursively (-r). Do not ask before deleting
+                   # Be very careful with recursive deletions. Specially as root user
+
+<b>Securely remove files by overwriting first</b>
+$ shred -n 2 -z -v /tmp/myImportantSecret  # -n 2: Overwrite twice with random data
+                                           # finally write over with zeroes (-z)
+                                           # -v: Show progress
+
+<a href="https://linux.die.net/man/1/shred">shred</a> prevent data from being recovered by software (and most probably hardware)
+</pre>
+
+  Hard/Soft Links
+<pre xxxsmall zoom>
+In unix an "inode" is the low-level structure that stores the physical location in disk of
+a given file. This "inode" is not visible to the user. 
+The user visible entities are the file system paths, that point to the real inodes.
+
+When a new file is created we have an structure similar to:
+
+   /my/file/path  (points to)  → inode   (points to) →  physical_block_on_disk
+   ^visible in              ^invisible to               ^managed by hard-disk
+    user shells,             users, managed              internal circuitry
+    GUI explorers,...        by the OS kernel            (or networks NAS)
+
+* We can create <b>symbolic links</b> to a file_path, that are "sortcuts" to access
+  a file_path from another file_path like (ln -s):
+  
+     $ ln -s /my/file/path   /my/newLocation/file/path/symLink
+     
+      This will leave and structure similar to:
+     
+        /my/file/path   →  inode   →  physical_block_on_disk
+         ↑
+         │
+        /my/newLocation/file/path/symLink
+     
+     If the original /my/file/path is deleted or moved the links is broken.
+  
+  
+* A hard-link can also be created pointing direcly to the inode, like (ln):
+     $ ln /my/file/path   /my/newLocation/file/path2
+
+      This will leave and structure similar to:
+     
+        /my/file/path   
+                                    →  inode   →  physical_block_on_disk
+        /my/newLocation/file/path2
+
+The underlying inode will increase the number of references. The file data can be
+accesses independently by the original /my/file/path or the new /my/newLocation/file/path2.
+The inode (file) wil exists until all hardlinks or references are deleted.
+
+The "stat" command can be used to inspect inodes and other advanced info for a given
+file path.
+</pre>
+
+  Searching files/data
+<pre xxxsmall zoom>
+<b><a href="https://linux.die.net/man/1/find">find</a> files whose name ends in "html"</b>
+Ex 1: "complex" find 
+Command             |   Human explanation
+(split into lines   |
+ for readability)   |
+------------------- +--------------------
+$ find              |   let's display find results
+   /var/lib         | ←     starting in this base directory and subdirectories
+   -type f          | ← AND of type file (ignore directories, links, ...)
+   -iname "*html"   | ← AND whose name matches *html (iname:ignore case, name: case sensitive)
+   -mmin  -30       | ← AND whose modification time is 30 or less (-30) minutes (-mmin)
+   -msize +20k      | ← AND whose size (msize) is 20kilobytes or more (+20)
+
+Ex 2: find files and <b orange>for each found file execute</b> a <b blue>given command (grep ...)</b>
+$ find 
+   /var/lib
+   -type f
+   -iname "*html"
+   <b orange>-exec</b> <b blue>grep "myStyleSheet.css"</b> <b orange>{} \;</b>
+</pre>
 </td>
 
 <td>
@@ -44,124 +157,455 @@ $ useradd -D  #  display default values
   SHELL=/bin/bash
   SKEL=/etc/skel
   CREATE_MAIL_SPOOL=yes
-useradd -D [options] # update default values
 
+$ useradd -D [options] # update default values
 ----- next opts have defaults if not indicated ----------
   --base-dir BASE_DIR  :  (default to /home) Ignored if --home-dir set
-
   --expiredate EXPIRE_DATE
-
   --inactive INACTIVE  :  day # after pass.expiration before disabling
-
   --gid GROUP: existing group name or ID for initial group (when --no-user-group used)
-
   --shell SHELL
-
 --------------------------------------------------------
   --groups group1,group2,... supplementary groups
-
   --skel SKEL_DIR :  skel. dir. to be copied in the user's home directory
-
-  --key KEY=VALUE : Overrides /etc/login.defs defaults (UID_MIN, UID_MAX, UMASK, PASS_MAX_DAYS and others).
-
-           Example: -K PASS_MAX_DAYS=-1 can be used when creating system account to turn off password ageing,
-              even though system account has no password at all.
+  --key KEY=VALUE : Overrides /etc/login.defs defaults 
+                    (UID_MIN, UID_MAX, UMASK, PASS_MAX_DAYS and others).
+                    Example: -K PASS_MAX_DAYS=-1 can be used when creating 
+                      system account to turn off password ageing, even though 
+                      system account has no password at all.
   --no-log-init   : Do not add user to lastlog and faillog databases
-
   --create-home   : Create the user's home directory if it does not exist.
-                  By default no home directories are created
-
+                    By default no home directories are created
   --no-create-home: Do not create the user's home directory if enabled in defaults
-
   --no-user-group : Do not create a group. Initial group indicated by --gid 
-
   --non-unique    : Allow duplicate (non-unique) existing UID in --uid
-
   --password PASS : (disabled by default)
-
-  --system        : Create system account (no aging, uid chosen in SYS_UID_MIN-SYS_UID_MAX range
-
+  --system        : Create system account (no aging, uid chosen in
+                     SYS_UID_MIN-SYS_UID_MAX range)
   --root CHROOTDIR: Apply changes in chrooted directory 
-
-
   --uid UID       : numerical value for user's ID.
-
   --user-group    : Create group with the same name as user, and use as initial group
-
   --selinux-user SEUSER : SELinux user for the user's login
+</pre>
 
+  basic user audit
+<pre xxxsmall zoom>
+$ who     ← Displays current users logged into the system and the  logged-in time
+$ w       ← Displays who is logged into the system and <b>what they are doing</b> (procs. they are running). 
+$ users   ← Displays only user names who are currently logged in
+$ last    ← Displays records of users-logged-in time, <b>remote IP or PTTY</b>, reboot time, 
+$ lastlog ← Displays list of users and what day/time they logged into the system.
+$ whoami  ← Tells the user who they are currently logged in as
+</pre>
+  <hr xxxsmall />
+
+  basic process audit/control
+<pre xxxsmall zoom>
+$ ps   ← shows list of the processes running. i
+         Without options: processes belonging to current user&amp;with a controlling terminal
+  Ex. options include:
+   -a: all processes from all users
+   -u: add user names, %cpu usage, and %mem usage,...
+   -x: add also processes without controlling terminals
+   -l: add information including UID and nice value
+   --forest: show process hierarchy.
+
+$ pstree ← show parent/children process tree (-p flag show pid)
+
+$ top -n 1 ← Display top by cpu processes once and finish
+$ top    ← real-time display processes ordered by memory/CPU/...(as in CPU usage)
+
+  Z,B,E,e   Global: 'Z' colors; 'B' bold; 'E'/'e' summary/task memory scale
+  l,t,m     Toggle Summary: 'l' load avg; 't' task/cpu stats; 'm' memory info
+  0,1,2,3,I Toggle: '0' zeros; '1/2/3' cpus or numa node views; 'I' Irix mode
+  f,F,X     Fields: 'f'/'F' add/remove/order/sort; 'X' increase fixed-width
+
+  L,&,<,> . Locate: 'L'/'&' find/again; Move sort column: '<'/'>' left/right
+  R,H,V,J . Toggle: 'R' Sort; 'H' Threads; 'V' Forest view; 'J' Num justify
+  c,i,S,j . Toggle: 'c' Cmd name/line; 'i' Idle; 'S' Time; 'j' Str justify
+  x,y     . Toggle highlights: 'x' sort field; 'y' running tasks
+  z,b     . Toggle: 'z' color/mono; 'b' bold/reverse (only if 'x' or 'y')
+  u,U,o,O . Filter by: 'u'/'U' effective/any user; 'o'/'O' other criteria
+  n,#,^O  . Set: 'n'/'#' max tasks displayed; Show: Ctrl+'O' other filter(s)
+  C,...   . Toggle scroll coordinates msg for: up,down,left,right,home,end
+
+  k,r       Manipulate tasks: 'k' kill; 'r' renice
+  d or s    Set update interval
+  W,Y       Write configuration file 'W'; Inspect other output 'Y'
+  q         Quit
+
+
+$ kill -l   ← Display existing signals (Default to SIGTERM that most of the times
+              will just terminate the process "cleanely")
+→  1) SIGHUP   2) SIGINT   3) SIGQUIT  4) SIGILL   5) SIGTRAP
+→  6) SIGABRT  7) SIGBUS   8) SIGFPE   9) SIGKILL 10) SIGUSR1
+→ 11) SIGSEGV 12) SIGUSR2 13) SIGPIPE 14) SIGALRM 15) SIGTERM
+→ 16) SIGSTKFLT   17) SIGCHLD 18) SIGCONT 19) SIGSTOP 20) SIGTSTP
+→ 21) SIGTTIN 22) SIGTTOU 23) SIGURG  24) SIGXCPU 25) SIGXFSZ
+→ 26) SIGVTALRM   27) SIGPROF 28) SIGWINCH    29) SIGIO   30) SIGPWR
+→ 31) SIGSYS  34) SIGRTMIN    35) SIGRTMIN+1  36) SIGRTMIN+2  37) SIGRTMIN+3
+→ 38) SIGRTMIN+4  39) SIGRTMIN+5  40) SIGRTMIN+6  41) SIGRTMIN+7  42) SIGRTMIN+8
+→ 43) SIGRTMIN+9  44) SIGRTMIN+10 45) SIGRTMIN+11 46) SIGRTMIN+12 47) SIGRTMIN+13
+→ 48) SIGRTMIN+14 49) SIGRTMIN+15 50) SIGRTMAX-14 51) SIGRTMAX-13 52) SIGRTMAX-12
+→ 53) SIGRTMAX-11 54) SIGRTMAX-10 55) SIGRTMAX-9  56) SIGRTMAX-8  57) SIGRTMAX-7
+→ 58) SIGRTMAX-6  59) SIGRTMAX-5  60) SIGRTMAX-4  61) SIGRTMAX-3  62) SIGRTMAX-2
+→ 63) SIGRTMAX-1  64) SIGRTMAX    
+ 
+$ kill [ -s (signal name)] 'process_id' ← Send signal to process. kill -9 kills unconditionally
+$ killall "process_name"  ← send signal to all processes matching full name
+$ pkill "process_name"    ← send signal to all processes matching part of the name
+$ skill  ← send a particular signal to command/username/tty.
+        -L --- list the various signals that can be sent
+        -u --- specify a username;
+        -p --- process id (followed by the process id)
+        -c --- command name (this is the same as killall)
+        -t --- (tty number)
+        -v --- verbose mode
+        -i --- interactive mode.
+
+PAUSE AND CONTINUE A PROCESS:
+$ kill -STOP "pid" # Pauses
+$ kill -CONT "pid" # Continues
+
+$ nice -20 make ← Sets make priority to -20 
+                  -20 is maximum priority   (negative only allowed to root)
+                   20 is the minimum priority.
+$ renice 10 "pid" ← Changes priority of running process.
+</pre>
+
+
+  basic network audit/control
+<pre xxxsmall zoom>
+<b>Socket Statistics (ss)</b>
+USAGE EXAMPLES
+$ sudo ss -t -a -p
+        Display all (-a) TCP (-t) sockets and processes using them (-p)
+→ STATE       ... ADDRESS:PORT              PEER ADDRESS:PORT                
+→ ESTABLISHED ... 127.0.0.1:postgres        127.0.0.1:46404        users:(("postgres",pid=64032,fd=11))
+→ ESTABLISHED ... 10.0.0.5:idonix-metanet   81.61.178.46:51003     users:(("sshd",pid=61411,fd=3),("sshd",pid=61407,fd=3))
+→ ESTABLISHED ... 127.0.0.1:37200           127.0.0.1:50004        users:(("sshd",pid=61411,fd=10))
+→ ESTABLISHED ... 127.0.0.1:postgres        127.0.0.1:45086        users:(("postgres",pid=43553,fd=11))
+→ TIME_WAIT   ...
+$ ss -o state established '( dport = :ssh or sport = :ssh )'
+        Display all established ssh connections.
+$ ss -x src /tmp/.X11-unix/*
+        Find all local processes connected to X server.
+$ ss -o state fin-wait-2 '( sport =  :http  or  sport  =  :https  )'  dst 193.233.7/24
+        List  all  the tcp sockets in state FIN-WAIT-1 for our apache to
+        network 193.233.7/24 and look at their timers.
+
+    ss man summary
+    (MAIN) OPTIONS
+    -n: Do not try to resolve service names.
+    -a: Display both listening and non-listening  (for  TCP  this  means
+        established connections) sockets
+    -l: Display only listening sockets (omitted by default)
+    -e: Show detailed extended socket information
+    <b>-m: Show socket memory usage</b>
+    <b blue>-p: Show process using socket</b>
+    -i: Show internal TCP information.
+    -K: <b TODO>Attempts to forcibly close sockets</b>. This option displays sockets
+        that are successfully closed and silently skips sockets that the
+        kernel does not support closing. IPv4/6 sockets only
+    <b>-s: Print summary statistics, useful when
+        amount of sockets is  so  huge  that  parsing  /proc/net/tcp  is
+        painful.</b>
+    -N NSNAME: Switch to the specified network namespace name.
+    -b: Show socket BPF filters (only admins).
+    -0: Display PACKET sockets   -w: Display RAW sockets
+    <b blue>-t: Display TCP sockets</b>      -x: Display Unix domain sockets
+    <b>-u: Display UDP sockets</b>      -S: Display SCTP sockets.
+    -d: Display DCCP sockets     --vsock: Display vsock sockets
+    ...
+
+<b>DISPLAY IP Routing Table</b>
+$ ip route list
+→ <b>default via 10.0.0.1 dev eth0</b>
+→ 10.0.0.0/24     dev eth0    proto kernel scope link src 10.0.0.5 
+→ 169.254.0.0/16  dev eth0                 scope link metric 1002 
+→ 172.17.0.0/16   dev docker0 proto kernel scope link src 172.17.0.1 
+→ 168.63.129.16   via 10.0.0.1 dev eth0 proto static 
+→ 169.254.169.254 via 10.0.0.1 dev eth0 proto static 
+→ ...
+
+<b>DISPLAY IP Routing Table</b>
+1: lo:     <LOOPBACK,           UP,LOWER_UP> ...  state UNKNOWN mode DEFAULT ...
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+2: eth0:   <BROADCAST,MULTICAST,UP,LOWER_UP> ...  state UP      mode DEFAULT ...
+    link/ether    00:0d:3a:26:bb:2b brd ff:ff:ff:ff:ff:ff
+...
+
+<b>SNIFF network traffic</b>
+$ sudo tcpdump -i eth0 port 8090  -n -A  ←  "snif" IP traffic  in network interface eth0
+                                        with IP packets to/from port 8090 
+                                        -A: Show in text/ASCII format
+                                        -n: Do not convert IPs to host-names
+                                            (Avoiding slow dns reverse lookups)
+
+<b>Show IP route from source to destination ("hop" path)</b>
+$ sudo traceroute "destination_IP_or_host" ← (attempts to ) show the route of a packet. 
+
+<b>Examine open ports in remote machine</b>
+$ sudo nmap -nt remote_machine    ← (try to) query remote machine for open ports 
+</pre>
+
+basic network traffic shaping:
+<pre xxxsmall zoom>
+<b> Network interface shaping with <a href="https://github.com/magnific0/wondershaper/">Wondershaper</a></b>
+$ sudo ./wondershaper -a eth0 -u 4096 -d 8192 ← limit upload: 4Mbps, download:8Mbs
+
+<b>Process network shaping with <a href="https://www.pcsuggest.com/bandwidth-traffic-shaping-in-linux-with-firejail/">Firejail</a></b>
+$ firejail  --net=enp2s0 firefox [/bash] 
+$ firejail --list | grep 'firefox' | awk -F: '{print$1}'
+$ firejail  --bandwidth=PID set interface-name down-speed up-speed
+</pre>
+
+  Internet Utility commands
+<pre xxxsmall zoom>
+$ <b>host (ip_address|domain_name)</b>  ← Performs lookup of an internet address (using the Domain Name System, DNS). Simply type:
+or
+<b></b>
+$ <b>dig</b>    www.amazon.com  ←        query to DNS
+$ dig -x 10.10.10.10     ← revers query to DNS 
+(check man page for more options)
+
+$ <b>wget</b> www.myDomain.com/myPage  ← HTTP client
+    Options: 
+    -m: archive/"m"irrow single web-site
+    -nc: (no clobber) avoid overwriting local files 
+
+$   wget --spider \    ← parse bookmarks.html for links
+    --force-html \
+    -i bookmarks.html
+(see man page for more info)
+
+$ <b>curl</b>  ← Script oriented HTTP client.
+          It can access dictionary servers (dict), 
+          ldap servers, ftp, http, gopher, ...
+
+$ curl -M : To access the full/huge manual 
+$ curl -u username:password http://www.placetodownload/file
+</pre>
+
+
+</td>
+<td>
+   System Information
+   <hr xxxsmall />
+   Basic info
+<pre xxxsmall zoom>
+$ uptime  ← shows how long the computer has been "up" since last reboot. 
+           number of users and the processor load
+$ date    ← current date/time
+$ cal     ← display calendar
+$ uname   ← print information on the system such as OS type, kernel version...
+    -a --- print all the available information
+    -m --- print only information related to the machine itself
+    -n --- print only the machine hostname
+    -r --- print the release number of the current kernel
+    -s --- print the operating system name
+    -p --- print the processor type
+
+$ cat /etc/*release* | sort | uniq ← Shows OS identification 
+                                       (Distribution, major, minor,patch version, flavour, ...)
+</pre>
+   <code><a href="https://linux.die.net/man/8/vmstat">vmstat</a></code>(OS global stats)
+<pre xxxsmall zoom bgorange>
+display real-time stats of procs.,mem, paging, block IO, traps, disks and cpu activity.
+Ussage:
+  $ vmstat [options] [delay [count]]
+The first report produced gives averages since the last reboot.
+Additional reports give information on a sampling period of length delay.
+The process and memory reports are instantaneous in either case.
+
+ -a --active: Display active and inactive memory
+              FROM:<a href="https://unix.stackexchange.com/questions/305606/linux-inactive-memory">REF</a>
+              * active memory are pages which have been accessed "recently"
+              * inactive memory are pages which have not been accessed "recently"
+              """A high ratio of active to innactive memory can indicate
+                 memory pressure, but that condition is usually accompanied by
+                 pagin/swapping which is easier to understand"""
+ -f --forks : display number of forks (fork,vfork,clone) since boot. This
+ -m --slabs : Display slabinfo.
+ -s --stats : Displays a table of various event counters and memory statis‐
+            tics. (without repeating)
+ -d --disk  : Report disk statistics
+ -D --disk-sum: Report some summary statistics about disk activity.
+ -p --partition device: Detailed statistics about partition
+ -S --unit  :=  1000 (k), 1024 (K), 1000000 (m), 1048576 (M) bytes.
+            swap (si/so) and block (bi/bo) not affected
+ -t --timestamp: Append timestamp to each line
+ <b>-w --wide  : Wide output mode</b> (Recomended)
+
+OUTPUT FIELD DESCRIPTION 
+<b>VM MODE</b>                                         | <b>DISK MODE</b>
+Procs                                           | Reads
+  r: # of runnable procs(running|waiting for)   |   total  :   Total reads completed successfully
+  b: # of processes <b red>in uninterruptible sleep</b>    |   merged : grouped reads(resulting in 1 I/O)
+                                                |   sectors: Sectors read successfully
+Memory                                          |        ms: milliseconds spent reading
+  swpd  : virtual memory used                   | 
+  free  : idle memory                           | Writes
+  buff  : memory used as buffers                |     total:   Total writes completed successfully
+  cache : memory used as cache                  |    merged: grouped writes (resulting in 1 I/O)
+  inact : inactive memory (-a option)           |   sectors: Sectors written successfully
+  active:   active memory (-a option)           |        ms: milliseconds spent writing
+                                                | 
+Swap                                            | IO
+  si: Amount of memory swapped in from disk(/s) |   cur: I/O in progress
+  so: Amount of memory swapped to disk(/s)      |     s: seconds spent for I/O
+                                                +--------------------------------------------------------
+
+IO                                              | <b>FIELD DESCRIPTION FOR DISK PARTITION MODE</b>
+  bi: Blocks received from block device         |           reads: Total # of reads issued to part.
+  bo: Blocks     sent   to block device         |    read sectors: Total read sectors for partition
+                                                |          writes: Total # of writes issued to part.
+System                                          |requested writes: Total # of write requests made for part
+  in: interrupts per second, including the clock+---------------------------------------------------------
+  cs: <b red>context switches per second</b>
+                                                | <b>SLAB MODE</b>
+CPU (percentages of total CPU time)             |   cache: Cache name
+  us: Time spent running non-kernel code(user  )|     num: # of currently active objects
+  sy: Time spent running     kernel code(system)|   total: Total # of available objects
+  id: Time spent idle                           |    size: Size of each object
+  wa: <b red>Time spent waiting for IO</b>                 |   pages: # of pages with at least one active object
+
+  st: Time stolen from a virtual machine        +---------------------------------------------------------
+
+<b>All linux blocks are currently 1024 bytes.</b>
+
+SEE ALSO
+    free(1), iostat(1), mpstat(1), ps(1), sar(1), top(1)
 </pre>
 </td>
 <td>
-  <b>BackUps</b> 
+  <b>BACKUPS</b> 
   <ul xxsmall zoom>
-  <li><a href="https://github.com/earizon/easyup">EasyUp</a> KISS incremental remoto backup around rsync+ssh</a></li>
+  <li><a bgorange href="https://github.com/earizon/easyup">EasyUp</a> KISS incremental remoto backup around rsync+ssh</a></li>
   <li><a href="http://rsnapshot.org/">Rsnapshot</a> filesystem snapshot utility on top of rsync.<br/>
      rsnapshot makes it easy to make periodic snapshots of local machines, and remote machines over ssh.
      The code makes extensive use of hard links whenever possible, to greatly reduce the disk space required 
      and rsync to save bandwidth (backup only changes) 
   </li>
-  <li><span cite>"""<a xbig href="http://www.bacula.org/">Bacula</a> is a set of
+  <li><a href="https://linuxhint.com/inotofy-rsync-bash-live-backups/">Live backups with inotify + rsync + bash</a>. Backup on "real-time changes"</li>
+  <li><span cite>"""<a href="http://www.bacula.org/">Bacula</a> is a set of
     Open Source, computer programs that permit to manage backup, recovery, and 
     verification of computer data across a network of computers of different 
     kinds,  offering many advanced storage management features that make it 
     easy to find and recover lost or damaged files.</span>"""
-    <ul xxxsmall zoom>
-    <li><a href="http://www.bacula.org/9.0.x-manuals/en/main/index.html">Manual v.9</a></li>
-    <li>Director Daemon supervises all the backup, restore, verify and archive operations.
-        Sysadmin uses Director to schedule backups and to recover files..</li>
-    <li>Console service allows the administrator or user to communicate with the Director
-        (three versions: text-based, QT-based, wxWidgets)</li>
-    <li>File Daemon It's installed on the machine to be backed up and is responsible for 
-      providing the file attributes and data when requested by the Director
-      as well as for the file system dependent part of restoring the file attributes and data 
-      during a recovery operation.</li>
-    <li>Storage daemons are software programs in charge of storage and recovery of the 
-      file attributes and data to the physical backup media or volumes. In other words, it is 
-      responsible for reading and writing your tapes (or other storage media, e.g. files).</li>
+<pre xxxsmall>
+<a href="http://www.bacula.org/9.0.x-manuals/en/main/index.html">Manual v.9</a>
+Director Daemon supervises all the backup, restore, verify and archive operations.
+Sysadmin uses Director to schedule backups and to recover files..
 
-    <li>Catalog Services are responsible for maintaining the file indexes and 
-      volume databases for all files backed up. The Catalog services permit the sysadmin
-      or user to quickly locate and restore any desired file. The Catalog services sets
-      Bacula apart from simple backup programs like tar and bru, because the catalog
-      maintains a record of all Volumes used, all Jobs run, and all Files saved, permitting
-      efficient restoration and Volume management. Bacula currently supports three different 
-      databases, MySQL, and PostgreSQL one of which must be chosen when building Bacula. </li>
-    <li>Monitor Service Allows the administrator or user to watch current status of Directors,
-      File Daemons and Bacula Storage Daemons. Currently, only a GTK+ version is available.</li>
-    </ul>
+Console service allows the administrator or user to communicate with the Director
+(three versions: text-based, QT-based, wxWidgets)
+
+File Daemon It's installed on the machine to be backed up and is responsible for 
+providing the file attributes and data when requested by the Director
+as well as for the file system dependent part of restoring the file attributes and data 
+during a recovery operation.
+
+Storage daemons are software programs in charge of storage and recovery of the 
+file attributes and data to the physical backup media or volumes. In other words, it is 
+responsible for reading and writing your tapes (or other storage media, e.g. files)
+
+Catalog Services are responsible for maintaining the file indexes and 
+volume databases for all files backed up allowing sysadmin or user to
+quickly locate and restore any desired file. The Catalog services sets
+Bacula apart from simple backup programs like tar and bru, because the catalog
+maintains a record of all Volumes used, all Jobs run, and all Files saved, permitting
+efficient restoration and Volume management. Bacula currently supports three different 
+databases, MySQL, and PostgreSQL one of which must be chosen when building Bacula.
+
+Monitor Service Allows the administrator or user to watch current status of Directors,
+File Daemons and Bacula Storage Daemons. Currently, only a GTK+ version is available.
+</pre>
   </li>
-  <li><span xbig>Symple remote backups with ssh</span> :
-<pre>
+  <li>Symple remote backups with ssh
+<pre xxxsmall>
 $ tar cjf - myDirToBackup \       # local
   | ssh myUser@myRemoteMachine \  # ssh pipe
   "cd myBackupPath && tar -xjf -" # remote
 </pre>
   </li>
-  <li><span xbig>Using <code>rsync --link-dest=</code> for incremental backups:</span><br/>
-  <code>--link-dest</code> allows rsync to compare the file copy to an existing directory
-    structure and copy only the changed files (an incremental backup) relative 
-    to the stated directory and to use hard links for other files.</span>
-<pre>
-$ rsync -avh --delete \
-   --link-dest=/pathToReferenceBackup \
-   /pathToDirectoryToBackup_CURRENT_SOURCE  \
-   /pathToNewBackup
-
-Backup in /pathToNewBackup will use hardlinks for existing
-files in (already existing) /pathToReferenceBackup, creating
-just "diff" of the first backup.
-</pre>
-  </li>
-  <li><a href="https://linuxhint.com/inotofy-rsync-bash-live-backups/">Live backups with inotify + rsync + bash</a></li>
   </ul>
 </td>  
-<td>
-  <b>SystemD</b> 
-  (<a href="http://freedesktop.org/wiki/Software/systemd/">REF@freedesktop</a>,
-   <a href="https://www.freedesktop.org/software/systemd/man/systemd.service.html">man</a>,
-  <a href="http://www.tecmint.com/create-new-service-units-in-systemd/">See also</a>)<br/>
+</tr>  
+<tr>
+<td>  
+   Text view tools
 <pre xxxsmall zoom>
+Displaying text:
+$ head -n 20 /path/to/textFile # shows first 20 lines (-n 20). 10 lines by default if -n not provided.
+$ tail -n 20 /path/to/textFile # shows last  20 lines (-n 20). 10 lines by default if -n not provided.
+$ tail -f    /path/to/textFile # shows stream ("f"lush) of lines as they are appended to the file
+$ less       /path/to/textFile # Views text. Add scroll control backwards and forwards. 
+                               # embedded systems use "more", that just scroll forwards.
+$ cat        /path/to/textFile # dump text content to standard output (STDOUT)
+$ cat file1 file2 file3 ....   # concatenates files'content and dumps into STDOUT
+$ tac file1 file2 file3 ....   # concatenates files'content and dumps into STDOUT in reverse order
+</pre>
+   Text info tools
+<pre xxxsmall zoom>
+$ wc /path/to/textFile  ← Display total count of words, lines and bytes
+                          Options:
+                            -w count only words
+                            -l count only lines
+                            -w count only bytes
+
+
+$ diff file1 file2     ← Compares two text files and output a difference report indicating:
+                         '&gt; line_in_file2_not_in_file1
+                         '&lt; line_in_file1_not_in_file2
+$ sdiff                ← Similar to diff but with report in colum mode (more human readable)
+$ diff3                ← diff for three files
+</pre>
+
+   Text modification tools
+<pre xxxsmall zoom>
+By default we can use next tools like:
+   $ tool inputFile   # Apply to given file
+or
+   $ command1 ... | tool1 | tool2 | tool3 # Use stdout from previous command (|) as input 
+
+sorting content:
+$ sort file1  ← Sorting alphabetically lines in file  (-r to reverse, -g for numerical sort)
+j
+$ sort file1 -t ':' -k 4 -k 1    ← Use ':' as separator, sort first by column 4, then column 1.
+
+$ join file1 file2    ← Join two lines together assuming they share at least one common value
+                        on the relevant line, skiping lines withouth common value.
+
+Cut by column:
+$ cut -d "," -f 1,3,7 file1.csv ← Use "," as column delimiter, show then columns 1,3,7
+$ cut -c 1-50         file.txt  ← show characters 1 to 50 in each line
+$ cut -5, 8, 20-      file.txt  ← show characters 1 to 5 and 8 and from 20 to the end
+
+        This would display (“cut”) characters (columns) 1 to 5, 8 and from 20 to the end.
+
+$ uniq file1     ←  Eliminates duplicate entries from a file
+                    Commonly used with sort like:
+                    $ cat file.txt | sort | uniq
+                    Options: -c: display number of occurances of each duplicate
+                             -u: list only unique entries
+                             -d: list only duplicate entries
+
+$ tr "u" "d" file1  ← translate all instances of characters in a text file
+$  cat some_file | tr '[A-Z]' '[a-z]' > new_file  ← Convert all capital letters to lowercase
+
+$ nl file1.txt  ← Display file1.txt to STDOUT prefixing with line numbers
+
+$ sed "s/<b green>up</b>/<b orange>down</b>/<b blue>g</b>" file1.txt ← Replaces "<b green>up</b>" by "<b orange>down</b>". "<b blue>g</b>" flags indicates to replace all ocurrences. Otherwise only first is replaced.
+sed stays for "Stream editor", and has a lot of powerful flags like searching for regular expresions ...
+<span TODO>$ awk </span>
+</pre>
+</td>  
+<td>
+  <a href="http://freedesktop.org/wiki/Software/systemd/">SystemD</a>("Services")
+<pre xxxsmall zoom>
+<a href="https://www.freedesktop.org/software/systemd/man/systemd.service.html">man page</a>,
+<a href="http://www.tecmint.com/create-new-service-units-in-systemd/">See also</a>
 "service unit"                  "targets"
 - createNew                       unit_collection
 - run                             "wants"
@@ -253,15 +697,225 @@ Output Formats ( -o parameter )
 </td>  
 </tr>
 </table>
+<br/>
 <table>
 <tr>
-
+  <th colspan=4>Installing software</th>
+</tr>
+<tr>
 <td>
-  <span TODO>YUM <span xsmall>(RedHat/CentOS package manager)</span></span><br/>
-  <a href="https://www.softwarecollections.org/en/">Software Collections</a>
-  <span xsmall>build,install,use multiple package versions</span>
+<a href="https://dnf.readthedocs.io/en/latest/">DNF</a>(RedHat/Fedora/Centos)
 <pre xxxsmall zoom>
-  <a href="https://www.softwarecollections.org/en/">Software Collections CentOS install </a>
+$ dnf list *dnf*
+$ dnf list <b>installed</b> *debuginfo 
+$ dnf list <b>available</b> gtk*devel   
+$ dnf list <b>extras   </b>            ← pkgs. installed NOT available in any known repository
+$ dnf list <b>obsoletes</b>            ← obsoleted by packages in any accessible repository
+$ dnf list <b>recent   </b>            ← packages recently added into accessible repositories
+$ dnf list <b>upgrades </b>            ← available packages upgrading some installed packages
+
+AVAILABLE COMMANDS:
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#autoremove-command-label">autoremove</a>
+    Removes all "leaf" packages from the system that were originally 
+    installed as dependencies of user-installed packages but which are no 
+    longer required by any such package.
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#check-command-label">check</a>
+    Checks the local packagedb and produces information on any problems it 
+    finds. You can pass the check command the options “–dependencies”, “–
+    duplicates”, “–obsoleted” or “–provides”, to limit the checking that is 
+    performed (the default is “all” which does all).
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#check-update-command-label">check-update</a>
+    Non-interactively checks if updates of the specified packages are 
+    available. If no <package-specs> are given, checks whether any updates at 
+    all are available for your system. DNF exit code will be 100 when there 
+    are updates available and a list of the updates will be printed, 0 if not and 1 if an error occurs.
+
+    Please note that having a specific newer version available for an 
+    installed package (and reported by check-update) does not imply that 
+    subsequent dnf upgrade will install it. The difference is that dnf 
+    upgrade must also ensure the satisfiability of all dependencies and other restrictions.
+
+    Output is affected by config option autocheck_running_kernel
+
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#clean-command-label">clean</a>
+    Performs cleanup of temporary files kept for repositories. This includes any 
+    such data left behind from disabled or removed repositories as well as 
+    for different distribution release 
+    versions.
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#distro-sync-command-label">distro-sync</a>
+    As necessary upgrades, downgrades or keeps selected installed packages to 
+    match the latest version available from any enabled repository. If no 
+    package is given, all installed packages are considered.
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#downgrade-command-label">downgrade</a>
+    Downgrades the specified packages to the highest installable package of all 
+    known lower versions if possible. When version is given and is lower than 
+    version of installed package then it downgrades to target version.
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#group-command-label">group</a>
+    Groups are virtual collections of packages. DNF keeps track of groups 
+    that the user selected (“marked”) installed and can manipulate the 
+    comprising packages with simple commands.  (See only manual for more info)
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#help-command-label">help</a>
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#history-command-label">history</a>
+   The history command allows the user to view what has happened in past 
+    transactions and act according to this information (assuming the history_record configuration option is set).
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#info-command-label">info</a>
+     list description and summary information about installed and available packages.
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#install-command-label">install</a>
+    DNF makes sure that the given packages and their dependencies are 
+    installed on the system. Each <spec> can be either a <package-spec>, or a 
+    @<group-spec>. See Install Examples. If a given package or provide cannot 
+    be (and is not already) installed, the exit code will be non-zero.
+
+    When <package-spec> that specify exact version of the package is given, 
+    DNF will install the desired version, no matter which version of the 
+    package is already installed. The former version of the package will be 
+    removed in the case of non-installonly package.
+
+    There are also a few specific install commands install-n, install-na and 
+    install-nevra that allow the specification of an exact argument in NEVRA 
+    format.
+
+    dnf install tito
+        Install package tito (tito is package name).
+    dnf install ~/Downloads/tito-0.6.2-1.fc22.noarch.rpm
+        Install local rpm file tito-0.6.2-1.fc22.noarch.rpm from ~/Downloads/ directory.
+    dnf install tito-0.5.6-1.fc22
+        Install package with specific version. If the package is already 
+        installed it will automatically try to downgrade or upgrade to specific version.
+    dnf --best install tito
+        Install the latest available version of package. If the package is 
+        already installed it will automatically try to upgrade to the latest 
+        version. If the latest version of package cannot be installed, the installation fail.
+    dnf install vim
+        DNF will automatically recognize that vim is not a package name, but 
+        provide, and install a package that provides vim with all required 
+        dependencies. Note: Package name match has precedence over package provides match.
+    dnf install https://kojipkgs.fedoraproject.org//packages/tito/0.6.0/1.fc22/noarch/tito-0.6.0-1.fc22.noarch.rpm
+        Install package directly from URL.
+    dnf install '@Web Server'
+        Install environmental group ‘Web Server’
+    dnf install /usr/bin/rpmsign
+        Install a package that provides /usr/bin/rpmsign file.
+    dnf -y install tito --setopt=install_weak_deps=False
+        Install package tito (tito is package name) without weak deps. Weak 
+        deps are not required for core functionality of the package, but they 
+        enhance the original package (like extended documentation, plugins, 
+        additional functions, …). 
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#list-command-label">list</a>
+    Dumps lists of packages depending on the packages’ relation to the system
+    . A package is installed if it is present in the RPMDB, and it is 
+    available if it is not installed but it is present in a repository that 
+    DNF knows about. The list command can also limit the displayed packages 
+    according to other criteria, e.g. to only those that update an installed 
+    package. The exclude option in configuration file (.conf) might influence 
+    the result, but if the command line option --disableexcludes is used, it 
+    ensure that all installed packages will be listed
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#makecache-command-label">makecache</a>
+    dnf [options] makecache
+        Downloads and caches in binary format metadata for all known repos. 
+        Tries to avoid downloading whenever possible (e.g. when the local 
+        metadata hasn’t expired yet or when the metadata timestamp hasn’t changed).
+    dnf [options] makecache --timer
+        Like plain makecache but instructs DNF to be more resource-aware, 
+        meaning will not do anything if running on battery power and will 
+        terminate immediately if it’s too soon after the last successful 
+        makecache run (see dnf.conf(5), metadata_timer_sync). 
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#mark-command-label">mark</a>
+    dnf mark install <package-specs>...
+        Marks the specified packages as installed by user. This can be useful 
+        if any package was installed as a dependency and is desired to stay on 
+        the system when Auto Remove Command or Remove Command along with 
+        clean_requirements_on_remove configuration option set to True is executed.
+    dnf mark remove <package-specs>...
+        Unmarks the specified packages as installed by user....
+    dnf mark group <package-specs>...
+        Marks the specified packages as installed by group...
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#module-command-label">module</a>
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#provides-command-label">provides</a>
+    Finds the packages providing the given <provide-spec>. This is useful 
+    when one knows a filename and wants to find what package (installed or not
+    ) provides this file.
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#reinstall-command-label">reinstall</a>
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#remove-command-label">remove</a>
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#repoinfo-command-label">repoinfo</a>
+<a bgorange href="https://dnf.readthedocs.io/en/latest/command_ref.html#repolist-command-label">repolist</a>
+$ dnf repolist
+→ Extra Packages for Enterprise Linux 7 - x86_64                                          24 MB/s |  15 MB     00:00    
+→ CentOS-7 - openlogic packages for x86_64                                               174 kB/s |  38 kB     00:00    
+→ Node.js Packages for Enterprise Linux 7 - x86_64                                       2.9 MB/s | 1.1 MB     00:00    
+→ ...
+→ Using metadata from Mon Sep 10 16:21:18 2018
+→ repo id                                     repo name                                                            status
+→ base                                        CentOS-7 - Base                                                       9,911
+→ centos-openshift-origin                     CentOS OpenShift Origin                                                 232
+→ centos-sclo-rh                              CentOS-7 - SCLo rh                                                    7,995
+→ centos-sclo-sclo                            CentOS-7 - SCLo sclo                                                    773
+→ code                                        Visual Studio Code                                                       43
+→ docker-ce-stable                            Docker CE Stable - x86_64                                                20
+→ *epel                                       Extra Packages for Enterprise Linux 7 - x86_64                       12,672
+→ extras                                      CentOS-7 - Extras                                                       402
+→ go-repo                                     go-repo - CentOS                                                        253
+→ nodesource                                  Node.js Packages for Enterprise Linux 7 - x86_64                        144
+→ openlogic                                   CentOS-7 - openlogic packages for x86_64                                113
+→ pgdg94                                      PostgreSQL 9.4 7 - x86_64                                               603
+→ updates                                     CentOS-7 - Updates                                                    1,333
+
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#repoquery-command-label">repoquery</a>
+    dnf [options] repoquery [<select-options>] [<query-options>] [<pkg-spec>]
+        Searches the available DNF repositories for selected packages and 
+        displays the requested information about them. It is an equivalent of rpm 
+        -q for remote repositories.
+    dnf [options] repoquery --querytags
+        Provides list of recognized tags by repoquery option --queryformat
+        There are also a few specific repoquery commands repoquery-n, 
+        repoquery-na and repoquery-nevra that allow the specification of an exact 
+        argument in NEVRA format (does not affect arguments of options like –
+        whatprovides <arg>, …).
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#repository-packages-command-label">repository-packages</a>
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#search-command-label">search</a>
+    Search package metadata for the keywords. Keywords are matched as case-
+    insensitive substrings, globbing is supported. By default lists packages 
+    that match all requested keys (AND operation). Keys are searched in 
+    package names and summaries. If option “–all” is used, lists packages 
+    that match at least one of keys (OR operation). And in addition keys are 
+    searched in package descriptions and URLs. The result is sorted from the 
+    most relevant results to the least.
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#shell-command-label">shell</a>
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#swap-command-label">swap</a>
+    Remove spec and install spec in one transaction. Each "spec" can be 
+    either a <package-spec>, which specifies a package directly, or a 
+    @"group-spec", which specifies an (environment) group which contains it. 
+    Automatic conflict solving is provided in DNF by –allowerasing option 
+    that provides functionality of swap command automatically
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#updateinfo-command-label">updateinfo</a>
+    Display information about update advisories.
+    Depending on output type, DNF displays just counts of advisory types (
+    omitted or --summary), list of advisories (--list) or detailed 
+    information (--info). When --info with -v option is used, the information 
+    is even more detailed
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#upgrade-command-label">upgrade</a>
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#upgrade-minimal-command-label">upgrade-minimal</a>
+    Upgrade-minimal Command
+    
+    $ dnf [options] upgrade-minimal
+        Updates each package to the latest version that provides bugfix, enhancement or fix for security issue (security)
+    $ dnf [options] upgrade-minimal <package-installed-specs>...
+        Updates each specified package to the latest available version that provides bugfix, enhancement or fix for security issue (security). Updates dependencies as necessary. 
+<a href="https://dnf.readthedocs.io/en/latest/command_ref.html#upgrade-to-command-label">upgrade-to</a>
+
+- ADDITIONAL INFORMATION:
+    <a href="https://dnf.readthedocs.io/en/latest/command_ref.html#options-label">Options</a>
+    <a href="https://dnf.readthedocs.io/en/latest/command_ref.html#specifying-packages-label">Specifying Packages</a>
+    <a href="https://dnf.readthedocs.io/en/latest/command_ref.html#specifying-packages-versions-label">Specifying Exact Versions of Packages</a>
+    <a href="https://dnf.readthedocs.io/en/latest/command_ref.html#specifying-provides-label">Specifying Provides</a>
+    <a href="https://dnf.readthedocs.io/en/latest/command_ref.html#specifying-groups-label">Specifying Groups</a>
+    <a href="https://dnf.readthedocs.io/en/latest/command_ref.html#specifying-transactions-label">Specifying Transactions</a>
+    <a href="https://dnf.readthedocs.io/en/latest/command_ref.html#metadata-synchronization-label">Metadata Synchronization</a>
+    <a href="https://dnf.readthedocs.io/en/latest/command_ref.html#configuration-files-replacement-policy-label">Configuration Files Replacement Policy</a>
+    <a href="https://dnf.readthedocs.io/en/latest/command_ref.html#files-label">Files</a>
+    <a href="https://dnf.readthedocs.io/en/latest/command_ref.html#see-also-label">See Also</a>
+
+  <a href="https://www.softwarecollections.org/en/">Software Collections</a>
 Ex:
 $ python --version
 Python 2.7.5
@@ -269,21 +923,8 @@ Python 2.7.5
 $ scl enable rh-python35 bash
 $ python --version
 Python 3.5.1
-</pre>
-
-<div floatl>
-<pre xxxsmall zoom>
-# Check enabled repositories:
-$ sudo yum (-v) repolist
-  (commented output)
-  repo id                 repo name
-  # CentOS standard: base + update
-  base/7/x86_64           CentOS-7 - Base
-  updates/7/x86_64        CentOS-7 - Updates
 
   # <a href="https://wiki.centos.org/SpecialInterestGroup/SCLo">https://wiki.centos.org/SpecialInterestGroup/SCLo</a>
-  centos-sclo-rh/x86_64   CentOS-7 - SCLo rh
-  centos-sclo-sclo/x86_64 CentOS-7 - SCLo sclo
   # <a href="http://fedoraproject.org/wiki/EPEL">http://fedoraproject.org/wiki/EPEL</a>
   """ Extra Packages for Enterprise Linux (or EPEL) is a Fedora Special Interest
     Group that creates, maintains, and manages a high quality set of additional
@@ -291,107 +932,124 @@ $ sudo yum (-v) repolist
     Enterprise Linux (RHEL), CentOS ... usually based on their Fedora counterparts
     and will never conflict with or replace packages in the base Enterprise
     Linux distributions....  """
-  epel/x86_64             (E)xtra (P)ackages 4 (E)nter.(L)inux
-  extras/7/x86_64         CentOS-7 - Extras
 
-  # nice to have
-  docker-ce-stable/x86_64 Docker CE Stable - x86_64
-  ...
-  # ... repos for PostgreSQL, Go-lang, ... exists
 
-# Install from given repository:
+
+<b orange># Install from given repository:</b>
 $ sudo yum --disablerepo=\* --enablerepo=my-cool-repo install myPackage
 
-yum grouplist | grep Dev
+Ex: Install Development Tools
 ...
-Development Tools
-...
-yum groupinfo "Development Tools"
-...
-sudo yum groupinstall "Development Tools"
+<b>$ dnf groupinfo "Development Tools"</b>
+→ Group: Development Tools
+→  Description: A basic development environment.
+→  Mandatory Packages:
+→    autoconf
+→    automake
+→    binutils
+→    ...
+→  Default Packages:
+→    byacc
+→    cscope
+→    ...
+→  Optional Packages:
+→    ElectricFence
+→    ant
+→    babel
+     ...
+<b>$ sudo dnf groupinstall "Development Tools"</b>
 </pre>
-<!-- {
-TODO:  Yum
-To search for a specific package by name, use the list function. To search for the package tsclient, use the command:
 
-su -c 'yum list tsclient'
-
-Enter the password for the root account when prompted.
-
-To make your queries more precise, specify packages with a name that include other attributes, such as version or hardware architecture. To search for version 0.132 of the application, use the command:
-
-su -c 'yum list tsclient-0.132'
-
-[Note]  Valid Package Attributes
-
-Refer to Section 2.4, “Understanding Package Names” for information on package name formats and the attributes that they include.
-5.2. Advanced Searches
-
-If you do not know the name of the package, use the search or provides options. Alternatively, use wild cards or regular expressions with any yum search option to broaden the search critieria.
-
-The search option checks the names, descriptions, summaries and listed package maintainers of all of the available packages to find those that match. For example, to search for all packages that relate to PalmPilots, type:
-
-su -c 'yum search PalmPilot'
-
-Enter the password for the root account when prompted.
-
-The provides function checks both the files included in the packages and the functions that the software provides. This option requires yum to download and read much larger index files than with the search option.
-
-To search for all packages that include files called libneon, type:
-
-su -c 'yum provides libneon'
-
-To search for all packages that either provide a MTA (Mail Transport Agent) service, or include files with mta in their name:
-
-su -c 'yum provides MTA'
-
-For each command, at the prompt enter the password for the root account.
-
-Use the standard wildcard characters to run any search option with a partial word or name: ? to represent any one character, and * to mean zero or more characters. Always add the escape character (\) before wildcards.
-
-To list all packages with names that begin with tsc, type:
-
-su -c 'yum list tsc\*'
-
-[Tip]   Regular Expressions
-
-Use Perl or Python regular expressions to carry out more complex queries.
-5.3. Understanding Matches
-
-Searches with yum show all of the packages that match your criteria. Packages must meet the terms of the search exactly to be considered matches, unless you use wildcards or a regular expression.
-
-For example, a search query for shadowutils or shadow-util would not produce the package shadow-utils. This package would match and be shown if the query was shadow-util\?, or shadow\*.
-} -->
-</div>
-<div floatl>
-<pre xxxsmall zoom>
-# Erase package
-$ sudo yum erase myPackage
-</pre>
-</div>
 </td>
 <td>
-  <span TODO>APT <span xsmall>(Debian... package manager)</span></span>
+  <a href="https://help.ubuntu.com/community/AptGet/Howto#Maintenance_commands">APT</a>(Debian/Ubuntu)
 <pre xxxsmall zoom>
-Installing from testing/unstable:
-/etc/apt/sources.list
 
-deb http://ftp.us.debian.org/debian squeeze main
-deb http://ftp.us.debian.org/debian testing main contrib non-free # <- add this line
-deb http://ftp.us.debian.org/debian unstable main contrib non-free # <- add this line
+  <a TODO href="https://help.ubuntu.com/community/SourcesList">Package source list: /etc/apt/sources.list file</a>
 
-$ sudo apt-get update
-$ sudo apt-get install gcc/testing
-______________
-Show package info:
-$ apt-cache show gcc
-______________
 
-apt-get aptitude
-dselect
-dpkg (state)
-apt-cache
-______________
+$ sudo apt-get  install ubuntu-desktop  "package2" ... (-s to simulate)
+$ sudo aptitude install ubuntu-desktop  ← Ncurses variant
+
+
+$ sudo auto-apt run "./configure" ← runs "command_string", installing uninstalled packages when possible.
+  ^ keeps databases up-to-date by calling:
+    $ auto-apt update
+    $ auto-apt updatedb
+    $ auto-apt update-local
+
+$ apt-get update ← Run periodically and after modifications to /etc/apt/*
+
+$ apt-get upgrade ← upgrade all installed packages.
+
+$ apt-get dist-upgrade ← same as upgrade, except add the "smart upgrade" checkbox.
+                         It tells APT to use "smart" conflict resolution system,
+                         and <b>it will attempt to upgrade the most important packages 
+                         at the expense of less important ones if necessary.</b>
+                         ¡¡¡does not upgrade from a previous version of Ubuntu!!!
+
+<b>Diagnostics:</b>
+$ apt-get check    ← update package lists and checks for broken dependencies
+
+<b>Cleaning/Removal</b>
+$ sudo apt-get autoclean  ← removes .deb files for packages that are no longer
+                            installed on your system. (Can save space in /var/cache/apt/archives)
+$ apt-get clean           ← same as autoclean, except it removes all packages from the package cache.
+                            Not recomended with slow-connections.
+                            ($ du -sh /var/cache/apt/archives)
+
+$ sudo apt-get remove "package_name" ← keeps  configuration files 
+$ sudo apt-get purge  "package_name" ← Remove configuration files
+
+$ apt-get autoremove     ← removes packages no longer needed
+
+<b>Troubleshooting</b>
+$ sudo apt-get -f install  ← Fix Broken Packages (system complains about "unmet dependencies")
+
+$ dpkg-reconfigure "package_name"
+
+
+$ echo "'package_name' hold" | \  ← Put package_name on hold
+  sudo dpkg --set-selections        may have the unintended side effect of preventing upgrades
+                                    to packages that depend on updated versions of the pinned package.
+                                    apt-get dist-upgrade will override this, but will warn you first.
+
+<b>Search commands</b>
+$ apt-cache search "search_term" ← lists packages matching in name or description
+
+$ dpkg -l *"search_term"*  ← find packages whose names contain "search_term".
+                             It also shows whether a package is installed on your system
+
+$ dlocate "package_name"         ← "reverse lookup". It Determines which installed package owns "package_name".
+                                    It shows files from installed packages that match "package_name",
+                                    with the name of the package they came from. 
+                                    Its equivalent to the slower (but installed by default):
+                                    $ dpkg -S "filename_search_pattern"
+$ sudo apt-file update && \       ← Similar to dlocate  but searches over all available packages. 
+                                    """what package provides this file?"""
+
+  sudo apt-file search \"filepath_pattern"
+<b>Package Info</b>
+$ apt-cache show "package_name"  ← shows the description of "package_name", version, size, dependencies and conflicts.
+$ dpkg -L "package_name"         ← list files in package
+$ dpkg -c foo.deb                ← lists files in the manually downloaded package "./foo.deb".
+
+$ apt-cache pkgnames             ← provides a list of every package in the system
+
+
+
+<b>Setting http-proxy</b>
+- alt 1: Temporary proxy session:
+  # export http_proxy=http://username:password@yourproxyaddress:proxyport
+
+- alt 2: APT configuration file method 
+  Add next line to /etc/apt/apt.conf 
+  | Acquire::http::Proxy "http://yourproxyaddress:proxyport";
+
+
+<b>Developer commands:</b>
+$ apt-get build-dep <package_name> 
+</pre>
 </pre>
 
 </td>
@@ -414,7 +1072,7 @@ Check disk free/used space:
 $ df -kh  # Check free space
 
 <a href="https://linux.die.net/man/1/du">man 1 du</a>
-$ du -sch dir1 dir2  # check disk ussage of dir1 dir2
+$ du -sch dir1 dir2  # check "d"isk "u"ssage of dir1 dir2
 </pre>
 
 Monitor files open:
@@ -457,8 +1115,8 @@ done
 
 <a TODO href="https://linux.die.net/man/1/inotifywatch">man 1 inotifywatch</a>: gather filesystem access statistics
 </pre>
-
 </td>
+
 <td>
   <a TODO href="https://en.wikipedia.org/wiki/Device_mapper">Device Mapper(dm)</a>
 </td>
@@ -483,6 +1141,25 @@ done
   <li>Block level or full disk encryption options include dm-crypt + LUKS on 
     Linux and GEOM modules geli and gbde on FreeBSD.</li>
   </ul>
+  <hr xxxsmall />
+  <a href="https://www.veracrypt.fr/en/Home.html">VeraCrypt</a>
+<pre xxxsmall zoom>
+  free open source disk encryption software for Windows/OSX/Linux.
+  <a href="https://www.idrix.fr">Developed by IDRIX</a>, based on
+  TrueCrypt 7.1a. main features:
+  - Creates virtual encrypted disk within a file and mounts
+    it as a real disk.
+  - Encrypts entire partition or storage device
+  - Encrypts a partition or drive where Windows is installed
+    (pre-boot authentication).
+  - Encryption is automatic, real-time(on-the-fly) and transparent.
+  - Parallelization and pipelining allow data to be read
+    and written as fast as if the drive was not encrypted.
+  - Encryption can be hardware-accelerated on modern processors.
+  - Provides plausible deniability, in case an adversary forces 
+    you to reveal the password: Hidden volume (steganography)
+    and hidden operating system.
+</pre>
 </td>
 
 </tr>
@@ -491,7 +1168,8 @@ done
 
 <table>
 <tr>
-  <th colspan=12 header_delimit>SELinux Mandatory Access Control (MAC)</th>
+  <th colspan=8 header_delimit><a href="https://github.com/SELinuxProject/selinux/wiki">SELinux Mandatory Access Control (MAC)</a>, <a href="https://github.com/SELinuxProject/refpolicy">Ref.Policy</a> </th>
+
 </tr>
 <tr>
 <td>
@@ -505,7 +1183,7 @@ done
 </pre>
   <br/>
   <ul xxxsmall zoom>
-  <li>Every regular running process is called a subject and such subject is in a defined domain</li>
+  <li>Every regular <b>running process is called a subject</b> and such subject is in a defined domain</li>
   <li>Rols are more like filters than user groups</li>
   <li>Object: regular file, directory, port, IP socket, ...  All objects are "tagged" with a
     type indicating the object's purpose. ("this file is web page", or 
@@ -579,7 +1257,7 @@ mpd_enable_homedirs            (off  ,  off)  Allow mpd to enable homedirs
   </li>
   <li>
    <code>#~ <b>se</b>status:</code>
-<pre xxxsmall zoom>
+<pre xxxsmall>
 SELinux status:                 enabled
 SELinuxfs mount:                /sys/fs/selinux
 SELinux root directory:         /etc/selinux
@@ -630,7 +1308,7 @@ Ej:
     <ul xxxsmall zoom>
       <li> A process/subject (tries to) perform some action (open, read, modify, or execute) on files.
         SELinux access rules follow a standard allow statement structure:
-<pre xxxsmall zoom>     
+<pre xxxsmall>     
 allow <b orange>&lt;domain&gt; &lt;type&gt;</b>:<b blue>&lt;class&gt;</b> { <b green>&lt;permissions&gt;</b> };
 
 <b blue>class := (file, directory, symbolic link, device, ports, cursor ...</b>
@@ -675,7 +1353,7 @@ restorecon reset /var/www/html/index.html context unconfined_u:object_r:<b orang
     <ul xxsmall zoom>
       <li>Conveniently, SELinux "remembers" the context of every file or directory in the server. </li>
       <li> Next ddbb files are used by <code>restorecon</code>:
-<pre xxxsmall zoom >
+<pre xxxsmall >
 (RedHat/CentOS 7)
 (/etc/selinux/targeted/contexts/files/):
 /file_contexts      : lists every file type associated with every application supported by the Linux distribution.
@@ -1674,7 +2352,14 @@ Linux filesystem administration
       - Archive and back up files
       - Implement LVMs and RAID
     """
+____________________
+https://linux.die.net/EVMSUG/
 
+____________________
+https://linux.die.net/sag/
+____________________
+@ma:
+https://linux.die.net/Linux-CLI/file-permissions.html
 
 
 </html>

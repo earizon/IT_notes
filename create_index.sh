@@ -95,7 +95,7 @@ echo $f
 title=`head $f | grep "<title>" | sed "s/<title>//g" | sed "s/<.title>//g" `
 location=`echo $f | cut -f 2 -d "/" `
 if [ ! -z "$title" ] ; then
-  echo $title  | egrep "(ignore|alpha)" || echo "<li>${location}/<a target="_new" href='${f}'>${title}</a></li>" >>index.html
+  echo $title  | egrep "(ignore)" || echo "<li>${location}/<a target="_new" href='${f}'>${title}</a></li>" >>index.html
 fi
 done
 cat << EOF >>index.html

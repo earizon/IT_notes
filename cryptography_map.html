@@ -1113,14 +1113,253 @@ generalisation of the ideas which underpin <a href="https://certificate-transpar
 </td>
 </tr>
 </table>
-
+<br/>
 <table>
-<tr {>
-<th colspan=6 header_delimit >Hardware Security Module (HSM) (Hard.Vaults, encrypt modules,...)</a></th>
-<td colsep></td>
-<th colspan=1 header_delimit >Vault services&amp;Key Management Services</th>
-</tr }>
 <tr>
+<th colspan=12 header_delimit ><b orange>MANAGING&amp;PROTECTING SECRETS</b></th>
+</tr>
+<tr>
+<th></th>
+<td colsep></td>
+<th colspan=4 header_delimit >Hardware Security Module (HSM) (Hard.Vaults, encrypt modules,...)</a></th>
+<td colsep></td>
+<th colspan=2 header_delimit >Vault services&amp;KMS</th>
+</tr>
+<tr>
+<td>
+  <a href="https://en.bitcoin.it/wiki/Deterministic_wallet">Deterministic Wallet</a>
+<pre xxxsmall zoom>
+A deterministic wallet is a system of deriving keys from 
+a single starting point known as a seed. The seed allows 
+a user to easily back up and restore a wallet without 
+needing any other information and can in some cases allow 
+the creation of public addresses without the knowledge of 
+the private key. Seeds are typically serialized into 
+human -readable words in a Mnemonic phrase. 
+</pre>
+  <a href="https://en.bitcoin.it/wiki/CarbonWallet">JS Carbon Wallet</a>
+<pre xxxsmall zoom>
+- No server side storage, <b>private keys are generated from 
+  the passphrase and only exist in the memory of the browser</b>
+- Deterministic key generation: Write down the passphrase 
+  generated for you and it's all you need
+- Transactions are signed locally in the browser: Your 
+  private keys are not shared with the server. You do not 
+  have to trust the server with your money
+- Privacy: No need to register a passphrase is all that 
+  is required
+- Public code hosted on Github which anyone can audit
+</pre>
+
+<a href="https://en.wikipedia.org/wiki/Security_token">Security token</a>
+<pre xxxsmall zoom>
+- Physical devices used to gain access to an 
+  electronically restricted resource
+- Used in addition to or in place of a password like a 
+  wireless keycard to open/unlock doors,... 
+- All tokens contain some secret information used to 
+  prove identity
+- There are four ways in which this info. can be used:
+  - Static password: token containing a password 
+    transmitted for each authentication (vulnerable to 
+    replay attacks)
+  - Syncrhonous dynamic password</def> token, using a 
+    timer to rotate through various combinations. Need 
+    time synchronization with server
+  - Asyncrhonous password</def> token generating One-time 
+    password (no clock involved)
+  - Challenge-response</def> token using pub.key 
+    cryptography
+  </ul> 
+</li>
+</ul> 
+</pre>
+
+<a href="https://blog.gridplus.io/lattice1-sdk-and-generalized-signatures-e17da7cf65d7">Lattice 1</a>
+
+<pre xxxsmall zoom>
+
+
+Lattice1: device that can function as an always-online 
+hardware wallet that the average person can easily use.
+
+generalized "remote signer" for cryptocurrencies, 
+digital identity, and more.
+
+
+Remote Signing
+wallet application technical components:
+* <b>USER INTERFACE</b>: It interfaces with both 
+  - persisted user data: addresses, TX history,...
+  - network nodes: allow to display account info
+* <b>TX BUILDER</b>: Applies the network protocol 
+  to convert parameters (amount, recipient address
+  , ...) into one or more hashes that make up a TX.
+   Note: in Ethereum, each TX is represented by a 
+     single hash, whereas in Bitcoin each consumed
+     input has its own hash to sign,  there can be
+     one or many inputs per Bitcoin transaction.
+* <b>TX SIGNER: sign TX hashes with private key.
+
+
+SEPARATING THE SIGNER:
+STEP 1:
+- let's consider moving TX signer to cloud machine.
+  => you have to store your private key on the cloud
+STEP 2:
+-Move TX builder in the cloud too
+
+"""In Lattice1 we have separated the protocol and
+cryptographic functionality away from the application
+layer ... Of course keys are in a secure chip within
+the Lattice1."""
+
+SECURING COMPONENTS AND SEPARATING CONCERNS:
+- The Lattice1 introduces a more usable, robust, and
+  secure connection between application ("wallet GUI")
+  and TX builder/signer components.
+
+ ┌────→ "GUI Apps in Cloud"
+ │    
+ ↓
+Standard Chip ←---------→ Secure Chip 1 ←----→ Secure Chip 2
+    ↑                        ↑                    ↑
+-connect to            - Build TX hashes      - Store priv.keys
+ outside apps          - Placed on device     - Make signatures
+- request signatures                          - Placed on device 
+- Lattice1 addition:                            and each Safe Card
+  - facilitates (wireless) communication app←→Sec.Chip
+
+
+GUI App Connection:
+STEP 1: App    generates EC25519 key pair (just once)
+STEP 2: Chip 1 generates EC25519 key pair (for each new app pairing)
+STEP 3: PAIRING: ECDH Key exchange is use to interchange 
+               App.pub_key ←→ Chip1.pub_key_for_app1      
+
+In practice:
+""app wants to pair with a user’s Lattice1 device.""
+
+STEP 1: Find device by serial number
+- find the user's agent based on a serial number.
+  (not needed if Lattice1 can connect with the app
+   on a local area network). 
+
+STEP 2: Transfer a Secret Code (Out of Band)
+Once the app can talk (insecurely) to the Lattice1,
+- app generates secret code, signs hash with that code
+  using a secp256k1 private key (is different to the EC25519
+  used for encryption/decription) 
+- User presses "Pair" button: 
+- Appt sends a message to Lattice1 device <b>requesting pairing</b> start
+- Lattice1 displays a place for the user to enter
+  the same code that is displayed on the application.
+
+- With correct code lattice1 can recover secp256k1 public key
+  used to sign the hash and stores both that and the curve25519 
+  public key, which is also sent in the payload.
+
+STEP 3: Establish a Read-Only Permission
+(Pairing is done at this point)
+- Lattice1 gives app permission to view addresses, 
+  request signatures (that must be authorized on device screen)
+  for one-off (vs automated) signatures,...
+
+FINAL STATE OF A PAIRING
+
+APP:                     LATTICE1 Dev:
+32-byte priv.key 
+
+Pairing registry:
+- app1.pub_secp256k1 (used to  check future request signatures)
+- app1.pub_EC25519   (sed to decrypt future request payloads  )
+
+(App has now established a secure connection)
+
+some complex details avoided (using 1-time keys for future requests,
+  separate pairing code generated by the Lattice1). 
+
+REMOTE SIGNING
+Now app can be used as a generalized TX Signer,
+just like any other hardware wallet. Unlike other
+hardware wallets, however, the paired application 
+is capable of communicating with the device 
+wirelessly.
+
+We are now able to request a signature on some
+piece of data, which is of course parameterized
+and built in the CHip 1 (TX  Builder)
+
+Manual Remote Signing
+As mentioned above, the pairing process also creates a 
+minimal "permission". The application may request a 
+signature using this permission in a way similar to 
+existing hardware wallet TXs:
+
+- the Lattice1 device displays transactional data to the user
+  and must wait for the user to hit “accept” on the touch 
+  screen.
+
+However, there are a few technical differences that are worth noting:
+
+- data must conform to a pre-defined "schema".
+ (periodically released as use cases emerge, like
+  ETH transfers and BTC transactions (P2SH|P2PKH)
+
+AUTOMATIC REMOTE SIGNING: (Ex. ecurring payments, keep-alive messages)
+- Use of "recurring permissions", which require a pre-defined schema
+ (just like manual signatures) in addition to a set of "rules" on the
+ data that will be signed in the future. Such a permission might look like this:
+
+{
+  schemaIndex: 0,     ← published "schema" for Eth TX (0)
+  typeIndex: 0,       ← ETh TX type.  0: standard TX (empty data)
+  rules: [
+    null    , null                                        , null,
+    null    , null                                        , null,
+    null    , null                                        , null,
+    'equals', '0x39765400baa16dbcd1d7b473bac4d55dd5a7cffb', null,  ←  recipient
+    'equals', 1000                                        , null,  ←  wei ammount
+    'equals', ''                                          , null,
+       ^                        ^                            ^
+    typeOfRule             value1                           value2
+  ],
+  timeLimit: 10000                                                ← seconds elapsed between requests
+}
+
+specific rules [ nonce, gas, gasPrice, to, value, data ]
+
+. In this case, the requester can only send a request once every 10,000 seconds. One second (or more) too early and the request will be denied.
+Application SDK
+
+All of the previously discussed functionality is made possible through a Grid+ Software Development Kit (SDK); this SDK will be released as an open source node.js module. We hope that developers wanting to build applications with a separated, internet-connected, secure signing service will experiment with the SDK and integrate with the Lattice1 device. Although Grid+ is building a mobile wallet application, this too will be open sourced as an example of how to leverage the Grid+ SDK.
+
+Although the API is not finalized yet, the below Javascript snippet is an example of what using the SDK may look like:
+
+const Sdk = require('gridplus-sdk');
+const sdk = new Sdk({ btcNode: 'localhost:48332', ethNode: 'localhost:8545' });
+
+
+const req = {
+  type: 'eth-transfer',
+  rules: {
+    value: { 'equals': 1000 },
+    to: { 'equals': '0x39765400baa16dbcd1d7b473bac4d55dd5a7cffb' }
+  },
+  interval: 10000
+}
+
+sdk.createAutomaticPermission(req, (err, res) => {
+  ... do stuff ...
+})
+
+Keeping it General
+
+Although this article mostly discusses the Lattice1 remote signing functionality in the context of cryptocurrency transfers, it is important to highlight that using an abstracted “signer” allows applications to request signatures on any data that is parametrizable. One can imagine, for example, a data schema that represents parameters of a legal contract:
+</pre>
+
+</td>
+<td colsep> </td>
 <td>
 PROTOCOL/APIs SCHEMA
 <pre xxxsmall zoom>
@@ -1162,22 +1401,7 @@ and many more.
 </pre>
 
 </td>
-<td>
-<a href="https://en.wikipedia.org/wiki/Security_token">Security token</a> <br/>
-<ul xxxsmall>
-<li>physical devices used to gain access to an electronically restricted resource </li>
-<li>used in addition to or in place of a password like a wireless keycard to open/unlock doors,... </li>
-<li>All tokens contain some secret information used to prove identity</li>
-<li>There are four ways in which this info. can be used:
-<ul> 
-<li><def>Static password</def> token containing a password transmitted for each authentication (vulnerable to replay attacks)</li>
-<li<def>Syncrhonous dynamic password</def> token, using a timer to rotate through various combinations. Need time synchronization with server</li>
-<li<def>Asyncrhonous password</def> token generating One-time password (no clock involved)</li>
-<li<def>Challenge-response</def> token using pub.key cryptography.</li>
-</ul> 
-</li>
-</ul> 
-</td>
+
 <td>
 <a href="https://en.wikipedia.org/wiki/Smart_card">Smart card</a> <br/>
 <ul xxxsmall>
@@ -1186,38 +1410,78 @@ and many more.
 </ul> 
 </td>
 <td>
+<a href="https://en.wikipedia.org/wiki/Secure_cryptoprocessor">Secure cryptoprocessor technologies</a>
+  <hr/>
+  <a href="https://en.bitcoin.it/wiki/TREZOR">Trezor Wallet</a>
+<pre xxxsmall zoom>
+BIP 0032 Deterministic hardware wallet.
+
+TREZOR is basically a small computer. It is designed to 
+protect your private keys from possible online and 
+offline risks. In order to do this, TREZOR keeps the 
+private keys away from the Internet and confirms the 
+transactions in-device. That way you can always check the 
+screen for the right address, amount and transaction fee 
+before sending your bitcoins. 
+</pre>
+
 <a href="https://en.wikipedia.org/wiki/Software_Guard_Extensions">Intel SGX</a>
-<ul xxxsmall>
-<li>CPU instruction set allowing user-level code to allocate private regions 
-of memory (enclaves) protected from processes running at higher privilege
-levels. (secure remote computation, secure web browsing, DRM).</li>
-<li>
-SGX is a set of instruction set extensions for CPUs released in Fall 2015 and available on recent CPUs. The key ability SGX provides is the notion of confidential, private execution with integrity guarantees. In essence, the chip has a special construct called an enclave. An enclave is like an ordinary program, except that the memory contents of an enclave are encrypted whenever they are off-chip, and accessible only on-chip, and only while the special enclave code is running. Further, the decryption keys are available solely to code with a certain hash: if you or a hacker were to hack the enclave code and change its hash, that hacked code will no longer have access to the encryption keys, repelling attacks. As a result, this ingenious technology does not permit anyone, even the owner of the machine who can modify the code arbitrarily, to peek at the contents of the enclave or to modify execution within an enclave. Further, the SGX hardware enables remote attestation, that is, the ability to prove to a remote computer that a given enclave is running a particular software distribution. In essence, the chip is able to issue a statement that says "I guarantee to any remote party that I am running this code with this particular hash," which is a critical bootstrapping mechanism. Teechan is built on these two underlying features, which, together, provide a trusted execution environment (TEE).</li>
-</ul>
-</td>
-<td>
-<a href="https://en.wikipedia.org/wiki/Secure_cryptoprocessor">Secure cryptoprocessor</a>
-<ul xxxsmall xxxsmall>
-<li>chip for carrying out cryptographic operations given degree of tamper resistance. 
-(vs cryptographic processors to speed-up crypto operations)</li>
-</ul>
+<pre xxxsmall zoom>
+CPU instruction set allowing user-level code to allocate 
+private regions of memory (enclaves) protected from 
+processes running at higher privilege levels. (secure 
+remote computation, secure web browsing, DRM).
+
+SGX is a set of instruction set extensions for CPUs 
+released in Fall 2015 and available on recent CPUs. The 
+key ability SGX provides is the notion of confidential, 
+private execution with integrity guarantees. In essence, 
+the chip has a special construct called an enclave. An 
+enclave is like an ordinary program, except that the 
+memory contents of an enclave are encrypted whenever they 
+are off-chip, and accessible only on-chip, and only while 
+the special enclave code is running. Further, the 
+decryption keys are available solely to code with a 
+certain hash: if you or a hacker were to hack the enclave 
+code and change its hash, that hacked code will no longer 
+have access to the encryption keys, repelling attacks. As 
+a result, this ingenious technology does not permit anyone
+, even the owner of the machine who can modify the code 
+arbitrarily, to peek at the contents of the enclave or to 
+modify execution within an enclave. Further, the SGX 
+hardware enables remote attestation, that is, the ability 
+to prove to a remote computer that a given enclave is 
+running a particular software distribution. In essence, 
+the chip is able to issue a statement that says "I 
+guarantee to any remote party that I am running this code 
+with this particular hash," which is a critical 
+bootstrapping mechanism. Teechan is built on these two 
+underlying features, which, together, provide a trusted 
+execution environment (TEE).
+</pre>
+
 </td>
 <td colsep>
 </td>
 <td>
 <a href="https://www.vaultproject.io/">HashiCorp Vault Project</a>
+<pre xxxsmall zoom>
+
 <ul xxxsmall>
-<li>"""HashiCorp Vault secures, stores, and tightly controls access 
-to tokens, passwords, certificates, API keys, and other secrets in
-modern computing. Vault handles leasing, key revocation, key rolling,
-and auditing. Through a unified API, users can access an encrypted
-Key/Value store and network encryption-as-a-service, or generate AWS
-IAM/STS credentials, SQL/NoSQL databases, X.509 certificates, SSH 
-credentials, and more. """</li>
-<li><a href="https://github.com/hashicorp/vault">Vault@Github</a></li>
-</ul>
+"""HashiCorp Vault secures, stores, and tightly controls 
+  access to tokens, passwords, certificates, API keys, and 
+  other secrets in modern computing. Vault handles leasing, 
+  key revocation, key rolling, and auditing. Through a 
+  unified API, users can access an encrypted Key/Value 
+  store and network encryption-as-a-service, or generate 
+  AWS IAM/STS credentials, SQL/NoSQL databases, X.509 
+  certificates, SSH credentials, and more. "
+
+  <a href="https://github.com/hashicorp/vault">Vault@Github</a>
+
+</pre>
 </td>
-<td>KSM
+<td TODO>Key Mng.Serv.(KMS)
 <pre xxxsmall zoom>
 - Google Cloud KMS
 - Amazon KMS

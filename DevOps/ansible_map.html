@@ -15,35 +15,53 @@
 <b style="font-size:2.0rem" orange><a onclick="onZoomIn ()">[A+]</a></b>
 </div>
 <!-- {{{ START }}} -->
-
+<a href="https://docs.ansible.com/ansible/latest/user_guide/index.html">User Guide</a>
 <table { >
 <tr {>
 <td col1 colspan=1>
   Summary
-  <ul xxxsmall zoom >
-  <li><pre>ansible-doc "module_name"</pre></li>
-  <li>Write some kind of (desired) state description for servers<br/>
-      (right packages, conf. files, permissions, running services,...)</li>
-  <li>Orchestates deployment (order in which "things" are deployed to different servers)</li>
-  <li>Provisioning new VMs to clods like EC2, Azure, Digital Ocean, Google Compute Engine,
-      Linode, Rackspace, OVH, and any cloud supporting OpenStack API (OVH, ...)</li>
-  <li>Ansible can execute arbitrary shell commands on remote servers,
-      but real power comes from the collection of modules it ships with 
-  </li>
-  <li>Ansible modules are declarative: describe desired state<br/>
-      For example invoke the user module like this to ensure there was
-      an account named <b blue>deploy</b> in the <b orange>web</b> group:
-<pre { >
-user: name=<b blue>deploy</b> group=<b orange>web</b>
-</pre }  >
-  </li>
-  <li>Modules are also idempotent (warrants always same results)</li>
-  <li>The primary unit of reuse in the Ansible community is the module.</li>
-  <li>Ansible has excellent support for templating, as well as defining
-      variables at different scopes.</li>
-  <li>Ansible uses the YAML file format and the Jinja2 templating languages</li>
-  </ul>
+<pre xxxsmall zoom>
+ANSIBLE MAIN OBJECTIVE:
+  Write <b>declaratively</b> (vs programatically) the <b>desired</b> final state of install 
+  (correct packages, conf. files, permissions, running services,...) avoiding custom-scripts
+  "pitfalls"
+
+VOCABULARY
+  - <b>Controller</b> 
+    <b>Machine</b>  : machine where Ansible is installed, responsible for orchestating provisioning
+  - <b>Inventory</b>: INI file with servers and group of server being targeted 
+  - <b>Playbook</b> : Main provisioning (YAML) file, defining tasks to be executed
+  - <b>Task</b>     : block of yaml config defined <b>a single procedure to be executed</b> ( e.g.: install a package)
+  - <b>Module</b>   : typically <b>abstracts a recurrent system task</b>, (dealing with packages, handling files,...)
+  - <b>Role</b>     : <b>pre-defined way for organizing playbooks</b> and other files in order to
+    <b></b>           facilitate <b>sharing and reusing</b> portions of a provisioning
+  - <b>Play</b>     : a provisioning executed from start to finish 
+  - <b>Facts</b>    : global variables with info about the system (network interfaces, volumes, ...)
+  - <b>Handlers</b> : Handle async events triggered by ansible tasks (Used to restart OS services, ...)
+
+
+- Detailed help: $ ansible-doc "module_name"
+
+- Ansible can execute arbitrary shell commands on remote servers,
+    but real power comes from the collection of modules it ships with 
+
+- Ansible modules are declarative: describe desired state<br/>
+    For example invoke the user module like this to ensure there was
+    an account named <b blue>deploy</b> in the <b orange>web</b> group:
+    user: name=<b blue>deploy</b> group=<b orange>web</b>
+
+- Modules are also idempotent (warrants always same results)
+
+- The primary unit of reuse in the Ansible community is the module.
+
+- Ansible has excellent support for templating, as well as defining
+    variables at different scopes.
+
+- Ansible uses the YAML file format and the Jinja2 templating languages.
+</pre>
+
   <hr xxxsmall />
+
   <a href="https://docs.ansible.com/ansible/latest/user_guide/command_line_tools.html">Command line tools</a>
 <pre xxxsmall zoom>
 <a href="https://docs.ansible.com/ansible/latest/cli/ansible.html"          >ansible          </a> define and run a single task ‘playbook’ against a set of hosts
@@ -141,6 +159,24 @@ roles/
     monitoringRole/       # ""
     ...
 </pre>
+
+  <b>(Conditional) include</b><br/>
+<pre xxxsmall zoom { >
+Ussually we use facts for conditionals:
+<a href="https://docs.ansible.com/ansible/2.4/playbooks_reuse_includes.html">Reminder:</a>
+   "include"               is evaluated during playbook parsing
+   "import"         (2.4+) is evaluated during playbook execution
+   "import_playbook"(2.4+) plays&and;tasks in each playbook 
+   "include_tasks"  (2.4+?) 
+   "import_tasks"   (2.4+?) 
+
+- <b orange>include</b>: Redhat.yml
+  <b orange>when</b>: ansible_os_family == 'Redhat'
+
+- <b orange>include</b>: Debian.yml
+  <b orange>when</b>: ansible_os_family == 'Debian'
+</pre }>
+
 </td>
 <td>
   <b>Ansible yaml layout<br/>
@@ -404,66 +440,288 @@ web-[a-t].example.com
 <table>
 <tr>  
 <td>
-  <b>Gathering (host) facts</b><br/>
+<a href="https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html">Playbook Vars</a>
+  <hr xxxsmall />
+  Gathering (host) facts</br>
+  ($ <code orange>setup</code> module)
+  example/ref. output</code>
 <pre xxxsmall zoom { >
-# Using mod. <code orange>setup</code> to gather host facts:
-$ ansible -i hosts vagrant1 -m <b orange>setup</b>
-vagrant1 | SUCCESS => {
-    "<b blue>ansible_facts</b>": {
-        "ansible_all_ipv4_addresses": [
-            "10.0.2.15"
-        ],
-        ...
-        "ansible_architecture": "x86_64",
-        "ansible_date_time": { ...  },
-        "ansible_default_ipv4": { ...  },
-        "ansible_devices": {
-            "sda": { ...
-                "size": "40.00 GB",
-                "partitions": { "size" : "40.00 GB", ...  },
-            } },
-        ...
-        ("tons" of info about memory, hardware, lsb... )
-        }
-      }
+(Use also to force facts reloading)
+  tasks:
+    - ...
+    - name: re-read facts after adding custom fact<b blue>
+      setup</b>: filter=ansible_local     ← re-run <b blue>setup module</b> to make
+           </b>                           
 
-# <b green>Filtering facts</b>
-$ ansible -i hosts vagrant1 -m <b orange>setup</b> -a '<b green>filter=ansible_eth*</b>'
-vagrand1 | success >> {
-    "<b blue>ansible_facts</b>": {
-        "<b green>ansible_eth</b>0": {
-            "ipv4": { "address": "10.0.0.01", ...  },
-            ...  },
-        "<b green>ansible_eth</b>1": {
-            "ipv4": { "address": "10.0.0.02", ...  },
-            ...  },
+
+$ ansible "hostname" -m <b orange>setup</b>
+(Ansible 1.4, Ubuntu 12.04)
+Next facts are available with:
+- hosts: ...<b blue>
+  gather_facts: yes</b> ← Will execute the module "setup"
+
+{<b blue>
+    "ansible_os_family": "Debian",
+    "ansible_pkg_mgr": "apt",
+    "ansible_architecture": "x86_64",
+    "ansible_nodename": "ubuntu2.example.com",</b>
+    "ansible_all_ipv4_addresses": [ "REDACTED IP ADDRESS" ],
+    "ansible_all_ipv6_addresses": [ "REDACTED IPV6 ADDRESS" ],
+    "ansible_bios_date": "09/20/2012",
+    "ansible_bios_version": "6.00",
+    "ansible_cmdline": {
+        "BOOT_IMAGE": "/boot/vmlinuz-3.5.0-23-generic",
+        "quiet": true,
+        "ro": true,
+        "root": "UUID=4195bff4-e157-4e41-8701-e93f0aec9e22",
+        "splash": true
     },
-    "changed": false
+    "ansible_date_time": {
+        "date": "2013-10-02",
+        "day": "02",
+        "epoch": "1380756810",
+        "hour": "19",
+        "iso8601": "2013-10-02T23:33:30Z",
+        "iso8601_micro": "2013-10-02T23:33:30.036070Z",
+        "minute": "33",
+        "month": "10",
+        "second": "30",
+        "time": "19:33:30",
+        "tz": "EDT",
+        "year": "2013"
+    },<b orange>
+    "ansible_default_ipv4": {
+        "address": "REDACTED",
+        "alias": "eth0",
+        "gateway": "REDACTED",
+        "interface": "eth0",
+        "macaddress": "REDACTED",
+        "mtu": 1500,
+        "netmask": "255.255.255.0",
+        "network": "REDACTED",
+        "type": "ether"
+    },</b>
+    "ansible_default_ipv6": {},
+    "ansible_devices": {
+        "sda": {
+            "holders": [],
+            "host": "SCSI storage controller: ...Dual Ultra320 SCSI,
+            "model": "VMware Virtual S",
+            "partitions": {
+                "sda1": {
+                    "sectors": "39843840",
+                    "sectorsize": 512,<b orange>
+                    "size": "19.00 GB",</b>
+                    "start": "2048"
+                }
+            },
+            ...
+            "sectorsize": "512",<b orange>
+            "size": "20.00 GB",</b>
+            "support_discard": "0",
+            "vendor": "VMware,"
+        },
+        ...
+    },
+    "ansible_distribution": "Ubuntu",
+    "ansible_distribution_release": "precise",
+    "ansible_distribution_version": "12.04",
+    "ansible_domain": "",<b>
+    "ansible_env": {
+        "COLORTERM": "gnome-terminal",
+        "DISPLAY": ":0",
+        "HOME": "/home/mdehaan",
+        "LANG": "C",
+        "LESSCLOSE": "/usr/bin/lesspipe %s %s",
+        "LESSOPEN": "| /usr/bin/lesspipe %s",
+        "LOGNAME": "root",
+        "LS_COLORS": "rs=0:di=01;...*.xspf=00;36:",
+        "MAIL": "/var/mail/root",
+        "OLDPWD": "/root/ansible/docsite",
+        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+<b orange>        "PWD": "/root/ansible",</b>
+        "SHELL": "/bin/bash",
+        "SHLVL": "1",
+        "SUDO_COMMAND": "/bin/bash",
+        "SUDO_GID": "1000",
+        "SUDO_UID": "1000",
+        "SUDO_USER": "mdehaan",
+        "TERM": "xterm",
+        "USER": "root",
+        "USERNAME": "root",
+        "XAUTHORITY": "/home/mdehaan/.Xauthority",
+        "_": "/usr/local/bin/ansible"
+    },</b>
+    "ansible_eth0": {
+        "active": true,
+        "device": "eth0",
+        "ipv4": {
+            "address": "REDACTED",
+            "netmask": "255.255.255.0",
+            "network": "REDACTED"
+        },
+        "ipv6": [ ...  ],
+        "macaddress": "REDACTED",
+        "module": "e1000",
+        "mtu": 1500,
+        "type": "ether"
+    },
+    "ansible_form_factor": "Other",<b orange>
+    "ansible_fqdn": "ubuntu2.example.com",
+    "ansible_hostname": "ubuntu2",</b>
+    "ansible_interfaces": [
+        "lo",
+        "eth0"
+    ],
+    "ansible_kernel": "3.5.0-23-generic",
+    "ansible_lo": { ...  },
+    "ansible_lsb": {<b orange>
+        "codename": "precise",
+        "description": "Ubuntu 12.04.2 LTS",</b>
+        "id": "Ubuntu",
+        "major_release": "12",
+        "release": "12.04"
+    },<b orange>
+    "ansible_machine": "x86_64",</b>
+    "ansible_memfree_mb": 74,
+    "ansible_memtotal_mb": 991,
+    "ansible_mounts": [
+        {
+            "device": "/dev/sda1",
+            "fstype": "ext4",
+            "mount": "/",
+            "options": "rw,errors=remount-ro",
+            "size_available": 15032406016,
+            "size_total": 20079898624
+        }
+    ],
+    "ansible_processor": [ "Intel(R) Core(TM) i7 CPU ..."
+    ],
+    "ansible_processor_cores": 1,
+    "ansible_processor_count": 1,
+    "ansible_processor_threads_per_core": 1,
+    "ansible_processor_vcpus": 1,
+    "ansible_product_name": "VMware Virtual Platform",
+    "ansible_product_serial": "REDACTED",
+    "ansible_product_uuid": "REDACTED",
+    "ansible_product_version": "None",
+    "ansible_python_version": "2.7.3",
+    "ansible_selinux": false,
+    "ansible_ssh_host_key_dsa_public": "REDACTED KEY VALUE",
+    "ansible_ssh_host_key_ecdsa_public": "REDACTED KEY VALUE",
+    "ansible_ssh_host_key_rsa_public": "REDACTED KEY VALUE",
+    "ansible_swapfree_mb": 665,
+    "ansible_swaptotal_mb": 1021,
+    "ansible_system": "Linux",
+    "ansible_system_vendor": "VMware, Inc.",
+    "ansible_user_id": "root",
+    "ansible_userspace_architecture": "x86_64",
+    "ansible_userspace_bits": "64",
+    "ansible_virtualization_role": "guest",
+    "ansible_virtualization_type": "VMware"
 }
-</pre } >
-  <b>Local (custom) Facts how-to:</b><br/>
-  <ol xxxsmall zoom > 
-  <li>Place one or more files on in <b brown>/etc/ansible/facts.d</b> at remote host in .ini or JSON format (or executable with JSON output).</li>
-  <li>Read them from <code orange>ansible_local</code>:
-<pre {> 
-<b brown>/etc/ansible/facts.d/</b><b blue>example</b>.fact (@ host)
-[<b green>book</b>]
-title=Ansible: Up and Running
-author=Lorin Hochstein
-publisher=O'Reilly Media
-</pre }>
-    To read in ansible scripts:
-<pre {>
-- name: print ansible_local
-  debug: var=<b orange>ansible_local</b>
-- name: print book title
-  debug: msg="The title of the book is {{ <b orange>ansible_local</b>.<b blue>example</b>.<b green>book</b>.title }}"
-</pre }>
-  </li>
-  </ol> 
+</pre>
+
+  <code>"/etc/ansible/facts.d"</code><br/>
+  (Local provided facts, 1.3+)
+<pre xxxsmall zoom>
+Way to provide "locally supplied user values" as opposed to 
+               "centrally supplied user values"  or 
+               "locally dynamically determined values"
+
+If 
+any files inside /etc/ansible/facts.d (@remotely managed host)
+ending in *.fact (JSON, INI, execs generating JSON, ...) can supply local facts 
+
+Ex: /etc/ansible/facts.d/preferences.fact contains:
+[general] 
+asdf=1    ← Will be available as {{ ansible_local.preferences.general.asdf }}
+bar=2       (keys are always converted to lowercase)
+
+
+To copy local facts and make the usable in current play:
+- hosts: webservers
+  tasks:
+    - name: create directory for ansible custom facts
+      file: state=directory recurse=yes path=/etc/ansible/facts.d
+
+    - name: install custom ipmi fact
+      copy: src=ipmi.fact dest=/etc/ansible/facts.d ← Copy local facts
+
+    - name: re-read facts after adding custom fact<b blue>
+      setup</b>: filter=ansible_local     ← re-run <b blue>setup module</b> to make
+           </b>                           ← locals facts available in current play
+
+</pre>
+
+  assign command ouput to var
+<pre xxxsmall zoom>
+Results will vary from module to module.
+Use -v to show possible values for the results.
+
+- hosts: web_servers
+  tasks:
+     - shell: /usr/bin/foo<b blue>
+       register: foo_result</b>   
+       ignore_errors: True
+
+     - shell: /usr/bin/bar
+       when: foo_result.rc == 5  ← Using foo_result
+</pre>
+
+  Playbook variable "scopes":
+<pre xxxsmall zoom>
+Variable Main Scopes
+
+- Global: set by config, ENV.VARS and cli
+- Play  : each play and contained structures,
+          vars|vars_files|vars_prompt entries 
+          role defaults 
+- Host  : directly associated to a host,
+          like inventory, include_vars,
+          facts or registered task outputs
+
+
+Variable scope Overrinding rules:
+
+- The more explicit you get in scope, the more precedence
+  1    command line values (eg “-u user”) <b>(SMALLEST PRECEDENCE)</b>
+  2    role defaults
+  3 *1 inventory file || script group vars 
+  4 *2 inventory group_vars/all
+  5 *2 playbook  group_vars/all
+  6 *2 inventory group_vars/* 
+  7 *2 playbook  group_vars/* 
+  8 *1 inventory file or script host vars 
+  9 *2 inventory host_vars/*
+ 10 *2 playbook  host_vars/* 
+ 11 *4 host facts || cached set_facts 
+ 12    play vars
+ 13    play vars_prompt
+ 14    play vars_files
+ 15    role vars  (defined in role/vars/main.yml)
+ 16    block vars (only for tasks in block)
+ 17    task vars  (only for the task)
+ 18    include_vars
+ 19    set_facts || registered vars
+ 20    role (and include_role) params
+ 21    include params
+ 22    (-e) extra vars                     <b>(BIGEST PRECEDENCE)</b>
+    ↑  
+   *1 Vars defined in inventory file or dynamic inventory
+   *2 Includes vars added by ‘vars plugins’ as well as 
+      host_vars and group_vars which are added by the default 
+      vars plugin shipped with Ansible.
+   *4 When created with set_facts’s cacheable option, 
+      variables will have the high precedence in the play,
+      but will be the same as a host facts precedence when
+      they come from the cache.
+</pre>
+
+
 </td>  
 <td>  
-  <b>"Jinja2" templat.ex.</b><br/>
+  <b>"Jinja2" template ex.</b><br/>
   <code>nginx.conf<b>.j2</b>:</code>
 <pre xxxsmall zoom { >
 server {
@@ -484,6 +742,28 @@ server {
         }
 }
 </pre } >
+
+  <code>templates/default.conf.tpl</code>
+<pre xxxsmall zoom>
+templates/000_default.conf.tpl</code>
+|<VirtualHost *:80>
+|    ServerAdmin webmaster@localhost
+|    DocumentRoot {{ doc_root }}
+|
+|    <Directory {{ doc_root }}>
+|        AllowOverride All
+|        Require all granted
+|    </Directory>
+|</VirtualHost>
+
+Task:
+|  - name: Setup default virt.host 
+|    template: src=templates/default.conf.tpl dest=/etc/apache2/sites-available/000-default.conf
+</pre>
+
+
+
+
 </td>
 <td>
   <b>changed_when / failed_when</b>
@@ -555,33 +835,28 @@ class FilterModule(object):
         return {'surround_by_quote': surround_by_quote}
 </pre }>
   <hr/>  
-  <b>DRY pattern</b><br/>
-  to avoid duplicating external declarations in ansible vars use "Lookups".
+  <a href="https://docs.ansible.com/ansible/latest/user_guide/playbooks_lookups.html"><code>Lookups</code></a> Quering extern. data (files, shells, key/val ddbbs,...)
 <pre xxxsmall zoom { >
-file     Contents of a file
-password Randomly generate a password
-pipe     Output of locally executed command
-env      Environment variable
-template Jinja2 template after evaluation
-csvfile  Entry in a .csv file
-dnstxt   DNS TXT record
-redis_kv Redis key lookup
-etcd     etcd key lookup
-Ex:
+Lookups modules allows to query data from external sources.
   ...
   vars:
-    key_files: {{ lookup('file', '/path/to/ExternalPathConfig.txt') }}
+    motd_value: "{{ <b>lookup(<b blue>'file'</b>, '/etc/motd') }}</b>"
+
+Existing lookup modules:
+  file     Contents of a file
+  password Randomly generate a password
+  pipe     Output of locally executed command
+  env      Environment variable
+  template Jinja2 template after evaluation
+  csvfile  Entry in a .csv file
+  dnstxt   DNS TXT record
+  redis_kv Redis key lookup
+  etcd     etcd key lookup
+  Ex:
+  ...
 </pre }>
 </td>  
 <td>
-  <b>Conditional include</b><br/>
-<pre xxxsmall zoom { >
-- <b orange>include</b>: Redhat.yml
-  <b orange>when</b>: ansible_os_family == 'Redhat'
-
-- <b orange>include</b>: Debian.yml
-  <b orange>when</b>: ansible_os_family == 'Debian'
-</pre }>
     <b>group patterns</b><br/>
 <pre xxxsmall zoom { >
 Other patterns:A
@@ -617,40 +892,92 @@ Regex           <b orange>~web\d+\.example\.(com|org)</b>
   <b orange>strategy: free</b>
     ...
 </pre }>
-   <hr xxxsmall/>
+
+</td>  
+ 
+</tr }>
+</table } >
+<table } >
+<tr>
+<td>
    <a href="https://docs.ansible.com/ansible/latest/user_guide/playbooks_vault.html">Handling secrets with vaults</a>
 <pre xxxsmall zoom>
-<a href="https://docs.ansible.com/ansible/latest/cli/ansible-vault.html#ansible-vault">ansible-vault</a> :
-- allows to keep secrets in encrypted files that can be distributed/versioned 
-See also: <a TODO href="https://docs.ansible.com/ansible/latest/user_guide/playbooks_best_practices.html#best-practices-for-variables-and-vaults">Variables and Vaults best practices</a>
+- (helps to) keep secrets in (symetric password)encrypted 
+files that can be distributed/added to SCM.
 
-enabled through 
-   - (encrypt to disk)           using "ansible-vault" command line tool for editing files
-   - (encrypt to yaml var. 2.3+) using "ansible-vault encrypt_string" command
-     plain_text001: othervalue
-     encryp_secret: !vault |
-               $ANSIBLE_VAULT;1.1;AES256
-               663864...64363833313662
-               643162...31386135323734
-               626563...65373339616234
-               343061...37323833366536
-               346237...36
-   
-     NOTE: just be sure to add the !vault tag so both Ansible and YAML are aware 
-          of the need to decrypt. The | is also required, as vault encryption results 
-          in a multi-line string.
-   - (encrypt to STDOUT):       using "encrypt_string". Output format is ready to be
-                                included in a YAML file. Input can be provided via STDIN,
-                                command line arguments, or interactive prompt.
-   - (decrypt in memory) ansible-playbook <b>--ask-vault-pass</b> flag
-     Interactively prompts for the password.
-   - (decrypt in memory) password-file passed indicated like:
-     - alt 1: ansible-playbook <b>--vault-password-file</b> flag 
-     - alt 2: specify location of password-file in ansible.cfg
-     - alt 3: specify location of password-file in  <b>ANSIBLE_VAULT_PASSWORD_FILE</b> ENV.VAR.
-     (string stored as a single line in the password-file)
-     NOTE: Applies also to "ansible-pull" command though it would require 
-           distributing the keys to the nodes
+<b>RUNNING ANSIBLE-PLAYBOOK AGAINST VAULT PROTECTED YML</b>                     | <b>RUNNING ANSIBLE-PLAYBOOK CONTAINING VAULT PROTECTED VARIABLE (Password, secret,...)</b>
+                                                                         | 
+<b>STEP 1: Create the Vault protected playbook (or role or "embedded file"):</b>| <b>STEP 1:  Create vaulted variable:</b>
+$ ansible-vault create myVaultProtectedPlaybook.yml                      | $  ansible-vault <b>encrypt_string</b>
+                                                                         | → mySecretToEncrypt                         Copy&amp;Paste to a yml file:
+                                                                         | → bla bla blah(Ctrl+D)→ !vault |          ←  vars:
+                                                                         | →           $ANSIBLE_VAULT;1.1;AES256        - mySecret: !vault |                 
+                                                                         | →           66386439653236336462...                   $ANSIBLE_VAULT;1.1;AES256
+                                                                         | →           64316265363035303763...                   66386439653236336462...
+                                                                         | →           ...                                       64316265363035303763...
+                                                                         |                                                       ...
+                                                                         |
+<b>STEP 2: Use the Vault:</b>                                                   | <b>STEP 2: (Similar to the vault protected playbook using</b>                     
+$ ansible-playbook myVaultProtectedPlaybook.yml \                        |        <b>--ask-vault-pass|--vault-password-file|ANSIBLE_VAULT_PASSWORD_FILE</b>)
+   <b>--ask-vault-pass</b>                                                      | 
+   ^ prompt user for pass                                                |
+     Currently requires all files to                                     |
+     be encrypted with same password                                     |
+     Alternative1: use <b>--vault-password-file ~/.vault_pass.txt</b>           |
+                       <b>                      ~/.vault_pass.py</b>            |
+                       </>                      ^ password should be a      |
+                                          string stored as a single line |
+     Alternative2: export ANSIBLE_VAULT_PASSWORD_FILE=~/.vault_pass.txt  |
+                                                                         |
+</pre>
+</td>
+<td>  
+  Ex 1: (yum) apache install localhost
+<pre xxxsmall zoom>
+---
+# file: ansible.yml
+- hosts: localhost                                                                                                                
+  connection: local
+  gather_facts: False
+  
+  vars:
+    var_yum_prerequisites: [ 'httpd24'      , 'vim', 'tmux' ]
+    var_apt_prerequisites: [ 'apache-server', 'vim', 'tmux' ]
+
+  vars_files:
+    - /vars/vars_not_in_git.yml   ←  add to .gitignore
+                                     avoid sharing sensitive data 
+                                     /vars/vars_not_in_git.yml will look like:
+                                     password: !vault |
+                                               $ANSIBLE_VAULT;1.1;AES256
+                                               ...
+                                     
+
+
+  
+  tasks:
+   - name: install yum pre-requisites
+     when: ansible_os_family == "RedHat"
+     become: true
+     yum:
+       name: {{ var_yum_prerequisites }}
+       state: present
+     notify:
+     - restart-apache2
+
+   - name: install apt pre-requisites
+     when: ansible_os_family == "Debian"
+     become: true
+     apt:
+       name: {{ var_apt_prerequisites }}
+       state: latest
+     notify:
+     - restart-apache2
+
+  
+  handlers:
+  - name: restart-apache2
+    service: name=httpd state=restarted
 </pre>
 </td>  
 <td>
@@ -1090,37 +1417,9 @@ enabled through
     # the same as a tasks file, see the tasks section above for an example.
 - include: handlers/site.yml
 </pre>
-</td>  
-</tr }>
-</table } >
-<table } >
-<tr>
-<td>  
-  Ex 1: (yum) apache install localhost
-<pre xxxsmall zoom>
-  1 ---
-  2 # file: ansible.yml
-  3 - hosts: localhost                                                                                                                
-  4   connection: local
-  5   gather_facts: False
-  6   
-  7   vars:
-  8     var_yum_prerequisites: httpd24
-  9   
- 10   tasks:
- 11    - name: install yum pre-requisites
- 12      become: true
- 13      yum:
- 14        name: "{{ var_yum_prerequisites }}"
- 15        state: present
- 16      notify:
- 17      - restart-apache2
- 18   
- 19   handlers:
- 20   - name: restart-apache2
- 21     service: name=httpd state=restarted
-</pre>
-</td>  
+</td> 
+
+
 </tr }>
 </table } >
 </body>
@@ -1141,6 +1440,25 @@ https://docs.ansible.com/ansible/2.5/user_guide/intro_dynamic_inventory.html (EC
 ________________
 Ronald Kurr has lot of very-useful and professional Ansible powered code to provide JVM, Python, Desktops, ... machines. For example:
    https://github.com/kurron/aws-open-vpn
+____________
+TODO: Provisioning new VMs to clods like EC2, Azure, Digital Ocean, 
+  Google Compute Engine, Linode, Rackspace, OVH, and any cloud
+  supporting OpenStack API (OVH, ...)
+___________________
+<a href="https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#fact-caching">Fact Caching</a>
+
+To benefit from cached facts you will set gather_facts to False in most plays.
+
+Ansible ships with two persistent cache plugins: redis and jsonfile.
+
+To configure fact caching using redis, enable it in ansible.cfg as follows:
+
+[defaults]
+gathering = smart
+fact_caching = redis
+fact_caching_timeout = 86400
+
+
 -->
 
 </html>

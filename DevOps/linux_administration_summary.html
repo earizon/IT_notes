@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
    <meta charset="UTF-8">
-   <title>Linux Administration Summary (alpha)</title>
+   <title>Linux Administration Map (beta)</title>
 <head>
 <script src="/IT_notes/map_v1.js"></script>
 <link rel="stylesheet" type="text/css" href="/IT_notes/map_v1.css" />
@@ -1051,7 +1051,140 @@ $ apt-cache pkgnames             ← provides a list of every package in the sys
 $ apt-get build-dep <package_name> 
 </pre>
 </pre>
+</td>
+<td>
+  <a href="https://wiki.alpinelinux.org/wiki/Alpine_Linux_package_management"><code>apk</code></a> (Alpine/"Docker")
+<pre xxxsmall zoom>
+Because Alpine Linux is designed to run from RAM, package management involves two phases:
 
+- Installing / Upgrading / Deleting packages on a running system.
+- Restoring a system to a previously configured state 
+  (e.g. after reboot), including all previously installed packages 
+  and locally modified configuration files. (RAM-Based Installs Only)
+
+- apk is the tool used to install, upgrade, or delete software on a running sytem.
+- lbu is the tool used to capture the data necessary to 
+  restore a system to a previously configured state.
+
+
+Contents
+
+    1 Overview
+    2 Packages and Repositories
+        2.1 Repository pinning
+        2.2 Commandline repository options
+    3 Update the Package list
+    4 Add a Package
+    5 Add a local Package
+    6 Remove a Package
+    7 Upgrade a Running System
+    8 Search for Packages
+    9 Information on Packages
+        9.1 apk info
+            9.1.1 Listing installed packages
+        9.2 apk policy
+    10 Additional apk Commands
+    11 Local Cache
+    12 Enabling Local Cache
+        12.1 To enable Local Cache on releases prior v2.3
+        12.2 To manually enable Local Cache on HDD install
+        12.3 To manually enable Local Cache on run-from-RAM installs
+    13 Cache maintenance
+        13.1 Delete old packages
+        13.2 Download missing packages
+        13.3 Delete and download in one step
+        13.4 Automatically Cleaning Cache on Reboot
+    14 Using the Local Cache with tmpfs volumes
+    15 Advanced APK Usage
+        15.1 Holding a specific package back
+    16 Troubleshooting
+        16.1 "apk-tools is old"
+
+Overview
+
+apk: 
+  add      Add new packages to the running system
+  del      Delete packages from the running system
+  fix      Attempt to repair or upgrade an installed package
+  update   Update the index of available packages
+  info     Prints information about installed or available packages
+  search   Search for packages or descriptions with wildcard patterns
+  upgrade  Upgrade the currently installed packages
+  cache    Maintenance operations for locally cached package repository
+  version  Compare version differences between installed and available packages
+  index    create a repository index from a list of packages
+  fetch    download (but not install) packages
+  audit    List changes to the file system from pristine package install state
+  verify   Verify a package signature
+  dot      Create a graphviz graph description for a given package
+  policy   Display the repository that updates a given 
+           package, plus repositories that also offer the package
+  stats    Display statistics, including number of 
+           packages installed and available, number of 
+           directories and files, etc.
+  manifest Display checksums for files contained in a given package
+
+
+- Software packages for Alpine Linux are digitally signed 
+  tar.gz archives with ".apk" extension (often called "a-packs")
+  stored in one or more repositories (directory with a collection of *.apk files
+  and a APKINDEX.tar.gz index )
+
+- The list of repositories to check is stored in /etc/apk/repositories
+  (one repo per line)
+  Ex:
+  /media/sda1/apks
+  http://nl.alpinelinux.org/alpine/v3.7/community
+  <b blue>@edge</b> http://nl.alpinelinux.org/alpine/edge/main
+  <b blue>@edgecommunity</b> http://nl.alpinelinux.org/alpine/edge/community
+  <b blue>@testing</b> http://nl.alpinelinux.org/alpine/edge/testing
+  ^ "tagged" repo
+    will be used like
+    # apk add stableapp newapp@<b blue>edge</b> bleedingapp@<b blue>testing</b>
+    by default only untagged repositories are used
+
+Update the Package list
+  # apk update (Fill catch locally the latest APKINDEX.tar.gz from remote repos)
+
+Add Packages (transitive dependencies is automatic):
+  # apk add openssh openntp vim
+
+Add a packager from dev. repository (dangerous):
+  # apk add cherokee --update-cache \
+    --repository http://dl-3.alpinelinux.org/alpine/edge/testing/
+    --allow-untrusted
+
+Add local Package
+  # apk add --allow-untrusted /path/to/file.apk
+
+
+Remove a Package
+
+  # apk del openssh
+
+Upgrade a Running System
+
+  # apk update
+  # apk upgrade
+
+To upgrade only a few packages, use the add command with the -u or --upgrade option:
+
+apk update
+apk add --upgrade busybox 
+Note: Remember that when you reboot your machine, the remote repository will not be available until after networking is started. This means packages newer than your local boot media will likely not be installed after a reboot. To make an "upgrade" persist over a reboot, use a local cache.
+Search for Packages
+
+
+Search:
+ # apk search -v        ← list all packages along with descriptions
+ # apk search -v 'acf*' ← list all packages part of the ACF system
+ # apk search -v --description 'NTP' ← list all packages that list NTP as 
+                                       part of their description, 
+
+Information on Packages
+  # apk info -a zlib ← -w: show just webpage info
+                       -a: show          all info
+</pre>
 </td>
 <td TODO >
   <a href="https://www.flatpak.org/">FlatPak</a>
@@ -1125,7 +1258,8 @@ done
   <spam xsmall>Device Mapper target providing logical volume management</a>
 </td>
 <td>
-  BTRFS (By SuSE, Oracle, Facebook, Fujitsu)
+  <a href="https://btrfs.wiki.kernel.org/index.php/Main_Page">BTRFS</a> (By SuSE, Oracle, Facebook, Fujitsu),
+  <a href="https://btrfs.wiki.kernel.org/index.php/Status">Status</a>
 </td>
 <td>
   <a href="https://opensource.com/article/18/4/stratis-lessons-learned">Stratis (by RedHat)</a>
@@ -1168,35 +1302,85 @@ done
 
 <table>
 <tr>
-  <th colspan=8 header_delimit><a href="https://github.com/SELinuxProject/selinux/wiki">SELinux Mandatory Access Control (MAC)</a>, <a href="https://github.com/SELinuxProject/refpolicy">Ref.Policy</a> </th>
-
+  <th colspan=6 header_delimit><a href="https://github.com/SELinuxProject/selinux/wiki">SELinux Mandatory Access Control (MAC)</a>, <a href="https://github.com/SELinuxProject/refpolicy">Ref.Policy</a> </th>
+  <td colsep></td>
+  <th colspan=6 header_delimit>Creating new Policies</th>
 </tr>
 <tr>
 <td>
-  <a href="https://www.digitalocean.com/community/tutorials/an-introduction-to-selinux-on-centos-7-part-1-basic-concepts">REF:</a> 
-  <b>SELinux Policy:</b><br/>
-  "bunch of rules" saying:
+<a href="https://www.youtube.com/watch?v=MxjenQ31b70&t=2790s">SELinux for mere mortals</a>
+  <hr/>
 <pre xxxsmall zoom>
--  so-and-so <b orange>users  </b> can assume only so-and-so <b orange>roles</b>,                    <b>AND</b>
--  so-and-so <b orange>roles  </b> will be authorized to access only so-and-so <b orange>domains</b> <b>AND</b>
--  so-and-so <b orange>domains</b> in turn can access only so-and-so <b orange>file types</b> (Type Enforcement)
+SELinux MAC can be defined for:
+- Users
+- Files
+- Directories
+- Memory
+- Sockets
+- tpc/udp ports
+- ...
 </pre>
-  <br/>
-  <ul xxxsmall zoom>
-  <li>Every regular <b>running process is called a subject</b> and such subject is in a defined domain</li>
-  <li>Rols are more like filters than user groups</li>
-  <li>Object: regular file, directory, port, IP socket, ...  All objects are "tagged" with a
-    type indicating the object's purpose. ("this file is web page", or 
-    "file belongs to the /etc directory" or "the file's owner is a SELinux user
-    'std_user'", ...).  </li>
-  <li>The actions that a subject can perform inside a context/domain on an object are the 
-    subject's permissions</li>
-  <li>SELinux modes: Enforcing | Permissive | Disabled</li>
-  <li><code>/etc/selinux/config</code>
-<pre>
-$ vim  # Reboot is needed after changes to this file
+
+  Building blocks:
+  <span bgorange>LABELING</span>
+<pre xxxsmall zoom>
+- Files, directories, processes, ports, ... are ALL labeled with an SELinux context
+  ^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^
+  extended FS         labels managed by
+  attributes used     kernel
+
+"user":"role":"type":"level"
+                ^      ^
+               core  optional
+         "type enforcement"
+
+ls -ldZ            SELinux type                        | Suffix Naming Conventions
+/usr/sbin/httpd    <b orange>httpd</b>_exec_t          | "_u" -> user
+/var/www/html/     <b orange>httpd</b>_sys_content_t   | "_r" -> role 
+/etc/apache2/      <b orange>httpd</b>_config_t        | "_t" -> types (for files)
+/var/log/httpd/    <b orange>httpd</b>_log_t
+/etc/init.d/httpd  <b orange>httpd</b>_initrc_exec_t
+
+# ps axZ | grep [h]ttpd
+unconfined_u:system_r:<b orange>httpd_</b>t:s0 ...
+
+# netstat -tnlpZ | grep httpd
+....         :::80  ....  unconfined_u:system_r:<b orange>httpd_</b>t:s0 ...
+
+# semanage port -l | grep http
+http_cache_port_t  tcp 3128,8080, 8118, 8123, 10001-10010
+http_cache_port_t  udp 3130
+<b orange>http_port_t        tcp 80, 443</b>
+...
+</pre>
+   Juggling with labels
+<pre xxxsmall zoom>
+- SELinux aware tools (chcon, restorecon, ...)
+- Contexts are set when file are created based on parent's directory
+  by default. A Policy can define: 
+  - """when app labeled 'foo_t'creates a
+       file in a directory labeled 'bar_t', 
+       transition to 'baz_t' label."""
+    Ex. dhclient ('dhclient_t') creates a file /etc/resolv.conf
+       labeled 'net_conf_t' in /etc ('etc_t')
+- RPMs can set context at install time
+- Login process sets a default context (unconfined for targeted policy)
+- semanage can be used to maange settings for:
+  - login, user, port, interface, module
+  - node, file context, boolean, permissive state, dontaudit
+</pre>
+
+  <span bgorange>TYPE ENFORCEMENT</span>
+<pre xxxsmall zoom>
+- "Part of the policy that says:
+   a process running with the label httpd_t can have read access
+   to a file labeled httpd_config_t"
+</pre>
+
+  /etc/selinux/config
+<pre xxxsmall zoom>
 # This file controls the state of SELinux on the system.
-# SELINUX := enforcing permissive
+# SELINUX := enforcing permissive  ← permissive must be used to test changes/debug only.
 disabled
 SELINUX=enforcing
 # SELINUXTYPE= can take one of these two values:
@@ -1206,34 +1390,14 @@ SELINUX=enforcing
 #     <b>mls     </b>: Multi Level Security protection.
 SELINUXTYPE=targeted
 </pre>
-  </li>
-  <li>Debugging:
-<pre> 
-# Errors
-#~ cat /var/log/messages | grep "SELinux is preventing"
-# Other
-#~ cat /var/log/messages | grep "SELinux"
-</pre>
-  </li>
-  <li>SELinux users and roles do not have to be related to the actual system users and roles:<br/>
-          For every current user, process, files, sockets, messages, network interfaces and ports, and
-          other hardware <span xbig>SELinux assigns a three string context consisting of <code>(username, role, domain)</code>(domain and type are synonims)</li>
-  <li>as a rule, most of the real users share the same SELinux username, and all access control is managed through the third tag, the <b orange>domain</b>.</li>
-  <li><code>runcon</code> allows to launch processes into an specified context (user, role and domain) if allowed by SELinux policies</li>
-  <li>SELinux context for remote FS can be specified at mount time.</li>
-  <li><code orange>-Z  switch</code> is added to standard shell commands <code>ls, ps,  ...</code> to show context info</li>
-  <li>A typical policy uses a mapping (labeling) file, a rule file, and an interface file, defining allowed domain transition.  These files <b>must be compiled</b> together to produce a single policy file that the kernel can load </li>
-<!--  TODO:
-    cached information on access-decisions via the Access Vector Cache (AVC)
--->
-      <li TODO><a href="http://blog.siphos.be/2015/07/restricting-even-root-access-to-a-folder/">Restricting event root access to a folder</a></li>
-      <li>
-        <b>SELinux Policy Behavior</b>
-        When an SELinux-enabled system starts, the policy is loaded into memory organized in modules.
-        <code><b>se</b>module</code> can be used for a number other tasks like installing,
-        removing, reloading, upgrading, enabling and disabling SELinux policy modules.
+
+  SELinux bootup sequence
+<pre xxxsmall zoom>
+- When an SELinux-enabled system starts, the policy is loaded
+  into memory organized in modules.
+  "semodule" can be used for a number other tasks like installing,
+  removing, reloading, upgrading, enabling and disabling SELinux policy modules.
         
-<pre>
 #~ <b>se</b>module -l # lists modules currently loaded
 (output will be similar to ...)
 abrt    1.2.0
@@ -1241,49 +1405,265 @@ accountsd       1.0.6
 acct    1.5.1
 afs     1.8.2
 ...
-</pre>
-        <br/>
-        Although you can't read the (binary) policy module files, there's a simple way to tweak their settings.
-<pre>
-#~ <b>se</b>manage boolean -l 
-ftp_home_dir                   (off  ,  off)  Allow ftp to home dir
-smartmon_3ware                 (off  ,  off)  Allow smartmon to 3ware
-mpd_enable_homedirs            (off  ,  off)  Allow mpd to enable homedirs
-...
 
-#~ set<b>se</b>bool -P ftpd_home_dir on  # -P flag: make permanent (by default reseted after reboot)
+
+- SELinux context for remote FS can be specified at mount time.
 </pre>
-       <br/>
-  </li>
-  <li>
-   <code>#~ <b>se</b>status:</code>
-<pre xxxsmall>
-SELinux status:                 enabled
-SELinuxfs mount:                /sys/fs/selinux
-SELinux root directory:         /etc/selinux
-Loaded policy name:             targeted
-Current mode:                   permissive
-Mode from config file:          error (Success)
-Policy MLS status:              enabled
-Policy deny_unknown status:     allowed
-Max kernel policy version:      28
+
+</td>
+<td>
+  <span bgorange>Troubleshooting</span>
+  <hr xxxsmall />
+  Q: What an SELinux error means?:
+<pre xxxsmall zoom>
+ -A: It means:
+     - labeling is wrong. 
+       Fix examples:
+       # chcon --reference /var/www/html /var/www/html/index.html
+       ________________________________________________________
+       # restorecon -vR    /var/www/html
+         ^uses info from /etc/selinux/targeted/contexts/files/file_contexts, ... to determine what a file or dir's ctx should be
+       ________________________________________________________
+       # semanage fcontext -a -e /var/www/ /my/alternative/www/
+       # restorecon -vR /my/alternative/www
+       WARN: When we use semanage fcontext ctx we are just defining 
+         what the context is, we are not writing what the extended 
+         attributes are. We are just saying "when we do relable it 
+         must look like this". restorecon must be run against the 
+         directory to really relabel the new context.
+
+     - Policy needs to be tweaked
+       - booleans
+        - policy modules
+     - A bug in the policy (Open a ticket)
+        STEP 1: put SELinux into "permissive" mode and run
+                the application through all its paces to log all
+                SELinux denials.
+        # setenforce 0
+        STEP 2: From /var/log/messages C&P proposed solution:
+        # grep httpd /var/log/audit/audit.log | audit2allow -Mquirrellocal
+                                                             ^generate new
+                                                              policy file
+        STEP 3: Import the new module
+        # semodule -i squirrellocal.pp
+        STEP 4: Re-enable SELinux enforcement
+        # setenforce 1
+
+     - You have been, or are being, broken into!!
 </pre>
-  </li>
-  <li>Switch permissive/enforcing:
-<pre>
+
+  Bug fixing general procedure
+<pre xxxsmall zoom>
+
+STEP 01: Check /var/log/messages
+ ...
+ ...  setroubleshoot: SELinux is preventing /usr/bin/httpd from getattr access on the directory /home/fred. <b>For complet SELinux messages, run sealert -l 37acc7d8-e955-4333-123a-1d027dbcea72</b>
+
+STEP 02: Run the indicated command:
+~# sealert -l 37acc7d8-e955-4333-123a-1d027dbcea72
+→ SELinux is preventing /usr/sbin/httpd from search access on the directory /home/fred
+→ ...<b orange>
+→ Do
+→ setsebool -P httpd_read_user_content 1
+→ ...
+→ setsebool -P httpd_enable_homedirs 1</b>
+→
+→
+</pre>
+
+  Ex:<a href="http://stackoverflow.com/questions/23851452/cant-resolve-domain-names-in-php-under-apache/24019910#24019910">Fix Apache DNS problem:</a>
+<pre xxsmall zoom>
+# -P => change also boot-time default
+$ setsebool -P nis_enabled 0  
+$ setsebool -P httpd_can_network_connect 1
+</pre>
+
+</td>
+<td>
+  <span bgorange>Booleans</span>
+<pre xxxsmall zoom>
+  Ex:
+  - """ Do we allow  the ftp server access to home directories? """
+  - """ Can httpd use mod_auth_ntlm_winbind ? """
+  - ...
+</pre>
+  Show all booleans
+<pre xxxsmall zoom>
+  $ sudo getsebool -a
+</pre>
+
+  Set boolean
+<pre xxxsmall zoom>
+  $ setsebool "mySELinuxBoolean" 0|1  [-P]
+</pre>
+
+ List Booleans Set
+<pre xxxsmall zoom>
+ - Take a look at the booleans.local file under
+  /etc/selinux/targeted/modules/active/
+
+  Ex:
+  # This file is auto-generated by libsemanage
+  # Do not edit directly.
+
+  httpd_read_user_content=1
+  httpd_enable_homedirs=1
+</pre>
+</td>
+
+<td>
+  <a href="http://blog.siphos.be/2015/07/restricting-even-root-access-to-a-folder/">Restricting root access to F.S.</a> 
+<pre xxxsmall zoom>
+(Date Sat 11 July 2015 By Sven Vermeulen Category SELinux)
+
+- The use of a pre-existing policy means that some roles are already 
+  identified and privileges are already granted to users - often these
+  higher privileged roles are assigned to the Linux root user as not
+  to confuse users. But that does mean that restricting root access to
+  a folder means that some additional countermeasures need to be implemented.
+
+STEP 01: Create new policy restricting access to /etc/private:
+ policy_module(myprivate, 1.0)
+ 
+ type <b orange>etc_private_t</b>;                 ← type allowed to be used for files 
+ fs_associate(<b orange>etc_private_t</b>)         ← associate with file system
+                                       Do NOT use the files_type() interface
+                                       as this would assign a set of attributes
+                                       that many user roles get read access on.
+  allow sysadm_t <b orange>etc_private_t</b>:{dir file} relabelto;  *1
+
+ *1: sysadm_t is now allowed to change ctx to etc_private_t:
+     - administrator can label resources as etc_private_t 
+       without having read access to these resources afterwards.
+       Also, as long as there are no relabelfrom privileges assigned,
+       the administrator cannot revert the context back to a
+       type that he has read access to:
+       ~ sudo chcon -t <b orange>etc_private_t</b> /etc/private
+
+
+STEP 02:
+- Administrators can still disable SELinux controls. Ex:
+  # cat /etc/private/README
+  → cat: /etc/private/README: Permission denied
+  # setenforce 0
+  # cat /etc/private/README
+  → Hello World!
+
+To prevent this:
+  # setsebool secure_mode_policyload on
+              ^                      ^
+          prevent any policy and SELinux state manipulation
+          !!!including permissive mode!!!, but also including
+          loading additional SELinux policies or changing booleans.
+          (experiment with this setting without persisting (-P)
+
+WARN: Admin cannot access /etc/private location directly,
+        but he might be able to access it indirectly, remounting the
+        (non-critical) system and remounting with the context= option,
+        overriding file-level contexts.
+WARN: Admin can still reboot the system in a mode where he
+      can access the file system regardless of SELinux controls 
+      bootin with enforcing=0, editing /etc/selinux/config, ....
+WARN: Admin can still access the block device files on which the 
+      resources are directly. Specialized tools can allow for 
+      extracting files and directories without actually (re)mounting
+      the device.
+
+You can still un-grant users and/oradmins the permissions to reboot the system,
+    (re)mount file systems, access block devices, etc. 
+    without leaving behind the policy that is already active.
+</pre>
+</td>
+<td>
+  CLI
+  <hr xxxsmall />
+  runcon
+<pre xxxsmall zoom>
+- "runcon" allows to launch processes into a specified context (user, role and domain) 
+</pre>
+  sestatus
+<pre xxxsmall zoom>
+→ SELinux status:                 enabled
+→ SELinuxfs mount:                /sys/fs/selinux
+→ SELinux root directory:         /etc/selinux
+→ Loaded policy name:             targeted
+→ Current mode:                   permissive
+→ Mode from config file:          error (Success)
+→ Policy MLS status:              enabled
+→ Policy deny_unknown status:     allowed
+→ Max kernel policy version:      28
+</pre>
+
+  Switch permissive/enforce:
+<pre xxxsmall zoom>
 #~ setenforce permissive: Temporarely change enforce status.
 #~ setenforce enforcing
 </pre>
-  </li>
-  <li>Suffix Naming Conventions
-<pre>
-"_u" -> user
-"_r" -> role 
-"_t" -> types (for files) or domains (for processes)
+
+  man pages
+<pre xxxsmall zoom>
+<a href="https://linuxcommand.org/man_pages/chcon1.html">chcon</a>
+<a href="https://linux.die.net/man/8/restorecon">restorecon(8)</a>
+<a href="https://linux.die.net/man/8/restorecond">restorecond(8)</a>
+<a href="https://linux.die.net/man/1/runcon">runcon(1)</a>
+<a href="https://linux.die.net/man/1/secon">secon(1)</a>
+<a href="https://linux.die.net/man/8/fixfiles">fixfiles(8): fix file security ctxs</a>
+<a href="https://linux.die.net/man/8/setfiles">setfiles(8): set file security ctxs</a>
+<a href="https://linux.die.net/man/8/load_policy">load_policy(8) </a>
+<a href="https://linux.die.net/man/1/sesearch">sesearch(8)</a>
+<a href="https://linux.die.net/man/8/booleans">booleans(8) </a>
+<a href="https://linux.die.net/man/8/getsebool">getsebool(8) set bool value</a>
+<a href="https://linux.die.net/man/8/setsebool">setsebool(8)</a>
+<a href="https://linux.die.net/man/8/togglesebool">togglesebool(8) </a>
 </pre>
-  </li>
-  </ul>
-</td>  
+</td>
+<td colsep></td>
+<td>
+  Compiling new policy:
+<a href="https://wiki.gentoo.org/wiki/SELinux/Tutorials/Creating_your_own_policy_module_file">REF</a>
+
+<pre xxxsmall zoom>
+WARN: In some cases, you might need to update your policy to be compatible 
+      with upstream SELinux policy changes. 
+
+Tipical policy module (*.pp file) looks like:
+
+localpolicy.pp 
+*.te: type enforcement
+*.fc: file contexts (optional)
+*.if: interfaces (optional)
+
+
+PRE-SETUP:
+ $ sudo yum install -y selinux-policy-devel
+
+
+<b>STEP 01: vim localpolicy.te:</b>
+
+policy_module(localpolicy, 1.0)  ← localpolicy must match localpolicy.te prefix
+gen_require(`                    ← backtick (`) denotes the start/end of the block 
+  type user_t;                   ← gen_require block is used to "reuse"reference policy,
+  type var_log_t;                  and will be translated during the make -f ... command 
+')                                 earlier on towards SELinux rules. 
+
+allow user_t var_log_t:dir { getattr search open read };
+
+<b>STEP 02: create SELinux policy module localpolicy.pp:</b>
+# sudo make -f /usr/share/selinux/devel/Makefile localpolicy.pp
+
+                                                          ^must "match"
+                                                           localpolicy.te prefix
+
+
+<b>STEP 03: Load the file:</b>
+# sudo setenforce permissive
+# sudo semodule -i /path/to/localpolicy.pp  
+WARN: semodule does NOT need "-P". Will remain loaded after reboots.
+(to disable use # sudo semodule -d localpolicy)
+
+# sudo 
+</pre>
+</td>
 <td>
     OBJECT("FILE") SECURITY CONTEXT:
 <pre xxxsmall zoom >
@@ -1348,43 +1728,8 @@ Found 4 semantic av rules:
 restorecon reset /var/www/html/index.html context unconfined_u:object_r:<b orange>var_t</b>:s0->unconfined_u:object_r:<b orange>httpd_sys_content_t</b>:s0
 </pre>
   </td>
-  <td colspan=2>
-    Context database
-    <ul xxsmall zoom>
-      <li>Conveniently, SELinux "remembers" the context of every file or directory in the server. </li>
-      <li> Next ddbb files are used by <code>restorecon</code>:
-<pre xxxsmall >
-(RedHat/CentOS 7)
-(/etc/selinux/targeted/contexts/files/):
-/file_contexts      : lists every file type associated with every application supported by the Linux distribution.
-/file_contexts.local: Contexts of new directories and files 
-
-Ej: #~ cat /etc/selinux/targeted/contexts/files/file_contexts
-...
-/usr/(.*/)?lib(/.*)?    system_u:object_r:lib_t:s0
-/opt/(.*/)?man(/.*)?    system_u:object_r:man_t:s0
-...
-</pre>
-      </li>
-    </ul>
-    changing context of file permanently:
-<pre xxxsmall zoom >
-# <b>STEP 1: write new context to file_contexts.local: (it won't relabel the file itself</b>
-#~ <b>se</b>manage <b orange>fcontext</b> --add --type httpd_sys_content_t "/www(/.*)?"
-#~ <b>se</b>manage <b orange>fcontext</b> --add --type httpd_sys_content_t "/www/html(/.*)?"
-# STEP 1.1: check
-#~ cat /etc/selinux/targeted/contexts/files/file_contexts.local
-...
-/www(/.*)?    system_u:object_r:httpd_sys_content_t:s0
-/www/html(/.*)?    system_u:object_r:httpd_sys_content_t:s0
-...
-
-# <b>STEP 2:relabel file or directory with what's been recorded in the previous step</b>
-#~ restorecon -Rv /www # Will reset context in /www and subdirectories
-</pre>
-    </td>
-    <td colspan=2>
-    <b>Domain Transition</b> 
+<td>
+  Context Transition
 <pre xxxsmall zoom >
 proc_a @ contexta_t   → run app_x     → proc_b running @ contextb_t
                             ↑
@@ -1401,80 +1746,43 @@ Ex:
 #~ps -eZ  | egrep "(init_t|vsftpd)"
 system_u:system_r:<b orange>init_t</b>:s0 ... systemd
 system_u:system_r:<b orange>ftpd_t</b>:s0 ... vsftpd
-</pre>
-    Domain transition rules:
-    <ul xxxsmall zoom>
-      <li>source domain (proc_a) must have execute permission for entrypoint (app_x)</li>
-      <li>app_x file context must be identified as an entrypoint for the target domain</li>
-      <li>original domain (contexta_t) must be allowed to transition to the target domain (contextb_t)</li>
-    </ul>
-    In the previous example:
-<pre xxxsmall zoom>
-# Check source domain <b orange>init_t</b> have execute permission on ftpd_exec_t entrypoint:
-#~ <b>se</b>search -s init_t -t ftpd_exec_t -c file -p execute -Ad
-|(output)
-|    allow init_t ftpd_exec_t : file { read getattr execute open } ;
 
-# check binary file is entrypoint for the target domain <b orange>ftpd_t</b>:
-#~ <b>se</b>search -s <b orange>ftpd_t</b> -t <b orange>ftpd_exec_t</b> -c file -p <b green>entrypoint</b> -Ad
-|(output)
-|  allow ftpd_t ftpd_exec_t : file { ioctl read getattr lock execute execute_no_trans <b green>entrypoint</b> open } ;
+ <b>Domain transition rules:</b>
+ - source context "proc_a" must have execute permission for entrypoint (app_x)
+ - "app_x" file context must be identified as an entrypoint for the target domain
+ - original domain (contexta_t) must be allowed to transition to the target domain (contextb_t)
+  In the previous example:
+  STEP 01: Check source domain <b orange>init_t</b> have execute permission on
+  ftpd_exec_t entrypoint:
+    #~ sesearch -s init_t -t ftpd_exec_t -c file -p execute -Ad
+    → allow init_t ftpd_exec_t : file { read getattr execute open } ;
+   
+  STEP 02: Check binary file is entrypoint for the target domain <b orange>ftpd_t</b>:
+    #~ <b>se</b>search -s <b orange>ftpd_t</b> \
+         -t <b orange>ftpd_exec_t</b> -c file \
+         -p <b green>entrypoint</b> -Ad
+    → allow ftpd_t ftpd_exec_t : file { ioctl read getattr lock execute execute_no_trans <b green>entrypoint</b> open } ;
 
-# check source domain init_t have transition permission to target ftpd_t:
-#~ <b>se</b>search -s <b orange>init_t</b> -t <b orange>ftpd_t</b> -c process -p transition -Ad
-|(output)
-|  allow init_t ftpd_t : process transition ;
+  STEP 03: Check source domain init_t have transition permission to target ftpd_t:
+    #~ <b>se</b>search -s <b orange>init_t</b> -t <b orange>ftpd_t</b> \
+          -c process -p transition -Ad
+    → allow init_t ftpd_t : process transition ;
 </pre>
-    <br/>
-  </td>
-  <td col1 colspan=4 >
-    <b>Workflow</b>
-    <ol xxsmall zoom >
-      <li>Policies are normally tested in permissive mode first, where violations are logged but allowed</li>
-      <li><code>audit2allow</code> tool can be used later to produce additional rules that extend the policy to
-          allow all legitimate activities of the application being confined</li>
-    </ol>
-    <hr/>
-    <b>Command-line utilities</b><br/>
+
+  Workflow
 <pre xxxsmall zoom>
-<a href="http://linuxcommand.org/man_pages/chcon1.html">chcon</a>
-<a href="http://linux.die.net/man/8/restorecon">restorecon(8)</a>
-<a href="http://linux.die.net/man/8/restorecond">restorecond(8)</a>
-<a href="http://linux.die.net/man/1/runcon">runcon(1)</a>
-<a href="http://linux.die.net/man/1/secon">secon(1)</a>
-<a href="http://linux.die.net/man/8/fixfiles">fixfiles(8): fix file security ctxs</a>
-<a href="http://linux.die.net/man/8/setfiles">setfiles(8): set file security ctxs</a>
-<a href="http://linux.die.net/man/8/load_policy">load_policy(8) </a>
-<a href="http://linux.die.net/man/8/booleans">booleans(8) </a>
-<a href="http://linux.die.net/man/8/getsebool">getsebool(8) set bool value</a>
-<a href="http://linux.die.net/man/8/setsebool">setsebool(8)</a>
-<a href="http://linux.die.net/man/8/togglesebool">togglesebool(8) </a>
-$ sudo setenforce 1  # put into enforce mode
-$ getenforce         # get status
-semodule
-postfix-nochroot
-check-selinux-installation
-semodule_package
-checkmodule
-selinux-config-enforcing
-selinuxenabled
-selinux-policy-upgrade
+- Switch to permisive mode.
+- Test new policy.
+- Check violations in logs (See troubleshooting with audit2allow to produce new rules)
 </pre>
     
-    <b>Troubleshooting</b>:<br/>
-   <a href="http://stackoverflow.com/questions/23851452/cant-resolve-domain-names-in-php-under-apache/24019910#24019910">Problems with Apache and DNS:</a>
-<pre xxsmall zoom>
-# -P => change also boot-time default
-$ setsebool -P nis_enabled 0  
-$ setsebool -P httpd_can_network_connect 1
-</pre>
-    Verify current file ctx against file_context(.local) ddbb 
+
+  Verify current file  against file_context(.local) ddbb 
 <pre xxxsmall zoom >
 #~ matchpathcon -V /www/html/index.html # -V: Verify
 In case of mismatch an error similar to next one will be displayed:
 /www/html/index.html has context unconfined_u:object_r:default_t:s0, should be system_u:object_r:httpd_sys_content_t:s0 
 </pre>
-<br/>
 </td>  
 <!-- 
 TODO:
@@ -2314,6 +2622,7 @@ ther is space or something needs to be deleted. (vs remove each 24 day,...)
  $ journalctrl [tab] ...
 ______________
 https://gluster.readthedocs.io
+<a href="https://access.redhat.com/documentation/en-us/red_hat_gluster_storage/3.4/">Redhat Gluster</a>
 ____________
 List and sort the versions available in
 your repo:
@@ -2366,4 +2675,22 @@ ________________________________________
 https://opensource.com/article/18/9/how-build-rpm-packages?sc_cid=701f2000000RRBZAA4
 ________________________________________
 https://www.tecmint.com/remove-package-with-dependencies-using-yum/#
+________________________
+https://danwalsh.livejournal.com/
+________________________
+ SELinux    cached information on access-decisions via the Access Vector Cache (AVC)
+________________________
+   <code TODO>system-config-selinux</code> (Gtk GUI for SELinux)
+_________________________
+https://docs.fedoraproject.org/en-US/Fedora/13/html/SELinux_FAQ/
+______________________________
+http://oss.tresys.com/
+Projects hosted on GitHub:
+  --------------------------
+- SETools Policy Analysis Suite : SETools is a suite of open source tools that allow a policy developer or tester to perform detailed analysis and debugging of an SELinux policy
+- Certifiable Linux Integration Platform (CLIP) : a toolkit for creating a secure computing environment suitable for hosting U.S. Government applications
+- Reference Policy : makes it easier to maintain and apply baseline security policy for Security Enhanced Linux (SELinux)
+_______________________________
+https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/7/html/selinux_users_and_administrators_guide/index
+
 </html>

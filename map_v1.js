@@ -102,6 +102,24 @@ function doOpenZoom(e)      {
 }
 
 function onPageLoaded() {
+  // Append search, zoomDiv, zoom Buttons :
+  var searchDiv = document.createElement('spam');
+      searchDiv.innerHTML = 
+     '<form action="" method="" id="search" name="search">'
+   + '  <input name="query" id="query" type="text" size="30" maxlength="30">'
+   + '  <input name="searchit" type="button" value="Regex Search" onClick="highlightSearch()">'
+   + '  <input id="singleLineOnly" type="checkbox"><code xsmall>single-line</code>'
+   + '  <input id="caseSensitive"  type="checkbox"><code xsmall>Case-match</code>'
+   + '</form>'
+   + '<b id="initialMessage" orange xsmall>Hint double-click/long-press on elements to zoom!!</b>'
+   + '<div id="zoomDiv"></div>'
+   + '<div style="position:fixed; right:0.3%; top:0; width:auto;">'
+   + '<b style="font-size:1.5rem" orange><a onclick="onZoomOut()">[-A]</a></b>'
+   + '<b style="font-size:1.5rem"       >                                 </b>'
+   + '<b style="font-size:2.0rem" orange><a onclick="onZoomIn ()">[A+]</a></b>'
+   + '</div>'
+  document.body.insertBefore(searchDiv,document.body.children[0]);
+
   zoomDivDOM = document.getElementById('zoomDiv')
   document.addEventListener('keyup',function(e) { if (e.code !== "Escape") return; doCloseZoom(); })
   // Change default a.target to blank. Ussually this is bad practice 
@@ -144,19 +162,6 @@ function onPageLoaded() {
       }
   }
 
-  // Append search:
-  var searchDiv = document.createElement('spam');
-      searchDiv.innerHTML = 
-     '<form action="" method="" id="search" name="search">'
-   + '  <input name="query" id="query" type="text" size="30" maxlength="30">'
-   + '  <input name="searchit" type="button" value="Regex Search" onClick="highlightSearch()">'
-   + '  <input id="singleLineOnly" type="checkbox"><code xsmall>single-line</code>'
-   + '  <input id="caseSensitive"  type="checkbox"><code xsmall>Case-match</code>'
-   + '</form>'
-   + '<b id="initialMessage" orange xsmall>Hint double-click/long-press on elements to zoom!!</b>';
-
-
-  document.body.insertBefore(searchDiv,document.body.children[0]);
   var query = getParameterByName("query");
   if (query != null) {
     document.getElementById("query").value = getParameterByName("query");

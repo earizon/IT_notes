@@ -246,6 +246,136 @@ May 25, 2018
 
 One of the ongoing system administration controversies in Linux is that there is an ongoing effort to obsolete the old, cross-Unix standard network administration and diagnosis commands of ifconfig, netstat and the like and replace them with fresh new Linux specific things like ss and the ip suite. Old sysadmins are generally grumpy about this; they consider it yet another sign of Linux's 'not invented here' attitude that sees Linux breaking from well-established Unix norms to go its own way. Although I'm an old sysadmin myself, I don't have this reaction. Instead, I think that it might be both sensible and honest for Linux to go off in this direction. There are two reasons for this, one ostensible and one subtle.
 _______________
+https://opensource.com/article/18/10/iptables-tips-and-tricks:
+16 iptables tips and tricks for sysadmins
+Iptables provides powerful capabilities to control traffic coming in and out of your system.
+
+Modern Linux kernels come with a packet-filtering framework named Netfilter.
+
+Netfilter enables to:
+- allow, drop, and modify traffic coming in and going out of a system.
+
+Userspace CLI:
+- iptables: create firewall by adding rules to form policies.
+
+AVOID LOCKING YOURSELF OUT:
+You want to avoid locking yourself—and potentially everybody else—out 
+while modifying iptables policies.
+
+Tip #1: backup current iptables policy/config with:
+
+ #~ /sbin/iptables-save > /root/iptables-OK-`date +%F`
+ 
+ Restore it with:
+     
+ #~ /sbin/iptables-restore < /root/iptables-works-2018-09-11
+
+Tip #4: Put specific rules at the top of the policy and generic rules at the bottom.
+
+
+  #~ iptables -A INPUT -p tcp --dport 22 \       ← specific rule. Put at top.
+       –s 10.0.0.0/8 –d 192.168.100.101 -j DROP
+  #~ iptables -A INPUT -p tcp --dport 22 -j DROP ← Generic  rule. Put at bottom.
+
+
+  (The more criteria/specific, the less chance to locking yourself out)
+
+Tip #5: Whitelist your IP address at top
+        (very effective method to not lock yourself out) 
+
+   #~ iptables -I INPUT -s <your IP> -j ACCEPT ← top/first rule
+                ^
+               -I: inserts as first rule
+               -A: appends at the end
+..........
+FIREWALL POLICIES TIPS:
+Tip #1: Set the default policy as DROP.
+
+*filter
+:INPUT DROP [0:0]
+:FORWARD DROP [0:0]
+:OUTPUT DROP [0:0]
+
+Tip #2: Allow users the minimum amount of services needed to get their work done.
+
+The iptables rules need to allow the workstation to get an IP address, netmask, and other important information via DHCP (-p udp --dport 67:68 --sport 67:68). For remote management, the rules need to allow inbound SSH (--dport 22), outbound mail (--dport 25), DNS (--dport 53), outbound ping (-p icmp), Network Time Protocol (--dport 123 --sport 123), and outbound HTTP (--dport 80) and HTTPS (--dport 443).
+
+# Set a default policy of DROP
+*filter
+:INPUT DROP [0:0]
+:FORWARD DROP [0:0]
+:OUTPUT DROP [0:0]
+
+# Accept any related or established connections
+-I INPUT  1 -m state --state RELATED,ESTABLISHED -j ACCEPT
+-I OUTPUT 1 -m state --state RELATED,ESTABLISHED -j ACCEPT
+
+# Allow all traffic on the loopback interface
+-A INPUT -i lo -j ACCEPT
+-A OUTPUT -o lo -j ACCEPT
+
+# Allow outbound DHCP request
+-A OUTPUT –o eth0 -p udp --dport 67:68 --sport 67:68 -j ACCEPT
+
+# Allow inbound SSH
+-A INPUT -i eth0 -p tcp -m tcp --dport 22 -m state --state NEW  -j ACCEPT
+
+# Allow outbound email
+-A OUTPUT -i eth0 -p tcp -m tcp --dport 25 -m state --state NEW  -j ACCEPT
+
+# Outbound DNS lookups
+-A OUTPUT -o eth0 -p udp -m udp --dport 53 -j ACCEPT
+
+# Outbound PING requests
+-A OUTPUT –o eth0 -p icmp -j ACCEPT
+
+# Outbound Network Time Protocol (NTP) requests
+-A OUTPUT –o eth0 -p udp --dport 123 --sport 123 -j ACCEPT
+
+# Outbound HTTP
+-A OUTPUT -o eth0 -p tcp -m tcp --dport 80 -m state --state NEW -j ACCEPT
+-A OUTPUT -o eth0 -p tcp -m tcp --dport 443 -m state --state NEW -j ACCEPT
+
+COMMIT
+
+Restrict an IP address range
+
+Scenario: The CEO of your company thinks the employees are spending too much time on Facebook and not getting any work done. The CEO tells the CIO to do something about the employees wasting time on Facebook. The CIO tells the CISO to do something about employees wasting time on Facebook. Eventually, you are told the employees are wasting too much time on Facebook, and you have to do something about it. You decide to block all access to Facebook. First, find out Facebook's IP address by using the host and whois commands.
+
+host -t a www.facebook.com
+www.facebook.com is an alias for star.c10r.facebook.com.
+star.c10r.facebook.com has address 31.13.65.17
+whois 31.13.65.17 | grep inetnum
+inetnum:        31.13.64.0 - 31.13.127.255
+
+Then convert that range to CIDR notation by using the CIDR to IPv4 Conversion page. You get 31.13.64.0/18. To prevent outgoing access to www.facebook.com, enter:
+
+iptables -A OUTPUT -p tcp -i eth0 –o eth1 –d 31.13.64.0/18 -j DROP
+
+Regulate by time
+
+Scenario: The backlash from the company's employees over denying access to Facebook access causes the CEO to relent a little (that and his administrative assistant's reminding him that she keeps HIS Facebook page up-to-date). The CEO decides to allow access to Facebook.com only at lunchtime (12PM to 1PM). Assuming the default policy is DROP, use iptables' time features to open up access.
+
+iptables –A OUTPUT -p tcp -m multiport --dport http,https -i eth0 -o eth1 -m time --timestart 12:00 --timestart 12:00 –timestop 13:00 –d
+31.13.64.0/18  -j ACCEPT
+
+This command sets the policy to allow (-j ACCEPT) http and https (-m multiport --dport http,https) between noon (--timestart 12:00) and 13PM (--timestop 13:00) to Facebook.com (–d 31.13.64.0/18).
+Regulate by time—Take 2
+
+Scenario: During planned downtime for system maintenance, you need to deny all TCP and UDP traffic between the hours of 2AM and 3AM so maintenance tasks won't be disrupted by incoming traffic. This will take two iptables rules:
+
+iptables -A INPUT -p tcp -m time --timestart 02:00 --timestop 03:00 -j DROP
+iptables -A INPUT -p udp -m time --timestart 02:00 --timestop 03:00 -j DROP
+
+With these rules, TCP and UDP traffic (-p tcp and -p udp ) are denied (-j DROP) between the hours of 2AM (--timestart 02:00) and 3AM (--timestop 03:00) on input (-A INPUT).
+Limit connections with iptables
+
+Scenario: Your internet-connected web servers are under attack by bad actors from around the world attempting to DoS (Denial of Service) them. To mitigate these attacks, you restrict the number of connections a single IP address can have to your web server:
+
+iptables –A INPUT –p tcp –syn -m multiport -–dport http,https –m connlimit -–connlimit-above 20 –j REJECT -–reject-with-tcp-reset
+
+Let's look at what this rule does. If a host makes more than 20 (-–connlimit-above 20) new connections (–p tcp –syn) in a minute to the web servers (-–dport http,https), reject the new connection (–j REJECT) and tell the connecting host you are rejecting the connection (-–reject-with-tcp-reset).
+
 _______________
 
 

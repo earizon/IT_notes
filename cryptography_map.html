@@ -89,9 +89,11 @@
 <td>
   <b>Symmetric primitives</b>
 <pre xxxsmall zoom {>
+Peer 1                              Peer 2
 Plain → |Encrypt|→ C1 → |Decrypt| → Plain
             ^                ^
             └─ KEY("Secret") ┘
+            Shared by peer 1 and 2 
 </pre>
      Symmetric cyrptography broadly splits into:
      <ul xxxsmall zoom>
@@ -192,7 +194,29 @@ M1 → |XOR(IV)| → |E_k| → C1
   </ul>
 </td>  
 <td>
-  <b>Asymmetric private-public key primitives</b>
+  <b>Asymmetric primitives</b>
+<pre xxxsmall zoom {>
+- 4 keys are need for bidirectional communication.
+- Public  key (known to everyone) is used for encryption
+- Private key (known to owner   ) is used for decryption
+
+PEER 1                                                     PEER 2
+            ENCRYPTION FROM PEER 1 TO PEER 2
+            --------------------------------
+        | Encrypt with |                | Decrypt with |
+Plain → |    Peer 2    | → CypherText → |   Peer 2     | → Plain
+text    | public  key  |                | private  key |   text
+
+
+            ENCRYPTION FROM PEER 2 TO PEER 1
+            --------------------------------
+
+        | Decrypt with |                | Encrypt with |
+Plain ← |    Peer 1    | ← CypherText ← |   Peer 1     | ← Plain
+text    | private  key |                | private  key |   text
+
+</pre>
+
   <ul xxxsmall>
   <li><def>public/private key</def> where Public Key can be computed easely from private key
       but the inverse in infeasible (intractable mathematical problem).<br/>
@@ -252,7 +276,17 @@ M1 → |XOR(IV)| → |E_k| → C1
   </ul>
 </td>  
 <td>
-  <b>Hash Function primitives</b>
+  <b>Hash primitives</b>
+<pre xxxsmall zoom>
+Plain  → | Hash | → Hash Result
+
+- A single bit change in "Plain" input causes a completely 
+  different Hash Result
+- There are infinite plain inputs for each possible hash output,
+  still given a single hash output, it's extremnly difficult to
+  find any of the infinite plain inputs (without previous knowledge)
+
+</pre>
   <ul xxxsmall zoom>
   <li>takes message of any lenght, and returns a pseudoramdom hash of fixed length
 <pre { >
@@ -1145,7 +1179,26 @@ Vaults are generic for any type of app.
 
 Wallets are mostly used for blockchain-like applications.
 </pre>
-
+  Wallet vs Smart-Cards
+<pre xxxsmall zoom>
+  - Some types of Smart-Cards can be considered a type of wallet, in 
+  the sense that they can be used to sign content using a hardware
+  protected private-key. 
+  - Still Smart-Cards are mostly designed with Authentication as
+    primary use-case, to provide that the user accessing a website,
+    a bank terminal, ... is the real authorized user.
+  - Wallets is mostly a blockchain concept, while smart-card is
+    a general device that can be used for many purposes 
+    (Web TLS or SSH Client Authentication, PGP signature, ...)
+  - Wallets are designed with TX signature in mind.
+    A wallet protects the private key, signs the TXs and probably
+    has a display that shows what's going to be signed and a 
+    physical button that the user must "click" in order to confirm
+    the transaction.
+  - Stealing of the wallet can mean stealing of the money.
+  - Stealing of the smart-card means money can be stealed until
+    the smart-card is cancelled.
+</pre>
 
   <a href="https://en.bitcoin.it/wiki/Deterministic_wallet">Deterministic Wallet</a>
 <pre xxxsmall zoom>
@@ -1415,11 +1468,96 @@ and many more.
 </td>
 
 <td>
-<a href="https://en.wikipedia.org/wiki/Smart_card">Smart card</a> <br/>
-<ul xxxsmall>
-<li>personal identification, authentication, data storage and app. processing.</li>
-<li><a href="http://cardwerk.com/iso-7816-smart-card-standard/">ISO 7816</a></li>
-</ul> 
+
+<a href="https://gnupg.org/ftp/specs/">GNUPGP Smart Card specs</a> (<a href="http://cardwerk.com/iso-7816-smart-card-standard/">ISO 7816</a>)
+
+<pre xxxsmall zoom>
+PGP SmartCard is the most widely used <a href="https://en.wikipedia.org/wiki/Smart_card">Smart card</a>
+Crypto Commands include:
+  - PSO: COMPUTE DIGITAL SIGNATURE
+  - HASH ALGORITHMS
+  - DigestInfo for RSA
+  - PSO: DECIPHER
+  - PSO: ENCIPHER
+  - INTERNAL AUTHENTICATE
+    + Client/Server Authentication
+  - GENERATE ASYMMETRIC KEY PAIR
+  - GET CHALLENGE
+  - TERMINATE DF
+
+<a href="https://www.grepular.com/Smart_Cards_and_SSH_Authentication">REF: GPG SmartCard for SSH Authentication</a>
+
+<b>SSH KEY SETUP</b>
+   --------------------------------+---------------------------------------
+   STANDARD (SOFTWARE) SSH KEYGEN: |  PGP (HARDWARE) SMART-CARD: 
+   --------------------------------+---------------------------------------
+                           GENERATING THE KEYS
+   --------------------------------+---------------------------------------
+     $ ssh-keygen ...              |  (Install GnuPG 2 first)
+                                   |    $ gpg –gen-key  # Generate a keypair:
+                                   |    $ gpg –edit-key # ← Add <b>authentication subkey</b>
+                                   |    > addkey        # ←
+                                   |    > keytocard     # ← transfer private part of subkey to smart-card 
+                                   |                    #   A stub referencing the subkey is left behind
+                                   |                    #   with your on disk keypair. 
+                                   |  
+                                   |  - Whenever you try to use that subkey, the system
+                                   |    will request that you insert the smart card.
+                                   |
+   --------------------------------+---------------------------------------
+             ADDING AUTH.SUBKEY TO SSH LIST OF AUTHORIZED KEYS
+     $ ssh-copy-id ...             |  ("gpgkey2ssh" utility is provided by the gnupg-agent package )
+                                   |  Alt 1:
+                                   |    $ gpgkey2ssh $gpgSubkeyID_for_sshAuth \
+                                   |      → output_ssh_formated_pubkey  
+                                   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                   |    C&amp;P to remote "~/ssh/authorized_keys" file
+                                   |  
+                                   |  Alt 2: (If the auth.subkey is on public gpg keyservers):
+                                   |    $ gpg --recv-key 0018461F
+                                   |    $ gpgkey2ssh 13990B29 >> ~/.ssh/authorized_keys
+   --------------------------------+---------------------------------------
+   
+AUTHENTICATING USING THE SMART CARD
+( how do we get the OpenSSH client to use the smart card)
+   --------------------------------+---------------------------------------
+   STANDARD (SOFTWARE) SSH-AGENT   |  PGP (HARDWARE) gpg-agent
+   --------------------------------+---------------------------------------
+   (setup ssh-agent)               | gpg-agent has been designed to speak 
+                                   | the same protocol as ssh-agent 
+                                   | 
+                                   | - STEP 01:
+                                   |   stop ssh-agent process
+                                   | - STEP 02:
+                                   |   add "enable-ssh-support" to
+                                   |   ~/.gnupg/gpg-agent.conf
+                                   | 
+                                   | ( OpenSSH client should start talking
+                                   |   to gpg-agent now )
+                                   | 
+                                   | - STEP 03:
+                                   |   $ ssh-add -l
+                                   | ( You should see that the key you
+                                   |   generated previously is mentioned 
+                                   |   only when the S.C. is inserted!!! )
+                                   | 
+                                   | you’re done!!
+                                   | ssh'ing to a remote machine with your pubkey
+                                   | will ask to type your pin on the smart-card
+                                   | reader.
+
+(See original ref for Windows/Putty how-to)
+
+</pre>
+
+<a href="http://opencryptojc.org/">OpenCryptoJC.org</a> (Speed Up JavaCard Dev)
+<pre xxxsmall zoom>
+- <a href="https://www.youtube.com/watch?v=vd0-Uhx2OoQ">[Video] Unchaining the JavaCard Ecosystem (2018-02-22)</a>
+Project providing convinient libraries for JavaCard development
+including Integers, Big Numbers, Elliptic Curves and Profilers.
+</pre>
+<a href="https://www.fi.muni.cz/~xsvenda/jcalgtest/index.html">Java Card Comparision</a>
+
 
 <a href="https://en.wikipedia.org/wiki/Security_token">Security token</a>
 <pre xxxsmall zoom>
@@ -1536,7 +1674,50 @@ execution environment (TEE).
   <li><a href="https://en.wikipedia.org/wiki/Adam_Back">Adam Back</a>, hashcash proof-of-work system used by several anti-spam systems </li>
   <li>Don Beaver</li>
   <li><a href="http://www-cse.ucsd.edu/users/mihir/">Mihir Bellare</a>, cryptographer and professor at the University of California San Diego. He has published several seminal papers in the field of cryptography (notably in the area of provable security), many of which were co-written with Phillip Rogaway. Bellare has published a number of papers in the field of Format-Preserving Encryption.</li>
-  <li>Eran Tromer, Zcash Scientist </li>
+  <li><a href="http://www.cs.tau.ac.il/~tromer/">Eran Tromer</a>, ZCash Inventor, <a href="http://www.cs.tau.ac.il/~tromer/acoustic/">RSA Key Extraction via Low-Bandwidth Acoustic Cryptanalysis</a> 
+<pre xxxsmall zoom>
+I am a professor at Tel Aviv University's School of Computer Science
+, and a research scientist at Columbia University's Computer 
+Science Department.  
+
+My research focus is information 
+security, cryptography and algorithms
+. I am particularly interested in 
+what happens when cryptographic 
+systems meet the real world, where 
+computation is faulty and leaky.  
+
+I head the <a href="http://www.cs.tau.ac.il/~tromer/leisec"> Laboratory 
+for Experimental Information Security 
+(LEISec)</a>, where my group 
+investigates side-channel information leakage in 
+computers through physical emanations (e.g., 
+<a href="http://www.cs.tau.ac.il/~tromer/acoustic"> acoustic</a>, <a href="http://www.cs.tau.ac.il/~tromer/handsoff">electric and electromagnetic</a>) and software (e.g.,
+<a href="http://www.cs.tau.ac.il/~tromer/papers/cache-joc-20090619.pdf">cache contention</a> in local and 
+<a href="http://www.cs.tau.ac.il/~tromer/cloudsec/">cloud computing</a>),
+and networks (e.g., <a href="https://beautyburst.github.io"> identifying
+encrypted videos</a>).  
+
+I cofounded <em><a href="http://scipr-lab.org">SCIPR Lab</a></em>,
+ where we construct cryptographic zero
+-knowledge SNARK proof systems for 
+ensuring the integrity of computation 
+conducted on untrusted, faulty and 
+malicious platforms.
+
+  I'm interested in blockchain-based 
+cryptographic protocols, and am a 
+founding scientist of the <a href="https://z.cash">Zcash</a> 
+privacy-preserving cryptocurrency which implements our 
+<a href="http://zerocash-project.org">Zerocash</a> protocol.
+
+Other research interests include 
+tamper resilience, homomorphic 
+encryption, <a href="http://www.cs.tau.ac.il/~tromer/cryptodev">special-purpose code-breaking hardware</a> and 
+various aspects of network and systems security. 
+
+See my <a href="http://www.cs.tau.ac.il/~tromer/publications">publications</a> for more information.  
+</pre>
   <li><a href="https://en.wikipedia.org/wiki/Steven_M._Bellovin">Steve Bellovin, a researcher on computer networking and security. He is currently a Professor in the Computer Science department at Columbia University,[1] having previously been a Fellow at AT&T Labs Research in Florham Park, New Jersey.[2][3]
 
 In September 2012, Bellovin was appointed Chief Technologist for the United States Federal Trade Commission, replacing Edward W. Felten, who returned to Princeton University</a> </li>
@@ -1950,8 +2131,36 @@ But, In contrast to RSA, DSA can be used only for digital signatures
 
 DSA Security
 The presence of a subliminal channel exists in many schemes (any that need a random number to be chosen), not just DSA. It emphasises the need for "system security", not just a good algorithm.
+_________________________________
+http://blog.siphos.be/2015/08/switching-openssh-to-ed25519-keys/
+_________________________________
+https://azure.microsoft.com/en-us/services/azure-sphere/
+...
+- The Pluton security subsystem creates a hardware root of trust, stores private keys, and executes complex cryptographic operations. 
+_______________________________
+____________________________
+https://g10code.com/
+____________________________
+OepnPGP (Smart)Card Specs:
+https://g10code.com/p-card.html
+_________________________________
+<a href="https://openpgpcard.net/">OpenPGPCard</a>
+<pre xxxsmall zoom>
+<b red>WARN: Does not include display</b>
+- Hardware cryptocurrency wallet
+- OpenPGP smart card
+- U2F authenticator
+- One-time password generator
+</pre>
+____________________________
+List of Implementations of the OpenPGP application for smart cards
+https://incenp.org/notes/2016/openpgp-card-implementations.html
+_________________________
+<a href="http://www.scipr-lab.org/">SCIPR Lab</a> is a multi-institutional
+academic collaboration of researchers seeking to bring to practice
+cryptographic proof systems that provide succinct integrity and privacy.
 
-
+<a href="https://github.com/scipr-lab">GitHub</a>
 -->
 
 </html>

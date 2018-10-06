@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
    <meta charset="UTF-8">
-   <title>SELinux map <!-- alpha --></title>
+   <title>SELinux map (alpha)</title>
 <head>
 <script src="../map_v1.js"></script>
 <link rel="stylesheet" type="text/css" href="../map_v1.css" />
@@ -21,8 +21,8 @@
 
 <table>
 <tr>
-  <th colspan=6 header_delimit><a href="https://github.com/SELinuxProject/selinux/wiki">SELinux Mandatory Access Control (MAC)</a>, <a href="https://github.com/SELinuxProject/refpolicy">Ref.Policy</a>,  <a href="http://selinuxbyexample.com/">(Book) SELinux by Example</a> </th>
-  <th colspan=6 header_delimit>Creating new Policies</th>
+  <th colspan=6 header_delimit><a href="https://github.com/SELinuxProject/selinux/wiki">SELinux Mandatory Access Control (MAC)</a>, <a href="https://github.com/SELinuxProject/refpolicy">Ref.Policy</a>,  <a href="http://selinuxbyexample.com/">(Book) SELinux by Example</a> </th>,
+<a href="http://www.freetechbooks.com/the-selinux-notebook-the-foundations-t785.html">(Book) The SELinux Notebook - The Foundations</a>
 </tr>
 <tr>
 <td>
@@ -155,7 +155,349 @@ Type Enforcement            SELinux makes use of a specific style of type enforc
 
 </pre>
 </td>
+
+
+
 <td>
+  <span bgorange>Object Classes</span>
+<pre xxxsmall zoom>
+SELinux Classes represent "core" linux objects and provide
+fine grained access to linux operations on such objects. 
+(The apol GUI tool can be used to examine in detail SELinux classes
+ and assigned security permissions)
+
++------------------------+-----------------------------------------  +
+|SELinux Class           | SELinux permission                        |
++------------------------+-----------------------------------------  +
+| Files                  | append            lock                    |
+|                        | create            mounton                 |
+|                        | entrypoint        quotaon                 |
+|                        | execmod           read                    |
+|                        | execute           relabelfrom             |
+|                        | execute_no_trans  rename                  |
+|                        | getattr           setattr                 |
+|                        | ioctl             swapon                  |
+|                        | link              unlink                  |
+|                        |                   write                   |
++------------------------+-----------------------------------------  +
+| Process                | dyntransition     getsession    setsched  |
+|                        | execcheap         noatsecure    share     |
+|                        | execmem           ptrace        siginh    |
+|                        | execmem           rlimitnh      sigkill   |
+|                        | execstack         setcap        sigchld   |
+|                        | fork              setcurrent    signal    |
+|                        | getattr           setexec       signull   |
+|                        | getcap            setfscreate   sigstop   |
+|                        | getpgid           setpgid       transition|
+|                        | getsched          setrlimit               |
++------------------------+-----------------------------------------  +
+| Filesystems            |                                           |
+| Mouting                |                                           |
+| Quotas                 |                                           |
+| - Network File Systems |                                           |
++------------------------+-----------------------------------------  +
+|  INET Sockets          |                                           |
++------------------------+-----------------------------------------  +
+| IPC                    |                                           |
++------------------------+-----------------------------------------  +
+| Message Queues         |                                           |
++------------------------+-----------------------------------------  +
+| Semaphores             |                                           |
++------------------------+-----------------------------------------  +
+| Shared Memory          |                                           |
++------------------------+-----------------------------------------  +
+| Keys                   |                                           |
++------------------------+-----------------------------------------  +
+| Capability             |                                           |
++------------------------+-----------------------------------------  +
+| Security               |                                           |
++------------------------+-----------------------------------------  +
+| System ("as a whole")  |                                           |
++------------------------+-----------------------------------------  +
+
+- ...
+</pre>
+
+  Building blocks:
+  <span bgorange>LABELING</span>
+<pre xxxsmall zoom>
+- Files, directories, processes, ports, ... are ALL labeled with an SELinux context
+  ^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^
+  extended FS         labels managed by
+  attributes used     kernel
+
+"user":"role":"type":"level"
+                ^      ^
+               core  optional
+         "type enforcement"
+
+ls -ldZ            <b orange>SELinux type</b>          | Suffix Naming Conventions
+/usr/sbin/httpd    <b orange>httpd</b>_exec_t          | "_u" -> user
+/var/www/html/     <b orange>httpd</b>_sys_content_t   | "_r" -> role 
+/etc/apache2/      <b orange>httpd</b>_config_t        | "_t" -> types (for files)
+/var/log/httpd/    <b orange>httpd</b>_log_t
+/etc/init.d/httpd  <b orange>httpd</b>_initrc_exec_t
+
+# ps axZ | grep [h]ttpd
+unconfined_u:system_r:<b orange>httpd_</b>t:s0 ...
+
+# netstat -tnlpZ | grep httpd
+....         :::80  ....  unconfined_u:system_r:<b orange>httpd_</b>t:s0 ...
+
+# semanage port -l | grep http
+http_cache_port_t  tcp 3128,8080, 8118, 8123, 10001-10010
+http_cache_port_t  udp 3130
+<b orange>http_port_t        tcp 80, 443</b>
+...
+</pre>
+   Juggling with labels
+<pre xxxsmall zoom>
+- SELinux aware tools (chcon, restorecon, ...)
+- Contexts are set when file are created based on parent's directory
+  by default. A Policy can define: 
+  - """when app labeled 'foo_t'creates a
+       file in a directory labeled 'bar_t', 
+       transition to 'baz_t' label."""
+    Ex. dhclient ('dhclient_t') creates a file /etc/resolv.conf
+       labeled 'net_conf_t' in /etc ('etc_t')
+- RPMs can set context at install time
+- Login process sets a default context (unconfined for targeted policy)
+- semanage can be used to maange settings for:
+  - login, user, port, interface, module
+  - node, file context, boolean, permissive state, dontaudit
+</pre>
+
+  <span bgorange>TYPE ENFORCEMENT</span>
+<pre xxxsmall zoom>
+- "Part of the policy that says:
+   a process running with the label httpd_t can have read access
+   to a file labeled httpd_config_t"
+
+The sheer number of TE rules (~ "thousands") can make understanding 
+policies challenging, but the rules themselves are not complex. 
+There are a relatively few varieties, and they all fall into two 
+basic categories: 
+- access vector (AV): allow or audit access between two types.
+  SYNTAX:
+  | <b>allow</b> <b orange>src_domain</b> <b green>target_type</b>:<b blue>class</b> { <b green>permissions</b> };
+  | ^
+  | <b>Rule name: allow | dontaudit | auditallow | neverallow</b>
+  | 
+  | <b orange>src_domain</b>: the process domain , i.e, the type assigned to running process  
+  | 
+  | <b green>target_type</b>:<b blue>class</b> := Apply <b green>permission</b> to  <b blue>class</b> (file, FS, IPC, Shared Memory, ...) 
+  | <b green>           </b>:tagged as <b green>target_type</b>
+  | 
+  | - tuple (<b orange>src_domain</b>,<b green>target_type</b>,<b blue>class</b>) is used as key in the hashtable.
+  | - Two rules matching the same triplet key "merge" their permissions.
+  | - Adding a new rule with a matching tripplet will also merge to existing perms.
+  |   (There is no way then to delete permission, only to add)
+  | 
+  | <b green>permissions</b>: Any space-separated list of permissions that apply to the
+  | <b green>           </b>: given  <b blue>class</b> (file, ...)
+
+
+
+- type rules: control default labeling decisions under 
+              certain circumstances. In particular they
+              specify default types for objects created
+              or relabeled at runtime
+
+  SYNTAX:
+  | Rule name        := type_transition | type_change
+  | src_type(s)      type of the createing or owning process (current domain)
+  | target_type(s)   type of the object contaning the new or relabeled object
+  | object class(es) class(es)of object(s) being created or relabeled
+  | Default type     The single default type for the new or relabeled object
+  | Note: object class is not associated with the target type. 
+  |       Instead, it refers to the objects that will be labeled with the
+  |       default type.
+  | Currently (WARN:2006), there are two forms of the type_transition rule.
+  | - DEFAULT DOMAIN TRANSITION EVENTS:
+  |   Ex:
+  |   type_transition user_t passwd_exec_t : process passwd_t;
+  |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  |   """ when a process of type user_t executes a
+  |       file of type passwd_exec_t, the process type
+  |       will attempt to transition, by default, to
+  |       passwd_t unless otherwise requested.""" <b>
+  |   NOTICE:
+  |   - The target type (passwd_exec_t) is implicitly 
+  |     associated with the file-object-class when the stated
+  |     object class is "process".
+  |   - The stated object class (process) is associated 
+  |     with the source and default types.</b>
+  |   - The AV rules must also allow  at least three accesses:
+  |      - execute The source type (init_t) must have execute 
+  |        permission for files with the target type
+  |        (apache_exec_t).
+  |      - transition The source domain (init_t) must
+  |        have transition permission to the default
+  |        type (apache_t).
+  |      - entrypoint The new (default) type (apache_t)
+  |        must have entrypoint permission to files with
+  |        the target type (apache_exec_t)
+  |      Ex:
+  |      type_transition init_t apache_exec_t : process apache_t;
+  |      # Requires next "allow" Access Vector:
+  |      allow init_t apache_exec_t : file execute;
+  |      allow init_t apache_t      : process transition;
+  |      allow apache_t apache_exec_t : file entrypoint;
+  |
+  |
+  | - OBJECT TRANSITIONS TO SPECIFY DEFAULT OBJECT LABELING:
+  |   (By default created objects receive the type of its "parent")
+  | Ex:
+  | type_transition passwd_t tmp_t : file passwd_tmp_t;
+  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  | """ when a process of type passwd_t creates an
+  |   ordinary file (file object class) in a directory of 
+  |   type tmp_t the file, by default, should have the 
+  |   type passwd_tmp_t if allowed by the policy. """
+  | NOTICE:
+  | -  object-class refers but to the default type (passwd_tmp_t).
+  | - tmp_t is implicitly associated with the dir-object class
+  |   because that is the only object class that can contain files.
+  | - AV rules must also allow the access for the default
+  |   labeling to occur. (add_name, write, and search for 
+  |   directories of type tmp_t, and write and create for
+  |   files of type passwd_tmp_t).
+</pre>
+
+
+  /etc/selinux/config
+<pre xxxsmall zoom>
+# This file controls the state of SELinux on the system.
+# SELINUX := enforcing permissive  ← permissive must be used to test changes/debug only.
+disabled
+SELINUX=enforcing
+# SELINUXTYPE= can take one of these two values:
+#     <b>targeted</b>: Only list of targeted processes are protected (default)
+#                     In deny-by-default every access is denied unless approved by policy
+#     <b>minimum </b>: Modification of targeted policy. Only selected processes are protected. 
+#     <b>mls     </b>: Multi Level Security protection.
+SELINUXTYPE=targeted
+</pre>
+
+  SELinux bootup sequence
+<pre xxxsmall zoom>
+- When an SELinux-enabled system starts, the policy is loaded
+  into memory organized in modules.
+  "semodule" can be used for a number other tasks like installing,
+  removing, reloading, upgrading, enabling and disabling SELinux policy modules.
+        
+#~ <b>se</b>module -l # lists modules currently loaded
+(output will be similar to ...)
+abrt    1.2.0
+accountsd       1.0.6
+acct    1.5.1
+afs     1.8.2
+...
+
+
+- SELinux context for remote FS can be specified at mount time.
+</pre>
+</td>
+
+<td>
+  <span bgorange>Booleans</span>
+<pre xxxsmall zoom>
+  Ex:
+  - """ Do we allow  the ftp server access to home directories? """
+  - """ Can httpd use mod_auth_ntlm_winbind ? """
+  - ...
+</pre>
+  Show all booleans
+<pre xxxsmall zoom>
+  $ sudo getsebool -a
+</pre>
+
+  Set boolean
+<pre xxxsmall zoom>
+  $ setsebool "mySELinuxBoolean" 0|1  [-P]
+</pre>
+
+ List Booleans Set
+<pre xxxsmall zoom>
+ - Take a look at the booleans.local file under
+  /etc/selinux/targeted/modules/active/
+
+  Ex:
+  # This file is auto-generated by libsemanage
+  # Do not edit directly.
+
+  httpd_read_user_content=1
+  httpd_enable_homedirs=1
+</pre>
+</td>
+
+<td>
+  <span bgorange>Troubleshooting</span>
+  <hr xxxsmall />
+  Q: What an SELinux error means?:
+<pre xxxsmall zoom>
+ -A: It means:
+     - labeling is wrong. 
+       Fix examples:
+       # chcon --reference /var/www/html /var/www/html/index.html
+       ________________________________________________________
+       # restorecon -vR    /var/www/html
+         ^uses info from /etc/selinux/targeted/contexts/files/file_contexts, ... to determine what a file or dir's ctx should be
+       ________________________________________________________
+       # semanage fcontext -a -e /var/www/ /my/alternative/www/
+       # restorecon -vR /my/alternative/www
+       WARN: When we use semanage fcontext ctx we are just defining 
+         what the context is, we are not writing what the extended 
+         attributes are. We are just saying "when we do relable it 
+         must look like this". restorecon must be run against the 
+         directory to really relabel the new context.
+
+     - Policy needs to be tweaked
+       - booleans
+        - policy modules
+     - A bug in the policy (Open a ticket)
+        STEP 1: put SELinux into "permissive" mode and run
+                the application through all its paces to log all
+                SELinux denials.
+        # setenforce 0
+        STEP 2: From /var/log/messages C&P proposed solution:
+        # grep httpd /var/log/audit/audit.log | audit2allow -Mquirrellocal
+                                                             ^generate new
+                                                              policy file
+        STEP 3: Import the new module
+        # semodule -i squirrellocal.pp
+        STEP 4: Re-enable SELinux enforcement
+        # setenforce 1
+
+     - You have been, or are being, broken into!!
+</pre>
+
+  Bug fixing general procedure
+<pre xxxsmall zoom>
+
+STEP 01: Check /var/log/messages
+ ...
+ ...  setroubleshoot: SELinux is preventing /usr/bin/httpd from getattr access on the directory /home/fred. <b>For complet SELinux messages, run sealert -l 37acc7d8-e955-4333-123a-1d027dbcea72</b>
+
+STEP 02: Run the indicated command:
+~# sealert -l 37acc7d8-e955-4333-123a-1d027dbcea72
+→ SELinux is preventing /usr/sbin/httpd from search access on the directory /home/fred
+→ ...<b orange>
+→ Do
+→ setsebool -P httpd_read_user_content 1
+→ ...
+→ setsebool -P httpd_enable_homedirs 1</b>
+→
+→
+</pre>
+
+  Ex:<a href="http://stackoverflow.com/questions/23851452/cant-resolve-domain-names-in-php-under-apache/24019910#24019910">Fix Apache DNS problem:</a>
+<pre xxsmall zoom>
+# -P => change also boot-time default
+$ setsebool -P nis_enabled 0  
+$ setsebool -P httpd_can_network_connect 1
+</pre>
+
 Auditing/Deciphering SELinux Error Messages.:
 <pre xxxsmall zoom>
 <b>ausearch tool</b>
@@ -190,15 +532,16 @@ ______________________________________________
 → 
 → Hash: su,user_t,user_t,capability,setuid
 → 
-→ 
-→ 
-→ 
 </pre>
 </td>
-
+<td colsep></td>
 <td>
   <a href="https://www.digitalocean.com/community/tutorials/an-introduction-to-selinux-on-centos-7-part-3-users">SELinux users fine-tunning</a>
 <pre xxxsmall zoom>
+An important concept of SELinux is that TE rules associate privileges and accesses with programs, not users.
+Users are not entirely ignored by SELinux. It is possible for the policy to specify multiple domain types (and thus differing sets of privilege) for the same program based on the user who runs the program. This allows for the concept of roles, which we discuss further in Chapter 6, “Roles and Users.” Nonetheless, the level of access control is still based on the program’s domain type and not the user’s privileges.
+
+
 You do not create an SELinux user with a command, 
 nor does it have its own login access to the server.
 SELinux users are defined in the policy loaded into
@@ -327,259 +670,8 @@ SELinux Audit Logs
 
 - rsyslogd: system utility providing support for message logging.
 </pre>
-</td>
+  <br/>
 
-
-<td>
-  <span bgorange>Object Classes</span>
-<pre xxxsmall zoom>
-SELinux Classes represent "core" linux objects and provide
-fine grained access to linux operations on such objects. 
-(The apol GUI tool can be used to examine in detail SELinux classes
- and assigned security permissions)
-+------------------------+-----------------------------------------  +
-|SELinux Class           | SELinux permission                        |
-+------------------------+-----------------------------------------  +
-| Files                  | append            lock                    |
-|                        | create            mounton                 |
-|                        | entrypoint        quotaon                 |
-|                        | entrypoint        read                    |
-|                        | execmod           relabelfrom             |
-|                        | execute           rename                  |
-|                        | execute_no_trans  setattr                 |
-|                        | getattr           swapon                  |
-|                        | ioctl             unlink                  |
-|                        | link              write                   |
-+------------------------+-----------------------------------------  +
-| Process                | dyntransition     getsession    setsched  |
-|                        | execcheap         noatsecure    share     |
-|                        | execmem           ptrace        siginh    |
-|                        | execmem           rlimitnh      sigkill   |
-|                        | execstack         setcap        sigchld   |
-|                        | fork              setcurrent    signal    |
-|                        | getattr           setexec       signull   |
-|                        | getcap            setfscreate   sigstop   |
-|                        | getpgid           setpgid       transition|
-|                        | getsched          setrlimit               |
-+------------------------+-----------------------------------------  +
-| Filesystems            |                                           |
-| Mouting                |                                           |
-| Quotas                 |                                           |
-| - Network File Systems |                                           |
-+------------------------+-----------------------------------------  +
-|  INET Sockets          |                                           |
-+------------------------+-----------------------------------------  +
-| IPC                    |                                           |
-+------------------------+-----------------------------------------  +
-| Message Queues         |                                           |
-+------------------------+-----------------------------------------  +
-| Semaphores             |                                           |
-+------------------------+-----------------------------------------  +
-| Shared Memory          |                                           |
-+------------------------+-----------------------------------------  +
-| Keys                   |                                           |
-+------------------------+-----------------------------------------  +
-| Capability             |                                           |
-+------------------------+-----------------------------------------  +
-| Security               |                                           |
-+------------------------+-----------------------------------------  +
-| System ("as a whole")  |                                           |
-+------------------------+-----------------------------------------  +
-
-- ...
-</pre>
-
-  Building blocks:
-  <span bgorange>LABELING</span>
-<pre xxxsmall zoom>
-- Files, directories, processes, ports, ... are ALL labeled with an SELinux context
-  ^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^^
-  extended FS         labels managed by
-  attributes used     kernel
-
-"user":"role":"type":"level"
-                ^      ^
-               core  optional
-         "type enforcement"
-
-ls -ldZ            <b orange>SELinux type</b>          | Suffix Naming Conventions
-/usr/sbin/httpd    <b orange>httpd</b>_exec_t          | "_u" -> user
-/var/www/html/     <b orange>httpd</b>_sys_content_t   | "_r" -> role 
-/etc/apache2/      <b orange>httpd</b>_config_t        | "_t" -> types (for files)
-/var/log/httpd/    <b orange>httpd</b>_log_t
-/etc/init.d/httpd  <b orange>httpd</b>_initrc_exec_t
-
-# ps axZ | grep [h]ttpd
-unconfined_u:system_r:<b orange>httpd_</b>t:s0 ...
-
-# netstat -tnlpZ | grep httpd
-....         :::80  ....  unconfined_u:system_r:<b orange>httpd_</b>t:s0 ...
-
-# semanage port -l | grep http
-http_cache_port_t  tcp 3128,8080, 8118, 8123, 10001-10010
-http_cache_port_t  udp 3130
-<b orange>http_port_t        tcp 80, 443</b>
-...
-</pre>
-   Juggling with labels
-<pre xxxsmall zoom>
-- SELinux aware tools (chcon, restorecon, ...)
-- Contexts are set when file are created based on parent's directory
-  by default. A Policy can define: 
-  - """when app labeled 'foo_t'creates a
-       file in a directory labeled 'bar_t', 
-       transition to 'baz_t' label."""
-    Ex. dhclient ('dhclient_t') creates a file /etc/resolv.conf
-       labeled 'net_conf_t' in /etc ('etc_t')
-- RPMs can set context at install time
-- Login process sets a default context (unconfined for targeted policy)
-- semanage can be used to maange settings for:
-  - login, user, port, interface, module
-  - node, file context, boolean, permissive state, dontaudit
-</pre>
-
-  <span bgorange>TYPE ENFORCEMENT</span>
-<pre xxxsmall zoom>
-- "Part of the policy that says:
-   a process running with the label httpd_t can have read access
-   to a file labeled httpd_config_t"
-</pre>
-
-  /etc/selinux/config
-<pre xxxsmall zoom>
-# This file controls the state of SELinux on the system.
-# SELINUX := enforcing permissive  ← permissive must be used to test changes/debug only.
-disabled
-SELINUX=enforcing
-# SELINUXTYPE= can take one of these two values:
-#     <b>targeted</b>: Only list of targeted processes are protected (default)
-#                     In deny-by-default every access is denied unless approved by policy
-#     <b>minimum </b>: Modification of targeted policy. Only selected processes are protected. 
-#     <b>mls     </b>: Multi Level Security protection.
-SELINUXTYPE=targeted
-</pre>
-
-  SELinux bootup sequence
-<pre xxxsmall zoom>
-- When an SELinux-enabled system starts, the policy is loaded
-  into memory organized in modules.
-  "semodule" can be used for a number other tasks like installing,
-  removing, reloading, upgrading, enabling and disabling SELinux policy modules.
-        
-#~ <b>se</b>module -l # lists modules currently loaded
-(output will be similar to ...)
-abrt    1.2.0
-accountsd       1.0.6
-acct    1.5.1
-afs     1.8.2
-...
-
-
-- SELinux context for remote FS can be specified at mount time.
-</pre>
-
-</td>
-<td>
-  <span bgorange>Troubleshooting</span>
-  <hr xxxsmall />
-  Q: What an SELinux error means?:
-<pre xxxsmall zoom>
- -A: It means:
-     - labeling is wrong. 
-       Fix examples:
-       # chcon --reference /var/www/html /var/www/html/index.html
-       ________________________________________________________
-       # restorecon -vR    /var/www/html
-         ^uses info from /etc/selinux/targeted/contexts/files/file_contexts, ... to determine what a file or dir's ctx should be
-       ________________________________________________________
-       # semanage fcontext -a -e /var/www/ /my/alternative/www/
-       # restorecon -vR /my/alternative/www
-       WARN: When we use semanage fcontext ctx we are just defining 
-         what the context is, we are not writing what the extended 
-         attributes are. We are just saying "when we do relable it 
-         must look like this". restorecon must be run against the 
-         directory to really relabel the new context.
-
-     - Policy needs to be tweaked
-       - booleans
-        - policy modules
-     - A bug in the policy (Open a ticket)
-        STEP 1: put SELinux into "permissive" mode and run
-                the application through all its paces to log all
-                SELinux denials.
-        # setenforce 0
-        STEP 2: From /var/log/messages C&P proposed solution:
-        # grep httpd /var/log/audit/audit.log | audit2allow -Mquirrellocal
-                                                             ^generate new
-                                                              policy file
-        STEP 3: Import the new module
-        # semodule -i squirrellocal.pp
-        STEP 4: Re-enable SELinux enforcement
-        # setenforce 1
-
-     - You have been, or are being, broken into!!
-</pre>
-
-  Bug fixing general procedure
-<pre xxxsmall zoom>
-
-STEP 01: Check /var/log/messages
- ...
- ...  setroubleshoot: SELinux is preventing /usr/bin/httpd from getattr access on the directory /home/fred. <b>For complet SELinux messages, run sealert -l 37acc7d8-e955-4333-123a-1d027dbcea72</b>
-
-STEP 02: Run the indicated command:
-~# sealert -l 37acc7d8-e955-4333-123a-1d027dbcea72
-→ SELinux is preventing /usr/sbin/httpd from search access on the directory /home/fred
-→ ...<b orange>
-→ Do
-→ setsebool -P httpd_read_user_content 1
-→ ...
-→ setsebool -P httpd_enable_homedirs 1</b>
-→
-→
-</pre>
-
-  Ex:<a href="http://stackoverflow.com/questions/23851452/cant-resolve-domain-names-in-php-under-apache/24019910#24019910">Fix Apache DNS problem:</a>
-<pre xxsmall zoom>
-# -P => change also boot-time default
-$ setsebool -P nis_enabled 0  
-$ setsebool -P httpd_can_network_connect 1
-</pre>
-
-</td>
-<td>
-  <span bgorange>Booleans</span>
-<pre xxxsmall zoom>
-  Ex:
-  - """ Do we allow  the ftp server access to home directories? """
-  - """ Can httpd use mod_auth_ntlm_winbind ? """
-  - ...
-</pre>
-  Show all booleans
-<pre xxxsmall zoom>
-  $ sudo getsebool -a
-</pre>
-
-  Set boolean
-<pre xxxsmall zoom>
-  $ setsebool "mySELinuxBoolean" 0|1  [-P]
-</pre>
-
- List Booleans Set
-<pre xxxsmall zoom>
- - Take a look at the booleans.local file under
-  /etc/selinux/targeted/modules/active/
-
-  Ex:
-  # This file is auto-generated by libsemanage
-  # Do not edit directly.
-
-  httpd_read_user_content=1
-  httpd_enable_homedirs=1
-</pre>
-</td>
-
-<td>
   <a href="http://blog.siphos.be/2015/07/restricting-even-root-access-to-a-folder/">Restricting root access to F.S.</a> 
 <pre xxxsmall zoom>
 (Date Sat 11 July 2015 By Sven Vermeulen Category SELinux)
@@ -656,236 +748,168 @@ $ certcli.sh -p genfic-user \         # Revoke a certificate
   -x myuser@genfic.com
 
 
-             -->     certcli.sh --> ca_private_key_t
-                       ^^^^
-        ca_cli_exec_t  ca_cli_t
-        entry point    domain
-
-From a security point of view focus on two types:
-----------------+--------------------------------------------------------
-ca_private_key_t|for private key, should not be
-                |accessible only to certcli.sh running as 'ca_cli_t'
-----------------+--------------------------------------------------------
-ca_misc_t       |is for the other related files, such as certificates,
-                |revocation lists, serial information, etc. If this would be "for
-                |real" I'd probably make a bit more types for this depending on the
-                |accesses, but for this post this suffices.
-----------------+--------------------------------------------------------
-ca_misc_tmp_t   | temporary files should still be well protected
-----------------+--------------------------------------------------------
+CONTEXT TRANSITION:
+-------------------
+    ENTRYPOINT         DOMAIN         FILE TYPES
+  → ca_cli_exec_t  →  ca_cli_t    →   ca_private_key_t (priv.keys)
+                     (certcli.sh)     ca_misc_t        (certs, revo.list, serial,...)
+                                      ca_misc_tmp_t    (temporal files)
+    
 
 ca.te:
 | policy_module(ca, 1.0.0)
 | 
 | # CA management script and domain
-| type ca_cli_t;
-| type ca_cli_exec_t;
-| domain_base_type(ca_cli_t)    
-| fs_associate(ca_cli_exec_t)
+| type ca_cli_exec_t;         # ENTRYPOINT
+| type ca_cli_t;              # CA HANDLING DOMAIN
+| domain_base_type(ca_cli_t)
+| fs_associate(ca_cli_exec_t)  ← Making it through files_type() iface would
+|                                would assign the `file_type` attribute to it,
+|                                and other domains might have access to
+|                                `file_type`. So all I do here is to allow the
+|                                type `ca_cli_exec_t` to be associated on a
+|                                file system.
+|
+|
+| type ca_private_key_t;         # FILE TYPE FOR PRIV.KEYS
+| fs_associate(ca_private_key_t)
+| 
+|
+| type ca_misc_tmp_t;            # FILE TYPE FOR CERTS, REVOCATION LIST, SERIAL, ...
+| fs_associate(ca_misc_tmp_t)
+| fs_associate_tmpfs(ca_misc_tmp_t)
+| 
+|
+| type ca_misc_t;                # FILE TYPE FOR TEMP. FILES
+| fs_associate(ca_misc_t)
+|
+| # GRANT ca_cli_t PROPER ACCESS TO NEW TYPES {
+| allow ca_cli_t ca_misc_t:dir create_dir_perms;          
+| manage_files_pattern(ca_cli_t, ca_misc_t, ca_misc_t)     
+| allow ca_cli_t ca_private_key_t:dir create_dir_perms;
+| manage_files_pattern(ca_cli_t, ca_private_key_t, ca_private_key_t)
+| # }
+|
+| - certcli.sh makes use of a directory '.../private',
+|   so  proper rights to asign `ca_private_key_t` to dirs must be in place.
+| - /private directory's parent dir is labeled as `ca_misc_t` to allow
+|   file transitions.
+| - SELinux policy will automatically assign the `ca_private_key_t`
+|   type to a directory, created in a `ca_misc_t`  directory.
+| -  if created by the `ca_cli_t` domain:
+| 
+| filetrans_pattern(ca_cli_t, ca_misc_t, ca_private_key_t, dir, "private")
+| 
+| # certcli.sh also requires the following permissions: {
+| allow ca_cli_t self:fifo_file rw_fifo_file_perms;            ← Handling pipes between commands
+| corecmd_exec_shell(ca_cli_t)                                 ← Shell script.
+| corecmd_exec_bin(ca_cli_t)                                   ← allow to invoke regular binaries
+| getty_use_fds(ca_cli_t) userdom_use_user_terminals(ca_cli_t) ← allow output on the screen
+| # }
+|
+| allow ca_cli_t ca_cli_exec_t:file entrypoint;                      ← - mark `ca_cli_exec_t` as entrypoint for `ca_cli_t`.
+| allow ca_cli_t ca_cli_exec_t:file { mmap_file_perms ioctl lock };      `ca_cli_t` domain can only be reached (transitioned to) 
+|                                                                         through the execution of a `ca_cli_exec_t` file
+|                                                                         `ca_cli_exec_t`:
+|                                                                      - Normally, this is granted through 
+|                                                                        application_domain(ca_cli_t, ca_cli_exec_t) but
+|                                                                        this would also assign attributes we want to
+|                                                                        explicitly prevent
+|
+|
+|
+| # ADD REQUIRED PERMISSION FOR certcli.sh CHILDREN PROCESSES
+| #  (openssl) RUNNING IN ca_cli_t DOMAIN {
+| kernel_read_system_state(ca_cli_t)  ← Read access on /proc files
+| dev_read_rand(ca_cli_t)             ← Access to random devices
+| dev_read_urand(ca_cli_t)            ← Regular files
+| files_read_etc_files(ca_cli_t)
+| miscfiles_read_localization(ca_cli_t)
+| fs_getattr_tmpfs(ca_cli_t)          ← /tmp access
+|
+| files_tmp_filetrans(ca_cli_t, ca_misc_tmp_t, file) ←  when OpenSSL creates a file in `/tmp`
+|                                                       it should immediately be assigned the
+|                                                       `ca_misc_tmp_t` type
+| # }
+| # NOTE: At this point  the application should works fine
+|
+| An  ca_role() interface will be created to allow user domains 
+| to use the CA script. Let's first create the ca_roles role attribute
+| used by such interface: {
+| attribute_role ca_roles; 
+| role ca_roles types ca_cli_t;
+| # }
 
-Then, two non-standard approaches were followed.
-   application domains are granted through application_type(),
-   application_domain() or even userdom_user_application_domain(). 
-   Which interface you use depends on the privileges you want to
-   grant on the domain, but also which existing privileges should
-   also be applicable to the domain. Make sure you review the interfaces. 
-   For instance:
+
+
+NEXT: all that needed is to have an initial location marked as `ca_misc_t`
+      For now, none of the users have the rights to do so, so I create
+      three additional interfaces to be used against other user domains:
+
+
+| allows to run the command                          | allows regular sysadmins rights to create ca_misc_t dirs | allow relabel *from* rights to change the 
+|                                                    |                                                          | type of private keys to a regular file
+|                                                    |                                                          | (if Linux allows it and the 
+|                                                    |                                                          |  operation type goes to/from is allowed)
+|                                                    |                                                          | This one should *only* be assigned to a
+|                                                    |                                                          | rescue user (if any). 
+|                                                    |                                                          | Also, this interface is allowed to label
+|                                                    |                                                          | CA management scripts.
++----------------------------------------------------+----------------------------------------------------------+----------------------------------------------
+| grant CA handling roles ca_role()                  |  ca_sysadmin(sysadm_t)                                   |  ca_admin(secadm_t) would only be granted on 
+| ca_role(certadmin_r, certadmin_t)                  |  ca_sysadmin(setfiles_t)                                 |  the rescue/super-admin
++----------------------------------------------------+----------------------------------------------------------+----------------------------------------------
+|                                                    |                                                          |
+| interface(`ca_role','                              | interface(`ca_sysadmin',                                 | interface(`ca_admin',`
+|   gen_require(`                                    |   gen_require( type ca_misc_t; type ca_private_key_t; )  |   gen_require(`
+|     attribute_role ca_roles;                       |   # Allow the user relabel rights on ca_misc_t           |     type ca_misc_t, ca_private_key_t;
+|     type ca_cli_t, ca_cli_exec_t;                  |   allow $1 ca_misc_t:dir relabel_dir_perms;              |     type ca_cli_exec_t;
+|     type ca_misc_t;                                |   allow $1 ca_misc_t:file relabel_file_perms;            |   ')
+|   ')                                               |   # Allow the user to label /to/ ca_private_key_t        | 
+|                                                    |   # (but not vice versa)                                 |   allow $1 { ca_misc_t ca_private_key_t }:dir relabel_dir_perms;
+|   # Allow the user role (like sysadm_r) the types  |   allow $1 ca_private_key_t:dir relabelto_dir_perms;     |   allow $1 { ca_misc_t ca_private_key_t }:file relabel_file_perms;
+|   # granted to ca_roles                            |   allow $1 ca_private_key_t:file relabelto_file_perms;   | 
+|   roleattribute $1 ca_roles;                       |   # Look at regular file/dir info                        |   allow $1 ca_cli_exec_t:file relabel_file_perms;
+|                                                    |   allow $1 ca_misc_t:dir list_dir_perms;                 | ')
+|   # Read the non-private key files and directories |   allow $1 ca_misc_t:file read_file_perms; '             
+|   allow $2 ca_misc_t:dir  list_dir_perms;          | )                                                        
+|   allow $2 ca_misc_t:file read_file_perms;         |                                                          
+|                                                    | NOTE: The 'ca_sysadmin()' interface can also be assigned 
+|   # Allow to transition to ca_cli_t by executing   |       to the `setfiles_t` command so that relabel        
+|   # a ca_cli_exec_t file                           |       operations (and file system relabeling) works      
+|   domtrans_pattern($2, ca_cli_exec_t, ca_cli_t)    |       correctly.                                         
+|                                                    |
+|   # Look at the process info                       |
+|   ps_process_pattern($2, ca_cli_t)                 |
+|                                                    |
+|   # Output (and redirect) handling                 |
+|   allow ca_cli_t $2:fd use;                        |
+| ')                                                 |
+
+  - application domains are granted through interface
+    application_type(), application_domain() or
+    even userdom_user_application_domain(). 
+    Election depends on the privileges you want to grant on the domain,
+    but also which existing privileges should also be applicable to
+    the domain. 
+  
+  ????.if:
+  
   | seshowif application_domain
   | 
-  | interface(`rapplication_type`, 
-  |       gen_require(` attribute application_domain_type; `)
+  | interface(`application_type', 
+  |   gen_require(`attribute application_domain_type;')
   | 
-  |     typeattribute $1 application_domain_type;
+  |   typeattribute $1 application_domain_type;   ← associate attr. ($1 == ca_cli_t)
   | 
-  |     # start with basic domain
-  |     domain_type($1)
+  |   # start with basic domain
+  |   domain_type($1)                             ← assign lowest posible 'domain' attributes 
+  |                                                 to handle certs ($1 == ca_cli_t)
   | 
   | ')
-  
-This means that the assigned domain (`ca_cli_t` in our example) would be
-assigned the `application_domain_type` attribute, as well as the
-`domain` attribute and other privileges. If we really want to prevent
-any access to the `ca_cli_t` domain for handling the certificates, we
-need to make sure that the lowest possible privileges are assigned.
-
-The same is true for the file type `ca_cli_exec_t`. Making it through
-`files_type()` interface would assign the `file_type` attribute to it,
-and other domains might have access to `file_type`. So all I do here is
-to allow the type `ca_cli_exec_t` to be associated on a file system.
-
-Similarly, I define the remainder of file types:
-
-  | type ca_private_key_t;
-  | fs_associate(ca_private_key_t)
-  | 
-  | type ca_misc_tmp_t;
-  | fs_associate(ca_misc_tmp_t)
-  | fs_associate_tmpfs(ca_misc_tmp_t)
-  | 
-  | type ca_misc_t;
-  | fs_associate(ca_misc_t)
-
-NEXT: grant the script (ca_cli_t domain) proper access to these types:
-
-  | allow ca_cli_t ca_misc_t:dir create_dir_perms;
-  | manage_files_pattern(ca_cli_t, ca_misc_t, ca_misc_t)
-  | allow ca_cli_t ca_private_key_t:dir create_dir_perms;
-  | manage_files_pattern(ca_cli_t, ca_private_key_t, ca_private_key_t)
-
-This of course heavily depends on the script itself.
-Mine creates a directory "private", so needs the proper rights on the
-`ca_private_key_t` type for directories as well.
-
- The "private" directory is created in a generic directory
-(which is labeled as `ca_misc_t`) so I can also create a file transition.
-
- This means that the SELinux policy will automatically assign the
-`ca_private_key_t` type to a directory, created in a directory with
-label `ca_misc_t`, if created by the `ca_cli_t` domain:
-
-  | filetrans_pattern(ca_cli_t, ca_misc_t, ca_private_key_t, dir, "private")
-
-Now, ca_cli_t is a domain used for a shell script, which in my case
-also requires the following permissions:
-
-  | # Handling pipes between commands
-  | allow ca_cli_t self:fifo_file rw_fifo_file_perms;
-  | # Shell script...
-  | corecmd_exec_shell(ca_cli_t)
-  | # ...which invokes regular binaries
-  | corecmd_exec_bin(ca_cli_t)
-  | # Allow output on the screen
-  | getty_use_fds(ca_cli_t) userdom_use_user_terminals(ca_cli_t)
-
-Now I still need to mark `ca_cli_exec_t` as an entrypoint for
-`ca_cli_t`, meaning that the `ca_cli_t` domain can only be accessed
-(transitioned to) through the execution of a file with label
-`ca_cli_exec_t`:
-  | allow ca_cli_t ca_cli_exec_t:file entrypoint;
-  | allow ca_cli_t ca_cli_exec_t:file { mmap_file_perms ioctl lock };
-
-Normally, the above is granted through the invocation of the
- application_domain(ca_cli_t, ca_cli_exec_t) but as mentioned before, 
-this would also assign attributes that I explicitly want to prevent in 
-this example.
-
-Next, the openssl application, which the script uses extensively, 
-also requires additional permissions. As the openssl command just runs
-in the ca_cli_t domain, I extend the privileges for this domain more:
-
-  | # Read access on /proc files
-  | kernel_read_system_state(ca_cli_t)
-  | # Access to random devices
-  | dev_read_rand(ca_cli_t)
-  | dev_read_urand(ca_cli_t)
-  | # Regular files
-  | files_read_etc_files(ca_cli_t)
-  | miscfiles_read_localization(ca_cli_t)
-  | # /tmp access
-  | fs_getattr_tmpfs(ca_cli_t)
-
-Also, the following file transition is created: when OpenSSL creates a
-temporary file in `/tmp`, this file should immediately be assigned the
-`ca_misc_tmp_t` type:
-
-  | # File transition in /tmp to ca_misc_tmp_t
-  | files_tmp_filetrans(ca_cli_t, ca_misc_tmp_t, file)
-
-With this in place, the application works just fine.
-
-NEXT: all that needed is to have an initial location marked as ca_misc_t.
-For now, none of the users have the rights to do so, so I create
-three additional interfaces to be used against other user domains:
-
-   - The first one is to allow user domains to use the CA script.
-     This is handled by the ca_role() interface. In order to support
-     such an interface, let's first create the ca_roles role attribute
-     in the .te file:
-
-   | attribute_role ca_roles; 
-   | role ca_roles types ca_cli_t;
-
-Now I can define the `ca_role()` interface:
-
-   | interface('ca_role','
-   |   gen_require(`
-   |     attribute_role ca_roles;
-   |     type ca_cli_t, ca_cli_exec_t;
-   |     type ca_misc_t;
-   |   ')
-   |   # Allow the user role (like sysadm_r) the types granted to ca_roles
-   |   roleattribute $1 ca_roles;
-   |   
-   |   # Read the non-private key files and directories
-   |   allow $2 ca_misc_t:dir list_dir_perms;
-   |   allow $2 ca_misc_t:file read_file_perms;
-   |   
-   |   # Allow to transition to ca_cli_t by executing a ca_cli_exec_t file
-   |   domtrans_pattern($2, ca_cli_exec_t, ca_cli_t)
-   |   
-   |   # Look at the process info
-   |   ps_process_pattern($2, ca_cli_t)
-   |   
-   |   # Output (and redirect) handling
-   |   allow ca_cli_t $2:fd use;
-   | ')
-
-This role allows to run the command, but we still don't have the rights
-to create a ca_misc_t directory. So another interface is created, which 
-is granted to regular system administrators (as the ca_role() might be
-granted to non-admins as well, who can invoke the script through sudo).
-
-   | interface('ca_sysadmin',gen_require( type ca_misc_t; type ca_private_key_t; ')
-   |  # Allow the user relabel rights on ca_misc_t
-   |  allow $1 ca_misc_t:dir relabel_dir_perms;
-   |  allow $1 ca_misc_t:file relabel_file_perms;
-   |  # Allow the user to label /to/ ca_private_key_t (but not vice versa) 
-   |  allow $1 ca_private_key_t:dir relabelto_dir_perms;
-   |  allow $1 ca_private_key_t:file relabelto_file_perms;
-   |  # Look at regular file/dir info 
-   |  allow $1 ca_misc_t:dir list_dir_perms;
-   |  allow $1 ca_misc_t:file read_file_perms; '
-   | )
-
-The 'ca_sysadmin()' interface can also be assigned to the `setfiles_t`
-command so that relabel operations (and file system relabeling) works
-correctly.
-
-Finally, a real administrative interface is created that also has
-relabel *from* rights (so any domain granted this interface will be able
-  - if Linux allows it and the type the operation goes to/from is allowed
-  - to change the type of private keys to a regular file). 
-This one should *only* be assigned to a rescue user (if any). 
-Also, this interface is allowed to label CA management scripts.
-
-   | interface(`ca_admin',`
-   |   gen_require(`
-   |     type ca_misc_t, ca_private_key_t;
-   |     type ca_cli_exec_t;
-   |   ')
-   | 
-   |   allow $1 { ca_misc_t ca_private_key_t }:dir relabel_dir_perms;
-   |   allow $1 { ca_misc_t ca_private_key_t }:file relabel_file_perms;
-   | 
-   |   allow $1 ca_cli_exec_t:file relabel_file_perms;
-   | ')
-
-So regular system administrators would be assigned the ca_sysadmin() 
-interface as well as the setfiles_t domain; 
-CA handling roles would be granted the ca_role() interface.
-
-The ca_admin() interface would only be granted on the rescue (or super-admin).
-
-* Regular system administrators:
-    ca_sysadmin(sysadm_t) ca_sysadmin(setfiles_t)
-  
-* Certificate administrator:
-    ca_role(certadmin_r, certadmin_t)
-  
-* Security administrator
-    ca_admin(secadm_t)
 </pre>
 </td>
+<td colsep></td>
 <td>
   CLI
   <hr xxxsmall />
@@ -913,38 +937,69 @@ The ca_admin() interface would only be granted on the rescue (or super-admin).
 </pre>
 
   man pages
-<pre xxxsmall zoom>
-|<t                                               />--------- File System--------<t/>|<t                                               />--Process (Subject) --------<t/>
-|<a href="https://linux.die.net/man/8/restorecon"  >restorecon(8)                </a>|<a href="https://linux.die.net/man/1/runcon"      >runcon(1)                    </a>
-|<t                                               />  restore file(s) default ctx<t/>|<t                                               />  run command with given ctx <t/>
-|<a href="https://linux.die.net/man/8/restorecond" >restorecond(8)               </a>|<t                                               />--------- Common  ----------<t/>
-|<t                                               />  watchs for file creation   <t/>|<a href="https://linux.die.net/man/1/secon"       >secon(1)                     </a>
-|<t                                               />  and then sets default ctx  <t/>|<t                                               />See ctx from a file|program| <t/>
-|<t                                               />  ("mv" will keep proper ctx <t/>|<t                                               />user-input                   <t/>
-|<t                                               />   from new parent dir.     )<t/>|<t                                               />--SE aware Process API ------<t/>
-|<a href="https://linux.die.net/man/8/fixfiles"    >fixfiles(8)                  </a>|<a href="https://linux.die.net/man/3/setcon"     />setcon(3)                    </a>
-|<t                                               />  fix file security ctxs     <t/>|<a href="https://linux.die.net/man/3/getcon"     />getcon(3)                    </a>
-|<a href="https://linux.die.net/man/1/chcon"       >chcon(1)                     </a>|<a href="https://linux.die.net/man/3/getpidcon"  />getpidcon(3)                 </a>
-|<t                                               /> change file security context<t/>|<a href="https://linux.die.net/man/3/getpidcon"  />getpidcon(3)                 </a>
-|<a href="https://linux.die.net/man/8/setfiles"    >setfiles(8)                  </a>
-|<t                                               />  set file security ctxs     <t/> 
+<pre xxxsmall zoom bgorange>
+|<t                                               />--Process (Subject) -------- <t/>   |<t                                               />--SE Context labeling   -----<t/>            |<t                                               />--SE Context changing Utilities   -----<t/>
+|<a href="https://linux.die.net/man/1/runcon"      >runcon(1)                    </a>   |<a href="https://linux.die.net/man/1/chcon"      >chcon(1)                      </a>            |<a href="https://linux.die.net/man/1/newrole"     >newrole(1)                   </a>
+|<t                                               />  run command with given ctx <t/>   |<t                                               />Changes sec.ctx or part of it<t/>            |<t                                               />creates new shell running with new sec.ctx.
+|<t                                               />--------- Common  ---------- <t/>   |<t                                               />for file-related object classes<t/>          |<t                                               />Use must specify new role and/or type.
+|<a href="https://linux.die.net/man/1/secon"       >secon(1)                     </a>   |<t                                               /> (files, dirs,..)             <t/>           |<t                                               />type is derived from role if not specified.
+|<t                                               />See ctx from a file|program| <t/>   |<a href="https://linux.die.net/man/8/fixfiles"    >fixfiles(8)                  </a>            |<a href="https://linux.die.net/man/1/runcon"      >runcon(1)                   </a>
+|<t                                               />user-input                   <t/>   |<t                                               /> Relabels FS objects. By default <t/>        |<t                                               />Similar to newrole(1) but request
+|<t                                               />--SE aware Process API ------<t/>   |<t                                               /> relabel all mounted FSs that support  <t/>  |<t                                               />a specified command to run in new ctx.
+|<a href="https://linux.die.net/man/3/setcon"     />setcon(3)                    </a>   |<t                                               /> SELinux unless mounted with the <t/>        |<a href="https://linux.die.net/man/8/run_init"    >run_init(9)                   </a>
+|<a href="https://linux.die.net/man/3/getcon"     />getcon(3)                    </a>   |<t                                               /> context mount option, automatically <t/>    |<t                                               />Runs initrc script using the sec.ctx.
+|<a href="https://linux.die.net/man/3/getpidcon"  />getpidcon(3)                 </a>   |<t                                               /> detemining the file sec.ctx specs   <t/>    |<t                                               />found in current policy's ctx/initrc_context 
+|<a href="https://linux.die.net/man/3/getpidcon"  />getpidcon(3)                 </a>   |<t                                               /> to use for the labeling.            <t/>    |<t                                               />file. Ussually used to restart system
+|<t                                               />                             <t/>   |<a href="https://linux.die.net/man/8/restorecon"  >restorecon(8)                </a>            |<t                                               />services in new intended domain
+|<t                                               />                             <t/>   |<t                                               /> labeling utility similar to fixfiles(8)
+|<t                                               />                             <t/>   |<t                                               /> except but suited for individual 
+|<t                                               />                             <t/>   |<t                                               /> file or dir. relabeling
+|<t                                               />                             <t/>   |<a href="https://linux.die.net/man/8/setfiles"    >setfiles(8)                  </a>
+|<t                                               />                             <t/>   |<t                                               /> "old" fixfiles(8) utility
+|<t                                               />                             <t/>   |<a href="https://linux.die.net/man/8/genhomedircon">genhomedircon(8)                  </a>
+|<t                                               />                             <t/>   |<t                                               />Script for generating correct file ctx 
+|<t                                               />                             <t/>   |<t                                               />specs for user's home directories.
+|<t                                               />                             <t/>   |<a href="https://linux.die.net/man/8/matchpathcon">matchpathcon(8)                  </a>
+|<t                                               />                             <t/>   |<t                                               />Returns the default ctx for a path
+|<t                                               />                             <t/>   |<t                                               />based on the active policy's file ctx file
 
-|<t                                               />---------- Policy  ----------<t/><b bgorange>
-|<a href="https://linux.die.net/man/8/semanage"    >semanage(8)                  </a></b>
-|<t                                               />  configure certain policy elements  <t/>
-|<t                                               />  without editing/recompiling source:<t/>
-|<t                                               />  - mapping user to se_users         <t/>
-|<t                                               />  - mapping ctx for network ports,   <t/>
-|<t                                               />    interfaces, and nodes(hosts),    <t/>
-|<t                                               />    file context mapping.            <t/>
+
+|<t                                               />---------- Policy  ----------<t/>            |<t                                               />---SELinux status info ------<t/><b bgorange>
+|<a href="https://linux.die.net/man/8/checkpolicy">checkpolicy(8)                </a></b>                 |<a href="https://linux.die.net/man/8/avcstat"     >avcstat(8)                   </a>
+|<t                                               /> policy compiler generating kernel  <t/>     |<t                                               /> Shows statistics&amp;counters (AVC cache hits, ...)
+|<t                                               /> loadable version. Can be used to debug <t/>|<a href="https://linux.die.net/man/8/getenforce" >8getenforce(8)                </a>
+|<t                                               /> a policy in that it can mimimc some of <t/> |<t                                               /> Display current mode string
+|<t                                               /> the capabilities of the SEL sec.server.<t/> |<t                                               /> ("permissive", "enforcing")
+|<a href="https://linux.die.net/man/8/semanage"    >semanage(8)                  </a>            |<a href="https://linux.die.net/man/1/selinuxenabled">selinuxenabled(1)         </a>
+|<t                                               />  configure certain policy elements  <t/>    |<t                                               /> help-utility for shell scripts
+|<t                                               />  without editing/recompiling source:  <t/>  |<a href="https://linux.die.net/man/8/sestatus"    >sestatus(8)                 </a>
+|<t                                               />  - mapping user to se_users           <t/>  |<t                                               /> Return various status info, such as
+|<t                                               />  - mapping ctx for network ports,     <t/>  |<t                                               /> enforcing mode, current policy version
+|<t                                               />    interfaces, and nodes(hosts),      <t/>  |<t                                               /> and name, Boolean status
+|<t                                               />    file context mapping.                    
 |<a href="https://linux.die.net/man/8/load_policy" >load_policy(8)               </a>
-|<t                                               />  load policy into the kernel<t/>
+|<t                                               />  load policy into the kernel. 
+|<t                                               />  In enforcing mode, it must be run in a
+|<t                                               />  domain with load_policy permissions.
+|<a href="https://linux.die.net/man/1/audit2allow" >audit2allow(1)               </a>
+|<t                                               /> Takes the AVC audit denial messages and
+|<t                                               /> outputs allow policy rules that, if added,
+|<t                                               /> will allow further attemps.
+|<a href="https://linux.die.net/man/1/audit2why"  >audit2why(1)                 </a>
+|<t                                               /> Tries to provide a by comparing with
+|<t                                               /> policy rules. (useful to identify
+|<t                                               /> constrain violations.
+|<a href="https://linux.die.net/man/8/ausearch"    >ausearch(8)                 </a>
+|<t                                               /> Basic interpretation of audti messages.
+|<t                                               /> -m avc pull out just AVC messages.
 |<t                                               />---------- Booleans  --------<t/>
 |<a href="https://linux.die.net/man/8/booleans"    >booleans(8)                  </a>
 |<a href="https://linux.die.net/man/8/getsebool"   >getsebool(8)                 </a>
 |<a href="https://linux.die.net/man/8/setsebool"   >setsebool(8)                 </a>
 |<a href="https://linux.die.net/man/8/togglesebool">togglesebool(8)              </a>
+
 </pre>
+
 
   <a href="https://github.com/TresysTechnology/setools/wiki">policy analysis tools</a>
 <pre xxxsmall zoom>
@@ -962,6 +1017,30 @@ The ca_admin() interface would only be granted on the rescue (or super-admin).
 |<t                                           />------------</t>|----------------------------------
 |<a href="https://linux.die.net/man/1/sesearch">sesearch(8) </a>|policy query tool, Search rules (allow, type_transition, etc.)
 |<t                                           />------------</t>|----------------------------------
+</pre>
+
+    <code>sesearch</code>:
+<pre xxxsmall zoom>
+search access allowed for source/target domains:
+#~ <b>se</b>search --allow \
+   --source <b orange>httpd_t</b>              # domain for apache process
+   --target <b orange>httpd_sys_content_t</b>  # type   for /var/www/html files
+   --class <b blue>file</b> 
+(output will be similar to...)
+Found 4 semantic av rules:
+   allow <b  orange>httpd_t httpd_sys_content_t</b> : <b blue>file</b> <b green>{ ioctl read getattr lock open }</b> ;
+   allow <b  orange>httpd_t httpd_content_type </b> : <b blue>file</b> <b green>{ ioctl read getattr lock open }</b> ;
+   allow <b  orange>httpd_t httpd_content_type </b> : <b blue>file</b> <b green>{ ioctl read getattr lock open }</b> ;
+   allow <b  orange>httpd_t httpdcontent       </b> : <b blue>file</b> <b green>{ ioctl read write create getattr setattr lock append unlink link rename execute open }</b> ;
+</pre }>
+
+    chcon (change ctx temporarely)
+<pre xxxsmall zoom >
+# (file system relabel will revert to original context)
+#~ chcon --type <b orange>var_t</b> /var/www/html/index.html
+# Restore with:
+#~ restorecon -v /var/www/html/index.html
+restorecon reset /var/www/html/index.html context unconfined_u:object_r:<b orange>var_t</b>:s0->unconfined_u:object_r:<b orange>httpd_sys_content_t</b>:s0
 </pre>
 
 </td>
@@ -1018,70 +1097,7 @@ WARN: semodule does NOT need "-P". Will remain loaded after reboots.
 # sudo 
 </pre>
 </td>
-<td>
-    OBJECT("FILE") SECURITY CONTEXT:
-<pre xxxsmall zoom >
-Ej:
-#~ ls -Z /etc/logrotate.conf
-... <b green>system_u</b> : <b brown>object_r</b> :<b orange>etc_t    </b>: <b blue>s0   </b>    /etc/logrotate.conf
-    <b green>^       </b>   <b brown>^       </b>  <b orange> ^       </b>  <b blue>^    </b>
-    <b green>user    </b>   <b brown>role    </b>  <b orange>*type*   </b>  <b blue>MLS  </b>
-    <b green>context </b>                          <b orange>"classif.</b>  <b blue>level</b>
-                                                   <b orange>attribute</b>
-</pre>
-    SUBJECT(PROCESS) CONTEXTS:
-<pre xxxsmall zoom >
-#~  ps -efZ | grep 'httpd'
-<b green>system_u</b>:<b brown>system_r</b>:<b orange>httpd_t</b>:<b blue>s0 </b> root   ... /usr/sbin/httpd
-<b green>system_u</b>:<b brown>system_r</b>:<b orange>httpd_t</b>:<b blue>s0 </b> apache ... /usr/sbin/httpd
-<b green>...     </b>
-<b green>^       </b> <b brown>^       </b> <b orange>^      </b> <b blue>^  </b>
-<b green>user    </b> <b brown>role    </b> <b orange>domain </b> <b blue>MLS</b> 
-</pre>
-    How Processes Access Resources
-    <ul xxxsmall zoom>
-      <li> A process/subject (tries to) perform some action (open, read, modify, or execute) on files.
-        SELinux access rules follow a standard allow statement structure:
-<pre xxxsmall>     
-allow <b orange>&lt;domain&gt; &lt;type&gt;</b>:<b blue>&lt;class&gt;</b> { <b green>&lt;permissions&gt;</b> };
 
-<b blue>class := (file, directory, symbolic link, device, ports, cursor ...</b>
-</pre>
-     Must be read as:<br/>
-     <span cite> """ If a process is of certain <b orange>domain</b>
-      And the resource object it's trying to access is of certain <b blue>class</b> and <b orange>type</b><br/>
-      Then allow the access</br>
-      Else deny access """</span>
-      </li>
-    </ul>
-    <code><b>se</b>search</code>:
-<pre xxxsmall zoom>
-search access allowed for source/target domains:
-#~ <b>se</b>search --allow \
-   --source <b orange>httpd_t</b>              # domain for apache process
-   --target <b orange>httpd_sys_content_t</b>  # type   for /var/www/html files
-   --class <b blue>file</b> 
-(output will be similar to...)
-Found 4 semantic av rules:
-   allow <b  orange>httpd_t httpd_sys_content_t</b> : <b blue>file</b> <b green>{ ioctl read getattr lock open }</b> ;
-   allow <b  orange>httpd_t httpd_content_type </b> : <b blue>file</b> <b green>{ ioctl read getattr lock open }</b> ;
-   allow <b  orange>httpd_t httpd_content_type </b> : <b blue>file</b> <b green>{ ioctl read getattr lock open }</b> ;
-   allow <b  orange>httpd_t httpdcontent       </b> : <b blue>file</b> <b green>{ ioctl read write create getattr setattr lock append unlink link rename execute open }</b> ;
-</pre }>
-    Preserve context in file copy
-<pre xxxsmall zoom >
-#~ cp <b>--preserver=context</b> /var/www/html/index.html ~/html
-(context is preserved with "mv")
-</pre>
-    changing context of file temporally:
-<pre xxxsmall zoom >
-# (file system relabel will revert to original context)
-#~ chcon --type <b orange>var_t</b> /var/www/html/index.html
-# Restore with:
-#~ restorecon -v /var/www/html/index.html
-restorecon reset /var/www/html/index.html context unconfined_u:object_r:<b orange>var_t</b>:s0->unconfined_u:object_r:<b orange>httpd_sys_content_t</b>:s0
-</pre>
-  </td>
 <td>
   Context Transition
 <pre xxxsmall zoom >
@@ -1222,6 +1238,8 @@ six years as a contributor to many of the SELinux-related
 open source projects and has led multiple efforts in 
 analyzing and constructing SELinux policy for a variety 
 of systems.
+
+Sven Vermeulen, author of SELinux Cookbook
 </pre>
 
 
@@ -1335,7 +1353,20 @@ is supported by SELinux using:
 
 ______________________________________
 <a href="https://www.youtube.com/watch?v=MxjenQ31b70&t=2790s">SELinux for mere mortals</a>
+______________
+   Preserve context in file copy
+<pre xxxsmall zoom >
+#~ cp <b>--preserver=context</b> /var/www/html/index.html ~/html
+(context is preserved with "mv")
+</pre>
+___________________
+TODO: Add attributes notes: (How to avoid duplacting rules for different convinations
+ of types)
+https://www.safaribooksonline.com/library/view/selinux-by-example/0131963694/ch05.html#ch05
 }
+_____________________
+http://oss.tresys.com/archive/slide.php
+Tresys IDE:
 -->
 
 </html>

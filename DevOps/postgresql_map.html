@@ -128,7 +128,7 @@ OS admin → shell: <b># su postgres -c 'postgres -D /usr/local/pgsql/data 1>/va
 <pre xxxsmall zoom>
 $ sudo su postgres # change to postgres user
 $ psql
-#- CREATE USER my_user_login WITH PASSWORD 'my_user_password';
+#- CREATE USER IF NOT EXISTS my_user_login WITH PASSWORD 'my_user_password';
 #- ALTER USER my_user_login WITH PASSWORD 'my_new_password';
 #- DROP USER IF EXISTS my_user_login;
 # TODO: switch to given ddbb
@@ -175,14 +175,14 @@ Console access:
 user → shell: $ psql mydb
 </pre }>
   <br/>
-  CREATE TABLE example
+  CREATE TABLE IF NOT EXISTS example
 <pre xxxsmall>
 -- DO $$
 -- BEGIN
 --   EXECUTE 'ALTER DATABASE ' || current_database() || ' SET TIMEZONE TO UTC';
 -- END; $$;
 
-CREATE TABLE devices (
+CREATE TABLE IF NOT EXISTS devices (
   ID         VARCHAR(40)                NOT NULL CONSTRAINT DEVICE_PK PRIMARY KEY,
   NAME       VARCHAR(255)               NOT NULL,
   CREATED_AT TIMESTAMP    DEFAULT NOW() NOT NULL,
@@ -192,8 +192,8 @@ CREATE TABLE devices (
   PUB_KEY    VARCHAR(88)                NOT NULL UNIQUE
   PARENT_ID  VARCHAR(40)                NULL CONSTRAINT DEVICE_FK3 REFERENCES devices (ID),
 );
-CREATE INDEX DEVICE_PUB_KEY_IDX ON devices   (PUB_KEY);
-CREATE INDEX OWNER_IDX          ON devices   (OWNER_ID);
+CREATE IF NOT EXISTS INDEX DEVICE_PUB_KEY_IDX ON devices   (PUB_KEY);
+CREATE IF NOT EXISTS INDEX OWNER_IDX          ON devices   (OWNER_ID);
 
 -- (Alt) ALTER TABLE tableName ADD PRIMARY KEY (id);
 -- (Alt) CREATE UNIQUE INDEX indexName ON tableName (columnNames);
@@ -660,5 +660,274 @@ The Crunchy Container Suite provides Docker containers that enable rapid deploym
 _______________________
 Postgresql Replication with Repmgr and Pgbouncer:
 https://www.youtube.com/watch?v=wgp_7hzelEc
+____________________________
+Calculo de ruedas óptimas con PostGis (Postgresql)
+https://www.unigis.es/estructuras-de-grafo-para-el-enrutamiento-en-postgis/
+_________________________
+https://www.postgresql.org/docs/current/static/sepgsql.html
+________________________
+Security: 
+Extracted from https://www.postgresql.org/docs/current/static/sepgsql.html#SEPGSQL-LIMITATIONS
+PostgreSQL supports row-level access, but sepgsql does not.
+________________________
+https://www.postgresql.org/docs/8.1/static/sql-createrole.html
+CREATE ROLE adds a new role to a PostgreSQL database cluster. A role is an entity that can own database objects and have database privileges; a role can be considered a "user", a "group", or both depending on how it is used. Refer to Chapter 18 and Chapter 20 for information about managing users and authentication. You must have CREATEROLE privilege or be a database superuser to use this command.
+________________________
+https://www.percona.com/blog/2018/09/21/securing-postgresql-as-an-enterprise-grade-environment/
+
+Securing PostgreSQL as an Enterprise-Grade Environment
+By Avinash Vallarapu Events and Announcements, Insight for DBAs, Insight for Developers, PostgreSQL, Security Database security, enterprise-grade security 1 Comment
+
+In this post, we review how you can build an enhanced and secure PostgreSQL database environment using community software. We look at the features that are available in PostgreSQL that, when implemented, provide improved security.
+
+As discussed in the introductory blog post of this series, in our webinar of October 10, 2018 we highlight important aspects an enterprise should consider for their PostgreSQL environments. This series of blogs addressing particular aspects of the enterprise-grade postgres environment complements the webinar. This post addresses security.
+Authentication Layer
+Client connections to PostgreSQL Server using host based authentication
+
+PostgreSQL uses a host based authentication file (pg_hba.conf) to authorize incoming connections. This file contains entries with a combination of 5 categories: type, database, user, address, and method. A client is allowed to connect to a database only when the combination of username, database and the hostname of the client matches an entry in the pg_hba.conf file.
+
+Consider the following entry in pg_hba.conf file :
+Shell
+# TYPE DATABASE USER ADDRESS METHOD
+host percona pguser 192.168.0.14/32 md5
+1
+2
+3
+    
+# TYPE DATABASE USER ADDRESS METHOD
+ 
+host percona pguser 192.168.0.14/32 md5
+
+This entry says that connections from server 192.168.0.14 are only allowed from user pguser and only to the database percona. The method md5 forces password authentication.
+
+The order of the entries in the pg_hba.conf file matters. If you have an entry that rejects connections from a given server followed by another that allows connections from it, the first entry in the order is considered. So, in this case, the connection is rejected.
+
+This is the first layer of protection in authentication. If this criteria is not satisfied in this Access Control List (ACL), PostgreSQL will discard the request without considering even the server authentication.
+Server Authentication
+
+Historically, PostgreSQL uses MD5 digest as a password hash by default. The problem with pure MD5 hashing is that this function will always return the same hash for a given password, which renders a MD5 digest more susceptible for password cracking. Newer versions of PostgreSQL implement SCRAM Authentication (Simple Authentication and Secured Layer) that stores passwords in salted and iterated hash formats to strengthen PostgreSQL against offline attacks. SCRAM-SHA-256 support was introduced in PostgreSQL 10. What matters most in terms of “enterprise-grade” security is that PostgreSQL supports industry-standard authentication methods out of the box, like SSL certificates, PAM/LDAP, Kerberos, etc.
+Authorization Layer
+User management through roles and privileges
+
+It is always recommended to implement segregation of users through roles and privileges. There may be several user accounts in your PostgreSQL server. Only a few of them may be application accounts while the rest are developers or admin accounts. In such cases, PostgreSQL allows you to create multiple roles. Those can be assigned with a set of privileges. Thus, instead of managing user privileges individually, standard roles can be maintained and the appropriate role from the list can be assigned to a user. Through roles, database access can be standardized, which helps in user management and avoids granting too much or too little privilege to a given user.
+
+For example, we might have six roles:
+Shell
+app_read_write
+app_read_only
+dev_read_write
+dev_read_only
+admin_read_write
+admin_read_only
+1
+2
+3
+4
+5
+6
+    
+app_read_write
+app_read_only
+dev_read_write
+dev_read_only
+admin_read_write
+admin_read_only
+
+Now, if you need to create a new dev user who can only have read access, grant one among the appropriate roles, such as dev_read_only:
+Shell
+GRANT dev_read_only to avi_im_developer;
+1
+    
+GRANT dev_read_only to avi_im_developer;
+
+Row level Security
+
+Starting with version 9.5, PostgreSQL implements row level security, which can limit access to only a subset of records/rows in a table. Usually a user is granted a mix of SELECT, INSERT, DELETE and UPDATE privileges on a given table, which allows access to all records in the table. Through row level security, however, such privileges can be restricted to a subset of the records by means of a policy, which in turn can be  assigned to a role.
+
+In the next example, we create an employee table and two manager accounts. We then enable row level security on the table and create a policy that allows the managers to only view/modify their own subordinates’ records:
+Shell
+CREATE TABLE scott.employee (id INT, first_name VARCHAR(20), last_name VARCHAR(20), manager VARCHAR(20));
+INSERT INTO scott.employee VALUES (1,'avinash','vallarapu','carina');
+INSERT INTO scott.employee VALUES (2,'jobin','augustine','stuart');
+INSERT INTO scott.employee VALUES (3,'fernando','laudares','carina');
+CREATE USER carina WITH ENCRYPTED PASSWORD 'carina';
+CREATE USER stuart WITH ENCRYPTED PASSWORD 'stuart';
+CREATE ROLE managers;
+GRANT managers TO carina, stuart;
+GRANT SELECT, INSERT, UPDATE, DELETE ON scott.employee TO managers;
+GRANT USAGE ON SCHEMA scott TO managers;
+ALTER TABLE scott.employee ENABLE ROW LEVEL SECURITY;
+CREATE POLICY employee_managers ON scott.employee TO managers USING (manager = current_user);
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+    
+CREATE TABLE scott.employee (id INT, first_name VARCHAR(20), last_name VARCHAR(20), manager VARCHAR(20));
+ 
+INSERT INTO scott.employee VALUES (1,'avinash','vallarapu','carina');
+INSERT INTO scott.employee VALUES (2,'jobin','augustine','stuart');
+INSERT INTO scott.employee VALUES (3,'fernando','laudares','carina');
+ 
+CREATE USER carina WITH ENCRYPTED PASSWORD 'carina';
+CREATE USER stuart WITH ENCRYPTED PASSWORD 'stuart';
+ 
+CREATE ROLE managers;
+GRANT managers TO carina, stuart;
+GRANT SELECT, INSERT, UPDATE, DELETE ON scott.employee TO managers;
+GRANT USAGE ON SCHEMA scott TO managers;
+ 
+ALTER TABLE scott.employee ENABLE ROW LEVEL SECURITY;
+CREATE POLICY employee_managers ON scott.employee TO managers USING (manager = current_user);
+
+In the log we can see that only certain records are visible to each manager:
+Shell
+$ psql -d percona -U carina
+psql (10.5)
+Type "help" for help.
+percona=> select * from scott.employee ;
+id | first_name | last_name | manager
+----+------------+-----------+---------
+ 1 | avinash    | vallarapu | carina
+ 3 | fernando   | laudares | carina
+(2 rows)
+$ psql -d percona -U stuart
+psql (10.5)
+Type "help" for help.
+percona=> select * from scott.employee ;
+id | first_name | last_name | manager
+----+------------+-----------+---------
+ 2 | jobin      | augustine | stuart
+(1 row)
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+    
+$ psql -d percona -U carina
+psql (10.5)
+Type "help" for help.
+ 
+percona=> select * from scott.employee ;
+id | first_name | last_name | manager
+----+------------+-----------+---------
+ 1 | avinash    | vallarapu | carina
+ 3 | fernando   | laudares | carina
+(2 rows)
+ 
+$ psql -d percona -U stuart
+psql (10.5)
+Type "help" for help.
+ 
+percona=> select * from scott.employee ;
+id | first_name | last_name | manager
+----+------------+-----------+---------
+ 2 | jobin      | augustine | stuart
+(1 row)
+
+You can read more about row level security in the manual page.
+Data Security
+1. Encryption of data over the wire using SSL
+
+PostgreSQL allows you to use SSL to enable encryption of data in motion. In addition, you may enable certification based authentication to ensure that the communication is happening between trusted parties. SSL is implemented by OpenSSL and thus it requires the OpenSSL package to be installed in your PostgreSQL server and PostgreSQL to be built –with-openssl support.
+
+The following entry in a pg_hba.conf file says that connections to any database and from any user are allowed from server 192.68.0.13 as long as the communication is encrypted over SSL. Also, the connection is only established when a valid client certificate is provided:
+Shell
+# TYPE DATABASE USER ADDRESS METHOD
+hostssl all all 192.168.0.13/32 md5
+1
+2
+3
+    
+# TYPE DATABASE USER ADDRESS METHOD
+ 
+hostssl all all 192.168.0.13/32 md5
+
+Optionally, you may also use Client Certificate Authentication using the following method:
+Shell
+# TYPE DATABASE USER ADDRESS METHOD
+hostssl all all 192.168.0.13/32 cert clientcert=1
+1
+2
+3
+    
+# TYPE DATABASE USER ADDRESS METHOD
+ 
+hostssl all all 192.168.0.13/32 cert clientcert=1
+
+2. Encryption at Rest – pgcrypto
+
+The pgcrypto module provides cryptographic functions for PostgreSQL, allowing certain fields to be stored encrypted. pgcrypto implements PGP encryption, which is part of the OpenPGP (RFC 4880) standard. It supports both symmetric-key and public-key encryption. Besides the advanced features offered by PGP for encryption, pgcrypto also offers functions for running simple encryption based on ciphers. These functions only run a cipher over data.
+Accounting and Auditing
+Logging in PostgreSQL
+
+PostgreSQL allows you to log either all of the statements or a few statements based on parameter settings. You can log all the DDLs or DMLs or any statement running for more than a certain duration to the log file when logging_collector is enabled. To avoid write overload to the data directory, you may also move your log_directory to a different location. Here’s a few important parameters you should review when logging activities in your PostgreSQL server:
+Shell
+
+
+
+
+
+1 log_connections
+2 log_disconnections
+3 log_lock_waits
+4 log_statement
+5 log_min_duration_statement
+    
+log_connections
+log_disconnections
+log_lock_waits
+log_statement
+log_min_duration_statement
+
+Please note that detailed logging takes additional disk space and may impose an important overhead in terms of write IO depending on the activity in your PostgreSQL server. You should be careful when enabling logging and should only do so after understanding the overhead and performance degradation it may cause to your workload.
+Auditing – pgaudit and set_user
+
+Some essential auditing features in PostgreSQL are implemented as extensions, which can be enabled at will on highly secured environments with regulatory requirements.
+
+pgaudit helps to audit the activities happening in the database. If any unauthorized user has intentionally obfuscated the DDL or DML, the statement the user has passed and the sub-statement that was actually executed in the database will be logged in the PostgreSQL log file.
+
+set_user  provides a method of privilege escalations. If properly implemented, it provides the highest level of auditing, which allows the monitoring of even SUPERUSER actions.
+
+You can read more about pgaudit here.
+Security Bug Fixes
+
+PostgreSQL Global Development Group (PGDG) considers security bugs seriously. Any security vulnerabilities can be reported directly to security@postgresql.org. The list of security issues fixed for all the supported PostgreSQL versions can be found here. Security fixes to PostgreSQL are made available through minor version upgrades. This is the main reason why it is advised to always maintain PostgreSQL servers upgraded to the latest minor version.
+If you liked this post…
+
+Please join Percona’s PostgreSQL Support Technical Lead,  Avinash Vallarapu; Senior Support Engineer, Fernando Laudares; and Senior Support Engineer, Jobin Augustine, on Wednesday, October 10, 2018 at 7:00 AM PDT (UTC-7) / 10:00 AM EDT (UTC-4), as they demonstrate an enterprise-grade PostgreSQL® environment built using a combination of open source tools and extensions.
+____________________________
+https://www.percona.com/blog/2018/09/28/high-availability-for-enterprise-grade-postgresql-environments/
+______________________________
+https://www.percona.com/blog/2018/10/02/scaling-postgresql-using-connection-poolers-and-load-balancers-for-an-enterprise-grade-environment/
+___________________________
 -->
 </html>

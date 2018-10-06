@@ -133,7 +133,8 @@ function onPageLoaded() {
       var nodeHref = nodeList[idx].href;
       if (!nodeHref) { continue; }
       if (!nodeHref.startsWith("http")) continue;
-      if (nodeHref.startsWith(thisDoc)) continue;
+      if ( nodeHref == document.location.origin + HOME) continue;
+      if ( nodeHref.startsWith(thisDoc)) continue;
       nodeList[idx].target='_blank'; 
   }
   nodeList = document.querySelectorAll('td')

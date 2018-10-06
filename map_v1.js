@@ -102,6 +102,8 @@ function doOpenZoom(e)      {
 }
 
 function onPageLoaded() {
+  var isIT_notes_in_URL = /IT_notes/.test( window.document.location)
+  var HOME = isIT_notes_in_URL ? "/IT_notes" : "/"
   // Append search, zoomDiv, zoom Buttons :
   var searchDiv = document.createElement('spam');
       searchDiv.innerHTML = 
@@ -111,6 +113,7 @@ function onPageLoaded() {
    + '  <input id="singleLineOnly" type="checkbox"><code xsmall>single-line</code>'
    + '  <input id="caseSensitive"  type="checkbox"><code xsmall>Case-match</code>'
    + '</form>'
+   + '<a href="'+HOME+'">HOME</a>&nbsp;'
    + '<b id="initialMessage" orange xsmall>Hint double-click/long-press on elements to zoom!!</b>'
    + '<div id="zoomDiv"></div>'
    + '<div style="position:fixed; right:0.3%; top:0; width:auto;">'

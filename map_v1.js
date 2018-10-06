@@ -169,6 +169,8 @@ function onPageLoaded() {
   }
 }
 
+window.onload = onPageLoaded 
+
 function getParameterByName(name, url) {
     if (!url) url = window.location.href;
     name = name.replace(/[\[\]]/g, '\\$&');
@@ -216,3 +218,4 @@ function highlightSearch() {
     }
   }
 }
+

@@ -102,8 +102,7 @@ function doOpenZoom(e)      {
 }
 
 function onPageLoaded() {
-  var isIT_notes_in_URL = /IT_notes/.test( window.document.location)
-  var HOME = isIT_notes_in_URL ? "/IT_notes" : "/"
+  var UP = "../"
   // Append search, zoomDiv, zoom Buttons :
   var searchDiv = document.createElement('spam');
       searchDiv.innerHTML = 
@@ -113,8 +112,8 @@ function onPageLoaded() {
    + '  <input id="singleLineOnly" type="checkbox"><code xsmall>single-line</code>'
    + '  <input id="caseSensitive"  type="checkbox"><code xsmall>Case-match</code>'
    + '</form>'
-   + '<a href="'+HOME+'">HOME</a>&nbsp;'
-   + '<b id="initialMessage" orange xsmall>Hint double-click/long-press on elements to zoom!!</b>'
+   + '<a href="'+UP+'">FOLDER UP</a>&nbsp;'
+   + '<b id="initialMessage" brown small>TIP:double-click/long-press cells to zoom!!</b>'
    + '<div id="zoomDiv"></div>'
    + '<div style="position:fixed; right:0.3%; top:0; width:auto;">'
    + '<b style="font-size:1.5rem" orange><a onclick="onZoomOut()">[-A]</a></b>'
@@ -132,8 +131,7 @@ function onPageLoaded() {
   for (idx in nodeList) { 
       var nodeHref = nodeList[idx].href;
       if (!nodeHref) { continue; }
-      if (!nodeHref.startsWith("http")) continue;
-      if ( nodeHref == document.location.origin + HOME) continue;
+      if (! (nodeHref.startsWith("http")) ) continue;
       if ( nodeHref.startsWith(thisDoc)) continue;
       nodeList[idx].target='_blank'; 
   }

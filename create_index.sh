@@ -7,6 +7,14 @@ cat << EOF >index.html
 <style>
 h1, h2, h3, body { font-family: sans-serif; text-shadow: 0px 0px 1px #555; line-height:1.4; 
 }
+body { 
+  max-width: 40rem;
+  margin-left:5rem;
+  padding-left:1rem;
+  padding-right:1rem;
+  padding-top:1rem;
+  box-shadow: -10px 0px 10px 10px #aaaaaa; 
+  }
 </style>
 </head>
 <body>
@@ -87,10 +95,12 @@ h1, h2, h3, body { font-family: sans-serif; text-shadow: 0px 0px 1px #555; line-
   Please, take a look at the <a href="http://www.sansforgetica.com.au/">SansForgetica website</a> for more info. 
   <br/>
 
-<h3>Current list of Mind-maps:</h3>
+<h3>Current list of (IT related) SPBs:</h3>
 <ul>
-<li>Next follow a list of example single-page-books I created while working on different topics. The quality varies, based on the time spent and my own experience on each topic.</li>
-<li>Beta state means that related information is in place, but things are still missing/non-validated</li>
+<li>Next follow a list of example single-page-books I created while working on different topics.<br/>
+ quality varies from "intention to create something" to based on the time spent and my own experience on each topic.<br/>
+ Contributions welcome! ;)</li>
+<li>Beta state means that related information is in place, but things are still missing/non-validated.</li>
 <li>Version 1.0 or higher means that content on the  be used as a reference book, mind map or quick-sheet in daily work</li> 
 </ul>
 
@@ -102,7 +112,7 @@ echo $f
 title=`head $f | grep "<title>" | sed "s/<title>//g" | sed "s/<.title>//g" `
 location=`echo $f | cut -f 2 -d "/" `
 if [ ! -z "$title" ] ; then
-  echo $title  | egrep "(ignore)" || echo "<li>${location}/<a target="_new" href='${f}'>${title}</a></li>" >>index.html
+  echo $title  | egrep "(ignore|alpha)" || echo "<li>${location}/<a target="_new" href='${f}'>${title}</a></li>" >>index.html
 fi
 done
 cat << EOF >>index.html

@@ -124,6 +124,7 @@ $ psql
 #- ALTER USER my_user_login WITH PASSWORD 'my_new_password';
 #- DROP USER IF EXISTS my_user_login;
 # TODO: switch to given ddbb
+
 </pre>
   Granting privileges to users
 <pre xxxsmall zoom>
@@ -1018,6 +1019,89 @@ Optimized query engine
 We modified the PostgreSQL insert path, execution engine, and query planner to intelligently process queries across chunks. We continue to leverage PostgreSQL’s battle-tested storage layer for the reliability you need to support mission critical workloads.
 "
 ____________________________
+systemctl status output:
+/system.slice/postgresql.service CGroup
+  ├─7117 /usr/bin/postgres -D /var/lib/pgsql/data -p 5432
+  ├─7118 postgres: logger process
+  ├─7120 postgres: checkpointer process
+  ├─7121 postgres: writer process
+  ├─7122 postgres: wal writer process
+  ├─7123 postgres: autovacuum launcher process
+  └─7124 postgres: stats collector process
+
+$ ps hf -u postgresq -o cmd
+/usr/pgsql-9.4/bin/postgres -D /var/lib/pgsql/9.4/data
+\_ postgres: logger       process
+\_ postgres: checkpointer process
+\_ postgres: writer       process
+\_ postgres: wal writer   process
+\_ postgres: autovacuum launcher  process
+\_ postgres: stats collector  process
+\_ postgres: postgres pgbench [local] idle in transaction
+\_ postgres: postgres pgbench [local] idle
+\_ postgres: postgres pgbench [local] UPDATE
+\_ postgres: postgres pgbench [local] UPDATE waiting
+\_ postgres: postgres pgbench [local] UPDATE
+
+________________________
+https://www.slideshare.net/alexeylesovsky/deep-dive-into-postgresql-statistics-54594192
+________________________
+
+https://www.slideshare.net/alexeylesovsky/deep-dive-into-postgresql-statistics-54594192
+
+
+
+       Client Backends              |                                                  |Postmaster
+      [pg_stat_activity]            |                                                  |[pg_stat_database]
+    -----------------------         |                                                  |----------------
+       Query Planning               |  Shared Buffers                                  |Background Workers
+                                    |  [pg_buffercache]                                |
+    -----------------------         |                                                  |------------------
+    Query Execution                 |                                                  |Autovacuum Launcher
+                                    |                                                  |                   
+    =======================         |                                                  |-------------------
+    Indexes IO  | Tables IO         |                                                  |Autovacuum Workers
+                |                   |                                                  |[pg_stat_activity]                   
+                |                   |                                                  |[pg_stat_user_tables]
+    -----------------------         |                                                  |
+        Buffers IO                  |                                                  |
+    [pg_stat_database]              |                                                  |
+    [pg_statio_all_indexes]         |                                                  |
+    [pg_statio_all_tables]          |                                                  |
+    =============================================================================================================
+             Write Ahead Log                                      
+        [pg_current_xlog_location]
+        [pg_xlog_location_diff]
+    ============================================================================================================
+                                                      |                                              
+    Logger Process                                    |                        Stats Collector       
+                                                      |                                              
+    ============================================================================================================
+    Logical               | WAL Sender           |Archiver           | Background         |  Checkpointer
+    Replication           |   Process            | Process           |  Writer            |   Process
+    [pr_replication_slots]| [pg_stat_replication]|[pg_stat_archiver] | [pg_stat_bgwriter] |  [pg_stat_database]
+                          |                      |                   |                    |  [pg_stat_bgwriter]
+    ============================================================================================================
+                                                     |           
+                  NETWORK                            |               STORAGE
+                                                     |         [pg_stat_kcache]               
+        (nicstat, iostat, ...)                       |         (iostat, ...)                  
+    ============================================================================================================
+         WAL Receiver Process     |                           |  Tables/Indexes Data Files
+                                  |                           |  [pg_index_size]     [pgstattupple]
+    ------------------------------|                           |  [pg_table_size]
+            Recovery Process      |                           |  [pg_database_size]
+     [pg_stat_database_conflicts] |                           |
+    ==============================+                           +=================================================
+
+____________________________
+https://github.com/dataegret/pg-utils
+__________________________________
+The Internals of PostgreSQL!!!
+http://www.interdb.jp/pg/index.html
+__________________________________
+https://www.postgresql.org/docs/10/static/pgbench.html
+https://www.cri.ensmp.fr/~coelho/cours/si/pg-latency-20170323-handout.pdf
 
 --
 -->

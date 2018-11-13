@@ -42,6 +42,7 @@ App:  (Application). In the context of OPC is the full set
       In practice the App is described by the DeploymentConfig (dc/) 
       object created during the 'oc new-app' phase.
 S2I: Source to Image: One of the possible Build Strategies
+SDN: Software defined network
 
   bc/  == Build Configuration
   dc/  == Deployment configuration
@@ -130,7 +131,7 @@ $ oc edit dc/instantApp -o json # -o json => Edit in JSON format
 </pre>
 
   Troubleshooting
-<pre xxxsmall zoom>
+<pre bgorange xxxsmall zoom>
 View Cluster Events</span>
 $ oc get events 
 
@@ -163,34 +164,6 @@ $ oc set env dc/hiworld --list
 
 </td>  
 <td>
-  <b>Flow diagram</b>
-<pre xxxsmall zoom>
-REF: <a href="https://access.redhat.com/documentation/en-us/openshift_container_platform/3.5/html-single/developer_guide/">RedHat OpenS. Dev.Guide</a>
-@startuml
-</pre>
-    <b>New template</b><br/>
-    (Java EE app + MongoDB)
-<pre xxxsmall zoom>
-@startuml
-participant github
-participant developer as dev
-participant OpenshiftConsole as cc
-participant OpenshiftWebConsole as wc
-participant Project/Pod as project
-
-dev →      cc : oc <b>new-project</b> parksapp \
-                --display-name="Baseball Parks"
-cc  → +project:
-dev →       cc: oc create \
-                -f <a href="https://raw.githubusercontent.com/gshipley/openshift3mlbparks/master/mlbparks-template.json">
-                    https://..../mlbparks-<b>template</b>.json</a>
-cc  →+template: add to project
-                (template is now available to project workspace)
-                As cluster admin, add to openshift namespace to make available to
-                any user
-@enduml
-</pre>
-
     oc man
 <pre xxxsmall zoom bgorange>
 $ oc <command> --help
@@ -462,6 +435,49 @@ A build configuration describes:
 (6)<a href="https://access.redhat.com/documentation/en-us/openshift_container_platform/3.5/html-single/developer_guide/#using-external-artifacts"  >External artifacts</a>
 </pre>
 
+  Build manual control
+<pre xxxsmall zoom>
+
+$ oc start-build 'buildconfig_name' \   ← Manually start new build from existing bc
+   --follow  \                          ← stream build's logs to stdout
+   --env ENVAR01=value01                ← set environment variable for the build
+
+$ oc start-build --from-build=<build_name>    ← Re-run build
+
+$ oc cancel-build 'build1_name' 'build2_name' ... ← opt: use --state=$state to cancel only in given state
+
+$ oc delete bc 'BuildConfigName'
+</pre>
+
+ View Build Details
+<pre xxxsmall zoom>
+$ oc describe build 'build_name'
+→ build strategy
+→ output destination
+→ Digest of the image in the destination registry
+→ How the build was created 
+→ source revision (ID, author, committer, and message) (Source and Docker strategy) 
+
+$ oc logs -f build/'build_name'      ← stream logs 
+$ oc logs -f bc/'buildconfig_name'   ← stream logs of latest build
+$ oc logs --version=$V bc/$buildconfig_name ← dump logs of a given version build
+
+Log Verbosity:
+
+set  BUILD_LOGLEVEL ENV.VAR as part of the BuildConfig sourceStrategy(|dockerStrategy):
+sourceStrategy:
+...
+  env:
+    - name: "BUILD_LOGLEVEL"
+      value: "2"
+
+    * Level 0: output from containers running the assemble script and all encountered errors.
+      Level 1: basic info about executed process
+      Level 2: very detailed information about the executed process.
+      Level 3: very detailed information about the executed process plust listing of the archive contents
+      Level 4: Currently produces the same information as level 3.
+      Level 5: level 4 + docker push messages
+</pre>
   Example BuildConfig 
 <pre xxxsmall zoom>
 (Ussually a BuildConfig is automatically created during $ oc new-app ...)
@@ -555,11 +571,124 @@ NOTE: Image Stream tags must not necesarelly match docker registry images
 <td>
   <a href="https://access.redhat.com/documentation/en-us/openshift_container_platform/3.5/html-single/developer_guide/#deployments">Deployments</a>
 <pre xxxsmall zoom>
+OCP deployments are described through 3 API/objects:
+- DeploymentConfig: describing desired state
+- Replication controllers: point-in-time record of the state of a deployment configuration
+- 1+ pod/s: 
+
+Ex:
+  | kind: "DeploymentConfig"
+  | apiVersion: "v1"
+  | metadata:
+  |   name: "frontend"
+  | spec:
+  |   template: 1              ← pod template
+  |     metadata:
+  |       labels:
+  |         name: "frontend"
+  |     spec:
+  |       containers:
+  |         - name: "helloworld"
+  |           image: "openshift/origin-ruby-sample"
+  |           ports:
+  |             - containerPort: 8080
+  |               protocol: "TCP"
+  |   replicas: 5             ← 2
+  | 
+  |   triggers:
+  |     - type: "ConfigChange" 3 ← create new replication contro. any time pod-template changes
+  |     - type: "ImageChange"  4 ← create new replication contro. any time image        change
+  |       imageChangeParams:
+  |         automatic: true
+  |         containerNames:
+  |           - "helloworld"
+  |         from:
+  |           kind: "ImageStreamTag"
+  |           name: "origin-ruby-sample:latest"
+  |   strategy:                
+  |     type: "Rolling"        5 ← Recreate | Rolling* | Custom 
+  |   paused: false            6 ← disables triggers to allows multiple simultaneous changes 
+  |   revisionHistoryLimit: 2  7 ← limits the limit of old replication controllers in case of roll-back
+  |   minReadySeconds: 0       8 ← Minimum seconds to wait (after readiness succeed) for a pod
+  |                                to be considered available. The default value is 0. 
 </pre>
 
 
-</td>
+Basic Deployment Operations
+<pre xxxsmall zoom>
+$ oc deploy --latest dc/'name'  # Starts Deployment
 
+$ oc rollout history dc/'name'  # get basic info about all app's available revisions
+                                # It will also show details any currently running deployment
+                                # --revision=1: Filter by revision 1
+
+$ oc describe dc 'name'         # detailed info and its latest revision
+
+$ oc rollout undo dc/'name'     # rollback to the last successful deployed revision
+                                # --revision=N: Use rev.N instead of last succes.
+                                # triggers are automatically disabled to prevent
+                                # accidentally starting a new deployment process 
+                                # To re-enable the image change triggers:
+                                # $ oc set triggers dc/'name' --auto
+
+$ oc logs -f dc/'name'          # stream (-f) logs of latest revision
+                                # ERROR Case:  outputs log of process responsible for deploy.
+                                # "OK"  Case:  outputs log from app pod/s
+                                # --revision=1: See older revision
+
+$ oc scale dc 'name' --replicas=3 # manual scale
+$ oc autoscale ...?               # autoscale
+
+
+Modify (ENTRYPOINT) startup behavior:
+  | spec:
+  |   containers:
+  |     - name: <container_name>
+  |       image: 'image'
+  |       command:
+  |         - '<command>'
+  |       args:
+  |         - '<argument_1>'
+  |         - ...
+
+
+<b>Assigning Pod/Node affinity</b>
+PRE-SETUP
+- OCP Admin assigns labels to nodes
+
+NOTE: OCP cluster admins can set the default node selector for a project 
+      restricting pod deployments to specific nodes.
+      (For example region=east to limit geographical deployment)
+
+STEP 01: Use "po".spec.nodeSelector to filter by node labels
+apiVersion: v1
+kind: Pod
+spec:
+  nodeSelector:   
+    disktype: ssd
+...
+
+<b>Running a Pod with a Different Service Account</b>
+$ oc edit dc/<deployment_config>
+    spec:
+      securityContext: {}
+      serviceAccount: 'service_account'      ← edit
+      serviceAccountName: 'service_account'  ← edit
+
+</pre>
+
+Kubernetes Deployments Support
+<pre xxxsmall zoom>
+In the upstream Kubernetes project, a new first-class object 
+type called deployments was added in version 1.2. 
+This object type (referred to here as Kubernetes deployments
+for distinction) serves as a descendant of the deployment
+configuration object type.
+
+Support for Kubernetes deployments is available as a
+Technology Preview feature.
+</pre>
+</td>
 
 <td>
   <a TODO  href="https://access.redhat.com/documentation/en-us/openshift_container_platform/3.5/html-single/architecture/#replication-controllers">Replication Controllers</a>
@@ -628,40 +757,164 @@ in many enterprises) may not be managed by OpenShift Container Platform.
 .
 .
 </pre>
+</td>
 
 <td>
-<a href="https://access.redhat.com/documentation/en-us/openshift_container_platform/3.5/html-single/developer_guide/#dev-guide-templates">Templates<a/><br/>
+<a href="https://access.redhat.com/documentation/en-us/openshift_container_platform/3.5/html-single/developer_guide/#dev-guide-templates">Templates<a/>
 <pre xxxsmall zoom>
+"Normal" Flow:
+Create app → tune app → export to template → parameterize template
+
 Template = [BuildConfig set, ImageStream set, DeploymentConfig set, 
             Service set, Route set, secret set, ...?]
-. 
-. 
+
+Template : set of objects that can be parameterized and processed 
+           to produce any list of objects you have permission to create
+           (services, bc's, dc's).
+           - It  may also define a set of labels to apply to every
+             object defined in the template.
+
+- A project can contain  a library of templates
+
+$ oc create -f template.json (or yml)   # Upload template
+
+$ oc process \         ← process tpl to generate config.
+  -f tpl_file \
+  -l name=otherLabel \ ← labels are applied to every generated 
+
+  -p DB_USER=user01 \  ← set/override template param
+  -p DB_NAME=DDBB01 \    Alt: Use --param-file=postgres.env
+
+| oc create -f -       ← Pipe STDOUT to create the objects
+
+.parameters section:
+ - list of params that can be overriden
+
+$ oc process --parameters -f 'filename' ← list available params for local tpl
+$ oc process --parameters 'tpl_name'    ← list available params for uploaded tpl
+
+Example:
+$ oc process --parameters -n openshift rails-postgresql-example
+NAME                       DESCRIPTION                                                                                            GENERATOR    VALUE
+SOURCE_REPOSITORY_URL      The URL of the repository with your application source code                                                         https://github.com/openshift/rails-ex.git
+SOURCE_REPOSITORY_REF      Set this to a branch name/tag/... of repository if not using def.branch
+CONTEXT_DIR                Set this to relative path to your project if not root 
+APPLICATION_DOMAIN         The exposed hostname that will route to the Rails service                                                           rails-postgresql-example.openshiftapps.com
+GITHUB_WEBHOOK_SECRET      A secret string used to configure the GitHub webhook                                                   expression   [a-zA-Z0-9]{40}
+... 
+
+ pair you want to override. A parameter reference may appear in any text field inside the template items.
+
+$ oc edit template 'template' ← Edit already uploaded template
+
+$ oc get templates -n openshift
+
+Default OPC templates use a public github source repository containing the necessary app code.
+  To build your own version of the application, you must:
+  - Fork default repository (SOURCE_REPOSITORY_URL parameter)
+    and override SOURCE_REPOSITORY_URL
 </pre>
 
-Example templates<br/>
-(OCP template + app src)
+  Example templates
 <pre bgorange xxxsmall zoom>
+(OCP template + app src)
 CakePHP: PHP + MySQL 
-  <a class="link" href="https://github.com/openshift/origin/tree/master/examples/quickstarts/cakephp-mysql.json">Template definition</a>
-  <a class="link" href="https://github.com/openshift/cakephp-ex">Source repository</a>
+  <a href="https://github.com/openshift/origin/tree/master/examples/quickstarts/cakephp-mysql.json">Template definition</a>
+  <a href="https://github.com/openshift/cakephp-ex">Source repository</a>
 
 Django + PostgreSQL
-  <a class="link" href="https://github.com/openshift/origin/tree/master/examples/quickstarts/django-postgresql.json">Template definition</a>
-  <a class="link" href="https://github.com/openshift/django-ex">Source repository</a>
+  <a href="https://github.com/openshift/origin/tree/master/examples/quickstarts/django-postgresql.json">Template definition</a>
+  <a href="https://github.com/openshift/django-ex">Source repository</a>
 
 NodeJS + MongoDB database
-  <a class="link" href="https://github.com/openshift/origin/tree/master/examples/quickstarts/nodejs-mongodb.json">Template definition</a>
-  <a class="link" href="https://github.com/openshift/nodejs-ex">Source repository</a>
+  <a href="https://github.com/openshift/origin/tree/master/examples/quickstarts/nodejs-mongodb.json">Template definition</a>
+  <a href="https://github.com/openshift/nodejs-ex">Source repository</a>
 
 Rails: Ruby + PostgreSQL
-  <a class="link" href="https://github.com/openshift/origin/tree/master/examples/quickstarts/rails-postgresql.json">Template definition</a>
-  <a class="link" href="https://github.com/openshift/rails-ex">Source repository</a>
+  <a href="https://github.com/openshift/origin/tree/master/examples/quickstarts/rails-postgresql.json">Template definition</a>
+  <a href="https://github.com/openshift/rails-ex">Source repository</a>
+</pre>
+
+  Example template
+<pre xxxsmall zoom>
+kind: Template
+apiVersion: v1
+objects:                           ← main portion of the template: list of objects (BuildConfig, DeploymentConfig, ...)
+  - kind: BuildConfig
+    apiVersion: v1
+    metadata:
+      name: cakephp-mysql-example
+      annotations:
+        description: Defines how to build the application
+    spec:
+      source:
+        type: Git
+        git:
+          uri: "${SOURCE_REPOSITORY_URL}"
+          ref: "${SOURCE_REPOSITORY_REF}"
+        contextDir: "${CONTEXT_DIR}"
+  - kind: DeploymentConfig
+    apiVersion: v1
+    metadata:
+      name: frontend
+    spec:
+      replicas: "${{REPLICA_COUNT}}"
+parameters:
+  - name: SOURCE_REPOSITORY_URL
+    displayName: Source Repository URL
+    description: The URL of the repository with your application source code
+    value: https://github.com/openshift/cakephp-ex.git
+    required: true
+  - name: GITHUB_WEBHOOK_SECRET
+    description: A secret string used to configure the GitHub webhook
+    generate: expression
+    from: "[a-zA-Z0-9]{40}"
+  - name: REPLICA_COUNT
+    description: Number of replicas to run
+    value: "2"
+    required: true
+message: "... The GitHub webhook secret is ${GITHUB_WEBHOOK_SECRET} ..."
+</pre>
+
+  Template recommandations
+<pre xxxsmall zoom>
+Group related services together in the management console by adding the
+service.alpha.openshift.io/dependencies annotation to the Service object 
+in your template. 
+
+Example: Group Frontend and Database Services Together on the Management Console Overview
+
+ kind: "Template"
+ apiVersion: "v1"
+ objects:
+   - kind: "Service"
+     apiVersion: "v1"
+     metadata:
+       name: "frontend"
+       annotations:
+         "service.alpha.openshift.io/dependencies": "[{\"name\": \"database\", \"kind\": \"Service\"}]"
+ ...
+   - kind: "Service"
+     apiVersion: "v1"
+     metadata:
+       name: "database"
+</pre>
+
+   Create Template from Existing Objects
+<pre xxxsmall zoom>
+Rather than writing an entire template from scratch, you can export existing objects 
+from your project in template form, and then modify the template from there by adding
+parameters and other customizations. To export objects in a project in template form, run:
+
+$ oc export all --as-template='template_name' > 'template_filename'
+            ^^^
+            Alt choose amongst:
+            BuildConfig Build DeploymentConfig
+            ImageStream Pod  ReplicationController
+            Route       Service 
 </pre>
 </td>
 
-</td>
-
- 
 </tr>
 </table>
 <br/>
@@ -670,7 +923,7 @@ Rails: Ruby + PostgreSQL
 <tr>
 <td>
 Openshift Full Journey
-<pre xxxsmall zoom>
+<pre bgorange xxxsmall zoom>
 $ oc cluster up # once to install
 
 # Remember: A OCP project is a k8s namespace with extra meta-data (policies, users,...)
@@ -777,7 +1030,7 @@ default: &default       | default: &default
 
 </td>
 <td>
-  [Java App] Set Up Maven Mirror
+  Set Up Maven Mirror (Java Specific)
 <pre xxxsmall zoom>
  - Use it for non-public artifacts and as cache.
  - Many maven-aware images have a MAVEN_MIRROR_URL ENV.VAR that can be used to simplify the process
@@ -926,8 +1179,102 @@ $ oc delete project <project_name>
 <pre xxxsmall zoom>
 $ oc policy add-role-to-user edit demo-user
 </pre>
+</td>
+
+<td>
+  Service Accounts
+<pre xxxsmall zoom>
+12.1. Overview
+
+When a person uses the OpenShift Container Platform CLI or web console, their API token authenticates them to the OpenShift API. 
+
+For example Replication controllers make API calls to create or delete pods.
+
+Service accounts provide a flexible way to control API access without sharing a regular user's credentials.
+Service accounts belongs to a given project.
+
+Every service account has an associated user name that can be granted roles, just like a regular user.
+The user name is derived from its project and name:
+
+system:serviceaccount:<project>:<name>
+
+Ex: add the view role to the robot service account in the top-secret project:
+$ oc policy add-role-to-user view \
+  -z system:serviceaccount:top-secret:robot ← z flag (optional) can help avoiding typos/errors
 
 
+Every service account is also a member of two groups:
+
+system:serviceaccount             Includes all service accounts in the system. 
+system:serviceaccount:<project>   Includes all service accounts in the specified project. 
+
+Ex: 
+
+# allow all service accounts in all projects to view resources in the top-secret project:
+$ oc policy add-role-to-group view system:serviceaccount -n top-secret
+# allow all service accounts in the managers project to edit resources in the top-secret project:
+$ oc policy add-role-to-group edit system:serviceaccount:managers -n top-secret
+
+Default Service Accounts and Roles created in every project:
+
+Service       Account Usage
+
+builder       Used by build pods. It is given the system:image-builder role,
+              which allows pushing images to any image stream in the project 
+              using the internal Docker registry.
+
+deployer      Used by deployment pods and is given the system:deployer role,
+              which allows viewing and modifying replication controllers and
+              pods in the project.
+
+default       Used to run all other pods unless they specify a different 
+              service account.
+
+All service accounts in a project are given the system:image-puller role,
+which allows pulling images from any image stream in the project using the
+internal Docker registry.
+</pre>
+
+ Managing Service Accounts
+
+<pre xxxsmall zoom>
+
+$ oc get sa               ← list existing service accounts in the current project:
+NAME       SECRETS   AGE
+builder    2         2d
+default    2         2d
+deployer   2         2d
+
+
+$ oc create sa robot            ← Create new sa
+serviceaccount "robot" created    two secrets are automatically added to it:
+                                     - an API token
+                                     - credentials for the OC Registry
+                                  (Those two secrets do NOT expire but can be revoked)
+                                  Can be seen by describing the sa:
+                                  $ oc describe sa robot
+                                  → Name       : robot
+                                  → Namespace  : project1
+                                  → Labels     : <none>
+                                  → Annotations: <none>
+                                  → Image pull secrets: robot-dockercfg-qzbhb
+                                  → 
+                                  → Mountable secrets:  robot-token-f4khf
+                                  →                     robot-dockercfg-qzbhb
+                                  → 
+                                  → Tokens:             robot-token-f4khf
+                                  →                     robot-token-z8h44
+                                  
+
+(See manual to
+  - 12.5. Enabling Service Account Authentication
+  - 12.6. Managed Service Accounts
+  - 12.7. Infrastructure Service Accounts
+  - 12.8. Service Accounts and Secrets
+  - 12.9. Managing Allowed Secrets
+  - 12.10. Using a Service Account’s Credentials Inside a Container
+  - 12.11. Using a Service Account’s Credentials Externally )
+</pre>
 </td>
 
 
@@ -1079,18 +1426,17 @@ spec:                                   |spec:                         |  contai
    </ul>
 </td>
 <td>
-  <a href="https://access.redhat.com/documentation/en-us/openshift_container_platform/3.5/html-single/developer_guide/#dev-guide-volumes">Managing Volumes (Dev.Guide)</a>
+  <a TODO href="https://access.redhat.com/documentation/en-us/openshift_container_platform/3.5/html-single/developer_guide/#dev-guide-volumes">Managing Volumes (Dev.Guide)</a>
 <pre xxxsmall zoom>
-
-
-
+.
+.
+.
 </pre>
-
-
 </td>
+
 <td>
-  <b>OpenVSwitch</b>
-  (Software defined network)
+  <a href="....">OpenVSwitch</a>
+  (OCP SDN)
 <pre xxxsmall zoom>
 Types:
   ovs-subnet
@@ -1476,6 +1822,22 @@ _____________________________________
 <a TODO href="https://access.redhat.com/documentation/en-us/openshift_container_platform/3.5/html-single/architecture/#source-build">Source Strategy</a>
 <a TODO href="https://access.redhat.com/documentation/en-us/openshift_container_platform/3.5/html-single/architecture/#custom-build">Custom Strategy</a>
 <a TODO href="https://access.redhat.com/documentation/en-us/openshift_container_platform/3.5/html-single/architecture/#pipeline-build">Pipeline Build</a>
--->
+
+__________________________________
+Cluster
+    + -- Project1 (default cpu/memory limits for pods)
+    |        +-- App01
+    |               |
+    |               +-- BuildConfig  (strategy, ...)
+    |               |
+    |               +-- DeploymentConfig (cpu/memory limits, strategy,)
+    |                
+    |                
+    |                
+    |                
+    |                
+    | -- Project2
+___________________________________
+https://blog.openshift.com/local-development-self-signed-certificates/
 
 } -->

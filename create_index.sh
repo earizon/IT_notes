@@ -90,10 +90,7 @@ body {
   Dont' forget to have a look at the <a target="_new" href="demo.html"><b>demo</b></a> for a quick look a different possibilities.
 </p>
 
-
-<h2>What this <span style="font-family: SansForgetica">weird font</span> is all about?</h2>
-  Please, take a look at the <a href="http://www.sansforgetica.com.au/">SansForgetica website</a> for more info. 
-  <br/>
+<br/>
 
 <h3>Current list of (IT related) SPBs:</h3>
 <ul>

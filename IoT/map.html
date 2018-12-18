@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+   <meta charset="UTF-8">
+   <title>IoT map <!-- ignore --></title>
+<head>
+<script src="../map_v1.js"></script>
+<link rel="stylesheet" type="text/css" href="../map_v1.css" />
+</head>
+
+<body>
+
+<table>
+<tr>
+<td>
+<a href="https://azure.microsoft.com/en-us/services/azure-sphere/">Azure Sphere</a>
+
+<pre xxxsmall zoom>
+<a href="http://linuxgizmos.com/how-azure-sphere-ensures-iot-security-within-a-4mb-linux-stack/">How Azure Sphere ensures IoT security within a 4MB Linux stack(Sep 26, 2018)
+</a>
+ - Azure Sphere also includes a proprietary crypto/secure boot
+   stack called the Microsoft Pluton Security Subsystem, which runs 
+   on an MCU, as well an Azure Sphere Security Service, a turnkey
+   cloud service for secure device-to-device and device-to-cloud communication.
+
+ - The Azure Sphere MT3620 Development Kit features MediaTek’s MT3620,
+    a 500MHz Cortex-A7/Cortex-M4F hybrid SoC that runs the lightweight Azure
+    Sphere OS on a single -A7 core.
+
+- Custom Linux Security Module, which coordinates with Cortex-M4's 
+  proprietary Pluton security code using a mailbox-based protocol.
+
+- Azure Sphere OS sits on top of the MCU’s Pluton stack, a 
+  security stack based on Arm TrustZone. This is followed by the custom 
+  Linux kernel, which in turn is topped by a cloud services update
+  connectivity layer. 
+- The top level is for POSIX and real-time I/O app containers.
+
+- custom kernel based on mainline Linux 4.9. 
+
+MAJOR SHRINKAGE:
+- "avoid putting text into memory": lot on Execute-In-Place (XiP),
+   """XiP lets you take a flash region and map it into the
+      address space in read only, but also in a mode where 
+      you can execute it as code."""
+
+- """we tuned the kernel to make things modular so we could 
+     turn things off""" ... cache sizes and patched to tweak default sizes
+
+- turned off lot of the memory tracking options and things like kallsyms.
+- cut sysfs, which saved almost 1MB.
+- In the end, much of the kernel space was taken up by the
+  network stack and hardware drivers.
+
+SECURITY:
+- Stripped-down version of the Linux Security Model (LSM)
+  ""There's no shell or user account management,
+     which really isn’t relevant for an IoT device and 
+     there's no sophisticated job and process management."""
+
+- Fairfax also added fields that created an app identity
+  for every task. "Applications and kernel modules can
+  use these new fields for extended access control" 
+  - "Values are immutable — once set, they inherit by default."
+
+
+- Linux treats the entire GPIO infrastructure as a single resource
+  said Fairfax. "In the real world not everything connected to your 
+  chip has the same sensitivity. I might have one GPIO pin that
+  toggles an LED saying I'm connected to the network, which is
+  not super sensitive, but another GPIO might open the solenoid 
+  on my furnace to start gas flow, which is more worrisome."
+  To compensate, the team added access control to existing 
+  features like GPIO to provide more granular access control.
+
+- Each application has metadata in the file system that says:
+  "Here's how to run me and here’s what I need".
+  By default, all you get is compute and RAM — even network
+  access must be declared as part of the manifest. 
+
+File System:
+- ...They tried the read-only cramfs with XIP patches,
+  as well as writable file systems like ext2, jfffs, and yaffs,
+  but "they all took hundreds of kilobytes to initialize, or
+  about 1/16th of the total system memory available.":j
+  In the end, they ported the ultra-lightweight littlefs
+  from Arm’s Mbed OS to Linux as a VFS module.
+
+USER AND APPLICATION MODEL:
+- custom init that calls the application manager that
+  loads apps, configures their security environments, 
+  and launches them. 
+  """It's the only traditional process that runs on 
+    our system — everything else is part of an application."""
+
+- Azure Sphere applications are self describing and independently
+  updatable. In fact, "they're actually their own independent file systems,"
+  "They run isolated from each other and cannot access any resource from another app."
+
+- There are initially four pre-loaded system applications:
+  - network management
+  - updates
+  - command and control via USB
+  - hardware crypto and RNG acceleration
+- GDBServer is optional
+- OEMs can "add one or two apps that contain their own business logic"
+
+UPDATE POLICY:
+- "everything is OTA updatable and everything is renewable"
+- aiming for OTA security patch updates within 24 hours of public disclosure
+- Microsoft will manage all the OS updates, OEMs control their own app updates.
+
+- Future plans call for revisiting namespaces to create
+  "something like a container" and there’s a plan to
+  "reduce cap_sys_admin or make it more granular"
+
+- Also planned to explore integrating parts of
+  SELinux or AppArmor.
+</pre>
+
+
+</td>
+</tr>
+</table>
+
+</body>
+<!--
+TODO_START: {
+https://projects.eclipse.org/projects/iot.hono
+_______________________
+http://linuxgizmos.com/amazon-aims-an-aws-savvy-version-of-freertos-at-iot-gizmos/
+}
+_____________________
+https://www.ecomotion.org.il/
+
+EcoMotion is a dynamic community with over 600 start-ups (constantly growing) and 7,000 members in the Smart Transportation sector. Understanding startups do not grow in a void, we bring together entrepreneurs, academics, government officials, local & global automotive industry representatives, investors and much more; providing a support platform for knowledge-sharing, networking and collaboration.
+_____________________
+MQTT Protocol:
+(Works on top of TCP/IP, doesn't look to be widely used)
+MQTT stands for Message Queue Telemetry Transport, i.e., it is a transport protocol and does not define the message format at all - you will have to supply this
+
+""" La ventaja principal reside en lo ligero que es el protocolo MQTT, con cabeceras de menos de 2Bytes que hacen que sea idóneo para situaciones en las que las conexiones móviles no son estables como durante el transporte marítimo """
+Extracted from: https://medium.com/mqtt-buddy/mqtt-vs-http-which-one-is-the-best-for-iot-c868169b3105
+"""According to measurements in 3G networks, throughput of MQTT is 93 times faster than HTTP’s."""
+
+Besides, in comparison to HTTP, MQTT Protocol ensures high delivery guarantees. There are 3 levels of Quality of Services:
+
+- at most once: guarantees a best effort delivery.
+
+- at least once: guaranteed that a message will be delivered at least once. But the message can also be delivered more than once.
+
+- exactly once: guarantees that each message is received only once by the counterpart
+
+MQTT also provides users with options of Last will & Testament and Retained messages. The first means that in case of unexpected disconnection of a client all subscribed clients will get a message from a broker. Retained message means that a newly subscribed client will get an immediate status update.
+
+HTTP Protocol has none of these abilities.
+__________________________
+https://www.xataka.com/accesorios/qualcomm-nos-promete-redes-wifi-a-10-gbps-nuevos-estandares-wigig-no-todo-buenas-noticias
+___________________________
+http://www.moddable.com/moddable-zero.php
+Cheap(20$ per Unit) and easy way to add touch screen to IoT devices.
+
+"""All the components in Moddable Zero have been selected to keep the cost low. The two main components are the NodeMCU board and the touch screen. The NodeMCU module carries the ESP8266, Wi-Fi antenna, Flash ROM, FTDI chip, and USB connector. The touch screen is an unbranded QVGA (240 x 320) display with 16-bit pixels driven by an ILI9341 display controller and an XPT2046 resistive touch controller. We’d like to use a capacitive touch display, but the prices are still considerably higher. That said, our touch driver delivers reliable touch input with the XPT2046."""
+
+The Moddable SDK has four key features that make it realistic to build modern user experiences on Moddable Zero.
+
+    Tools. Getting images that look good onto an inexpensive microcontroller is challenging. The Moddable SDK contains tools that convert PNG, JPEG, BMP, and animated GIFs into formats that can be rendered efficiently and stored compact on the microcontroller. There are also tools to compress anti-aliased fonts for use on the device.
+
+    Graphics library. The Commodetto graphics library is used for all image loading and rendering in the Moddable SDK. It contains the Poco rendering engine which provides high speed rendering, with alpha channel support, blending, and clipping.
+
+    UI framework. The Piu user interface framework is a true object oriented user interface library that tightly integrates with Poco to provide cascading styles, timeline animations, text layout, localization, touch handling, and more.
+
+    JavaScript. Most developers find implementing a user interface in JavaScript to be faster and easier than using C or C++ as is common today on microcontrollers. Both Piu and Commodetto are designed to work efficiently with the XS JavaScript engine at the core of the Moddable SDK.
+_______________
+http://model.webofthings.io/
+https://iot.mozilla.org/wot/
+_______________
+http://blog.moddable.com/blog/das/
+_______________
+3.- IoT/ Smart and Connected Home
+  • Smart devices for 5G/LTE, Narrow-band, Sigfox, Zegbee,       |
+     Z-Wave, etc.                                                |
+
+
+-->
+
+</html>

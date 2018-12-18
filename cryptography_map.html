@@ -11,6 +11,7 @@
 
 <table style='width:100%'{>
 <tr {>
+  <th></th>
   <td colsep></td>
   <th colspan=4 header_delimit >Building blocks <a href="https://www.crypto101.io/">REF: Crypto101</a></th>
   <th colsep></th>
@@ -297,19 +298,7 @@ PlainText → |Symetric(KEY)| → CipherText
 CipherText + HASH(KEY+CipherText)
 </pre } >
   </li>
-  <li>Digital Signatures: Hashing + Pub.Key
-<pre>
-Signer                   
-Document → hash → sign 
 
-Verifier
-Document → hash → verify signature
-</pre>
-    <ul>
-    <li>Prove authenticity of sender</li>
-    <li>Used both in RSA and DSA</li>
-    </ul>
-  </li>
   <li><a href="https://stackoverflow.com/questions/10696223/reason-for-5381-number-in-djb-hash-function">Q: Why the "5381"/"33"/... constant in hash?</a><br/>
    A: """ 5381 is just a number that, in testing, resulted in 
       <a href="http://en.wikipedia.org/wiki/Collision_%28computer_science%29">fewer collisions</a> and <a href="http://en.wikipedia.org/wiki/Avalanche_effect">better avalanching</a>. You'll find "magic constants" in just about every hash algo."""
@@ -370,6 +359,37 @@ message
     protocol to ensure that old communications cannot be reused in replay attacks</b>. 
     They can also be useful as initialization vectors and in cryptographic hash functions.
  </li>
+</td>
+<td>
+  <b>Digital Signature</b>
+<pre xxxsmall zoom>
+kj
+                ─────────────                  ────────────── 
+               │ INPUT       │                │    OUTPUT     │
+───────────────┼─────────────┼                ┼───────────────┤
+SIGNING:       |Doc          | → Doc Hash ─┐  |               |
+               |             |            ─┼→ | Doc.Signature |
+               |signer prv.K | ────────────┘  |               |
+──────────────────────────────                ────────────────
+VERIFYING      | Doc         | → Doc Hash ─┐  |               |
+(Recursive     |signer pub.K | ────────────┼→ | TRUE | FALSE  |
+               |Doc.Signature| ────────────┘  |               |
+               
+
+- Proves authenticity of sender: 
+  No other but sender with priv.key could have created the signature
+
+- Non-repudiable: 
+  Sender can NOT neglect the signature since no other has access to
+  private key.
+
+- <b>Authenticity + Non-repudiability = "Legal value"
+  Signature probes the original intention of signer to sign/agree what
+  is reflected in the document</b>
+      
+- Used both in RSA and DSA
+  </li>
+</pre>
 </td>
 <td colsep>
 </td>
@@ -480,7 +500,7 @@ with root R, and that the signature checks out with that public key."""
   </ul>
   <hr xxxsmall />
   <a href="http://en.wikipedia.org/wiki/Threshold_cryptosystem">Threshold cryptosystem</a>
-   <ul xxxsmall zoom>
+   <ul TODO xxxsmall zoom>
    <li>In order to decrypt an encrypted message, several parties 
     (more than some threshold number) must cooperate in the decryption
     protocol. The message is encrypted using a public key and the
@@ -644,6 +664,7 @@ $ export SUBJ="${SUBJ}/ST=Aragon"
 $ export SUBJ="${SUBJ}/L=Zaragoza"
 $ export SUBJ="${SUBJ}/O=MyOrganization"
 $ export SUBJ="${SUBJ}/CN=${DOMAIN}"
+$ export NUM_OF_DAYS="999"
 </pre }>
   Creating a CSR (<code>-new</code>)
 <pre xxxsmall zoom { >
@@ -666,24 +687,60 @@ $ openssl req \
 -noout: prevents output of encoded version of request
 -text : Show human readable output (vs hex formated binary))
 </pre>
-  New Self-Signed-Certificate:<br/>
-  <ul xxxsmall zoom>
-  <li>
-      From new priv.key:
-<pre { >
-$ openssl req \
-    -nodes \
-    -newkey rsa:2048 -keyout ${DOMAIN}.key \
-    -x509 \    # <- self signed
-    -days ${DAYS_TO_EXPIRE} \
-    -out ${DOMAIN}.crt -subj "${SUBJ}"
+  Self-Signed-Cert working on Chrome/Java/...:
+<pre xxxsmall zoom>
+More info @:
+  - <a href="https://textslashplain.com/2017/03/10/chrome-deprecates-subject-cn-matching/">chrome deprecates subject cn matching</a>
+  - <a href="https://alexanderzeitler.com/articles/Fixing-Chrome-missing_subjectAltName-selfsigned-cert-openssl/">Fixing Fixing Chrome 58+ [missing_subjectAltName] with openssl&amp;S.S.certs</a>
+
+<a href="https://stackoverflow.com/questions/7580508/getting-chrome-to-accept-self-signed-localhost-certificate/43666288#43666288">REF:</a>
+<b>create_root_cert_and_key.sh</b>
+| openssl genrsa -out rootCA.key 2048
+| openssl req -x509 -new -nodes -key rootCA.key -sha256 -days $NUM_OF_DAYS -out rootCA.pem
+                    ^^^^ 
+                    replace with -in $DOMAIN.csr to reuse crt
+
+<b>create_certificate_for_domain.sh</b>
+| #!/usr/bin/env bash
+| 
+| if [ -z "$1" ]; then
+|   echo "Ussage: $0 myDomain.com                      # alt1     wildcard "
+|   echo "        $0 www.myDomain.com www.myDomain.com # alt2 non-wildcard "
+|   exit 1;
+| fi
+| if [ ! -f rootCA.pem ]; then echo 'no rootCA.pem detected. Please, run create_root_cert_and_key.sh first, and try again!' ; exit 1; fi
+| if [ ! -f v3.ext     ]; then echo 'Please download the "v3.ext" file and try again!' ;  exit; fi
+| 
+| if [ -f $DOMAIN.key ]; then KEY_OPT="-key" else KEY_OPT="-keyout" fi #  ← Create new Priv.Key || reuse existing one
+| 
+| cat << EOF > /tmp/__v3.ext
+| authorityKeyIdentifier=keyid,issuer
+| basicConstraints=CA:FALSE
+| keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
+| subjectAltName = @alt_names
+| 
+| [alt_names]
+| DNS.1 = $COMMON_NAME
+| EOF
+| 
+| openssl req -new -newkey rsa:2048 -sha256 -nodes $KEY_OPT $DOMAIN.key -subj "$SUBJECT" -out $DOMAIN.csr
+| openssl x509 -req -in $DOMAIN.csr -CA rootCA.pem -CAkey rootCA.key -CAcreateserial -out $DOMAIN.crt -days $NUM_OF_DAYS -sha256 -extfile /tmp/__v3.ext 
+
+<b>Ussage:</b>
+$ ./create_root_cert_and_key.sh                 ← # STEP 01: create root Auth cert
+   
+$ ./create_certificate_for_domain.sh \          ← # STEP 02
+   mysite.com                                     # Alt 1: create    wildcard cert for     mysite.com
+   www.mysite.com www.mysite.com                  # Alt 2: create no-wildcard cert for www.mysite.com
+
+Note: You will also new to import the new cert. authority. 
+For example on Mac:
+    Open Keychain Access
+    Choose "System" in the "Keychains" list
+    Choose "Certificates" in the "Category" list
+    Choose "File | Import Items..."
+    Browse to the file created above, "rootCA.pem", select it, and click "Open"
 </pre }>
-  Note 1: replace <code>-newkey rsa:.... -keyout...</code> by
-    <code>-key ${DOMAIN}.key</code>) to use already existing private key)<br/>
-  Note 2: replace <code>-new</code> by
-    <code>-in ${DOMAIN.csr}</code>) to use already existing CSR<br/>
-  </li>
-  </ul>
   Managing Private Keys
   <ul xxxsmall zoom>
   <li>CREATE A PRIVATE KEY:
@@ -1946,7 +2003,6 @@ ensure popular cryptographic algorithms behave as expected, including DSA, RSA, 
 
 </body>
 <!--
-
 TODO_start
 ______________
 DSS: Use SHA 160 bits
@@ -2216,6 +2272,31 @@ DMARC is a protocol that helps protect the integrity and authenticity of email. 
 _____________________
 https://security.stackexchange.com/questions/31772/what-elliptic-curves-are-supported-by-browsers
 https://crypto.stackexchange.com/questions/30503/tls-rsa-certificate-with-elliptic-curve-negotiation
+_____________________
+
+https://www.commoncriteriaportal.org
+ """The CC is the driving force for the widest available mutual recognition of secure IT products.
+  This web portal is available to support the information on the status of the CCRA, the CC and
+ the certification schemes, licensed laboratories, certified products and related information, news and events. """
+i
+https://www.commoncriteriaportal.org/cc/
+ Supporting Documents related to Smart Cards and similar devices
+Document number     Document title  Class
+2006-06-001     Rationale for Smart cards and similar devices   
+CCDB-2010-03-001    Guidance for smartcard evaluation v2.0  Guidance
+CCDB-2014-04-001    Security Architecture requirements (ADV_ARC) for smart cards and similar devices    Mandatory
+CCDB-2009-03-002    Application of CC to Integrated Circuits v3.0   Mandatory
+CCDB-2012-04-001    Composite product evaluation for Smartcards and similar devices     Mandatory
+CCDB-2007-09-02     ETR-template lite for composition   Guidance
+CCDB-2012-04-004    Security Architecture requirements (ADV_ARC) for smart cards and similar devices - Appendix 1   Guidance
+CCDB-2013-05-001    Minimum ITSEF Requirements for Security Evaluations of Smart cards and similar devices  Mandatory
+CCDB-2013-05-002    Application of Attack Potential to Smartcards   Mandatory
+___________________________
+Pairing primitive:
+https://www.math.uwaterloo.ca/~ajmeneze/publications/pairings.pdf
+___________________________
+Identity-Based Aggregate Signatures:
+https://link.springer.com/chapter/10.1007/11745853_17
 -->
 
 </html>

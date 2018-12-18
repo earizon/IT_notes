@@ -190,6 +190,7 @@ function highlightSearch() {
   var removeNodeList = document.querySelectorAll('*[textFound]');
   if (removeNodeList.length > 0) {
       for (idx in removeNodeList) {
+       if (!removeNodeList[idx].setAttribute) continue; // < TODO: Check why it works fine when loading, but fails when doing a second search
        removeNodeList[idx].setAttribute("textFound", "false"); 
     }
   }
@@ -216,6 +217,7 @@ function highlightSearch() {
            ? node.innerHTML 
            : node.innerHTML.replace(/\n/gm, '');
       var searchFound = htmlContent.match(query);
+      if (!node.setAttribute) continue;
       node.setAttribute("textFound", searchFound?"true":"false");
     }
   }

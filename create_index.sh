@@ -31,7 +31,7 @@ body {
   related topics toghether ("bird's eye view") but they fail to provide concrete information 
   about the topics themself</li>
 
-  <li><a target="_new" href="https://en.wikipedia.org/wiki/Cheat_sheet">Cheat-sheats</a> are great at providing 
+  <li><a target="_new" href="https://en.wikipedia.org/wiki/Cheat_sheet">Cheat-sheets</a> are great at providing 
     daily-usage for a given tool, procedure, task, ... but fail to provide the global mind-map picture
     in a bigger context</li>
 

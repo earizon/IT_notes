@@ -1295,11 +1295,269 @@ done
 </td>
 <td colsep></td>
 <td>
-  <a TODO href="https://en.wikipedia.org/wiki/Device_mapper">Device Mapper(dm)</a>
+<a href="https://en.wikipedia.org/wiki/Device_mapper">Device mapper</a>
+
+<pre xxxsmall zoom>
+device mapper: kernel framework mapping physical block devices onto 
+               higher-level virtual block devices.
+- It forms the foundation of the logical volume manager (LVM),
+  software RAIDs and dm-crypt disk encryption, 
+- Offers additional features such as file system snapshots.
+
+- Device mapper works by passing data from a virtual block device,
+  which is provided by the device mapper itself, to another block device.
+
+- Data can be also modified in transition, which is performed, for example,
+  in the case of device mapper providing disk encryption or simulation of
+  unreliable hardware behavior.
+
+
+<b>Features</b>
+- The device mapper "touch" various layers of the Linux kernel's storage stack.
+
+- Functions provided by the device mapper include linear, striped and error mappings,
+  as well as crypt and multipath targets.
+
+Exs.:
+  - Two disks may be concatenated into one logical volume with a pair
+    of linear mappings, one for each disk.
+
+  - crypt target encrypts the data passing through the specified device,
+    by using the Linux kernel's Crypto API.
+
+<b>available mapping targets</b>
+ - cache    : allows creation of hybrid volumes, by using solid-state drives 
+              (SSDs) as caches for hard disk drives (HDDs)
+ - crypt    : provides data encryption, by using kernel Crypto API
+ - delay    : delays reads and/or writes to different devices (testing)
+ - era      : behaves in a way similar to the linear target, while it keeps 
+              track of blocks that were written to within a user-defined
+              period of time
+ - error    : simulates I/O errors for all mapped blocks      (testing)
+ - flakey   : simulates periodic unreliable behaviour         (testing)
+ - linear   : maps a continuous range of blocks onto another block device
+ - mirror   : maps a mirrored logical device, while providing data redundancy
+ - multipath: supports the mapping of multipathed devices, through usage of 
+              their path groups
+ - raid     : offers an interface to Linux kernel's software RAID driver (md)
+ - snapshot : (and snapshot-origin) used for creation of LVM snapshots,
+              as part of the underlying copy-on-write scheme
+ - striped  : stripes the data across physical devices, with the number of
+              stripes and the striping chunk size as parameters
+ - thin     : allows creation of devices larger than the underlying 
+              physical device, physical space is allocated only when
+              written to
+ - zero     : equivalent of /dev/zero, all reads return blocks of zeros,
+              and writes are discarded
+
+<b>kernel features and projects are built on top</b>
+Note: user-space apps talk to the device mapper via <b>libdevmapper.so</b>
+  which in turn issues ioctls to the /dev/mapper/control device node.
+
+  - cryptsetup    : utility to setup disk encryption based on dm-crypt
+  - dm-crypt/LUKS : mapping target providing volume encryption
+  - dm-cache      : mapping target providing creation of hybrid volumes
+  - dm-integrity  : mapping target providing data integrity, either
+                    using checksumming or cryptographic verification,
+                    also used with LUKS
+  - dm-log-writes : mapping target that uses two devices, passing through
+                    the first device and logging the write operations performed
+                    to it on the second device
+  - dm-verity     : validates the data blocks contained in a file system
+                    against a list of cryptographic hash values, developed as 
+                    part of the Chromium OS project
+  - dmraid(8)     : provides access to "fake" RAID configurations via the 
+                    device mapper
+  - DM Multipath  : provides I/O failover and load-balancing of block devices
+                    within the Linux kernel
+  - Docker        : uses device mapper to create copy-on-write storage for
+                    software containers
+  - DRBD          : Distributed Replicated Block Device
+  - kpartx(8)     : utility called from hotplug upon device maps creation and deletion
+  - LVM2          : logical volume manager for the Linux kernel
+  - Linux version of TrueCrypt
+
+</pre>
+
+
 </td>
 <td>
-  <a TODO href="https://en.wikipedia.org/wiki/Logical_Volume_Manager_%28Linux%29">LVM</a><br/>
-  <spam xsmall>Device Mapper target providing logical volume management</a>
+  <b bgorange>Logical Volume Manager</b>
+<pre xxxsmall zoom>
+WARN: You need LVM tools installed. Mount alone is not able to mount LVM volumes
+
+<a href="https://opensource.com/article/18/11/manage-storage-lvm">REF</a>
+
+- LVM includes encryption features.
+<b orange>
+ physical drive 1                                     logical-volume 1
+ physical drive 2    N <-> 1    Volume-Group 1 <-> M  logical-volume 2
+ physical drive 3                                     logical-volume 3
+ ...                                                  ...
+                     ^^^^^^^                 ^^^^^^^ 
+                     The Vol.Group           The Vol.Group
+                     acts as a logical       allows to dynamically
+                     pool of physical        create logical volumes
+                     devices                 isolated from the physical
+                                             resources
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 
+                     The Volume-Group acts as a relation
+                     N-to-M between physical resources
+                     and logical partitions
+</b>
+
+Quick Sumary:
+    CREATE       → ADD Physical drives → Add logical-volumes
+    VOLUME-GROUP   to VOLUME-GROUP       to VOLUME-GROUP.
+                                         ^^^^^^^^^^^^^^^^^^
+                                         logical-volumes can map to:
+                                         - company deparments
+                                         - test/pre/pro enviroment
+                                         - ...
+<b>PRE-SETUP:</b>
+Format a <b brown>physical drive /dev/sdx</b> to be included on the pool
+# dd if=/dev/zero of=<b orange>/dev/sdx</b> count=8196
+# parted /dev/sdx print | grep Disk
+Disk /dev/sdx: 100GB
+# parted /dev/sdx mklabel gpt
+# parted /dev/sdx mkpart primary 1s 100%
+
+Note: Volume-group is synonym of "physical-storage pool"
+
+<b>STEP 1: Create an LVM pool (and add a first physical disk to it)</b>
+NOTE: Usually, you don't have to set up LVM at all since most distros 
+     defaults to creating a virtual "pool" of storage and adding your
+     machine's hard drive(s) to that pool.
+
+# vgcreate volgroup01 /dev/sdx1  # ← create new storage pool and
+                                      aggregate disk-partition 
+
+
+<b>STEP 2: Create logical-volumes</b>
+# lvcreate volgroup01 49G --name vol0  # ← create logical-volume /dev/volgroup01/vol0
+# lvcreate volgroup01 49G --name vol1  # ← create logical-volume /dev/volgroup01/vol1
+
+
+<b>STEP 4: Switch volume-group online</b>
+# vgchange --activate y volgroup01
+
+<b>STEP 5: make the file systems</b>
+# mkfs.ext4 -L finance    /dev/volgroup01/vol0
+# mkfs.ext4 -L production /dev/volgroup01/vol1
+            ^^^^^^^^^^^^^ 
+            label the drive
+            In this case a logical-volume is used by department
+
+<b>STEP 6: Mount the volumes</b>
+# mount /dev/volgroup01/vol0 /mnt/vol0
+# mount /dev/volgroup01/vol1 /mnt/vol1
+
+<b>STEP 7: Adding space to the volume-group</b>
+# part /dev/sdy mkpart primary 1s 100%  # ← create partition on new physical-disk
+# vgextend volgroup01 /dev/sdy1         # ← aggregate to volgroup01 
+# lvextend -L +49G /dev/volgroup01/vol0 # ← Extend the already-existing logical-volume
+</pre>
+
+Display LVM storage layout
+<pre xxxsmall zoom>
+<b>vgdisplay</b> shows info about volume groups: 
+# vgdisplay
+  --- Volume group ---
+  VG Name               volgroup01
+  System ID            
+  Format                lvm2
+  Metadata Areas        1
+  Metadata Sequence No  4
+  VG Access             read/write
+  VG Status             resizable
+  MAX LV                0
+  Cur LV                3
+  Open LV               3
+  Max PV                0
+  Cur PV                1
+  Act PV                1
+  VG Size               <237.47 GiB
+  PE Size               4.00 MiB
+  Total PE              60792
+  Alloc PE / Size       60792 / <237.47 GiB
+  Free  PE / Size       0 / 0  
+  VG UUID               j5RlhN-Co4Q-7d99-eM3K-G77R-eDJO-nMR9Yg
+
+<b>lvdisplay</b> shows info about logical volumes: 
+
+# lvdisplay
+  --- Logical volume ---
+  LV Path                /dev/volgroup01/finance
+  LV Name                finance
+  VG Name                volgroup01
+  LV UUID                qPgRhr-s0rS-YJHK-0Cl3-5MME-87OJ-vjjYRT
+  LV Write Access        read/write
+  LV Creation host, time localhost, 2018-12-16 07:31:01 +1300
+  LV Status              available
+  # open                 1
+  LV Size                149.68 GiB
+  Current LE             46511
+  Segments               1
+  Allocation             inherit
+  Read ahead sectors     auto
+  - currently set to     256
+  Block device           253:3
+
+[...]
+</pre>
+
+Mounting in rescue-mode
+<pre xxxsmall zoom>
+PRE-SETUP:
+- the LVM toolchain must ready for use in the rescue-mode environment.
+   (/usr/sbin directory mounted or similar)
+
+STEPS:
+# vgchange --activate y
+(output will be similar to)
+→ 2 logical volume(s) in volume group "volgroup01" now active
+# mkdir /mnt/finance
+# mount /dev/volgroup01/finance /mnt/finance
+</pre>
+
+LVM + LUKS encryption
+<pre xxxsmall zoom>
+- LUKS stands for Linux-Unified-Key-Setup encryption toolchain.
+- LVM  integrates nicely with disk encryption
+
+LUKS encrypts full-partitions (vs files  in GnuPG, ...)
+
+NOTICE/WARN: LUKS will prompts for a password during boot.
+             (server-autoboot will fail)
+
+
+<b>STEP 1: format the partition with the "cryptsetup" command</b>
+# cryptsetup luksFormat /dev/sdx1
+→ LUKS will warn that it's going to erase your drive: (Accept to continue)
+→ A prompt will ask for a passphrase: (Enter it to continue)
+
+The partition is encrypted at this point but no filesystem is in yet:
+- In order to partition it you must un-lock it.
+
+# cryptsetup luksOpen /dev/sdx1 mySafeDrive # ← Unlock before formating it.
+                                ^^^^^^^^^^^ 
+                                human-friendly name
+                                will create a symlink
+                                /dev/mapper/mySafeDrive
+                                to auto-generated designator
+
+→ LUKS will ask for the passphrase to un-lock the drive: (Enter it to continue)
+
+- Check the volume is "OK":
+# ls -ld /dev/mapper/mySafeDrive
+→ lrwxrwxrwx. 1 root root 7 Oct 24 03:58 /dev/mapper/mySafeDrive -> ../dm-4
+
+<b>STEP 2: format with standard-filesystem (ext4,...)</b>
+# mkfs.ext4 -o Linux -L mySafeExt4Drive /dev/mapper/mySafeDrive
+
+<b>STEP 3: Mount the unit</b>
+# mount /dev/mapper/mySafeExt4Drive /mnt/hd
+</pre>
 </td>
 <td colsep></td>
 <td TODO>
@@ -1817,7 +2075,35 @@ cpu
 <td>
 hardware issues
 </td>
-
 _________________________
 https://www.maketecheasier.com/use-zswap-improve-old-linux-performance/
+_________________________
+__________________________
+https://asciinema.org/
+Record and share your terminal sessions, the right way.
+Forget screen recording apps and blurry video. Enjoy a lightweight, purely text-based approach to terminal recording. 
+
+_______________________
+<!-- TODO: https://opensource.com/article/18/11/partition-format-drive-linux
+
+________________
+[root@localhost earizon]# lsblk
+NAME            MAJ:MIN RM   SIZE RO TYPE MOUNTPOINT
+sda               8:0    0 223.6G  0 disk
+├─sda1            8:1    0     1G  0 part /boot
+└─sda2            8:2    0 222.6G  0 part
+  ├─fedora-root 253:0    0    50G  0 lvm  /
+  ├─fedora-swap 253:1    0   7.8G  0 lvm  [SWAP]
+  └─fedora-home 253:2    0 164.8G  0 lvm  /home
+sdb               8:16   0 931.5G  0 disk
+└─sdb1            8:17   0 931.5G  0 part /mount/disk01
+sdd               8:48   0 465.7G  0 disk
+└─sdd1            8:49   0 465.7G  0 part
+mmcblk0         179:0    0  29.7G  0 disk
+└─mmcblk0p1     179:1    0  29.7G  0 part /run/media/myUser/C852-6915
+
+__________________
+https://www.dfrws.org/sites/default/files/session-files/paper-an_analysis_of_ext4_for_digital_forensics.pdf
+
+
 </html>

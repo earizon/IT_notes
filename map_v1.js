@@ -113,7 +113,7 @@ function onPageLoaded() {
    + '  <input id="caseSensitive"  type="checkbox"><code xsmall>Case-match</code>'
    + '</form>'
    + '<a href="'+UP+'">FOLDER UP</a>&nbsp;'
-   + '<b id="initialMessage" brown small>TIP:double-click/long-press cells to zoom!!</b>'
+   + '<b id="initialMessage" green small>&nbsp;&nbsp;&nbsp;TIP &gt;&gt; double-click or long-press cells to zoom &lt;&lt;</b><hr xxxsmall/>'
    + '<div id="zoomDiv"></div>'
    + '<div style="position:fixed; right:0.3%; top:0; width:auto;">'
    + '<b style="font-size:1.5rem" orange><a onclick="onZoomOut()">[-A]</a></b>'

@@ -69,19 +69,23 @@ body {
   <a target="_new" href="https://en.wikipedia.org/wiki/Sequence_diagram">Sequence diagrams</a>, 
   contacts, resources, links, ...<br/>
   
-  The final purpose is to provide a mechanism to have <b>as much information as possible on a set of topics no
-  more than one click away</b> avoiding "Google searchs", "randomnly located cheat-seats/emails/..." for daily tasks.<br/>
+  The final purpose is to provide a mechanism to have <b>as much information as possible on a set of related topics 
+  no more than one click away</b> avoiding random searchs in Google/cheat-seats/emails/blogs/crystal balls/... <br/>
 
   Indirectly SPB promote "best-pattern" approach to documentation by:
   <ul>
   <li>Putting related info close to each other. Actually a single html text file will be used.</li>
   <li>Don't repeat same info twice. This is easier once the previously spread information is located in a single file</li>
   <li>Don't keep notes spread(hidden) amongst hundred of emails</li>
-  <li>Don't hide important info down a million of menus and child pages. People will not search for important 
-     information until they are aware that such important information exists, so better place important information
-     in the main page</li>
+  <li>Don't hide important information inside random menus paths and child pages:<br/>
+      The risk of the <a href="https://en.wikipedia.org/wiki/There_are_known_knowns">Unknown Unknowns</a> can
+      also be applied to documentation:<br/><br/>
+      People will not search for important information until they are aware that such important information
+      exists, so better place important information right into the main page.<br/>
+  </li>
   </ul>
 <p>
+
 <h2>SPB HOW-TO:</h2>
   To create your single-page-book project all that needed is to reuse 
   the <a target="_new" href="https://github.com/earizon/IT_notes/blob/master/map_v1.js">(minimum) javascript</a>,
@@ -89,16 +93,47 @@ body {
   and the <a target="_new" href="./map_template.html">html template</a> plus some minimum experience with HTML document writing.<br/>
   Dont' forget to have a look at the <a target="_new" href="demo.html"><b>demo</b></a> for a quick look a different possibilities.
 </p>
+<br/>
+
+<h2>What the SPB IS NOT:</h2>
+  <ul>
+  <li>SPB is NOT a Content Management System or any other type of software. <br/>
+      There is a minimum Javascript and CSS to help displaying content in a (very) pragmatical way.</li>
+  <li>SPB is NOT about "pretty" formatting. In fact the SPB is "allergic" to pretty-formatting following
+      the next experimental fact:<br/>
+      - "pretty-to-see" documentation is "uggly-to-work-with" documentation. Just some links
+        supporting this point-of-view focusing on the well-known "pretty-to-see" PowerPoint:
+        <p style="font-family: monospace;">
+        <ol>
+        <li> <a target='_new' href="https://www.theguardian.com/commentisfree/2015/sep/23/powerpoint-thought-students-bullet-points-information">
+             How PowerPoint is killing critical thought</a>
+        </li>
+        <li> <a target='_new' href="https://www.forbes.com/sites/paularmstrongtech/2017/07/05/stop-using-powerpoint-harvard-university-says-its-damaging-your-brand-and-your-company/#3d974df03e65">
+             Harvard University warns PowerPoint is damaging your brand And your company</a> 
+        </li>
+        <li> <a target='_new' href="https://www.influenceology.com/10x-business-letter/presentation_skills_training/why-you-should-not-use-powerpoint-slides/">Stop Using Slides</a></li>
+        <li> <a target='_new' href="https://www.businessinsider.com/jeff-bezos-email-against-powerpoint-presentations-2015-7?IR=T">
+             A 2004 email from Jeff Bezos explains why PowerPoint presentations aren't allowed at Amazon</a>
+        </li>
+        </ol>
+        </p>
+   </li>
+  </ul>
 
 <br/>
 
-<h3>Current list of (IT related) SPBs:</h3>
+<h3>IT related Single Page Books:</h3>
 <ul>
-<li>Next follow a list of example single-page-books I created while working on different topics.<br/>
- quality varies from "intention to create something" to based on the time spent and my own experience on each topic.<br/>
- Contributions welcome! ;)</li>
-<li>Beta state means that related information is in place, but things are still missing/non-validated.</li>
-<li>Version 1.0 or higher means that content on the  be used as a reference book, mind map or quick-sheet in daily work</li> 
+<li>Next follow a list of example single-page-books I've created while working on different topics.<br/>
+ The quality varies from "intention to create something" to "useful for daily work" based on the time
+ spent and my own experience on each topic.
+  <ol>
+  <li>alpha or draft state means just the intention to do some work in the future.</li>
+  <li>Beta state means that related information is in place, but information is still missing or non-validated.</li>
+  <li>Version 1.0 or higher means that content on the  be used as a reference book, mind map or quick-sheet
+      (usually saving Google Searchs )</li> 
+  </ol>
+</li>
 </ul>
 
 <ul style="font-family:monospace">
@@ -114,13 +149,6 @@ fi
 done
 cat << EOF >>index.html
 </ul>
-
-<!--
-<h3>Acknowledements</h3>
-  I would like to thanks the Mozilla, WebKit and the w3c guys for the continuous support of the web, my current employer, Everis, for providing a confortable space to work,
-  Bram Moolenaar for the lovely Vim editor, Clement Gonzalez for teaching me how to use CSS seriously, 
-  
--->
 
 <p>
 <h3>Pull-request and bug-reporting contributions welcome!</h3>

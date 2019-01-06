@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
    <meta charset="UTF-8">
-   <title>Linux Administration Map (beta)</title>
+   <title>Linux Administration Map (v1.0)</title>
 <head>
 <script src="/IT_notes/map_v1.js"></script>
 <link rel="stylesheet" type="text/css" href="/IT_notes/map_v1.css" />
@@ -12,13 +12,194 @@
 <a href="https://linux.die.net/man/">[Man Pages]</a>,
 <a href="https://linux.die.net/Linux-CLI/">[Command-line Tools  Summary]</a>,
 <a href="https://en.wikipedia.org/wiki/Linux_Standard_Base">[Linux Standard Base]</a>,
-<a href="http://www.tldp.org/LDP/Linux-Filesystem-Hierarchy/html/etc.html">[/etc config directory]</a>
 (<a href="www.tldp.org/LDP/Linux-Filesystem-Hierarchy">Full FS Hierarchy</a>)</li>
 </span>
 <hr xxxsmall/>
 <table style='width:100%'>
 <tbody>
 <tr>
+<td colsep>Basics</td>
+<td>
+  <span>Linux Basics</span>
+<pre xxxsmall zoom>
+- Linux itself is just an OS kernel in charge of sharing the (limited) hardware
+  resources amongst potentially many running tasks and users working simultaneously
+  on the systems. More preciselly, the main tasks in charge of kernel control are:
+
+  - Orchestate(schedule) how much time each running-task is allowed to
+    run on each CPU before such task is put on stand-by to let
+    another task proffit from such CPU. 
+
+  - Assign which process has access to the (limited)
+    RAM memory on the system and move data on RAM used by stand-by processes
+    to secondory storage (disks) in case of RAM space shortage. 
+
+  - Provide support for users and permissions, so that different users will
+    be able to isolate and protect its data from other users.
+
+  Kernel control is transparent to running tasks or processes, so user-space task
+  will run with the perception that they run alone in its own CPU and with
+  all available memory for themself. When the kernel puts them on-hold 
+  such tasks will be freezed and once restarted it will NOT notice any 
+  change to the state before being put on-hold. Only the kernel is aware of
+  the complex trickeries needed to make tasks run in parallel and isolated
+  from each other. 
+
+  Other important tasks offered by the kernel are:
+  
+ - Abstract the running hardware into standarized interfaces, so 
+   user application will not need to work differently with different hardware.
+   For example an application will ask the kernel to write data to the disk and
+   the kernel will take care of the internal difference between the miriads
+   of diferent disk hardware technologies.
+
+ - Provide an easy-to-use file-system to work with data on disk, so that apps
+   can orginized data in terms of files and directories, instead of just
+   bunch-of-bytes on the hard-disk.
+
+ - Provide network communication and support for standard network protocols
+   like TCP/UP, bluetooth, WiFI, ... so that each app does not need to reimplement
+   them.
+
+ - Provide mechanisms to allow two running tasks to communicate with each other
+   at will.
+  
+<b>Kernel mode vs User mode</b>
+- When the CPU is executing kernel code it's running with elevated privileges.
+  The software has full control of the hardware and can do "anything" on 
+  the system and access all RAM, disk, network resources at will.
+
+- Standard applications will run in user-mode and will have limited access
+  to only the RAM memory assigned by the kernel. They will not be able to
+  inspect the memory of other processes running on the system. In fact they
+  are not aware of such memory due to the many trickeries done by the kernel
+  to isolate each task.
+  
+</pre>
+
+  <span>Process model</span>
+<pre xxxsmall zoom>
+- Linux follows a parent-child process model.
+
+- Once loaded and initialized during the boot process,
+  the kernel will launch an initial user-space process in 
+  charge of reading system configuration and (re)start 
+  all other user-space processes that builds a running system.
+
+- Normally this initial process is systemd in modern 
+  systems (or initd in older or embedded ones).
+
+- Each process can optionally launch new children processes
+  up to the resource limits established on the running system.
+
+- By default a child-process inherits the same user (and so, permissions)
+  than its parent process. Some processes like the remote
+  login "sshd" service (ssh is an acronymn for secure-shell) will
+  change the child-process user/permission to a less privileged
+  account.
+
+- A simplified process-tree of a running-system will look like:
+ 
+    PROCESS                                       USER    PROCESS   PARENT-ID
+                                                         UNIQUE-ID  
+    systemd·······································root       1         0
+          └─crond·································root      23         1
+          |-cupsd·································root      70         1<span orange>
+          |-rtkit-daemon··························rtkit    100         1</span>
+          |-sshd··································root      10         1<span green>
+          |    └─sshd·····························mike     300        10
+          |         └─bash························mike     301       300
+          |              └─firefox················mike     302       301</span><span brown>
+          |-systemd·······························alice    705         1
+          |       └─at-spi-bus-laun···············alice    706       705
+          |       |···············└─dbus-daemon···alice    707       706
+          |       |-gnome-terminal················alice    883       705
+          |                       ─bash-+·········alice    884       883
+          |                             └─top·····alice    885       884</span>
+          |-systemd-journal·······················root      10         1
+          ...                                             
+    Notice for example that the same process "bash" runs as a user or another
+    (<span green>mike</span> or <span brown>alice</span>) depending on the "path"
+    followed until the process is executed.
+ 
+    - The initial sshd running as root user, will span a new sshd child process
+      with restricted <span green>"mike"</span> privileges/permissions once the user
+      has introduced its correct user and password in the remote ssh session, and
+      from there on, all children will just be able to run with <span green>"mike"</span>
+      privileges/permissions.
+
+    - Similarly the root systemd process will span a new child process will
+      restricted <span brown>"alice"</span> privileges/permissions once logged in
+      the local console, and from there on, all children will just be able to 
+      run with <span brown>"alice"</span> privileges/permissions.
+
+</pre>
+  <span>executable file vs in-memory process
+<pre xxxsmall zoom>
+- Applications are stored on disk drives as files or "bunch-of-instructions and initial data".
+
+- When the kernel executes and application it will read the executable file, load
+  the "bunch-of-instructions" into RAM memory, setup the initial data, assign 
+  restricted privileges and finally allow the program-in-memory to be executed by
+  any free-available CPU on the system.
+</pre>
+  <span>Basic file permissions:</span>
+<pre xxxsmall zoom>
+Standar file permissions allows to assign different access permissions to
+the owner of the file, the group owner of the file and anyone else.
+
+$ ls -l myFileOfInterest.db
+
+-rw?-r- ---? john accountDepartment ....  myFileOfInterest.db
+└┼┘│└┼┘ └┼┘│  └┬─┘ └──────┬────────┘                                                     
+ │ │ │   │ │   │          │
+ │ │ │   │ │   │          └─ group owner
+ │ │ │   │ │   └──────────── user  owner
+ │ │ │   │ │                            
+ │ │ │   │ └──────────────── sticky bit (hidden if not set)
+ │ │ │   │                                                 
+ │ │ │   └────────────────── permissions allowed to others: read           access
+ │ │ │                                                                           
+ │ │ └────────────────────── permissions allowed to group : read           access
+ │ │                                                                             
+ │ └──────────────────────── SUID bit   (hidden if not set)
+ │                                                         
+ └────────────────────────── permissions allowed to user  : read&amp;write access 
+
+Previous line can be read as:
+"""Allow read and write permissions to file-owner "john",
+       read permissions to group-owner "accountDepartment"
+   and no   permissions to anyone-else """
+
+            ┌──────┬─────────────────────────────┬─────────────────────────────┐
+Permissions │Symbol│      FILE                   │     DIRECTORY               │ 
+┌───────────┼──────┼─────────────────────────────┼─────────────────────────────┤
+│       read│  r   │ Allows to read the content  │ Allows to list the files in │
+│           │      │ of the file                 │ and file-attributes in the  │
+│           │      │                             │ directory                   │
+├───────────┼──────┼─────────────────────────────┼─────────────────────────────┤
+│      write│  w   │ Allows to write, modify,    │ Allows to add and delete    │
+│           │      │ append or delete the file   │ files into the directory and│
+│           │      │ content.                    │ modify metadata (access     │
+│           │      │                             │ or modification time, ...)  │
+├───────────┼──────┼─────────────────────────────┼─────────────────────────────┤
+│    execute│  x   │ Allows to execute the       │ Allows to enter into the    │
+│           │      │ program or script           │ directory                   │
+├───────────┼──────┼─────────────────────────────┴─────────────────────────────┤
+│    sticky │  T   │ Only the person that created the file/dir. can change it, │
+│           │      │ even if other people have write permissions to file/dir.  │
+│           │      │ turn on: $ chmod +t someFileOrDir                         │
+│           │      │ Normal /tmp (temporary user files) is an sticky directory │
+├───────────┼──────┼───────────────────────────────────────────────────────────┤
+│       suid│  S   │ Allow SUID/SGID (switch user/group ID). When executed it  │
+│           │      │ it will be executed with creator/group of file, instead of│
+│           │      │ current user.                                             │
+│           │      │ turn on: $ chmod +s someFileOrDir                         │
+└───────────┴──────┴───────────────────────────────────────────────────────────┘
+gtg
+</pre>
+</td>
+<td colsep></td>
 <td colsep>User&nbsp;Mng</td>
 <td>
   Create new user
@@ -149,6 +330,31 @@ $ nice -20 make ← Sets make priority to -20
                    20 is the minimum priority.
 $ renice 10 "pid" ← Changes priority of running process.
 </pre>
+  <span xsmall>su/sudo: Switch user</span>
+<pre xxxsmall zoom>
+- su and sudo are mostly used to allow temporal root/superuser access
+  to standard users for administrative tasks like installing new applications,
+  re-configuring the network, ...
+
+- sudo is ussually considered safer than su. Ubuntu was the first
+  distribution to allow sudo-only. Others distributions are also
+  changing to sudo-only as time passes.
+
+- sudo offers also a plugable architecture not offered by su
+  to provide different authentication and audit mechanisms. 
+  REF:
+  - <a href="https://www.sudo.ws/">Sudo Home page</a> 
+  - <a href="https://www.sudo.ws/plugins.html">sudo Third-party plugins</a>.
+
+<a href="https://linux.die.net/man/1/su">man 1 su</a>
+<a href="https://linux.die.net/man/8/sudo">man 8 sudo</a>
+Ex. ussage:
+$ sudo vim /etc/passwd # edit /etc/passwd as root
+ $ su  # Change to root user
+ #
+
+</pre>
+
 </td>
 <td colsep></td>
 <td colsep>Network</td>
@@ -156,46 +362,46 @@ $ renice 10 "pid" ← Changes priority of running process.
   basic network audit/control
 <pre xxxsmall zoom>
 <b>Socket Statistics (ss)</b>
-USAGE EXAMPLES
-$ sudo ss -t -a -p
-        Display all (-a) TCP (-t) sockets and processes using them (-p)
+<a href="https://linux.die.net/man/8/ss">man 8 ss</a>  (ss: socket statistics) 
+
+ss USAGE EXAMPLES
+
+<b>$ sudo ss -ntlp</b>  
+^^^^^^^^^^^^^^^
+Display TCP (-t) ports listening (-l) for remote
+request and show also the process that
+opened the port (-p): -p requires sudo-permissions
+-n: Do not reverse-resolve IPs to DNS names
+(example output)
+→ State      Recv-Q Send-Q  Local Address:Port   Peer Address:Port
+→ LISTEN     0      128     *:80                 *:*                users:(("lighttpd",pid=23515,fd=4))
+→ LISTEN     0      128     *:22                 *:*                users:(("sshd",pid=571,fd=3))
+
+<b>$ sudo ss -t -a -p </b>
+^^^^^^^^^^^^^^^^^^ 
+Display all (-a) non-listening (no -l provided)
+TCP (-t) sockets and processes using them (-p)
 → STATE       ... ADDRESS:PORT              PEER ADDRESS:PORT                
 → ESTABLISHED ... 127.0.0.1:postgres        127.0.0.1:46404        users:(("postgres",pid=64032,fd=11))
 → ESTABLISHED ... 10.0.0.5:idonix-metanet   81.61.178.46:51003     users:(("sshd",pid=61411,fd=3),("sshd",pid=61407,fd=3))
 → ESTABLISHED ... 127.0.0.1:37200           127.0.0.1:50004        users:(("sshd",pid=61411,fd=10))
 → ESTABLISHED ... 127.0.0.1:postgres        127.0.0.1:45086        users:(("postgres",pid=43553,fd=11))
 → TIME_WAIT   ...
-$ ss -o state established '( dport = :ssh or sport = :ssh )'
-        Display all established ssh connections.
-$ ss -x src /tmp/.X11-unix/*
-        Find all local processes connected to X server.
-$ ss -o state fin-wait-2 '( sport =  :http  or  sport  =  :https  )'  dst 193.233.7/24
-        List  all  the tcp sockets in state FIN-WAIT-1 for our apache to
-        network 193.233.7/24 and look at their timers.
 
-    ss man summary
-    (MAIN) OPTIONS
-    -n: Do not try to resolve service names.
-    -a: Display both listening and non-listening  (for  TCP  this  means
-        established connections) sockets
-    -l: Display only listening sockets (omitted by default)
-    -e: Show detailed extended socket information
-    <b>-m: Show socket memory usage</b>
-    <b blue>-p: Show process using socket</b>
-    -i: Show internal TCP information.
-    -K: <b TODO>Attempts to forcibly close sockets</b>. This option displays sockets
-        that are successfully closed and silently skips sockets that the
-        kernel does not support closing. IPv4/6 sockets only
-    <b>-s: Print summary statistics, useful when
-        amount of sockets is  so  huge  that  parsing  /proc/net/tcp  is
-        painful.</b>
-    -N NSNAME: Switch to the specified network namespace name.
-    -b: Show socket BPF filters (only admins).
-    -0: Display PACKET sockets   -w: Display RAW sockets
-    <b blue>-t: Display TCP sockets</b>      -x: Display Unix domain sockets
-    <b>-u: Display UDP sockets</b>      -S: Display SCTP sockets.
-    -d: Display DCCP sockets     --vsock: Display vsock sockets
-    ...
+<b>$ ss -o state established '( dport = :ssh or sport = :ssh )'</b>
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Display all established ssh connections.
+
+<b>$ ss -x src /tmp/.X11-unix/*</b>
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Find all local processes connected to X server.
+
+
+<b>$ ss -o state fin-wait-2 '( sport =  :http  or  sport  =  :https  )'  dst 193.233.7/24</b>
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+List  all  the tcp sockets in state FIN-WAIT-1 for our apache to
+network 193.233.7/24 and look at their timers.
+
 
 <b>DISPLAY IP Routing Table</b>
 $ ip route list
@@ -412,8 +618,37 @@ To check the size of shared memory segments:
 <td colsep></td>
 <td>
   <b>BACKUPS</b> 
-  <ul xxsmall zoom>
-  <li><a bgorange href="https://github.com/earizon/easyup">EasyUp</a> KISS incremental remoto backup around rsync+ssh</a></li>
+  <hr  xxxsmall/>
+  tar (tape-archive)
+<pre xxxsmall zoom>
+<a href="https://linux.die.net/man/1/tar">man 1 tar</a>
+- standard tool for archiving saving a (many) files and directories to a single
+  tape or disk archive.
+- Individual files can be restored from the .tar file when needed.
+
+Examples:
+<b>Create archive file:</b>
+$ tar czf _home_myUser_myProject_01.tar.gz /home/myUser/myProject
+      ↑↑↑                                  ^^^^^^^^^^^^^^^^^^^^^^
+      │││                                  directory to archive
+      │││
+      ││└── name of output file
+      │└─── use gzip for compression (.gz extension)
+      └──── compress
+ 
+<b>Restore backup from archive file:</b>
+$ cd /home/myUser
+$ tar xzf _home_myUser_myProject_01.tar.gz
+      ↑↑↑                                 
+      │││
+      ││└── name of  input file
+      │└─── use gzip for de-compression
+      └──── de-compress
+</pre>
+  
+  Remote Incremental backups:
+  <ul xxxsmall zoom>
+  <li><a bgorange href="https://github.com/earizon/easyup">EasyUp</a> KISS incremental remote backup around rsync+ssh</a></li>
   <li><a href="http://rsnapshot.org/">Rsnapshot</a> filesystem snapshot utility on top of rsync.<br/>
      rsnapshot makes it easy to make periodic snapshots of local machines, and remote machines over ssh.
      The code makes extensive use of hard links whenever possible, to greatly reduce the disk space required 
@@ -461,8 +696,10 @@ $ tar cjf - myDirToBackup \       # local
   "cd myBackupPath && tar -xjf -" # remote
 </pre>
   </li>
+  <li><a href="https://github.com/Leo-G/backup-bash">"Real time" backup with rsync and bash</li>
   </ul>
 </td>  
+
 </tr>  
 </table>  
 
@@ -673,7 +910,8 @@ CONFIG. FILE LAYOUT:
 <b orange>runtime      </b>: /runtime/systemd/system
 </pre>
 
-<b>Log Filtering (Journalctl):</b>
+Journalctl: <span xsmall><br/>
+  Display/filter/search system logs</span>
 <pre xxxsmall zoom>
 # journalctl                      → all logs
 # journalctl -b                   → Boot Messages
@@ -701,6 +939,112 @@ Output Formats ( -o parameter )
 </td>  
 <td colsep></td>  
 <td colsep>Soft&nbsp;install</td>  
+<td>
+  <a href="https://www.flatpak.org/">FlatPak</a>
+ <hr xxxsmall />
+ Basic Concepts
+<pre xxxsmall zoom>
+<b>Sandboxes</b>
+- each application is built and run in an isolated 'sandbox' environment
+  containing an application and its runtime. 
+- By default, the application can only access the contents of its sandbox.
+- Access to user files, network, graphics sockets, subsystems on the bus and devices
+  have to be explicitly granted. 
+- Access to other things, such as other processes, is deliberately NOT possible.
+
+-  resources inside the sandbox that need to be exposed outside are known as "exports".
+   (Ex: .desktop file and icon,...)
+
+<b>Portals</b>
+- Mechanism through which applications can interact with the host environment 
+  from within a sandbox. They give the ability to interact with data, files
+  and services without the need to add sandbox permissions.
+
+- Examples of capabilities that can be accessed through portals include opening
+  files through a file chooser dialog, or printing. 
+- Interface toolkits can implement transparent support for portals, so access
+  to resources outside of the sandbox will work securely and out of the box.
+
+<b>Repositories</b>
+- applications and runtimes are typically stored and published using repositories,
+ which behave very similarly to Git repositories, containing a single object or
+ multiple ones. Each object is versioned, allowing the up|down-grade. 
+- Remote repository's content can be inspected and searched, and it can
+  be used as the source of applications and runtimes.
+- When an update is performed, new versions of installed applications and 
+  runtimes are downloaded from the relevant remotes. (only the difference actually)
+</pre>
+
+ flatpak cli:
+<pre xxxsmall zoom>
+NOTE: graphical software management tools exists so command-line is optional
+
+$ flatpak install 
+
+$ flatpak uninstall
+
+
+<b>Identifiers/<b>
+- unique three-part like
+  com.company.App
+              ^^^
+      final segment is the object's name
+
+
+<b>Identifier triple</b>
+
+   com.company.App/i386/stable         com.company.App//stable       com.company.App/i386//
+   ^^^^^^^^^^^^^^^ ^^^^ ^^^^^^                        ^^                                 ^^
+    Application-ID Arch branch                   Use default                        Use default
+    or name                                      architecture                       branch
+
+
+<b>System versus user</b>
+- Flatpak commands/repositories can be used/applied:
+  - system-wide (default)
+  - per-user    (--user option)
+
+<b>Basic commands</b>
+$ flatpak remotes # ← list remotes repositores configured on the system
+(output list indicates whether remote has been added per-user or system-wide)
+
+
+$ <b orange>URL_FLATPAKREPO</b>="https://dl.flathub.org/repo/flathub<b>.flatpakrepo</b>
+                                                          ^^^^^^^^^^^ 
+                                                       a .flatpakrepo file
+                                                       contains:
+                                                       - remote details
+                                                       - remote GPG key
+$ flatpak remote-add \          ← Add a remote repository
+     --if-not-exists \
+     flathub \                  ← arbitrary local-name assigned to remote 
+     <b orange>${URL_FLATPAKREPO}</b>
+
+$ flatpak remote-delete flathub ← Remove remote-repo from list of known remotes
+
+$ flatpak search gimp           ← return any applications matching search terms.
+(each row-result includes application ID + remote where it was found)
+
+
+$ FLATPAKREF="https://flathub.org/repo/appstream/org.gimp.GIMP.flatpakref"
+$ flatpak install ${FLATPAKREF}         ← install application from FLATPAKREF
+$ flatpak install flathub org.gimp.GIMP ← install application from remote and ID
+                  ^^^^^^^ ^^^^^^^^^^^^^ 
+                  remote  application ID
+  (the application runtime will also be instaled if not yet present)
+
+$ flatpak run org.gimp.GIMP     ← Run the application
+
+$ flatpak update                ← update all your installed applications
+                                  and runtimes to the latest version
+
+$ flatpak list                  ← List installed applications and runtimes
+
+$ flatpak list --app            ← List installed applications only
+
+$ flatpak uninstall ${APP_ID}   ← Uninstall Application
+</pre>
+</td>
 <td>
 <a href="https://dnf.readthedocs.io/en/latest/">DNF</a>(RedHat/Fedora/Centos)
 <pre xxxsmall zoom>
@@ -957,8 +1301,6 @@ Ex: Install Development Tools
      ...
 <b>$ sudo dnf groupinstall "Development Tools"</b>
 </pre>
-</td>
-<td>
   <a href="https://help.ubuntu.com/community/AptGet/Howto#Maintenance_commands">APT</a>(Debian/Ubuntu)
 <pre xxxsmall zoom>
 
@@ -1183,10 +1525,6 @@ Information on Packages
                        -a: show          all info
 </pre>
 
-  <a TODO href="https://www.flatpak.org/">FlatPak</a>
-<pre xxxsmall zoom>
-  contanerized multi-distro software package manager
-</pre>
 </td>
 </tr>
 </table>
@@ -1570,13 +1908,11 @@ SYNOPSIS
 
 </td>
 <td>
-  <b bgorange>Logical Volume Manager</b>
-<pre xxxsmall zoom>
-WARN: You need LVM tools installed. Mount alone is not able to mount LVM volumes
-
-<a href="https://opensource.com/article/18/11/manage-storage-lvm">REF</a>
-
-<b orange>
+  LVM 
+ <span xsmall>(Logic.Vol.Mgr)</span>:
+ <hr xxxsmall />
+ <span xsmall>Diagram</span>:
+<pre xxxsmall zoom bgorange>
  physical drive 1                                     logical-volume 1
  physical drive 2    N <-> 1    Volume-Group 1 <-> M  logical-volume 2
  physical drive 3                                     logical-volume 3
@@ -1591,7 +1927,6 @@ WARN: You need LVM tools installed. Mount alone is not able to mount LVM volumes
                      The Volume-Group acts as a relation
                      N-to-M between physical resources
                      and logical partitions
-</b>
 
 Quick Sumary:
     CREATE       → ADD Physical drives → Add logical-volumes
@@ -1601,6 +1936,13 @@ Quick Sumary:
                                          - company deparments
                                          - test/pre/pro enviroment
                                          - ...
+</pre>
+
+ <span xsmall>"Full-Journey" SETUP</span>:
+<pre xxxsmall zoom>
+WARN: You need LVM tools installed. Mount alone is not able to mount LVM volumes
+
+<a href="https://opensource.com/article/18/11/manage-storage-lvm">REF</a>
 
 
 <b>PRE-SETUP:</b>
@@ -1809,10 +2151,8 @@ The partition is encrypted at this point but no filesystem is in yet:
 <b>STEP 5: re-size the file-system</b>
 # resize2fs /dev/vg_tecmint/LogVol01
 </pre>
-</pre>
-
-
 </td>
+
 <td colsep></td>
 <td colsep>File&nbsp;Systems</td>
 <td>
@@ -2119,7 +2459,11 @@ rt_sigreturn(0xe)                       = 0
 read(0, ""..., 1)                       = 0
 
 </pre>
-
+  
+  <span xsmall>explain:decode error returned from strace</span>
+<pre TODO xxxsmall zoom>
+<a href="https://linux.die.net/man/1/explain">man 1 explain</a>
+</pre>
 
   <span xsmall>mpstat<br/>CPU stats <br/>(interr., hypervisor...)</span>
 <pre xxxsmall zoom>
@@ -2318,639 +2662,62 @@ $ perf stat - make -j
 <pre xxxsmall zoom>
 </pre>
 </td>
-
 </tr>
 </table>
 
+</table>
+</tr>
+<td>
+  Tunning OS
+  <hr xxxsmall />
+  <span xsmall>ZSwap (compressed Swap)<br/>
+  </span>
+<pre xxxsmall zoom>
+  Increase system performance in systems with memory-preasure
+<a href="https://www.maketecheasier.com/use-zswap-improve-old-linux-performance/">REF</a> 
+
+setup
+<b>Ubuntu Setup:</b>
+  STEP 1: Edit /etc/default/grub and add "zswap.enabled=1" option to "GRUB_CMDLINE_LINUX_DEFAULT".
+    For example, a line like
+    | GRUB_CMDLINE_LINUX_DEFAULT="quiet splash" 
+    becomes 
+    | GRUB_CMDLINE_LINUX_DEFAULT="quiet splash zswap.enabled=1".
+  
+  STEP 2: Update Grub configuration:
+  $ sudo update-grub
+  
+  STEP 3: Reboot and the zswap module will be enabled automatically.
+  
+  STEP 4: After you reboot, check if the module is active:
+  $ cat /sys/module/zswap/parameters/enabled
+
+<b>Fedora&amp;OpenSUSE Setup:</b>
+STEP 1: Edit /etc/default/grub and add "zswap.enabled=1" option to GRUB_CMDLINE_LINUX
+
+STEP 2: Update Grub configuration:
+$ sudo grub2-mkconfig -o $(sudo find /boot/ -name grub.cfg)
+                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 
+                          Depending on whether your computer
+                          boots from a BIOS or UEFI system 
+                          the path will change
+
+STEP 3: Reboot and the zswap module will be enabled automatically.
+
+STEP 4: After you reboot, check if the module is active:
+$ cat /sys/module/zswap/parameters/enabled
+(must display "Y,")
+
+<b>Tunning</b>
+-  Check adding the (grub) option "zswap.max_pool_percent=20" to see if performance increase.
+   It’s recommended NOT to go above 50% since more than that can have detrimental effects 
+   on systems with low amounts of RAM.
+</pre>
+</td>
+</tr>
+</table>
 
 </body>
 <!--
-
-____________________________________________
-
-
-______________________
-TODO: HHRR
-Ioannis Koustoudis: LFCS­Linux sysadmin from Kavala, Greece. He works for the ministry of education and supports almost 200 school units in their infrastructure. If he is not in front of a computer screen, he plays music (he is a multi­-instrumentalist) or take care of his two lovely kids.
-_______________________
-https://lists.gnu.org/archive/html/bug-coreutils/2008-09/msg00085.html
-Re: Bug in date?
-From:   James Youngman
-Subject:    Re: Bug in date?
-Date:   Tue, 9 Sep 2008 19:52:53 +0100
-
-On Tue, Sep 9, 2008 at 1:47 PM, Enrique Arizón Benito
-<address@hidden> wrote:
-
-> Upps, I forgot it.
->
->  #date -s "1970-01-01 00:00:01"
->  date: cannot set date: Invalid argument
-
-It looks like date is simply reporting an error that it received from
-the operating system.   The strace utility (or some platform-specific
-replacement if you are not using Linux) should be able to confirm
-this.
-
->  Thu Jan 1 00:00:01 CET 1970
->
-> Curiosly after the Invalid argument error, date properly prints the new hour
-> but doesn't change it.
-
-This is almost certainly because the date program understands the date
-you refer to, but failed in its attempt to set the system clock to
-that value.
-
-> That's what makes me think it's really a bug.
-
-More likely it's because CET is 1h ahead of UTC and therefore the time
-you specified is before the Epoch.    But Eric already said that, so
-perhaps you ruled out that possibility but did not say so.
-
-James
-
-
-_________________________
-
-Turning on Linux ACLs:
-   https://wiki.archlinux.org/index.php/Access_Control_Lists
-_____________________
-$ ps -efZ | grep sshd
-system_u:system_r:sshd_t:s0-s0:c0.c1023 root 80388   1  0 Mar14 ?        00:00:00 /usr/sbin/sshd -D
-system_u:system_r:sshd_t:s0-s0:c0.c1023 root 93132 80388  0 14:11 ?      00:00:00 sshd: azureuser [priv]
-unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023 azureus+ 93137 93132  0 14:11 ? 00:00:00 sshd: azureuser@notty
-_________________
-https://upload.wikimedia.org/wikipedia/commons/3/30/IO_stack_of_the_Linux_kernel.svg
-______________________
-https://www.infoq.com/news/2015/02/under-hood-containers
-_____________
-https://en.wikipedia.org/wiki/Executable_and_Linkable_Format
-___________
-How to configure and Install Config Server Firewall & Login failure Daemon
-https://techarena51.com/blog/how-to-configure-and-install-config-server-firewall-login-failure-daemon/?utm_source=devopswiki
-_____________
-https://grsecurity.net/
-Grsecurity® is an extensive security enhancement to the Linux kernel that defends against a wide range of security threats through intelligent access control, memory corruption-based exploit prevention, and a host of other system hardening that generally require no configuration.
-
-It has been actively developed and maintained for the past 17 years. Commercial support for grsecurity is available through Open Source Security, Inc
-
-
-Comparation grsecurity SELinux AppArmor KSPP
-   https://www.grsecurity.net/compare.php
-
-https://en.wikipedia.org/wiki/Grsecurity#PaX
-   """A major component bundled with grsecurity is PaX. Among other features, 
-  the patch flags data memory, the stack, for example, as non-executable and 
-  program memory as non-writable. The aim is to prevent memory from being 
-  overwritten, which can help to prevent many types of security vulnerabilities,
-  such as buffer overflows. PaX also provides address space layout randomization
-  (ASLR), which randomizes important memory addresses to reduce the probability
-  of attacks that rely on easily predicted memory addresses."""
-
-Hardening Debian for the Desktop Using Grsecurity
-   https://micahflee.com/2016/01/debian-grsecurity/
-_________________
-  "Real time" backup with rsync and bash:
-  https://github.com/Leo-G/backup-bash
-________
-  Important files in /etc:
-/etc/hosts
-/etc/...
-___________________
-http://clusterlabs.org/
-The ClusterLabs stack unifies a large group of Open Source projects related to High Availability into a cluster offering suitable for both small and large deployments. Together, Corosync, Pacemaker, DRBD, ScanCore, and many other projects have been enabling detection and recovery of machine and application-level failures in production clusters since 1999. The ClusterLabs stack supports practically any redundancy configuration imaginable.
-__________________
-https://www.linbit.com/en/products-and-services/drbd-sds/
-High Availability for software-defined storage
-
-The revolutionary Block Storage Replication tool. Companies implement 
-oftware-defined storage (SDS) in order to easily provision and manage data 
-storage, independent of the underlying hardware. LINBIT’s groundbreaking SDS 
-product ties together data availability, performance, and scale, making it 
-perfect for your cloud storage environment.
-____________________________________________________
-https://www.tutorialspoint.com/operating_system/pdf/os_linux.pdf
-____________________________________________________
-How to Use Systemd Timers as a Cron Replacement
-https://www.maketecheasier.com/use-systemd-timers-as-cron-replacement/
-____________________________________________________
-GNU Findutils: Finding files in FS
-https://www.gnu.org/software/findutils/manual/html_mono/find.html
-
-Ex: https://serverfault.com/questions/295929/how-do-i-find-and-report-on-broken-symbolic-links-automatically/433273
-______________________________________
-
-http://www.enterprisestorageforum.com/storage-technology/open-source-storage-64-applications.html
-
-       Open Source Storage: 64 Applications for Data Storage
-       19-24 minutes
-       
-       As data storage needs continue to grow and many organizations move toward software-defined infrastructure, more enterprises are using open source software to meet some of their storage needs. Projects like Hadoop, Ceph, Gluster and others have become very common at large enterprises.
-       
-       Home users and small businesses can also benefit from open source storage software. These applications can make it possible to set up your own NAS or SAN device using industry-standard hardware without paying the high prices vendors charge for dedicated storage appliances. Open source software also offers users the option to set up a cloud storage solution where they have control over security and privacy, and it can also offer affordable options for backup and recovery.
-       
-       The list below features 64 open source storage projects that are among the best options available for enterprises, SMBs and individual users. Please note that this is not a ranking. Entries are organized into categories and then alphabetized within the categories.
-       undefined 100%
-       
-       If you know of additional open source storage applications that you believe should be on our list, feel free to note them in the Comments section below.
-       NAS/SAN Software
-       
-       1. Ceph
-       Red Hat's Ceph offers unified object and block storage capabilities. It's a distributed storage solution that boasts excellent performance, scalability and reliability. Well-known users include Cisco, DreamHost, CERN, Bloomberg, and Deutsche Telekom. Operating System: Linux
-       
-       2. CryptoNAS
-       This project aims to simplify the process of setting up an encrypted fileserver. It comes in a live-CD package or a server package that adds a web front-end. Operating System: Linux
-       
-       3. ESOS
-       Short for Enterprise Storage OS, ESOS is a Linux distribution for setting up a storage array on your own hardware. Commercial support is available. Operating System: Linux
-       
-       4. FreeNAS
-       FreeNAS claims to be the "the World's #1 storage OS with over 10+ million downloads." It counts the United Nations, the University of Florida, the Salvation Army, Reuters, Michigan State University, the Department of Homeland Security and many other organizations among its users. It can be installed on nearly any hardware to turn it into a network attached storage (NAS) device. Paid, supported enterprise solutions based on the same technology are available under the TrueNAS brand name. Operating System: FreeBSD
-       
-       5. NAS4Free
-       Another option for do-it-yourself NAS, NAS4Free claims to be "the simplest and fastest way to create a centralized and easily-accessible server for all kinds of data." Key features include the ZFS file system, software RAID (levels 0, 1 or 5) and disk encryption. Operating System: FreeBSD
-       
-       6. Openfiler
-       As a unified storage solution, Openfiler aims to combine the best features of NAS storage with the best features on SAN storage. Key features include high availability/failover, block replication and Web-based management. Its users include Motorola, Pratt & Whitney, Bill Me Later and the London Metropolitan Police. A paid commercial edition is available. Operating System: Linux
-       
-       7. OpenMediaVault
-       Based on Debian Linux, OpenMediaVault describes itself as a "next-generation network attached storage (NAS) solution." It was designed to provide NAS for home users or small offices. It offers a Web-based administration console and includes software RAID capabilities. Operating System: Linux
-       
-       8. Turnkey Linux File Server
-       The Turnkey Linux project offers images for setting up Linux-based servers for a variety of purposes, including an image for creating a simple NAS device. It includes support for SMB, SFTP, NFS, WebDAV and rsync file transfer protocols. Operating System: Linux
-       Filesystems
-       
-       9. Btrfs
-       A joint project supported by Facebook, Fujitsu, Intel, the Linux Foundation, Netgear, Novell, Oracle, Red Hat and others, Btrfs is a copy on write (CoW) filesystem for Linux. It focuses on "fault tolerance, repair and easy administration." Operating System: Linux
-       
-       10. Ext4
-       Included in most popular Linux distributions, Ext4 supports file systems up to 1 EB in size with up to 16 TB per file. Other key features include extents, multiblock allocation, delayed allocation, Fast fsck, journal checksumming, "no journaling" mode, online defragmentation and more. Operating System: Linux
-       
-       11. GlusterFS
-       A Red Hat project, GlusterFS is a highly scalable file system built for applications like media streaming and big data analytics. Professional support is available through third-party vendors. It has a large and active user community, and the website includes links to many Gluster-related blogs. Operating System: Linux
-       
-       12. Lustre
-       Built to handle the needs of high-performance computing (HPC) environments, Lustre is a scalable parallel file system. It was first developed at Carnegie Mellon University, and its first users included various U.S. Department of Energy National Laboratories. The latest version, released in April, supports Data on MDT, file-level redundancy, lock ahead and more. Operating System: Linux
-       
-       13. ZFS
-       Also incorporated into many Linux distributions, including Arch, Debian, Fedora, Ubuntu and others, ZFS is another highly scalable file system. It includes compression, protection against data corruption, snapshots, RAID support and more. Operating System: Linux, macOS, FreeBSD
-       RAID
-       
-       14. DRBD
-       DRBD is an open source solution for building high-availability storage clusters based on RAID-1. Commercial products, including software-defined storage, disaster recovery and high availability solutions based on the same technology, are available through project sponsor Linbit. Operating System: Linux
-       
-       15. Mdadm
-       Built into the Linux kernel, mdadm makes it easy to create, manage and monitor storage arrays. It can also move spares between RAID arrays. More information is also available on the Linux RAID wiki. Operating System: Linux
-       
-       16. Raider
-       Raider is a bash shell script that allows users convert any Linux disk into a RAID array with software RAID 1, 4, 5, 6 or 10. It works with many of the most popular Linux distributions, including Ubuntu, Debian, OpenSUSE, Fedora, Linux Mint and others. Operating System: Linux
-       
-       17. RaidEye
-       RaidEye isn't so much a tool for creating RAID devices as a utility for monitoring RAID volumes. It works with the RAID capabilities built into macOS and notifies users of problems via a sound alarm, popup dialog and email. Operating System: macOS
-       
-       18. SnapRAID
-       SnapRAID arrays can recover from up to six disk failures. The tool was built for home media servers or other environments with a lot of big files that rarely change. Key features include data hashing, the ability to recover deleted files and no lock-in. Operating System: Windows, Linux, macOS
-       Backup and Synchronization
-       
-       19. AMANDA
-       The Advanced Maryland Automatic Network Disk Archiver, or AMANDA, is a popular network backup solution that can save data from Linux, Unix or Windows systems to hard drives, tape or optical media. It was last updated in December 2017. Zmanda, which sponsors the project, offers commercial products based on the same technology. Operating System: Windows, Linux, macOS.
-       
-       20. Areca Backup
-       Designed for personal use, Area is a simple but versatile backup solution. Key features include delta backup, compression, encryption, filters, as-of-date recovery and more. Operating System: Windows, Linux
-       
-       21. BackupPC
-       Robust enough for enterprise use, BackupPC backs up data from Linux and Windows systems to disk. Noteworthy features include a unique pooling scheme, optional compression, a web interface and support for mobile devices. It claims to be highly configurable and easy to install and maintain. Operating System: Windows, Linux
-       
-       22. Bacula
-       Another option for enterprises, Bacula is a network backup solution that aims to be easy to use and very efficient. It claims to be the most popular open source backup program. Commercial support and services for the solution are available through Bacula Systems. Operating System: Windows, Linux, macOS
-       
-       23. Bareos
-       Forked from Bacula, Bareos is a popular open source backup option that is under very active development with the latest version released in February 2018. The Bareos.com website offers paid support and services for the tool. Operating System: Windows, Linux, macOS
-       
-       24. Box Backup
-       This "completely automatic" backup solution creates backups continuously and can also create snapshots when desired. It includes encryption and optional RAID capabilities, and old file versions and deleted files remain available. Operating System: Windows, Linux
-       
-       25. BURP
-       Short for "BackUp And Restore Program," BURP is a network backup solution. It offers a choice of two different protocols: one based on librsync (see below) and one that uses variable length chunking for inline deduplication. It is designed to be easier to configure than some other open source solutions, and it can do delta backups. Operating System: Windows, Linux
-       
-       26. Clonezilla
-       Designed to replace Acronis True Image or Norton Ghost, Clonezilla is useful for both system deployment and backup and recovery. It comes in two flavors: live for standalone systems and SE for network backup or cloning multiple systems at once. The SE version can clone 40 or more systems at once. Operating System: Linux
-       
-       27. Create Synchronicity
-       Powerful but lightweight, this backup tool takes up only 220KB of space on your hard drive. It supports multiple languages, has an intuitive interface and includes a scheduler. It is also helpful for syncing photos, music and other files across devices. Operating System: Windows
-       
-       28. DAR
-       Disk Archive, a.k.a. DAR, is an older command-line tool for backup, but it is still being updated regularly with the most recent version released in April 2018. For those who prefer a GUI, one is available through the DarGUI project. Operating System: Windows, Linux, macOS
-       
-       29. DirSync Pro
-       This "small but powerful," utility offers incremental backup, filtering and scheduling capabilities. It also boasts an intuitive interface, and it offers the ability to analyze two sets of files or folders and detect the changes between them. It also includes a helpful real-time synchronization option. Operating System: Windows
-       
-       30. Duplicati
-       Duplicati works with cloud storage services like AWS S3, Microsoft OneDrive, Google Drive and Box to create backups with AES-256 encryption. It does a full backup on first use and incremental backups after that; it also offers data deduplication capabilities. Operating System: Windows, Linux, macOS
-       
-       31. FOG
-       FOG offers cross-platform cloning and imaging capabilities plus remote management for networks of any size. It offers support through forums and a wiki. Operating System: Linux, Windows, macOS.
-       
-       32. FreeFileSync
-       A tool for standalone systems, FreeFileSync aims to save users time when setting up and running backups. It is cross-platform and includes 64-bit support. Tutorials and a manual are available on the website. Operating System: Linux, Windows, macOS
-       
-       33. FullSync
-       Although it was designed to help web developers push updates to their sites, FullSync can also be used by anyone to create backups. Key features include multiple modes, flexible rules, buffered filesystems, support for multiple file transfer protocols and more. Note that development on this project has slowed somewhat as it hasn’t been updated since April 2016. Operating System: Linux, Windows, macOS
-       
-       34. Grsync
-       Grsync takes the older rsync synchronization tool and adds an easy-to-use GUI. Noteworthy features include unlimited sessions, highlighted errors, batch capabilities, simulations, support for multiple languages and more. Operating System: Linux, Windows, macOS
-       
-       35. Mondo Rescue
-       For Linux and FreeBSD only, Mondo Rescue is a disaster recovery solution that supports tape, disk, network or optical media backups. According to its website, its users include "Lockheed-Martin, Nortel Networks, Siemens, HP, IBM, and dozens of smaller companies." The most recent update was released in April 2016. Operating System: Linux, Free BSD
-       
-       36. Partimage
-       This tool saves partitions of drives as image files, making it useful for backup or installing the same image on multiple systems. It can run across networks or on a standalone PC. It can also be used to create a SystemRescueCD. Operating System: Linux
-       
-       37. Redo
-       Redo boasts that its bare-metal restore capabilities can get a crashed system back up and running in as little as 10 minutes. It's very easy to use and can also recover deleted images and files. Operating System: Windows, Linux
-       
-       38. Rsync
-       Rsync is a Unix-based file-transfer utility with synchronization capabilities that make it suitable for creating backups or mirroring. It's a useful tool but is best used by advanced users. The most recent version was released in January 2018. Operating System: Linux, Windows, macOS
-       
-       39. Synkron
-       While this app is focused primarily on synchronization, it can be used for creating backups as well. Key features include analysis capabilities, blacklisting, restores and cross-platform support. Documentation is available in both German and English. Operating System: Windows, Linux, macOS
-       
-       40. Unison
-       Like Synkron, Unison is a file synchronization tool. It can copy files between any two systems connected to the internet, and it has features in common with source code management tools as well as with backup utilities. Its advantage over some other synchronization tools is that it can combine two sets of files where both sets have undergone changes. Operating System: Windows, Unix
-       
-       41. UrBackup
-       This client-server backup solution does both image and file backups. It promises "both data safety and a fast restoration time." It makes backups while the system is in use without interrupting normal operation. Operating System: Windows, Linux
-       
-       42. Weex
-       The Weex developers intended it primarily as a tool for pushing content to websites, but it can also be used to synchronize or backup files. It supports FTP file transfer and uses caching to speed data transfer. Operating System: Windows, Linux
-       Online/Cloud Data Storage
-       
-       43. CloudStack
-       This Apache Foundation project is open source cloud computing platform that includes cloud storage capabilities. Noteworthy features include compute orchestration, network as a service capabilities, user and account management, resource accounting and support for multiple hypervisors. Operating System: Windows, Linux
-       
-       44. CloudStore
-       This Dropbox alternative synchronizes data between a system and online storage. It promises strong encryption, password-less authentication, flexible synchronization, fast setup and auto-resumes for interrupted data transfers. Operating System: Linux
-       
-       45. Cozy
-       Cozy is both an open source project for storing personal data online and a free service for managing and securing sensitive data. Note that the free hosting is for up to 5GB of data; additional storage will require a fee. Operating System: Linux
-       
-       46. FTPbox
-       Want to set up your own cloud storage server? FTPbox makes it easy to be your own cloud provider, with all files transferred via FTP. Operating System: Windows
-       
-       47. OpenStack
-       Probably the best-known open source cloud computing platform, OpenStack offers a complete operating system for controlling compute, networking and, of course, storage in the cloud. It incorporates three sub-projects related to storage: Cinder, Swift and Manila. Operating System: Windows
-       
-       48. Perkeep
-       Formerly known as Camlistore, Perkeep describes itself as "a set of open source formats, protocols, and software for modeling, storing, searching, sharing and synchronizing data in the post-PC era." It's still under very active development and will require some technical knowhow to use. Operating System: Linux
-       
-       49. Pydio
-       Downloaded more than a million times, Pydio counts the University of Cambridge, Seagate, Guitar Center, Washington State University and Nikon among its users. It offers cloud-based file management and sharing. A paid enterprise distribution is available. Operating System: Windows, Linux (Android and iOS clients available)
-       
-       50. Rockstor
-       Rockstor makes it possible to create your own NAS or cloud storage solution based on Linux and BTRFS. It comes in both personal and SMB versions. Operating System: Linux
-       
-       51. SeaFile
-       SeaFile describes itself as "an enterprise file hosting platform with high reliability and performance." You can download the code for free or use the paid pro edition that includes support. Operating System: Windows, Linux, macOS, Android, iOS
-       
-       52. SparkleShare
-       SparkleShare creates a special folder on your system that is automatically synchronized with a host folder stored on your server or in the cloud. It includes encryption capabilities, and it is a good option for collaborating on documents that change frequently. Operating System: Windows, Linux, macOS
-       
-       53. StackSync
-       Create your own scalable personal cloud with StackSync. It encrypts all data on the client side and works with cloud storage services or your own server. Operating System: Windows, Linux
-       
-       54. Syncthing
-       Like many of the other projects in this category, Syncthing offers an alternative to Dropbox. It keeps data completely private with encryption and authentication requirements. Operating System: Windows, Linux, macOS
-       Storage Management
-       
-       55. Libvirt Storage Management
-       Libvirt is an API for creating storage pools and volumes on a host system. It supports a wide variety of storage pool types including directory, filesystem, network filesystem, logical volume, disk, iSCSI, SCSI, Gluster, ZFS and more. Operating System: Linux
-       
-       56. openAttic
-       This tool offers management and monitoring capabilities for the Ceph distributed storage platform. It offers a dashboard, as well as tools for managing pools, block devices, iSCSI, NFS, Ceph Object Gateway and Ceph nodes. Operating System: Linux
-       Distributed Storage/Big Data Tools
-       
-       57. Alluxio
-       Alluxio (Formerly known as Tachyon) describes itself as "open-source memory-speed virtual distributed storage." It works with tools like Spark, Hadoop, Flink, Zeppelin and Presto to speed performance on big data queries. Operating System: Linux, macOS
-       
-       58. Hadoop
-       Nearly synonymous with big data, Hadoop is a widely used open source distributed storage platform for processing data. It is an Apache Foundation project, and the organization also oversees dozens of related projects. Operating System: Windows, Linux, macOS
-       
-       59. HPCC
-       This Hadoop alternative also offers distributed storage and massive scalability. Paid enterprise services are available. Operating System: Linux
-       
-       60. Sheepdog
-       The Sheepdog website describes this project as "a distributed object storage system for volume and container services and manages the disks and nodes intelligently." It supports snapshotting, cloning and thin provisioning, and it is compatible with OpenStack Swift and Amazon S3. Operating System: Linux
-       Compression
-_______________________
-https://docs.fedoraproject.org/f27/system-administrators-guide/
-
-https://wiki.centos.org/AdditionalResources/Repositories/SCL
-__________
-https://en.wikipedia.org/wiki/Avahi_(software) ZeroConf Linux impl.
-__________
-https://www.2daygeek.com/zstandard-a-super-faster-data-compression-tool-for-linux/
-Zstandard super-fast compression tool
-__________
-TODO: journalctrl
-the journal is "synchronous". Eacth time someone tries to write it checks if
-ther is space or something needs to be deleted. (vs remove each 24 day,...)
- $ journalctrl [tab] ...
-______________
-https://gluster.readthedocs.io
-<a href="https://access.redhat.com/documentation/en-us/red_hat_gluster_storage/3.4/">Redhat Gluster</a>
-____________
-List and sort the versions available in
-your repo:
-
-YUM: sorting by version number:                    | APT:
-                                                   | 
-$ yum list docker-ce --showduplicates | sort -r    | apt-cache madison docker-ce
-________________________
-yum upgrade forces the removal of obsolete packages, while yum update may or may not also do this. The removal of obsolete packages can be risky, as it may remove packages that you use.
-
-This makes yum update the safer option.
-
-From man yum:
-
-    update
-
-    If run without any packages, update will update every currently installed package. If one or more packages or package globs are specified, Yum will only update the listed packages. While updating packages, yum will ensure that all dependencies are satisfied. (See Specifying package names for more information) If the packages or globs specified match to packages which are not currently installed then update will not install them. update operates on groups, files, provides and filelists just like the "install" command. If the main obsoletes configure option is true (default) or the --obsoletes flag is present yum will include package obsoletes in its calculations - this makes it better for distro-version changes, for example: upgrading from somelinux 8.0 to somelinux 9.
-
-    upgrade
-
-    Is the same as the update command with the --obsoletes flag set. See update for more details
-_______________________
-Linux filesystem administration
-    """
-    ...By the end of this live online course, you?ll understand:
-    
-    Linux filesystem concepts and tools
-    How to find and search files
-    How to use the inode table and file links
-    The difference between a hard link and a soft link
-    And you?ll be able to:
-      - Modify file permissions and ACLs
-      - Use file quotas
-      - Create archive and Zip files
-      - Create and mount disk partitions
-      - Archive and back up files
-      - Implement LVMs and RAID
-    """
-____________________
-https://linux.die.net/EVMSUG/
-
-____________________
-https://linux.die.net/sag/
-____________________
-@ma:
-https://linux.die.net/Linux-CLI/file-permissions.html
-_____________________________________
-https://opensource.com/article/18/7/sysadmin-guide-selinux
-________________________________________
-https://opensource.com/article/18/9/how-build-rpm-packages?sc_cid=701f2000000RRBZAA4
-________________________________________
-https://www.tecmint.com/remove-package-with-dependencies-using-yum/#
-________________________
-https://danwalsh.livejournal.com/
-________________________
-http://swift.siphos.be/linux_sea/
-________________________
-Add pstree view (and security related info)
-________________________
-https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/7/html/Networking_Guide/
-https://docs.fedoraproject.org/en-US/Fedora/24/html/Networking_Guide/index.html
-https://wiki.debian.org/NetworkManager
-________________________
-https://lwn.net/Articles/531114/
-________________________
-/proc/sys/vm/
-file-system-control-panel to kernel
-________________________
-Troubleshooting
-<td>
-boot
-</td>
-  Authentication issues (PAM)
-<td>
-</td>
-<td>
-Performance <br/>
-
-memory
-<pre xxxsmall zoom>
- "everything goes through memory"
-
-top / htop  / atop
-- if there is lot o buffer and cache even if there is not
-  much availa. mem "there is no problem"
-cache is a mechanism to speed up performance
-     ... but it can be reused
-
-
-less /proc/meminfo;
-....
-MemTotal: 
-:                   
-Pool of usable memory  after kernel load:
-  Active   :       
-  Inactive : Memory allocated by kernel and never used
-Active (anon)ymos:      
-Inactive (anon)ymous:   
-Active (file)ymos:     
-Inactive (file)ymous:    
-cat /proc/meminfo; vmstat; iostat; bonnie++; dd ; nc (netcat)
-
-
-</pre>
-
-disk
-<pre xxxsmall zoom>
-Look for:
-- wrong I/O scheduler
-- wrong filesystem
-- wrong journaling
-
-
-sar: System activity reporting
- (Maybe first for local hard-disk) 
-</pre>
-
-network
-<pre xxxsmall zoom>
-</pre>
-
-cpu
-<pre xxxsmall zoom>
-</pre>
-</td>
-<td>
-hardware issues
-</td>
-_________________________
-https://www.maketecheasier.com/use-zswap-improve-old-linux-performance/
-_________________________
-__________________________
-https://asciinema.org/
-Record and share your terminal sessions, the right way.
-Forget screen recording apps and blurry video. Enjoy a lightweight, purely text-based approach to terminal recording. 
-
-_______________________
-<!-- TODO: https://opensource.com/article/18/11/partition-format-drive-linux
-
-________________
-
-__________________
-https://www.dfrws.org/sites/default/files/session-files/paper-an_analysis_of_ext4_for_digital_forensics.pdf
-_________________
-https://www.kernel.org/doc/html/v4.12/crypto/index.html
-__________________
-https://www.oreilly.com/library/view/red-hat-certified/9780134723990/earning objectives 
-
-2.2 Using man 
-2.3 Finding the Right man Page 
-2.7 Working on the Linux Shell 
-2.8 Understanding Globbing and Wildcards 
-2.9 Using Globbing and Wildcards 
-2.10 Understanding I/O Redirection and Pipes 
-2.11 Using I/O Redirection and Pipes 
-
-Lesson 3: Essential File Management Tools
-3.1 Understanding Linux File System Layout 
-3.2 Essential File Management Tasks 
-3.3 Finding Files 
-3.4 Understanding Links 
-3.5 Working with Links 
-3.6 Working with tar 
-3.7 Working with Compressed Files 
-
-
-Lesson 4: Working with Text Files
-4.1 Understanding Regular Expressions 
-4.2 Using Common Text Tools 
-4.3 Working with grep 
-4.4 Understanding the Basics of sed and awk 
-
-Lesson 5: Connecting to a RHEL Server
-5.1 Opening Local Shells 
-5.2 Using su to Work as Another User 
-5.3 Using sudo to Perform Administrator Tasks 
-5.4 Connecting to a Server with SSH 
-5.5 Understanding SSH Keys 
-5.6 Using SSH Keys 
-
-Lesson 6: Managing Users and Groups
-6.1 Understanding the Need for Users 
-6.2 Creating and Managing Users 
-6.3 Understanding User Properties 
-6.4 Understanding User Configuration Files 
-6.5 Creating and Managing Groups 
-6.6 Understanding Group Membership 
-6.7 Managing Password Properties 
-
-Lesson 7: Managing Permissions
-7.1 Understanding Ownership 
-7.2 Changing File Ownership 
-7.3 Understanding Basic Permissions 
-7.4 Managing Basic Permissions 
-7.5 Understanding umask 
-7.6 Understanding Special Permissions 
-7.7 Managing Special Permissions 
-7.8 Understanding ACLs 
-7.9 Managing ACLs 
-
-Lesson 8: Configuring Networking
-8.1 Understanding NIC Naming 
-8.2 Managing runtime network Configuration with the ip Command 
-8.3 Storing Network Configuration Persistently 
-8.4 Managing Persistent Network Configuration with nmcli 
-8.5 Managing Persistent Network Configuration with nmtui 
-8.6 Verifying Network Configuration Files 
-8.7 Understanding Routing and DNS 
-8.8 Configuring Routing and DNS 
-8.9 Understanding Network Analysis Tools 
-8.10 Using Network Analysis Tools 
-
-Lesson 9: Managing Processes
-9.1 Understanding Jobs and Processes 
-9.2 Managing Shell Jobs 
-9.3 Getting Process Information with ps 
-9.4 Understanding Memory Usage 
-9.5 Understanding Performance Load 
-9.6 Monitoring System Activity with top 
-9.7 Sending Signals to Processes 
-9.8 Understanding Priorities and Niceness 
-9.9 Changing Process Nice Values 
-
-Lesson 10: Managing Software
-10.1 Understanding Meta Package Handlers 
-10.2 Setting up Yum Repositories 
-10.3 Using Repositories 
-10.4 Managing Packages with yum 
-10.5 Using Yum Groups 
-10.6 Understanding yum and RPM Queries 
-10.7 Using RPM Queries 
-
-Lesson 11: Working with Virtual Machines
-11.1 Introducing KVM Virtualization 
-11.2 Managing Libvirt and KVM 
-11.3 Installing a Virtual Machine 
-11.4 Using virsh 
-11.5 Using virt-manager 
-11.6 Understanding KVM Networking 
-11.7 Managing KVM Networking 
-11.8 Importing OVF Virtual Machine Files 
-
-Lesson 12: Scheduling Tasks
-12.1 Using cron vs. at 
-12.2 Understanding Cron Execution Times 
-12.3 Scheduling with cron 
-12.4 Understanding anacron 
-12.5 Using at 
-
-Lesson 13: Configuring Logging
-13.1 Understanding rsyslogd and journald Logging 
-13.2 Configuring rsyslog Logging 
-13.3 Working with journald 
-13.4 Configuring logrotate 
-
-Lesson 14: Managing Partitions
-14.1 Understanding Disk Layout 
-14.2 Understanding GPT and MBR Partitions 
-14.3 Creating MBR Partitions with fdisk 
-14.4 Creating GPT Partitions with gdisk 
-14.5 Understanding File System Differences 
-14.6 Making the File System 
-14.7 Mounting the File System Manually 
-14.8 Mounting Partitions via /etc/fstab 
-14.9 Creating a Swap Partition 
-
-Lesson 15: Managing LVM Logical Volumes
-
-15.4 Understanding Device Mapper and LVM Device Names 
-
-______________
-https://linux.die.net/man/1/dstat
-Dstat is a versatile replacement for vmstat, iostat and ifstat. Dstat overcomes some of the limitations and adds some extra features.
-
-Dstat allows you to view all of your system resources instantly, you can eg. compare disk usage in combination with interrupts from your IDE controller, or compare the network bandwidth numbers directly with the disk throughput (in the same interval). 
-_______________
-https://linux.die.net/man/1/explain
-
-
-The explain command is used to decode an error return read from an strace(1) listing, or silimar. Because thisd is being deciphered in a different process than the orginal, the results will be less accurate than if the program itself were to use libexplain(3). 
-_________________________
-https://linux.die.net/man/1/latrace
-
-latrace - LD_AUDIT 2.4+ libc frontend
-Synopsis
-
-latrace [-ltfsbcCpADaoyIiBdvTFELVh] command [arg ... ]
-Description
-
-latrace is able to run a command and display its dynamic library calls using a LD_AUDIT libc feature (available from libc version 2.4 onward - see the section called "DISCUSSION" ). It is also capable to measure and display various statistics of dynamic calls.
-
-If the config file is provided, latrace will display symbol's arguments with detailed output for structures. The config file syntax is similar to the C language, with several exceptions (see the section called "CONFIG").
-
-The latrace by default fully operates inside of the traced program. However another pipe mode is available, to move the main work to the latrace binary (see the section called "PIPE mode"). 
 
 </html>

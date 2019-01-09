@@ -128,6 +128,77 @@ Plain → XOR → |Subsitution| → XOR → |Subsitution| → C
             <li>Round count depends on key lenght: 10, 12 or 14 cycles</li>
             <li>Each Round: SubBytes, ShiftRows, MixColumns</li>
             <li>Modern CPUs have hardware instruccions to accelerate AES computation</li>
+            <li>AES-NI x86 acceleration:
+<pre>
+study of AES-NI acceleration using (Libre|Open)SSL
+<a href="https://calomel.org/aesni_ssl_performance.html">REF</a> November 08, 2018
+AES-NI x86-extension provides: 
+  - improved the speed of cryptographic calcs. using AES standard (AES-128,AES-256,...).
+  - Must be enabled through the BIOS.
+  - Only supported by real CPU cores, NOT hyper-threaded/Virtual cores
+  - Designed to provide 4x to 8x speed improvements.
+
+Test benchmark:
+- TLS v1.2 and TLS v1.3 connections (typical connections in HTTP/2 , HTTPS clients)
+- Testing soft:
+  LibreSSL 2.5.0 ( ~ OpenSSL 1.0.2d) ; FreeBSD 11 ; Clang LLVM compiler
+  8192 byte blocks
+   Script used for testing:
+   $ openssl speed -elapsed -evp chacha
+   $ openssl speed -elapsed -evp aes-128-gcm
+   $ openssl speed -elapsed -evp aes-256-gcm
+   $ openssl speed -elapsed -evp aes-128-cbc
+   $ openssl speed -elapsed -evp aes-256-cbc
+
+<b>Results:</b>
+AES Performance per-CPU-core for TLS v1.2 Ciphers
+- MegaBytes-per-sec, Higher is Better
+- ChaCha20 (256 bit stream cipher, <b>NOT accelerated</b>) used as reference/baseline 
+
+                   ChaCha20  AES-128-GCM  AES-256-GCM  AES-128-CBC  AES-256-CBC  Total Score
+<b>
+AMD Ryzen 7 1800X   573       3006         2642         1513         1101        = 8835</b>
+Intel W-2125        565       2808         2426         1698         1235        = 8732
+Intel i7-6700       585       2607         2251         1561         1131        = 8135
+Intel i5-6500       410       1729         1520         1078          783        = 5520
+AMD FX 8350         367       1453         1278          716          514        = 4328
+AMD FX 8150         347       1441         1273          716          515        = 4292
+Intel E5-2650 v4    404       1479         1286          652          468        = 4289
+Intel i5-2500K      358       1274         1140          728          522        = 4022
+AMD Opteron 6380    293       1203         1063          589          423        = 3571
+Intel Xeon E5-2630  247        962          864          541          394        = 3008
+Intel Xeon L5630    225        701          610          626          450        = 2612
+Intel E5-2603 v4    236        866          754          382          274        = 2512
+Intel i7-950        401        256          218          358          257        = 1490
+Intel ATOM D525      98         51           43           28           20        =  240
+Snapdragon S4 Pro*1 131         41            -            -            -        =  172
+ARM Cortex A9    *1  73         24            -            -            -        =   97
+
+*1: Snapdragon and ARM Cortex values reported by Google Developers
+________________________________________________________________________________________________
+
+<b>How do I interpret the results ?</b>
+Let's suppose:
+  - connection bandwidth: 10 Gbs (=1,250MBs)
+  - Web server is able to concurrently encrypt|decrypt
+    data to saturate the 10 gigabit connection.
+  - Suppose 100% of our clients use AES-128-GCM cipher
+
+IDEALLY we would like the CPU could processes 10Gbs/1,250MBs of AES encrypted data per-cpu-core. 
+- Since we need to recieve (decrypt) and send (encrypt) the data we need at least two(2) CPU cores.
+  -  each CPU must be able to sustain 1,250 MB/s.
+- From previous performance-table, just "AMD Opteron 6380" and  faster ones will be able to keep to pace.
+  (Note: Opteron-6380 has 16 cores, so it leaves many other CPU cores for network I/O, firewall rules, ...)
+
+REAL-WORLD:
+  - Clients connect with a variety of ciphers and the system is not dedicated to 
+    just cipher processing.
+  - It is also possible that the cipher processing of multiple cpu cores can be
+    added together to reach the desired speed. 
+    - "Intel Xeon L5630" four cores that can process up to 701 MB/s AES-128-GCM data.(2,804 MBs)
+    (enough speed for encrypting and decrypting data on a 10 gigabit link using AES-128-GCM)
+</pre>
+            </li>
           </ul>
        </li>
        <li><def>Padding</def>: used when the message does exactly match a multiple of key size.</li>

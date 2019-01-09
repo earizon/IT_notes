@@ -5,7 +5,7 @@ cat << EOF >index.html
 <head>
 <link rel="stylesheet" type="text/css" href="/IT_notes/map_v1.css" />
 <style>
-h1, h2, h3, body { font-family: sans-serif; text-shadow: 0px 0px 1px #555; line-height:1.4; 
+h1, h2, h3, body { font-family: sans-serif; /*text-shadow: 0px 0px 1px #555;*/ line-height:1.4; 
 }
 body { 
   max-width: 40rem;
@@ -50,7 +50,7 @@ body {
 
   Single-Page-book pretend to be to documentation what
   <a target="_new" href="https://en.wikipedia.org/wiki/Single-page_application">single-page-apps</a> became for web apps.<br/>
-  While the content is saved, transported and stored in a single document similar to an e-book or pdf, it can be consulted and a much higher pace, "dynamically" allowing to zoom in/out of the content with easy. <br/>
+  While the content is saved, transported and stored in a single document similar to an e-book or pdf, it can be consulted at (much) higher pace, "dynamically" allowing to zoom in/out of the content with easy. <br/>
   <br/>
   To make it possible SPB profits from all the excelent work invested in modern
   Web Browsers to provide static and dynamic content<br/>
@@ -77,9 +77,9 @@ body {
   <li>Putting related info close to each other. Actually a single html text file will be used.</li>
   <li>Don't repeat same info twice. This is easier once the previously spread information is located in a single file</li>
   <li>Don't keep notes spread(hidden) amongst hundred of emails</li>
-  <li>Don't hide important information inside random menus paths and child pages:<br/>
+  <li>Don't hide important information inside random menus paths and children pages:<br/>
       The risk of the <a href="https://en.wikipedia.org/wiki/There_are_known_knowns">Unknown Unknowns</a> can
-      also be applied to documentation:<br/><br/>
+      also be applied to documentation:<br/>
       People will not search for important information until they are aware that such important information
       exists, so better place important information right into the main page.<br/>
   </li>

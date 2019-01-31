@@ -1502,7 +1502,7 @@ contract Voting {
 </tr>
 </table>
 
-Library handling
+Libraries
 <table>
 <tr>
 <td>
@@ -1566,20 +1566,136 @@ HACK:  defining the event both in the contract and the library
   main contract who sent the event and not the library.
 </pre>
 </td>
+<td colsep>Zeppelin</td>
 <td>
- <a TODO href="https://blog.zeppelin.solutions/proxy-libraries-in-solidity-79fbe4b970fd">xxxx</a>
-<pre TODO xxxsmall zoom>
+  <a TODO href="https://github.com/OpenZeppelin/">OpenZeppelin</a>
+<pre xxxsmall zoom>
+TODO: Summary of "important" libraries
 </pre>
 </td>
 <td>
- <a TODO href="https://blog.aragon.one/advanced-solidity-code-deployment-techniques-dc032665f434">xxxx</a>
-<pre TODO xxxsmall zoom>
+  ZeppelinOS ("Upgradable Contracts")
+<pre xxxsmall zoom>
+REFS:
+- <a href="https://blog.zeppelinos.org/getting-started-with-zeppelinos/">Introduction @ Zepellin Blog</a>
+
+ZeppelinOS "zos" is a command line tool to makes writing upgradeable contracts extremely easy, abstracting away the complexities of upgradeability.
+ It is based on proxy libraries as explained <a TODO href="https://blog.zeppelin.solutions/proxy-libraries-in-solidity-79fbe4b970fd">[here]</a> 
+
+WARN: Upgradeability can NOT be applied to already-deployed contracts.
+
+<b>zos install</b>
+$ npm install --global zos
+
+<b>zos ussage</b>
+$ mkdir zos-demo && cd zos-demo
+$ npm init -y
+$ zos init zos-demo  # create the zos.json config. file
+                                  ^^^^^^^^             
+                              config file that makes zos
+                              aware of your smart contract 
+                              architecture.
+
+$ npm install --save zos-lib # A "contracts" folder is created
+
+$ vim contracts/CounterContract.sol
+ pragma solidity ^0.4.21;
+ import "zos-lib/contracts/migrations/Migratable.sol";
+
+ | contract CounterContract is Migratable {
+ |
+ |   uint256 public counter;
+ |
+ |   // <b>initialize replaces constructor in upgradable contract</b>
+ |   // guaranting that the new contract version can only be initialized once.
+ |   function <b orange>initialize</b>(uint256 _counter)   
+ |     // isInitializer takes the name of contract and version ID
+ |     <b>isInitializer("CounterContract", "0")</b> public {
+ |     counter = _counter;
+ |   }
+ |
+ |   function increment() public {
+ |     counter += 1; 
+ |   }
+ | }
+ | 
+ Note: If you do use a constructor in an upgradeable smart contract, 
+       everything you set in the constructor will be ignored.
+
+
+<b>Testing</b>
+("npm install --save ganache-cli" if not already done)
+$ npx ganache-cli --port 9545 
+
+$ zos add CounterContract  # ← STEP 1: Add smart contract to zos
+$ zos push --network local # ← STEP 2: push it to the local network:
+
+$ zos create CounterContract \ # create&amp;initialize upgradeable instance
+      --init <b orange>initialize</b> \
+      --args 42 \     ← must match the <b orange>initialize</b> method.
+      --network local
+→ ... 
+→ ... <b green>CounterContract proxy: <address></b>  ← address to use for instance
+→ ...                                                  (safe somewhere safely!)
+
+$ npx truffle console --network=local  # ← enter truffle interactive console
+  truffle> counterContract = CounterContract.deployed()    # Alt 1:
+  truffle> counterContract = CounterContract.at("address") # Alt 2:
+  truffle> counterContract.increment()                     # Call public method
+  truffle> counterContract.counter().then(counter => counter.toNumber()) # Fetch value
+  → 43
+  truffle> .exit
+
+<b>Upgrade deployed contract</b>   
+  (add incrementByTwo and history map)
+
+    pragma solidity ^0.4.21;
+    import "zos-lib/contracts/migrations/Migratable.sol";
+
+    contract CounterContract is Migratable {
+     uint256 public counter;
+ +  mapping(uint256 => address) public history;
+    ...
+
+ +  function incrementByTwo() public {
+ +     counter += 2;
+ +     history[counter] = msg.sender;
+ +   }
+    }
+<b bgred>WARN: When writing new versions of your contract, you must preserve all variables that
+      appear in previous versions of your smart contract in the same order.
+      You should only make additive changes. You can find more details in the advanced topics page.</b>
+
+$ zos push --network local                    # ← Push new version.
+$ zos update CounterContract --network local  # ← update CounterContract to new version
+
+<b>Test new version</b>
+$ npx truffle console --network=local to access the truffle console.
+   truffle> counterContract = CounterContract.deployed() # alt 1
+   truffle> counterContract = CounterContract.at("address")
+   truffle> counterContract.incrementByTwo() 
+   truffle> counterContract.counter().then(counter => counter.toNumber())
+   → 45  
+   truffle> counterContract.history(45)
+   → 0x....  
+
+<b>
+Note: If at any point you’ve stopped Ganache and need to restart this process all over,
+make sure you delete zos.local.json file as well. This isn’t a problem for other networks,
+x since typically networks don’t get wiped out :)</b>
+
+See also:
+<a TODO href="https://blog.zeppelinos.org/getting-started-with-zeppelinos/">Getting Started with Z.OS</a>
+<a TODO href="https://docs.zeppelinos.org/docs/advanced.html#deploying-to-mainnet">Deployning to mainnet</a>
+<a TODO href="https://docs.zeppelinos.org/docs/basil.html">Advanced Tutorial</a>
+<a TODO href="https://docs.zeppelinos.org/docs/crafty.html">Advanced example (Crafty)</a>
 </pre>
-</td>
-<td>
- <a TODO href="https://blog.zeppelin.solutions/proxy-libraries-in-solidity-79fbe4b970fd">xxxx</a>
-<pre TODO xxxsmall zoom>
-</pre>
+
+
+  <a TODO href="https://blog.aragon.one/advanced-solidity-code-deployment-techniques-dc032665f434">Advanced deployment@Aragon.one</a>
+
+
+
 </td>
 </tr>
 </table>
@@ -1676,7 +1792,146 @@ null ""0x82e.....""
   </li>
   <li><a href="https://etherscan.io/pushTx"><def>https://etherscan.io/pushTx</def></a>: Send raw-transactions</li>
   </ul>
+</td>
+<td colsep>Truffle</td>
+</td>
+<td TODO>
+   Truffle
+   <hr xxxsmall />
+   new bare Project
+<pre xxxsmall zoom>
+$ mkdir fibonacci
+$ cd fibonacci
+$ truffle init  # ← Create a bare truffle project:
+$ vim Smart-Contract contracts/Fibonacci.sol:
+    | pragma solidity ^0.4.22;
+    | contract Fibonacci {
+    |     // fibseries declaration outside function 
+    |     //   => saved in storage (vs memory) 
+    |     //    => triggers TX when modified 
+    |     uint[] fibseries; 
+    |     // n = how many in the series to return
+    |     function generateFib(uint n) public {
+    |         // set 1st and 2nd entries
+    |         fibseries.push(1);
+    |         fibseries.push(1);
+    |
+    |         // generate subsequent entries
+    |         for (uint i=2; i < n ; i++) {
+    |             fibseries.push(fibseries[i-1] +
+    |                            fibseries[i-2]);
+    |         }
+    |     }
+    | }
+$ vim migrations/2_deploy_contracts.js:
+    | var Fibonacci = artifacts.require("Fibonacci");
 
+    | module.exports = function(deployer) {
+    |   deployer.deploy(Fibonacci);
+    | };
+$ vim truffle-config.js:
+    | module.exports = {
+    |   networks: {
+    |     development: {
+    |       host: "127.0.0.1",  ← test geth/ganache/... IP 
+    |       port: 7545,         ← test geth/ganache/... port
+    |       network_id: "*"
+    |     }
+    |   }
+    | };
+</pre>
+   Truffle Solidity Debugger
+<pre xxxsmall zoom>
+  <a href="https://truffleframework.com/tutorials/debugger-variable-inspection">REF</a>
+$ truffle console  # ← Will fail in test node is NOT running
+truffle(development)> <b>compile</b>
+→ Compiling .\contracts\Fibonacci.sol...
+→ Compiling .\contracts\Migrations.sol...
+→ Writing artifacts to .\build\contracts
+→ ...
+( Check for errors)
+truffle(development)> <b>migrate</b>
+→ Using network 'development'.
+→ ...
+→ Running migration: 1_initial_migration.js
+→ ...
+→ Running migration: 2_deploy_contracts.js
+→ ...
+→ ...
+→ ...
+→ ...
+(Check in geth logs|ganache console that TXs have been mined)
+
+truffle(development)> <b>Fibonacci.deployed().then(function(instance){return instance.generateFib(10);});</b>
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                      """ given a deployed version of the Fibonacci contract, run an instance of that
+                          contract, and then run the generateFib function from that contract,
+                          passing it the argument 10."""
+                      A new TX will be created on the blockchain because our array that holds
+                      the generated Fibonacci sequence is in storage. 
+→ { tx: '<b orange>0xf47f01da1a6991f4dc168928cf4c490cb9bb57ca403b428f40a333ea65d1c41c</b>',
+→   receipt:
+→    { transactionHash: '0xf47f01da1a6991f4dc168928cf4c490cb9bb57ca403b428f40a333ea65d1c41c',
+→      transactionIndex: 0,
+→      blockHash: '0x88d45cb84d1f26001b0e7ae2931a56dfc0a592a1d0437fe0a37540d65f49a2ed',
+→      blockNumber: 5,
+→      gasUsed: 298373,
+→      cumulativeGasUsed: 298373,
+→      contractAddress: null,
+→      logs: [],
+→      status: '0x01',
+→      logsBloom: '0x000....0000' },
+→   logs: [] 
+→ }
+truffle(development)> <b>debug <span bgorange>0xf47f01da1a6991f4dc168928cf4c490cb9bb57ca403b428f40a333ea65d1c41c</span></b>
+→ Gathering transaction data...
+→ Addresses affected:                                     
+→  0x33b217190208f7b8d2b14d7a30ec3de7bd722ac6 - Fibonacci 
+→ 
+→ Commands:
+→ (enter) last command entered (step next)
+→ (o) step over, (i) step into, (u) step out, (n) step next
+→ (;) step instruction, (p) print instruction, (h) print this help, (q) quit
+→ (b) toggle breakpoint, (c) continue until breakpoint
+→ (+) add watch expression (`+:<expr>`), (-) remove watch expression (-:<expr>)
+→ (?) list existing watch expressions
+→ (v) print variables and values, (:) evaluate expression - see `v`
+→ 
+→ Fibonacci.sol:
+→                             
+→ 1: pragma solidity ^0.4.22;
+→ 2:
+→ 3: contract Fibonacci {
+→    ^^^^^^^^^^^^^^^^^^^^
+debug(development:0xf47f01da...)> <b>n</b>
+→ 7:   // n = how many in the series to return
+→ 8:   function generateFib(uint n) public {
+→      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+→ 
+(Move until reaching the for-loop)
+debug(development:0xf47f01da...)> <b>v</b>
+→         i: 0
+→         n: 10
+→ fibseries: []
+debug(development:0xf47f01da...)> <b>+:{ i, fibseries }</b> ← watch vars (show after instruction)
+                                  <b>                  </b>   -:i to unwatch
+debug(development:0xf47f01da...)> <b>o</b>  ← Repeat until filling the array
+→ ...
+→ fibseries: [1, 1, 2, 3, 5, 8, 13, 21, 34, 55] 
+</pre>
+
+  Recompile/Update
+<pre xxxsmall zoom>
+truffle(development)> <b>compile --all</b>
+                              ^^^^^
+                              force recompile all
+                              of the contracts.
+→ ...
+truffle(development)> <b>migrate --reset</b>
+→ ...
+truffle(development)> <b>Fibonacci.deployed().then(function(instance){return instance.generateFib(10);});</b>
+→ ...
+</pre>
 </td>
 <td>
   <a href="https://docs.web3j.io/">Web3J</a><br/>
@@ -2297,7 +2552,15 @@ eth_getTransactionByBlockNumberAndIndex                web3_sha3
 </td>
 </tr>
 </table>
+<br/>
+Azure Blockchain Workbench 
+<table>
+<tr>
+<td>
  
+</td>
+</tr>
+</table>
 </body>
 <!--
 TODO_START:
@@ -3537,5 +3800,18 @@ https://github.com/machinomy/contracts/blob/master/contracts/Unidirectional.sol
 
 Machinomy simple Channels on Ethereum contract
 _____________________
+https://www.codementor.io/sambhav2612/setting-up-a-dao-contract-for-meetup-groups-k6jvjpvnr
+_____________________
+https://github.com/status-im/geth_exporter
+geth metrics exporter for Prometheus
+______________________________
+https://legalconsortium.org/apply/
+______________________________
+Mount Google Drive
+
+https://www.techrepublic.com/article/how-to-mount-your-google-drive-on-linux-with-google-drive-ocamlfuse/
+Fedora install:
+  https://ask.fedoraproject.org/en/question/68813/any-good-client-for-google-drive/
+
 -->
 </html>

@@ -48,13 +48,13 @@
         (can be distributed across multiple nodes).                  
         used for <a href="../Architecture/architecture_map.html?query=service+registration+discovery">Service Registration and discovery</a>
 
-- (REST)API Server: cluster main management pointf             
+- (REST)API Server: cluster main management point
    + allows users to configure many of K8s workloads
      and organizational units.                                           
                                                                      
 - Controller Manager Service:                                        
-   + general service with responsibilities handling a                
-     a number of controllers that regulate the state                 
+   + general service handling a number of controllers
+     that regulate the state                 
      of the cluster and perform routine tasks                        
      (ensures number of replicas for a service, ...)                 
                                                                      
@@ -655,7 +655,7 @@ $ kubectl config view | \
   <li>Pods do not, by themselves, self-heal. Thus, while it is possible to
     use Pod directly, it’s far more common in Kubernetes to manage your pods 
     using a Controller to implement Pod scaling and healing.</li>
-  <li>Largely inmutalbe, changes cannot be made to the definition while 
+  <li>Largely inmutable, changes cannot be made to the definition while 
     it is running and do NOT maintain state when recreated. Therefore pods
     should usually be managed by higher-level controllers, rather than
     directly by users.</li>
@@ -1758,7 +1758,7 @@ $ kubectl get nodes -o jsonpath=\
 </tr }>
 <tr {>
 <td>  
-  <a TODO href="https://HELM.sh">Ericsson HEML</a><br/>
+  <a TODO href="https://HELM.sh">HELM</a><br/>
     Package manager for Kubernetes
   <hr/>
   <a TODO href="https://kubeapps.com/">Kubeapps</a><br/>
@@ -1916,7 +1916,274 @@ driver, and then cleans up.
 
 </tr>
 </table } >
+<br/>
+  Understanding K8S Code
+<table>
+<tr>
+<td>
+<a href="https://jvns.ca/blog/2017/06/04/learning-about-kubernetes/">K8s Implementation Summary</a> 
+<pre xxxsmall zoom>
+- <a href="https://jvns.ca/blog/2017/06/04/learning-about-kubernetes/">Julia Evans "A few things I've learned about Kubernetes"</a> 
 
+- """... you can run the kubelet by itself! And if you have a kubelet, you 
+can add the API server and just run those two things by themselves! Okay, 
+awesome, now let’s add the scheduler!""" 
+
+- the “kubelet” is in charge of running containers on nodes
+- If you tell the API server to run a container on a node, it will tell the kubelet to get it done (indirectly)
+- The scheduler translates "run a container" to "run a container on node X"
+
+<b>etcd is Kubernetes’ brain</b>
+- Every component in Kubernetes (API server, scheduler, kubelets, controller manager, ...) is stateless.
+   All of the state is stored in the (key-value store) etcd database.
+- Communication between components (often) happens via etcd.
+- <b bgorange>basically everything in Kubernetes works by watching etcd for stuff it has to do,
+  doing it, and then writing the new state back into etcd</b>
+
+  Ex 1: Run a container on Machine "X":
+   Wrong way: ask kubelet@Machine"X" to run the container.
+   Right way: kubectl*1 ->(API Server)-> etcd: "This pod should run on Machine X"
+              kubelet@Machine"X"      -> etcd: check work to do
+              kubelet@Machine"X"      <- etcd: "This pod should run on Machine X"
+              kubelet@Machine"X"      <- kubelet@Machine"X": Run pod
+
+  Ex 2: Run a container anywhere on the k8s cluster
+    kubectl*1 ->(API Server)-> etcd: "This pod should run somewhere"
+    scheduler               -> etcd: Something to run?
+    scheduler               <- etcd: "This pod should run somewhere"
+    scheduler               -> kuberlet@Machine"Y":  Run pod
+
+ *1 The kubectl is used from the command line.
+    In the sequence diagram it can be replaced for any
+    of the existing controllers (ReplicaSet, Deployment, DaemonSet, Job,...)
+
+<b>API server roles in cluster:</b>
+API Server is responsible for:
+1.- putting stuff into etcd
+
+    kubectl    -> API Server : put "stuff" in etcd
+    API Server -> API Server : check "stuff" 
+    alt 1:
+       kubectl <- API Server : error: "stuff" is wrong
+    alt 2:
+       API Server -> etcd    : set/update "stuff"
+
+2.- Managing authentication:
+    ("who is allowed to put what stuff into etcd")
+    The normal way is through X509 client certs.
+
+
+<b>controller manager does a bunch of stuff</b></b>
+Responsible for:
+- Inspect etcd for pending to schedule pods.
+- daemon-set-controllers will inspect etcd for
+  pending daemonsets and will call the scheduler 
+  to run them on every machine with the given
+  pod configuration.
+- The "replica set controller" will inspect etcd for
+  pending replicasets and will create 5 pods that
+  the scheduler will then schedule.
+- "deployment controller" ...
+
+<b>Troubleshooting:</b>
+something isn’t working? figure out which controller is
+responsible and look at its logs
+
+<b>Core K8s components run inside of k8s</b>
+- Only 5 things needs to be running before k8s starts up:
+  - the scheduler
+  - the API server
+  - etcd
+  - kubelets on every node (to actually execute containers)
+  - the controller manager (because to set up daemonsets you
+                            need the controller manager)
+
+  Any other core system (DNS, overlay network,... ) can 
+  be scheduled by k8s inside k8s
+</pre>
+</td>
+<td>
+   Source Code Layout
+<pre xxxsmall zoom>
+Note: Main k8s are placed in <a href="https://github.com/kubernetes/kubernetes/tree/master/pkg">kubernetes/pkg/</a> 
+      (API, kubectl, kubelet, controller, ...)
+     
+- <a href="https://developer.ibm.com/opentech/2017/06/21/tour-kubernetes-source-code-part-one-kubectl-api-server/">REF: A Tour of the Kubernetes Source Code Part One: From kubectl to API Server</a>
+
+<b>Examining kubectl source</b>
+
+Locating the implementation of kubectl commands in the Kubernetes source code
+
+- <a href="https://github.com/kubernetes/kubernetes/tree/master/pkg/kubectl/cmd">kubectl entry point for all commands</a>
+  - Inside there is a name of a go directory that matches the kubectl command:
+    Example:
+    <a href="https://github.com/kubernetes/kubernetes/tree/master/pkg/kubectl/cmd/create">kubectl create/create.go</a>
+
+<b>K8s loves the Cobra Command Framework</b>
+- k8s commands are implemented using the Cobra command framework.
+- Cobra provides lot of features for building command line interfaces
+  amongst them, Cobra puts the command usage message and command
+  descriptions adjacent to the code that runs the command.
+  Ex.:
+  | // NewCmdCreate returns new initialized instance of create sub command
+  | func NewCmdCreate(f cmdutil.Factory, ioStreams genericclioptions.IOStreams) *cobra.Command {
+  |     o := NewCreateOptions(ioStreams)
+  | 
+  |     cmd := &cobra.Command{
+  |         Use:                   "create -f FILENAME",
+  |         DisableFlagsInUseLine: true,
+  |         Short:                 i18n.T("Create a resource from a file or from stdin."),
+  |         Long:                  createLong,
+  |         Example:               createExample,
+  |         Run: func(cmd *cobra.Command, args []string) {
+  |             if cmdutil.IsFilenameSliceEmpty(o.FilenameOptions.Filenames) {
+  |                 defaultRunFunc := cmdutil.DefaultSubCommandRun(ioStreams.ErrOut)
+  |                 defaultRunFunc(cmd, args)
+  |                 return
+  |             }
+  |             cmdutil.CheckErr(o.Complete(f, cmd))
+  |             cmdutil.CheckErr(o.ValidateArgs(cmd, args))
+  |             cmdutil.CheckErr(o.RunCreate(f, cmd))
+  |         },
+  |     }
+  | 
+  |     // bind flag structs
+  |     o.RecordFlags.AddFlags(cmd)
+  | 
+  |     usage := "to use to create the resource"
+  |     cmdutil.AddFilenameOptionFlags(cmd, &o.FilenameOptions, usage)
+  |     ...
+  |     o.PrintFlags.AddFlags(cmd)
+  | 
+  |     // create subcommands
+  |     cmd.AddCommand(NewCmdCreateNamespace(f, ioStreams))
+  |     ...
+  |     return cmd
+  | }
+  
+<b>Builders and Visitors Abound in Kubernetes</b>
+  Ex. code:
+  | r := f.NewBuilder().
+  |     Unstructured().
+  |     Schema(schema).
+  |     ContinueOnError().
+  |     NamespaceParam(cmdNamespace).DefaultNamespace().
+  |     FilenameParam(enforceNamespace, &o.FilenameOptions).
+  |     LabelSelectorParam(o.Selector).
+  |     Flatten().
+  |     Do()
+  The functions Unstructured, Schema, ContinueOnError,...  Flatten 
+  all take in a pointer to a Builder struct, perform some form of
+  modification on the Builder struct, and then return the pointer to
+  the Builder struct for the next method in the chain to use when it
+  performs its modifications defined at:
+  <a href="https://github.com/kubernetes/cli-runtime/blob/master/pkg/genericclioptions/resource/builder.go">https://github.com/kubernetes/cli-runtime/blob/master/pkg/genericclioptions/resource/builder.go</a>:
+
+  | ...
+  | func (b *Builder) Schema(schema validation.Schema) *Builder {
+  |     b.schema = schema
+  |     return b
+  | }
+  | ...
+  | func (b *Builder) ContinueOnError() *Builder {
+  |     b.continueOnError = true
+  |     return b
+  | }
+
+ The Do function finally returns a Result object that will be used to drive 
+the creation of our resource. It also creates a Visitor object that can be 
+used to traverse the list of resources that were associated with this 
+invocation of resource.NewBuilder. The Do function implementation is shown below.
+
+
+  a new DecoratedVisitor is created and stored as part of the Result object 
+that is returned by the Builder Do function. The DecoratedVisitor has a Visit 
+function that will call the Visitor function that is passed into it.
+  |// Visit implements Visitor
+  |func (v DecoratedVisitor) Visit(fn VisitorFunc) error {
+  |    return v.visitor.Visit(func(info *Info, err error) error {
+  |        if err != nil {
+  |            return err
+  |        }
+  |        for i := range v.decorators {
+  |            if err := v.decorators[i](info, nil); err != nil {
+  |                return err
+  |            }
+  |        }
+  |        return fn(info, nil)
+  |    })
+  |}
+
+
+  Create eventually will call the anonymous function that contains the 
+  createAndRefresh function that will lead to the code making a REST call
+  to the API server.
+
+  The createAndRefresh function invokes the Resource NewHelper 
+  function found in ...helper.go returning a new Helper object:
+  | func NewHelper(client RESTClient, mapping *meta.RESTMapping) *Helper {
+  |     return &Helper{
+  |         Resource:        mapping.Resource,
+  |         RESTClient:      client,
+  |         Versioner:       mapping.MetadataAccessor,
+  |         NamespaceScoped: mapping.Scope.Name() == meta.RESTScopeNameNamespace,
+  |     }
+  | }
+
+  Finally the Create function iwill invoke a createResource function of the
+  Helper Create function.
+  The Helper createResource function, will performs the actual REST call to
+  the API server to create the resource we defined in our YAML file.
+
+
+<b>Compiling and Running Kubernetes</b>
+- we are going to use a special option that informs the Kubernetes build process
+
+$ make WHAT='cmd/kubectl'  # ← compile only kubectl 
+Test it like:
+On terminal 1 boot up local test hack cluster:
+$ PATH=$PATH KUBERNETES_PROVIDER=local hack/local-up-cluster.sh
+On terminal 2 execute the compiled kubectl:
+$ cluster/kubectl.sh create -f nginx_replica_pod.yaml
+
+<b>Code Learning Tools</b>
+Tools and techniques that can really help accelerate your ability to learn the k8s src:
+- Chrome Sourcegraph Plugin:
+  provides several advanced IDE features that make it dramatically
+  easier to understand Kubernetes Go code when browsing GitHub repositories. 
+  Ussage:
+  - start by looking at an absolutely depressing snippet of code,
+    with ton of functions.
+  - Hover over each code function with Chrome browser + Sourcegraph extension
+    installed:
+    It will popup a description of the function, what is passed into it
+    and what it returns.
+  - It also provides advanced view with the ability to peek into the function
+    being invoked. 
+- Properly formatted print statements:
+  fmt.Println("\n createAndRefresh Info = %#v", info)
+- Use of a go panic to get desperately needed stack traces:
+  | func createAndRefresh(info *resource.Info) error {
+  |     fmt.Println("\n createAndRefresh Info = %#v", info)
+  |     <b>panic("Want Stack Trace")</b>
+  |     obj, err := resource.NewHelper(info.Client, info.Mapping).Create(info.Namespace, true, info.Object)
+  |     if err != nil {
+  |         return err
+  |     }
+  |     info.Refresh(obj, true)
+  |     return nil
+  | }
+- GitHub Blame to travel back in time:
+  "What was the person thinking when they committed those lines of code?"
+  - GitHub browser interface has a blame option available as a button on the user interface:
+      It returns a view of the code that has the commits responsible for each line of code
+    in the source file. This allows you to go back in time and look at the commit that added
+    a particular line of code and determine what the developer was trying to accomplish when 
+    that line of code was added.
+</pre>
+</td>
+</tr>
+</table>
 </body>
 <!--
 TODO_Start
@@ -1987,6 +2254,21 @@ What Is IPVS?
 IPVS (IP Virtual Server) is built on top of the Netfilter and implements transport-layer load balancing as part of the Linux kernel.
 
 IPVS is incorporated into the LVS (Linux Virtual Server), where it runs on a host and acts as a load balancer in front of a cluster of real servers. IPVS can direct requests for TCP- and UDP-based services to the real servers, and make services of the real servers appear as virtual services on a single IP address. Therefore, IPVS naturally supports Kubernetes Service.
-
+_____________________________
+https://www.infoq.com/news/2019/01/kubecon-cloudnativecon-2018?utm_source=infoq&utm_medium=popular_widget&utm_campaign=popular_content_list&utm_content=
+_________________________
+udits log events (1.11+)
+_________________________________
+Related k8s must-known
+ - Overlay networks (I wrote a container networking overview about this last year)
+ - Network namespaces (understanding namespaces in general is really helpful for working with containers)
+ - DNS (because Kubernetes has a DNS server)
+ - Route tables, how to run ip route list and ip link list
+ - Network interfaces
+ - Encapsulation (vxlan / UDP)
+ - Basics about how to use iptables & read iptables configuration
+ - TLS, server certs, client certs, certificate authorities
+_____________________
+https://sysdig.com/blog/kubernetes-security-rbac-tls/
 -->
 </html>

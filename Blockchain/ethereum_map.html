@@ -705,22 +705,25 @@ ecrecover
   </ul>
 </td>
 <td>
-  <span xsmall>FUNCTIONS</span>
-  <ul xxxsmall zoom>
-  <li>
-<pre>
-modifier inState(State _state)    { if (state != _state) throw;  _;  }
-modifier require(bool _condition) { if (!_condition) throw; _;       }
+  <span xsmall bgorange>FUNCTIONS</span>
+<pre xxxsmall zoom>
+<b>modifiers</b> (Deprecated?)
+<b green>modifier inState</b>(State _state)    { if (state != _state) throw;  _;  }
+<b green>modifier require</b>(bool _condition) { if (!_condition) throw; _;       }
+
 
 function confirmPurchase(<parameter_list types>)
-    inState(State.Created)          // precondition
-    require(msg.value == 2 * value) // precondition
+    <b green>inState</b>(State.Created)          // precondition
+    <b green>require</b>(msg.value == 2 * value) // precondition<b blue>
     // VISIBILITY MODIFIERS {
-    [internal]  only this contract and child ones
-    [private]   only this contract
-    [external]
-    [public]
-    // }
+    [internal] ← only this contract and child ones
+    [private]  ← only this contract
+    [external] ← will only ever be called externally 
+                 external <a href="https://ethereum.stackexchange.com/questions/19380/external-vs-public-best-practices">is more efficient than public</a>
+                 since it also avoid copying parameters twice
+                 (very important with big arrays!!!)
+    [public]   ← will also be called internally.
+    // }</b><b orange>
     // MUTABILITY MODIFIERS {
     [payable]  /* allows funct to receive ether when called as:
                 * myContractInstance.myPayableFunction.call. \
@@ -736,14 +739,48 @@ function confirmPurchase(<parameter_list types>)
     [view] /* does NOT modify the contract storage 
               but storage can be accesed  ("getters")*/
     [constant] /* alias for pure */
-    // }
-    [returns ('return types')]
+    // }</b><b brown>
+    [returns ('return types')]</b>
     { 
+      // (function body)
       ... 
     }
+
+Note:
+     confirmPurchase(...) # Internal call 
+this.confirmPurchase(...) # External call
 </pre>
-  Fallback function (function called when no other function matches):
-<pre>
+
+  <span xsmall>IMPORTS:</span>
+<pre xxxsmall zoom>
+import ""filename"";
+import * as symbolName from ""filename"";
+import {symbol1 as alias, symbol2} from ""filename"";
+import ""filename"" as symbolName;
+
+Frameworks like truffle will also automatically import from the "node_modules/" folder
+where npm (Node package manager) installs dependencies.
+</pre>
+
+  <span xsmall>STRUCTS, ENUMS</span>
+<pre xxxsmall zoom>
+struct Voter {   ┃ enum State {
+  uint weight;   ┃    Created,
+  bool voted;    ┃    Locked,
+}                ┃    Inactive 
+                 ┃ }
+</pre>
+
+ Fallback function 
+<pre xxxsmall zoom>
+(called when no other function matches)
+event EventFallback(address from, int256 amount);
+...
+function () payable {
+  if (! this.owner.send(amount)) { throw ; }
+  EventFallback(msg.sender, receiver, amount);
+}; 
+
 event EventFallback(address from, int256 amount);
 ...
 function () payable {
@@ -751,36 +788,6 @@ function () payable {
   EventFallback(msg.sender, receiver, amount);
 }; 
 </pre>
-To use and external function f as an internal function,
-  just use f, if you want to use its external form, use this.f (not recomended) <br/>
-  external vs public: (Best practice) use external if function will only ever be 
-  called externally and use public if function will also be called internally.
-  external avoid copying parameters twice (very important with big arrays)<br/>
-</li>
-  <li>IMPORTS:
-<pre>
-import ""filename"";
-import * as symbolName from ""filename"";
-import {symbol1 as alias, symbol2} from ""filename"";
-import ""filename"" as symbolName;
-</pre>
-  </li>
-  <li>STRUCTS, ENUMS
-<pre>
-struct Voter {   ┃ enum State {
-  uint weight;   ┃    Created,
-  bool voted;    ┃    Locked,
-}                ┃    Inactive 
-                 ┃ }
-</pre>
-  </li>
-  <li>
-<pre>
-var x = 1/4; // x type: ufixed0x8 
-var x = 1/3  // x type: ufixed0x256, no finity bin.repre
-</pre>
-  </li>
-  </ul>
 </td>  
 <td>  
   <a  bgorange href="https://solidity.readthedocs.io/en/v0.4.24/control-structures.html#error-handling-assert-require-revert-and-exceptions">ERROR CONTROL</a><br/>
@@ -1301,6 +1308,39 @@ UTILS
     Arrays
     ReentrancyGuard
 </pre>
+</td>
+
+<td>
+  <a TODO href="https://hack.aragon.org/docs/aragonos-intro.html">AragonOS</a>
+<pre xxxsmall zoom>
+aragonOS provides the following functionality:
+- DAO: Decentralized Autonomous Organization
+
+- Upgreadability: Smart contracts can be upgraded to a newer version. Example: fixing a bug or adding a feature.
+- Permission control: By using the auth() and authP() modifiers you can protect functionality such that they're only accessible by other apps or entities if given permission. This completely abstracts the authentication logic from an app, allowing you to focus on your app's business logic. Example: protecting a vault so only the organization's Voting app can initiate an action to transfer funds.
+- Forwarders: aragonOS apps can communicate with each other by sending their intent to perform an action to other apps. Example: withdrawing funds from a vault only on the passing of a vote and the expiring of a time-lock.
+
+All the above makes it very simple for aragonOS apps to incorporate governance. You just need to add a voting app, configure permissions the right way, and away you go!
+</pre>
+  <a TODO href="https://hack.aragon.org/docs/apm.html">Upgradeability</a>
+<pre xxxsmall zoom>
+- As a DAO, each aragonPM registry includes a number of installed applications, including one APMRegistry, one ENSSubdomainRegistrar, and many Repo instances.
+</pre>
+
+
+  <a TODO href="https://github.com/aragon/aragon-apps">Aragon Apps</a>
+<pre xxxsmall zoom>
+This repository contains the following apps:
+ - Vault       : Securely owns and manages tokens on behalf of a DAO.
+ - Finance     : Send payments and manage expenses with budgeting.
+ - Voting      : Create votes that execute actions on behalf of token holders.
+ - Token Manager: Manages organization tokens.
+
+Under development:
+ -  Payroll    : Manages employees' payrolls.
+</pre>
+
+
 </td>
 
 <td>
@@ -2553,14 +2593,6 @@ eth_getTransactionByBlockNumberAndIndex                web3_sha3
 </tr>
 </table>
 <br/>
-Azure Blockchain Workbench 
-<table>
-<tr>
-<td>
- 
-</td>
-</tr>
-</table>
 </body>
 <!--
 TODO_START:
@@ -3807,11 +3839,9 @@ geth metrics exporter for Prometheus
 ______________________________
 https://legalconsortium.org/apply/
 ______________________________
-Mount Google Drive
-
-https://www.techrepublic.com/article/how-to-mount-your-google-drive-on-linux-with-google-drive-ocamlfuse/
-Fedora install:
-  https://ask.fedoraproject.org/en/question/68813/any-good-client-for-google-drive/
-
+https://solidity.readthedocs.io/en/v0.5.0/style-guide.html
+______________________________
+- Who-is-Who:
+  https://github.com/juanfranblanco?tab=following
 -->
 </html>

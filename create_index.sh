@@ -55,7 +55,7 @@ body {
   Single-Page-book pretend to be to documentation what
   <a target="_new" href="https://en.wikipedia.org/wiki/Single-page_application">single-page-apps</a> became for web apps.<br/>
   </li>
-  <li>The content  "dynamically" allowing to zoom in/out of the content with easy,
+  <li>The content "dynamically" allows to zoom in/out of the content with easy,
      (Something like similar to how a user will navigate in Google Maps)
   </li>
   </ul>

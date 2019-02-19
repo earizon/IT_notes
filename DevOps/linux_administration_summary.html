@@ -12,7 +12,8 @@
 <a href="https://linux.die.net/man/">[Man Pages]</a>,
 <a href="https://linux.die.net/Linux-CLI/">[Command-line Tools  Summary]</a>,
 <a href="https://en.wikipedia.org/wiki/Linux_Standard_Base">[Linux Standard Base]</a>,
-(<a href="www.tldp.org/LDP/Linux-Filesystem-Hierarchy">Full FS Hierarchy</a>)</li>
+(<a href="https://www.tldp.org/LDP/Linux-Filesystem-Hierarchy/html/index.html">Full FS Hierarchy</a>)</li>
+
 </span>
 <hr xxxsmall/>
 <table style='width:100%'>
@@ -238,7 +239,7 @@ Permissions │Symbol│      FILE                   │     DIRECTORY          
 <td colsep></td>
 <td colsep>User&nbsp;Mng</td>
 <td>
-  Create new user
+  <span xsmall>Create new user:</span>
 <pre xxxsmall zoom>
 $ useradd [options] LOGIN : creates new user with default+specified values
 
@@ -282,7 +283,7 @@ $ useradd -D [options] # update default values
   --selinux-user SEUSER : SELinux user for the user's login
 </pre>
 
-  basic user audit
+  <span xsmall>basic user audit:</span>
 <pre xxxsmall zoom>
 $ who     ← Displays current users logged into the system and the  logged-in time
 $ w       ← Displays who is logged into the system and <b>what they are doing</b> (procs. they are running). 
@@ -419,7 +420,8 @@ $ sudo vim /etc/passwd # edit /etc/passwd as root
 <td colsep></td>
 <td colsep>Network</td>
 <td>
-  basic network audit/control
+  
+  <span xsmall>basic network audit/control:</span>
 <pre xxxsmall zoom>
 <b>Socket Statistics (ss)</b>
 <a href="https://linux.die.net/man/8/ss">man 8 ss</a>  (ss: socket statistics) 
@@ -494,7 +496,8 @@ $ sudo traceroute "destination_IP_or_host" ← (attempts to ) show the route of 
 $ sudo nmap -nt remote_machine    ← (try to) query remote machine for open ports 
 </pre>
 
-basic network traffic shaping:
+
+  <span xsmall>basic network traffic shaping:</span>
 <pre xxxsmall zoom>
 <b> Network interface shaping with <a href="https://github.com/magnific0/wondershaper/">Wondershaper</a></b>
 $ sudo ./wondershaper -a eth0 -u 4096 -d 8192 ← limit upload: 4Mbps, download:8Mbs
@@ -504,8 +507,8 @@ $ firejail  --net=enp2s0 firefox [/bash]
 $ firejail --list | grep 'firefox' | awk -F: '{print$1}'
 $ firejail  --bandwidth=PID set interface-name down-speed up-speed
 </pre>
-
-  Internet Utility commands
+  
+  <span xsmall>Internet Utility commands</span>
 <pre xxxsmall zoom>
 $ <b>host (ip_address|domain_name)</b>  ← Performs lookup of an internet address (using the Domain Name System, DNS). Simply type:
 or
@@ -531,6 +534,7 @@ $ <b>curl</b>  ← Script oriented HTTP client.
 $ curl -M : To access the full/huge manual 
 $ curl -u username:password http://www.placetodownload/file
 </pre>
+
 </td>
 <td>
   Remote access
@@ -625,7 +629,7 @@ configurations use different (paranoid) security options.
 </pre>
 
   
-  <span xsmall>VNC (graphical)</span>
+  <span xsmall>VNC<br/>(Remote Desktop)</span>
 <pre xxxsmall zoom>
 - The VNC protocol allows to launch a graphical system in a
   remote system using the VNC server and access it remotely
@@ -644,8 +648,89 @@ configurations use different (paranoid) security options.
   can run in parallel, just limited by memory access.
   This <a href="https://github.com/earizon/tigervnc_remote_desktop">github repository</a> offers an example of how to run many different
   VNC servers in parallel. 
-  
 </pre>
+
+   <span xsmall bgorange>Knockd ("Invisible Linux")</span>
+<pre xxxsmall zoom>
+<a href="https://www.maketecheasier.com/make-linux-server-invisible-knockd/">REF(Michael Aboagye @ MakeTechEasier.com)</a>
+
+- port-knock server:
+  - It listens to all traffic on an network interface
+    waiting for special sequences of port-hits.
+
+- clients (telnet, socat, ...) initiate port-hits by
+  sending a TCP or packet to a port on the server.
+
+<b>PRE-SETUP</b>
+- Install and Configure Iptables
+  $ sudo apt-get install iptables iptables-persistent
+                                  ^^^^^^^^^^^^^^^^^^^
+                                  takes over automatic
+                                  loading of saved tables
+
+
+<b> Knockd Install</b>
+$ sudo apt-get install knockd  # apt like
+$ sudo dnf     install knockd  # rpm like
+
+<b>hide ssh service until "Knocked"</b>
+$ iptables -A INPUT \
+        -m conntrack \                        STEP 1
+        --ctstate ESTABLISHED, RELATED \    ← Allow established/current
+        -j  ACCEPT                          ← Allow
+
+$ iptables  -A  INPUT \                       STEP 2
+        -p tcp  --dport  22 \               ← block incomming con. to 22 (SSH)
+        -j  REJECT 
+
+                                              STEP 3
+$ netfilter-persistent save                 ← s save the firewall rules
+$ netfilter-persistent reload             
+
+
+Configure  Knockd
+$ sudo "vim" /etc/knockd.conf
+  | [options]
+  |   UseSyslog
+  | 
+  | [openSSH]
+  |   sequence = 7000,8000,9000
+  |   seq_timeout = 5
+  |   command = /sbin/iptables -A INPUT -s %IP% -p tcp --dport 22 -j ACCEPT
+  |   tcpflags = syn
+  | 
+  | [closeSSH]
+  |   sequence = 8000,9000,7000
+  |   seq_timeout = 5
+  |   command = /sbin/iptables -D INPUT -s %IP% -p tcp --dport 22 -j ACCEPT
+  |   tcpflags = syn
+
+- command will be executed once the client-sequence  is recognised.
+- tcpflags must be set on the client "knocks"
+
+NOTE: Adding iptables "-A" flag (appned) causes the rule to be appended
+to the end of th INPUT chain, causing all remaining connections to drop.
+Replace by:
+  command = /sbin/iptables -I INPUT 1 -s %IP% -p tcp --dport 22 -j ACCEPT
+
+  "-I" flag (insert) ensures that the new rule is added to the top of the
+  input chain to accept ssh connections.
+
+<b>Enable Knockd Service</b>
+- Add/edit START_KNOCKD option in /etc/default/knock lo look like:
+  START_KNOCKD=1
+$ sudo systemctl enable knockd
+$ sudo systemctl start knockd
+
+<b>Testing</b>
+
+$ knock -v my-server-ip  7000 8000 9000
+$ ssh my-server-ip
+...
+$ knock -v my-server-ip 9000 8000 7000
+</pre>
+
+
 
 </td>
 <td colsep> </td>
@@ -732,16 +817,16 @@ $ sudo dmidecode -t 17
 |     Array Handle: 0x0007                    |         Array Handle: 0x1000
 |     Error Information Handle: Not Provided  |         Error Information Handle: Not Provided
 |     Total Width: 64 bits                    |         Total Width: Unknown
-|     Data Width: 64 bits                     |         Data Width: Unknown<b>
+|     Data Width: 64 bits                     |         Data Width: Unknown
 |     Size: 8192 MB                           |         Size: 4096 MB
 |     Form Factor: SODIMM                     |         Form Factor: DIMM    
-|     Set: None                               |         Set: None<b>
+|     Set: None                               |         Set: None
 |     Locator: ChannelA-DIMM0                 |         Locator: DIMM 0
 |     Bank Locator: BANK 0                    |         Bank Locator: Not Specified
 |     Type: DDR3                              |         Type: RAM
 |     Type Detail: Synchronous                |         Type Detail: Other
 |     Speed: 1333 MT/s                        |         Speed: Unknown
-|     Manufacturer: Samsung                   |         Manufacturer: QEMU</b>
+|     Manufacturer: Samsung                   |         Manufacturer: QEMU
 |     Serial Number: 939BED25                 |         Serial Number: Not Specified
 |     Asset Tag: None                         |         Asset Tag: Not Specified
 |     Part Number: M471B1G73DB0-YK0           |         Part Number: Not Specified
@@ -887,7 +972,7 @@ Ex 3: Summarize total RAM usage per user:
   done
 </pre>
 
-  SysV shared memory
+  <span xsmall>SysV shared memory</span>
 <pre xxxsmall zoom>
 - SysV shared memory segments are accounted as a cache, though they
   do not represent any data on the disks.
@@ -929,7 +1014,7 @@ $ tar xzf _home_myUser_myProject_01.tar.gz
       └──── de-compress
 </pre>
   
-  Remote Incremental backups:
+  <span xsmall>Remote Incremental backups:</span>
   <ul xxxsmall zoom>
   <li><a bgorange href="https://github.com/earizon/easyup">EasyUp</a> KISS incremental remote backup around rsync+ssh</a></li>
   <li><a href="http://rsnapshot.org/">Rsnapshot</a> filesystem snapshot utility on top of rsync.<br/>
@@ -1310,74 +1395,6 @@ Working with multiple files                                             Tabs</b>
 | Ctrl + wk - move cursor to the window above (horizontal split)
 </pre>
 </td>
-<td>  
-   Text view tools
-<pre xxxsmall zoom>
-Displaying text:
-$ head -n 20 /path/to/textFile # shows first 20 lines (-n 20). 10 lines by default if -n not provided.
-$ tail -n 20 /path/to/textFile # shows last  20 lines (-n 20). 10 lines by default if -n not provided.
-$ tail -f    /path/to/textFile # shows stream ("f"lush) of lines as they are appended to the file
-$ less       /path/to/textFile # Views text. Add scroll control backwards and forwards. 
-                               # embedded systems use "more", that just scroll forwards.
-$ cat        /path/to/textFile # dump text content to standard output (STDOUT)
-$ cat file1 file2 file3 ....   # concatenates files'content and dumps into STDOUT
-$ tac file1 file2 file3 ....   # concatenates files'content and dumps into STDOUT in reverse order
-</pre>
-   Text info tools
-<pre xxxsmall zoom>
-$ wc /path/to/textFile  ← Display total count of words, lines and bytes
-                          Options:
-                            -w count only words
-                            -l count only lines
-                            -w count only bytes
-
-
-$ diff file1 file2     ← Compares two text files and output a difference report indicating:
-                         '&gt; line_in_file2_not_in_file1
-                         '&lt; line_in_file1_not_in_file2
-$ sdiff                ← Similar to diff but with report in colum mode (more human readable)
-$ diff3                ← diff for three files
-</pre>
-
-   Text modification tools
-<pre xxxsmall zoom>
-By default we can use next tools like:
-   $ tool inputFile   # Apply to given file
-or
-   $ command1 ... | tool1 | tool2 | tool3 # Use stdout from previous command (|) as input 
-
-sorting content:
-$ sort file1  ← Sorting alphabetically lines in file  (-r to reverse, -g for numerical sort)
-j
-$ sort file1 -t ':' -k 4 -k 1    ← Use ':' as separator, sort first by column 4, then column 1.
-
-$ join file1 file2    ← Join two lines together assuming they share at least one common value
-                        on the relevant line, skiping lines withouth common value.
-
-Cut by column:
-$ cut -d "," -f 1,3,7 file1.csv ← Use "," as column delimiter, show then columns 1,3,7
-$ cut -c 1-50         file.txt  ← show characters 1 to 50 in each line
-$ cut -5, 8, 20-      file.txt  ← show characters 1 to 5 and 8 and from 20 to the end
-
-        This would display (“cut”) characters (columns) 1 to 5, 8 and from 20 to the end.
-
-$ uniq file1     ←  Eliminates duplicate entries from a file
-                    Commonly used with sort like:
-                    $ cat file.txt | sort | uniq
-                    Options: -c: display number of occurances of each duplicate
-                             -u: list only unique entries
-                             -d: list only duplicate entries
-
-$ tr "u" "d" file1  ← translate all instances of characters in a text file
-$  cat some_file | tr '[A-Z]' '[a-z]' > new_file  ← Convert all capital letters to lowercase
-
-$ nl file1.txt  ← Display file1.txt to STDOUT prefixing with line numbers
-
-$ sed "s/<b green>up</b>/<b orange>down</b>/<b blue>g</b>" file1.txt ← Replaces "<b green>up</b>" by "<b orange>down</b>". "<b blue>g</b>" flags indicates to replace all ocurrences. Otherwise only first is replaced.
-sed stays for "Stream editor", and has a lot of powerful flags like searching for regular expresions ...
-<span TODO>$ awk </span>
-</pre>
-</td>
 <td colsep></td>
 <td colsep>Services</td>
 <td>
@@ -1451,19 +1468,21 @@ CONFIG. FILE LAYOUT:
 Journalctl: <span xsmall><br/>
   Display/filter/search system logs</span>
 <pre xxxsmall zoom>
-# journalctl                      → all logs
-# journalctl -b                   → Boot Messages
-# journalctl -b -1                → Last Boot Messages
-# journalctl --list-boots         → list system boots
-# journalctl --since "3 hour ago" → Time range
-                     "2 days ago"
-    --until "2015-06-26 23:20:00"
-# journalctl -u nginx.service     → by unit (can be specified multiple times)
-# journalctl -f                   → Follow ("tail")
-# journalctl -n 50                → most recent (50) entries
-# journalctl -r                   → reverse chronological order
-# journalctl -b -1  -p "crit"     → By priority: -b -1 : FROM emergency , -p "crit" : TO: Critical
-# journalctl _UID=108             → By _UID
+# journalctl                      # ← all logs
+# journalctl -b                   # ← Boot Messages
+# journalctl -b -1                # ← Last Boot Messages
+# journalctl --list-boots         # ← list system boots
+# journalctl --since "3 hour ago" # ← Time range
+                     "2 days ago" #
+    --until "2015-06-26 23:20:00" #
+# journalctl -u nginx.service     # ← by unit (can be specified multiple times)
+# journalctl -f                   # ← Follow ("tail")
+# journalctl -n 50                # ← most recent (50) entries
+# journalctl -r                   # ← reverse chronological order
+# journalctl -b -1  -p "crit"     # ← By priority:
+                                  # ←   -b -1     : FROM emergency
+                                  # ←   -p "crit" : TO: Critical
+# journalctl _UID=108             # ← By _UID
 ---------------------------------------------------------------------
 Output Formats ( -o parameter )
 
@@ -1965,41 +1984,6 @@ Because Alpine Linux is designed to run from RAM, package management involves tw
 - lbu is the tool used to capture the data necessary to 
   restore a system to a previously configured state.
 
-
-Contents
-
-    1 Overview
-    2 Packages and Repositories
-        2.1 Repository pinning
-        2.2 Commandline repository options
-    3 Update the Package list
-    4 Add a Package
-    5 Add a local Package
-    6 Remove a Package
-    7 Upgrade a Running System
-    8 Search for Packages
-    9 Information on Packages
-        9.1 apk info
-            9.1.1 Listing installed packages
-        9.2 apk policy
-    10 Additional apk Commands
-    11 Local Cache
-    12 Enabling Local Cache
-        12.1 To enable Local Cache on releases prior v2.3
-        12.2 To manually enable Local Cache on HDD install
-        12.3 To manually enable Local Cache on run-from-RAM installs
-    13 Cache maintenance
-        13.1 Delete old packages
-        13.2 Download missing packages
-        13.3 Delete and download in one step
-        13.4 Automatically Cleaning Cache on Reboot
-    14 Using the Local Cache with tmpfs volumes
-    15 Advanced APK Usage
-        15.1 Holding a specific package back
-    16 Troubleshooting
-        16.1 "apk-tools is old"
-
-Overview
 
 apk: 
   add      Add new packages to the running system
@@ -3318,7 +3302,7 @@ $ perf stat - make -j
   <span TODO>stap</span>
 <pre xxxsmall zoom>
 </pre>
-  <span bgorange>(x)latencytop</span>
+  <span xsmall bgorange>(x)latencytop</span>
 <pre xxxsmall zoom>
 <a href="https://linux.die.net/man/8/xlatencytop">man 8 xlatencytop</a>
 
@@ -4072,6 +4056,11 @@ ___________________________
 https://www.linuxlinks.com/essential-system-tools-f3-detect-fix-counterfeit-flash-storage/
 Essential System Tools: f3 – detect and fix counterfeit flash storage
 ___________________________
+https://linuxtechlab.com/useful-yum-tips-tricks/
+___________________________
+Editors:
+- vim
+- nano
 }}}
 -->
 </html>

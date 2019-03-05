@@ -304,6 +304,12 @@ of attacks that rely on easily predicted memory addresses."""
  <a xsmall TODO href="https://sysdig.com/blog/selinux-seccomp-falco-technical-discussion/">SysDig Falco</a>
 <pre xxxsmall zoom>
 </pre>
+
+<a xsmall TODO href="https://labs.mwrinfosecurity.com/blog/high-interaction-honeypots-with-sysdig-and-falco">HoneyPots with SysDig and Falco</a>
+<pre xxxsmall zoom>
+</pre>
+
+
 </td>
 
 <td>
@@ -376,6 +382,117 @@ other projects have been enabling detection and recovery of machine and
 application-level failures in production clusters since 1999. The ClusterLabs 
 stack supports practically any redundancy configuration imaginable.
 </pre>
+</td>
+<td>
+  KVM weekly backup, the easy way
+<pre xxxsmall zoom>
+ KVM weekly backup, the easy way
+For the joy of all my readers here it comes the master-of-the-universe weekly script backup for KVM:
+
+# Redirect stdout/stderr to custom log.
+
+exec 1>> /var/log/custom_$(basename ${0}).$(whoami).$(date '+%Y%m%d').log 2>&1
+pushd /media/backup/MyServer1/
+# Keep copies of the VM for the last 4 weeks.
+mv kvm.qemu.gz.1 kvm.qemu.gz.2
+mv kvm.qemu.gz.0 kvm.qemu.gz.1
+mv kvm.qemu.gz kvm.qemu.gz.0
+
+# Stop KVM instance through telnet.
+# KVM has to be started with the option:
+# -monitor telnet:127.0.0.1:9942,server,nowait
+echo "stop" | nc -q 10 127.0.0.1 9942 # Freeze KVM instance
+
+#Here we do the real backup of the KVM instance
+cat /VM-Images/kvm.qemu | gzip > /media/backup/MyServer1/kvm.qemu.gz
+if [ $? != 0 ]; then
+echo "WARN: KVM backup failed"
+fi
+echo "c" | nc -q 10 127.0.0.1 9942 # Continue KVM instance
+popd
+
+For the previous script to work correctly we have to start the KVM instance with the option -monitor telnet:127.0.0.1:9942.
+
+In my particular system I start KVM instances at startup in /etc/rc.local. This is script is also quite interesting so I extracted all the kvm related stuff:
+
+/etc/rc.local:
+# Setting up the bridge (tip: apt-get install bridge-utils)
+brctl addbr ofi1
+brctl addif ofi1 eth1
+ifconfig eth1 0.0.0.0 promisc up
+ifconfig ofi1 192.168.2.100 netmask 255.255.0.0 up
+ifconfig ofi1:1 172.16.1.3
+
+...
+kvm -net nic,macaddr=52:54:00:19:34:56 \
+-net tap,script=/etc/qemu-ifup -hda /VM-Images/kvm.qemu \
+-boot c -vnc :5 1>/var/log/custom_kvm.qemu.log \
+-monitor telnet:127.0.0.1:9942,server,nowait 2>&1 &
+...
+# ionice/renice down our virtual machine
+PID=$(sof /VM-Images/kvm.qemu | grep -v ^COMMAND | while read cmd pid staff; do echo $pid; done)
+ionice -c 3 -p ${PID} &
+renice 10 -p ${PID} &
+
+
+/etc/qemu-ifup:
+#!/bin/sh
+# ofi1 is the choosen name in /etc/rc.local
+/usr/sbin/brctl addif ofi1 $1 ;
+ifconfig $1 0.0.0.0 up;
+</pre>
+</td>
+<td>
+  <a xsmall TODO href="https://medium.com/coinmonks/solidity-tutorial-returning-structs-from-public-functions-e78e48efb378">Solidity tutorial: returning structs from public functions</a>
+<pre xxxsmall zoom>
+In the current version of Solidity (0.4.13, as of this writing), it’s impossible to return a struct from a public function. For example, if you attempt to compile the following code, you will get two errors, one for each function that tries to do so:
+
+You can open this Gist in browser-solidity with the following link: http://ethereum.github.io/browser-solidity/#gist=03f9e536d033f81fe2a2df7a74a17ddf&version=soljson-v0.4.13+commit.fb4cb1a.js
+
+As you’ll see, the compiler complains about both functions, getBryn and getPerson:
+
+TypeError: Internal type is not allowed for public or external functions.
+
+Confirmed, it’s impossible to return structs.
+
+However, if you’ve been coding in Solidity for a while, you might notice that the following works perfectly well:
+
+Because the mapping is public, Solidity automatically generates a getter for this function. That’s odd, because the getter would have to return a Person struct, right? Let’s dig in a little bit deeper.
+
+Let’s deploy the above contract and run the following Javascript code:
+
+Okay, so what’s going on here?
+
+Shouldn’t the compiler complain when we ask it to generate a getter for a mapping that returns a Person struct?
+
+As it turns out, solc is smart enough to handle this case for us. Notice the return value from the invocation of project.people('0xdeadbeef'). It’s an array, which is how Solidity tuples are returned to Javascript land. Alright, so we know that the getter is not returning a struct, per se, but rather a tuple. This is a big clue!
+
+When the compiler generates a getter for a mapping or an array where the element is a struct, it does something like the following:
+
+As you can see, the getter simply breaks the struct down into a tuple. No internal types (like structs) are exposed. As a result, we get the functionality we desired with no compiler error. We simply have to be careful about the ordering of struct fields—if the order changes, we’ll have to change any code that interacts with this getter, since the order of the tuple values will change as well.
+
+Knowing this, we can take a cue from Solidity’s implementation of this mapping getter when writing our own functions that return structs.
+Returning arrays of structs
+
+Sometimes we might need to return an array of structs to the caller. However, if we take the naïve approach, we’ll once again run into the same limitation—we can’t expose internal types.
+
+We learned above that we can “destructure” a struct and return it as a tuple. To return an array of structs, we will do the same thing. Each value in the returned tuple will represent a field in the struct. But because we’re trying to return many structs (and therefore, many values for each field), each field in the tuple will be an array.
+
+Check out the following code to get a better sense of how this might look:
+
+Getting data back in this format is, admittedly, a pain to deal with on the frontend. Depending on your frontend data model, you may very well have to write functions to “rebuild” these structs from the data you receive. I’ve thrown together a quick example to show you how you might go about doing that:
+
+Note that struct “destructuring” is (hopefully) a temporary workaround. Solidity’s behavior is expected to change at some point in the future, making this a bit more seamless.
+
+Find me around the web:
+
+    Twitter: https://twitter.com/brynbellomy
+    Github: https://github.com/brynbellomy
+    LinkedIn: https://www.linkedin.com/in/bryn-bellomy
+
+</pre>
+
+
 </td>
 
 

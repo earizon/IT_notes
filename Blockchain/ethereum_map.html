@@ -33,6 +33,13 @@
   - <a href="https://www.b9lab.com/">b9lab</a> Quality Blockchain Education for everyone</a>
   - Xavier Lepretre, senior consultant at B9Lab
 
+  - <a href="http://blog.notdot.net/">Nick Johnson</a>, Arachnid Labs ("string utils")
+      <a href="http://blog.notdot.net/tag/damn-cool-algorithms">Damm Cool Algorithms</a>
+
+  - <a href="https://ethereum.stackexchange.com/users/19510/smarx">Steve Marx</a> and Tood Proebsting:
+    Authors of <a href="https://programtheblockchain.com/">programtheblockchain.com</a> with great tutorials about Payment Channels (<a href="https://programtheblockchain.com/posts/2018/12/10/introduction-to-ethereum-payment-channels-video/">1</a>, <a href="https://programtheblockchain.com/posts/2018/02/23/writing-a-simple-payment-channel/">2</a>, <a href="https://programtheblockchain.com/posts/2018/03/02/building-long-lived-payment-channels"/>3</a>
+   
+
 EEA:
   - Bill Allder: EEA Membership Director
   - Oksana Davis: EEA Chief Legal Counsel and Corporate Secretary
@@ -143,33 +150,56 @@ event Deposit( address indexed _from, bytes32 indexed _id, uint _value);
 
 
 </pre>
-  <hr xxxsmall />
-  Ethereum Account
+
+<a xsmall href="http://www.ethdocs.org/en/latest/contracts-and-transactions/account-types-gas-and-transactions.html">External/Contract Accounts</a> 
 <pre xxxsmall zoom>
 Account:
 ---------
-address
-wei balance
-Map&lt;256b,256b> storage
-</pre>
-  <ul xxxsmall zoom>
-  <li>There are two kinds of accounts in Ethereum which share the same address space:
-    <ul>
-    <li>External account : controlled by public-private key pairs (i.e. humans)<br/>
-        account.address: determined from the public key</li>
-    <li>contract accounts: controlled by the code stored together with the account. 
-        account.address in a contract is determined at the time the contract is created derived from the nonce = function(creator address, num.transactions sent)</li>
-    </ul>
-  </li>
-  <li>account.balance: can be modified by sending transactions that include Ethers.</li>
-  <li>account.storage: Persistent memory area 
-    <ul>
-    <li>It is not possible to enumerate storage from within a contract </li>
-    <li>It is comparatively costly to read and even more so, to modify storage</li>
-    <li>A contract can neither read nor write to any storage apart from its own</li>
+address                   
+wei balance               
+                          
+   - decrease: by using the private key to sign new TXs from this address.
+
+┌──────────────────┐
+│bytes[32] address │
+├──────────────────┤
+│wei       balance │ ← Only the owner of the (32 bytes) <b>secret</b>
+│                  │   private key can decrease the balance by signing
+│                  │   a new payment TX with its private key
+├──────────────────┤
+│Map&lt;256b,256b> │
+│          storage │
+└──────────────────┘
+
+                ┌─────────────────────────────────────────────────┬──────────────────────────────────────────┐
+                │   EXTERNALLY OWNED ACCOUNT                      │          CONTRACT ACCOUNTS               │
+┌───────────────┼─────────────────────────────────────────────────┼──────────────────────────────────────────┤
+│CREATION       │ Generate random 32bytes private key →           │ Create smart-contract source code →      │
+│               │   Generate (512bytes?) Pub.Key from Priv.Key →  │ Generate bytecode by compiling source →  │
+│               │     Generate 32bytes pub.address = hash(PubKey) │ Send "Contract Creation" TX for mining → │
+│               │                                                 │ keep Contract address once "published" *1│
+├───────────────┼─────────────────────────────────────────────────┼──────────────────────────────────────────┤
+│CONTROLLED BY  │ Private Key: Only the (human) owner of the      │ BYTECODE                                 │
+│               │ *secret* private key can decrease the balance   │                                          │
+│               │ by signing a new payment TX                     │                                          │
+├───────────────┼─────────────────────────────────────────────────┼──────────────────────────────────────────┤
+│FEATURES       │ bytes[32] address                               │ bytes[32] address *1                     │
+│               │                                                 │ Map&lt;256b,256b> storage *2             │
+└───────────────┴─────────────────────────────────────────────────┴──────────────────────────────────────────┘
+ *1: account.address in a contract is determined
+     at the time the contract is created
+     derived from:
+     nonce = function(creator address, num.TXs sent)
+
+ *2: account.storage: Persistent memory area 
+     - It is not possible to enumerate storage from within a contract
+     - It is comparatively costly to read and even more so, to modify storage
+     - A contract can neither read nor write to any storage apart from its own
     </ul>
   </li>
   </ul>
+NOTE: <b>External and Contract Accounts SHARED THE SAME ADDRESS SPACE.</b>
+</pre>
 </td>
 <td>
   Message Calls
@@ -213,41 +243,128 @@ return data
   </ul>
 </td>  
 <td>
-  (EVM) Memory:
-  <ul xxxsmall zoom>
-  <li>A contract obtains a freshly cleared instance for each message call</li>
-  <li>Memory is linear and can be addressed at byte level</li>
-  <li>Reads are limited to a width of 256 bits</li>
-  <li>Writes can be either 8 bits or 256 bits wide</li>
-  <li>Memory is expanded by a word (256-bit), when accessing 
-      (either reading or writing) a previously untouched memory word (ie.
-      any offset within a word). At the time of expansion, the cost in gas 
-      must be paid. Memory is more costly the larger it grows (it scales
-      quadratically)
-  </li>
-  <li>calldata: Separate area of memory whe message call payload is placed</li>
-  </ul>
-  <hr/>
-  (EVM) Stack:
-  <ul xxxsmall zoom>
-  <li>EVM memory area list of 256bits up to 1024 elements used for computations</li>
-  <li>The 16 topmost elements can be moved to the top or swaped wih the top ele</li>
-  <li>All other operations take the topmost one (or two, or more) elements and push the result onto the stack</li>
-  <li>top elements can be moved to/from storage/memory, but deeper elements can
-      be accessed without first removing elements on top of them.
-  </li>
-  <li>(EVM)full computational state: can be defined by the tuple:<br/>
-    (block_state, transaction, message, code, memory, stack, pc, gas)
-    block_state = global state = all accounts (balances + storage)
-  </li>
-  <li>selfdestruct(target): Destructor for contract @ address
-    <ul>
-    <li>Remaining Ethers are sent to target</li>
-    <li>storage & code are removed from the blockchain state</li>
-    </ul>
-  </li>
-  <hr/>
-  <a href="https://github.com/ethereum/go-ethereum/blob/master/core/vm/instructions.go">(EVM) Instructions</a>
+  <span xsmall>(EVM) Memory:</span>
+<pre xxxsmall zoom bgorange>
+- A contract obtains a freshly cleared instance for each message call
+- Memory is linear and can be addressed at byte level
+- <b>Reads are limited to a width of 256 bits</b>
+- <b>Writes can be either 8 bits or 256 bits wide</b>
+- Memory is expanded by a word (256-bit), when accessing 
+    (either reading or writing) a previously untouched memory word (ie.
+    any offset within a word). At the time of expansion, the cost in gas 
+    must be paid. Memory is more costly the larger it grows (it scales
+    quadratically)
+- calldata: Separate area of memory whe message call payload is placed
+</pre>
+
+   <span xsmall>EVM Stack:</span>
+<pre xxxsmall zoom>
+- EVM memory area list of 256bits up to 1024 elements used for computations
+- The 16 topmost elements can be moved to the top or swaped wih the top element
+- All other operations take the topmost one (or two, or more) elements and push
+  the result onto the stack
+- top elements can be moved to/from storage/memory, but deeper elements can
+  be accessed without first removing elements on top of them.
+
+- (EVM)full computational state: can be defined by the tuple:
+  (block_state, transaction, message, code, memory, stack, pc, gas)
+  block_state = global state = all accounts (balances + storage)
+
+- selfdestruct(target): Destructor for contract @ address
+  - Remaining Ethers are sent to target
+  - storage &amp; code are removed from the blockchain state
+</pre>
+
+  <a TODO href="https://github.com/ethereum/go-ethereum/blob/master/core/vm/instructions.go">(EVM) Instructions</a>
+<pre xxxsmall zoom>
+func opAdd              (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opSub              (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opMul              (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opDiv              (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opSdiv             (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opMod              (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opSmod             (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opExp              (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opSignExtend       (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opNot              (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opLt               (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opGt               (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opSlt              (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opSgt              (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opEq               (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opIszero           (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opAnd              (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opOr               (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opXor              (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opByte             (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opAddmod           (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opMulmod           (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opSHL              (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opSHR              (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opSAR              (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opSha3             (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opAddress          (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opBalance          (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opOrigin           (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opCaller           (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opCallValue        (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opCallDataLoad     (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opCallDataSize     (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opCallDataCopy     (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opReturnDataSize   (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opReturnDataCopy   (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opExtCodeSize      (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opCodeSize         (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opCodeCopy         (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opExtCodeCopy      (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opExtCodeHash      (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opGasprice         (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opBlockhash        (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opCoinbase         (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opTimestamp        (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opNumber           (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opDifficulty       (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opGasLimit         (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opPop              (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opMload            (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opMstore           (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opMstore8          (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opSload            (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opSstore           (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opJump             (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opJumpi            (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opJumpdest         (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opPc               (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opMsize            (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opGas              (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opCreate           (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opCreate2          (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opCall             (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opCallCode         (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opDelegateCall     (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opStaticCall       (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opReturn           (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opRevert           (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opStop             (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opSuicide          (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+
+// following functions are used by the instruction jump  table
+// make log instruction function
+func makeLog(size int) executionFunc
+    return func         (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+func opPush1            (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+// make push instruction function
+func makePush(size uint64, pushByteSize int) executionFunc
+    return func         (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+// make dup instruction function
+func makeDup(size int64) executionFunc
+    return func         (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+// make swap instruction function
+func makeSwap(size int64) executionFunc
+    return func         (pc *uint64, i*EVMInterpreter, c*Contract, mem*Memory, stack *Stack) ([]byte, error)
+</pre>
+
+
 </td>  
 </tr>
 </table>
@@ -342,109 +459,259 @@ ecrecover (bytes32 hash, uint8 v, bytes32 r, bytes32 s)
 </pre>
 </td>
 <td>
-  <ul xxxsmall zoom>
-  <li><def>Calls vs Transactions:</def>
-    <ul>
-    <li>Calls: invoque a read-only smart-contract function and return a value, 
-      but nothing is mined/verified by the consensus. It can be executed on a local
-      ethereum node and return fast (synchronously)</li>
-    <li>Transactions: Verified by the consensus miners. TX must be propagated
-      until reaching some miner node in the network.
-      Expends gases, do not return any value.
-      TX emiter needs to listen for asyncrhonous events to know the result of the
-      TX (or an error associated to the TX)</li>
-    </ul>
-  </li>
-  <li><def>state transition function</def>,  APPLY (S, TX) -> S' can be defined as follows:
-    <ol>
-    <li>Check if the transaction is well-formed (ie, has the right number of values), the signature is valid, and the nonce matches the nonce in the sender's account.  If not, return an error.</li>
-    <li>Calculate the transaction fee as STAR_GAS * GAS_PRICE, and determine the sending address from the signature. Subtract the fee from the sender's account balance and increment the sender's nonce. If there is not enought balance to spend, return an error.</li>
-    <li>Initialize GAS = STARTGAS, and take off a certain quantity of gas per byte to pay for the bytes in the transaction.</li>
-    <li>Transfer the transaction value from the sender's account to the receiving account.  If the receiving account does not yet exist, create if. If the receiving account is a contract, run the contract's code either to completion or until the execution runs out of gas.</li>
-      <li>If the value transfer failed because the sender did not have enough money, or the code execution ran out of gas, revert all state changes except the payment of the fees, and add the fees to the miner's account</li>
-      <li>Otherwise, refund the fees for all remaining gas to the sender, and send the fees paid for gas consumed to the miner</li>
-    </ol>
-  </li>
-  <li>
-    There are two mechanisms you can use to transact with Ethereum:
-    <ul>
-      <li>Transaction signing via an Ethereum client (geth, parity,...).
-          It forces to have the wallet on the client node and unlock the 
-          account.</li>
-      <li>Offline transaction signing (recomended)
-        The "raw" transaction must be signed first
-        (See https://docs.web3j.io/transactions.html#transaction-mechanisms ->
-        raw transactions for more info)</li>
-    </ul>
-  </li>
-  </ul>
-  <br/>
-  Transactions in solidity:
-  <ul xxxsmall zoom>
-  <li>
-<pre>
-addressInstance.balance (uint256): balance in Wei
-addressInstance.transfer(uint256 amount): 
-    msg.sender ->(amount in wei) ->addressInstance
-    throws on failure 
+  <span xsmall>TX Price Calc.</span>
+<pre xxxsmall zoom>
+- Price cost applies to public network and (optionally)
+  to private/consortium networks.
+- Notic private/consortium networks will still be constrained to
+  gas limits per TX and/or block even if the gas price is ZERO.
+  TXs will fail if the consume too much gas ("CPU" or storage)
+  but users will not loose any ethers in this case.
+REF:
+- <a TODO href="https://github.com/ethereum/wiki/wiki/Design-Rationale#gas-and-fees">[Design-Rational: Gas and fees]</a>
+- <a href="https://blog.qtum.org/diving-into-the-ethereum-vm-6e8d5d2f3c30">[Instruction cost]</a> 
+The most expensive operations by far are storage usage:
+- sstore costs 20000 gas for first write to a new position
+- sstore costs  5000 gas for subsequent writes to an existing position
+- sload  costs   500 gas
+- Most instructions costs 3~10 gases.
+- Gas costs are set somewhat arbitrarily, and could well change in 
+  the future. As costs change, compilers would make different choices.
 
-addressInstance.send(uint256 amount): returns (bool):
-    msg.sender ->(amount in wei) ->addressInstance
-    returns true/false, does NOT throw an exception
-</pre>
-  In addressInstance.transfer (or send), if addressInstance
-  is a contract address, its code (more specifically: its fallback function, if present) 
-  will be executed together with the transfer call. This is a limitation of the EVM and
-  cannot be prevented. <br/>
-  If that execution runs out of gas or fails in any way, the Ether transfer will be
-  reverted and the current contract will stop with an exception.
+TX cost: <a href="https://medium.com/@hayeah/how-to-decipher-a-smart-contract-method-call-8ee980311603">REF</a>
+- 21000 paid for every transaction.
+-     4 paid for every zero byte of data or code for a transaction.
+-    68 paid for every non-zero byte of data or code for a transaction.
+
+- Small negative numbers are mostly 1s, costing you quite a lot of gas.
+
+Logging Gas Costs:  <a href="https://blog.qtum.org/how-solidity-events-are-implemented-diving-into-the-ethereum-vm-part-6-30e07b3037b9">REF</a>
+  - The gas costs for the logging primitives depends on how many topics you have and how much data you log:
+    (constants are defined in protocol_params)
+
+LogDataGas       uint64 = 8   // Per byte in a LOG operation's data
+topicLogTopicGas uint64 = 375 // Per LOG 
+LogGas           uint64 = 375 // Per LOG operation
+MemoryGas        uint64 = 3    // Per byte of memory used
+
+If you are passing in the log data as calldata to a TX,
+you’ll need to pay for the transaction data too. The gas costs for calldata are:
+
+TxDataZeroGas      uint64 = 4     // zero tx data abyte
+TxDataNonZeroGas   uint64 = 68    // non-zero tx data byte
+
+Assuming all 32 bytes are non-zero, this is still a lot cheaper than storage:
+
+// cost of 32 bytes of log data
+32 * 68 = 2176 // tx data cost
+32 *  8 =  256 // log data cost
+32 *  3 =   96 // memory usage cost
+375 // log call cost
+----
+total (2176 + 256 + 96 + 375) ~14% of sstore for 32 bytes
+Most of the gas cost is actually spent on transaction data, not for the log operation itself
+
+The reason that a log operation is cheap is because the log data isn’t really 
+stored in the blockchain. Logs, in principle, can be recalculated on the fly
+as necessary.
+
+Miners, in particular, can simply throw away the log data, because future 
+calculations can't access past logs anyway.
+
+The network as a whole does not bear the cost of logs. 
+Only the API service nodes need to actually process, store, and index the logs.
+
+So the cost structure of logging is just the minimal cost to prevent log spamming.
+
+Extracted from stack-overflow:
+   Q: """The price of ETH has gone from ~8 USD/ETH to ~90 ETH/USD in 6 months,
+      but when I view transactions on the blockchain (example), I see that most
+      people are still using the default gas price of 2e10 wei/gas. Shouldn't
+      we be lowering the gas prices on our transactions to account for this 
+      price change? 
+      I have built a Dapp where low transaction fees are an important selling
+      point. I intend to drop
+      my gas price to 5e9 (a 75% reduction). Will my transactions still clear 
+      in a timely fashion?"""
+   A: """Absolutely. Everyone should. There's a great site here that will help
+     you understand gas and gas prices.
+     It's called Ethereum Gas Station: http://ethgasstation.info/
+      They just recently made this post which explains something they call the
+     Safe Gas Price:
+     https://medium.com/@ethgasstation/the-safe-low-gas-price-fb44fdc85b91"""
+
+
+(Interesting "offtopic") See Wikipedia entries on:
   </li>
   </ul>
-</td>  
-<td colsep>Events&amp;logs</td>
+  <a href='http://ethgasstation.info/calculator.php'>eth gas station calc</a>
+200€/ether:
+Transaction gas price: 21000 gas/tx       32bytes Contract storage: 20000 gas
++----------+-----------------+--------+   +----------+-----------------+--------+
+| gasprice | total gas price | total €|   | gasprice | total gas price | total €|
++----------+-----------------+--------+   +----------+-----------------+--------+
+|  1gwei   | 21000 *  1gwei  | 0,0042 |   |  1gwei   | 21000 *  1gwei  | 0,0040 |
+| 20gwei   | 21000 * 20gwei  | 0,0420 |   | 20gwei   | 21000 * 20gwei  | 0,0400 |
++----------+-----------------+--------+   +----------+-----------------+--------+
+
+For a transaction updating 64bytes (32bytes from debitor account to 32bytes creditor account)
++----------+-----------+
+| gasprice | total € *1|
++----------+-----------+
+|  1gwei   |   0,0122  |
+| 20gwei   |   0,2440  |
++----------+-----------+
+
+Logs cost: 375 gas for a LOG operation + 8 gas per log data byte + 375 gas for each topic. 200€/eth:
+
++----------+-----------+----------+--------------------+------------
+|log  size | num.topics| gasprice | total gas price*1  |     total €
++----------+-----------+----------+--------------------+------------
+|1024bytes |     3     |   1gwei  |  9692 *  1gwei     | 0,0019384 €
+| 512bytes |     3     |   1gwei  |  5596 *  1gwei     | 0,0011192 €
+| 256bytes |     1     |   1gwei  |  2798 *  1gwei     | 0,0005596 €
+| 128bytes |     0     |   1gwei  |  1399 *  1gwei     | 0,0002798 €
++----------+-----------+----------+--------------------+------------
+|          |           |  20gwei  |  9692 * 20gwei     | 0,0387680 €
+| 512bytes |     3     |   1gwei  |  5596 *  1gwei     | 0,0223840 €
+| 256bytes |     1     |   1gwei  |  2798 *  1gwei     | 0,0111920 €
+| 128bytes |     0     |   1gwei  |  1399 *  1gwei     | 0,0055960 €
++----------+-----------+----------+--------------------+------------
+
+(375 gas/LOG * 1LOG ) + (8 gas/byte * 1024byte) + (375 gas/topic * 3 topic) = 375 + 8192 + 1125 = 9692
+(375 gas/LOG * 1LOG ) + (8 gas/byte *  512byte) + (375 gas/topic * 3 topic) = 375 + 4096 + 1125 = 5596
+(375 gas/LOG * 1LOG ) + (8 gas/byte *  512byte) + (375 gas/topic * 1 topic) = 375 + 2048 +  375 = 2798
+(375 gas/LOG * 1LOG ) + (8 gas/byte *  128byte) + (375 gas/topic * 0 topic) = 375 + 1024        = 1399    
+</pre>
+</td>
+
+
 <td>
-  <b>Events &amp; LOGS</b>
-  <ul xxxsmall zoom>
-  <li>Logs: It is possible to store data in a specially indexed data structure 
-      that maps all the way up to the block level.<br/>
-      This feature called 'logs' is used to implement events.</li>
-  <li>Contracts *CAN NOT* access log data after it has been created, but they 
-      can be efficiently accessed from outside the blockchain. <br/>
-      Since some part of the log data is stored in bloom filters,
-      it is possible to search for this data in an efficient and cryptographically 
-      secure way, so network peers that do not download the whole blockchain 
-      ("light clients") can still find these logs.</li>
-  <li>Logs were designed to be a form of storage that costs significantly less gas than contract storage:<br/>
-      Logs basically[3] cost 8 gas per byte, whereas contract storage costs 20,000 gas per 32 bytes. 
-      Up to 3 parameters can be indexed.<br/>
-  </li>
-  </ul>
-  Solidity code:
+  <li>Calls vs Transactions:</def>
 <pre xxxsmall zoom>
-event EventDepositLog(
-    uint256 indexed _market,
-    address indexed _sender,
-    uint256 _amount,
-     uint256 _time);
-</pre>
-  JS Client Log monitoring:
-<pre xxxsmall zoom>
-var depositEvent =
-  cryptoExContract.EventDepositLog(
-     {_sender: userAddress} /* filter */, 
-     {fromBlock: 0, toBlock: 'latest'} /* range*1
-  );
-// *1 If block range ommited => "real-time" event logs
+        CALLS:                                               TRANSACTIONS
 
-depositEvent.watch
-   /* to cancel: depositEvent.stopWatching() */(
-  function(err, result) {
+invoque a read-only smart-contract function          invoque a write smart-contract function 
+and return a value, but nothing is mined or          that changes the global status in all nodes.
+verified by the consensus. It can be executed        
+on a local ethereum node and return fast             Each TX must  be verified by the consensus 
+(synchronously).                                     before being accepted (only TXs in longest
+                                                     chains, correct hashes, ...)
+                                                       The (non-mined) TX must be propagated
+                                                     until reaching some miner node in the network
+                                                     that will add it to the lastest block on 
+                                                     the chain (passing to "mined state").
+                                                     - TX expends gases and CAN NOT return any
+                                                     value (since it's not possible to known
+                                                     in advance when the TX will be executed by
+                                                     the network consensus or in the case of
+                                                     public network whether it will be executed
+                                                     at all).
+                                                     - Clients sending a TX to the network need
+                                                     to listen for asyncrhonous events to know
+                                                     the result of the TX (or an error associated
+                                                     to the TX)
+   
+</pre>
+
+  <span xsmall>State transition func</span>
+<pre xxxsmall zoom>
+APPLY (S, TX) -> S'  ← S : initial global state
+                     ← S': final   global state
+ can be defined as follows:
+- Check if incomming TX is well-formed (right number of values),
+  signature is valid, and the nonce matches the nonce in the
+  sender's account.  Return an error otherwise.
+- Calculate the transaction fee as STAR_GAS * GAS_PRICE, and 
+  determine the sending address from the signature. Subtract the
+  fee from the sender's account balance and increment the 
+  sender's nonce. If sender's balance &lt; fee, return an error.
+- Initialize GAS = STARTGAS, and take off a certain quantity 
+  of gas per byte to pay for the bytes in the transaction.
+- Transfer the TX value from the sender's account to the
+  receiving account.  If the receiving account does not yet
+  exist, create if. If the receiving account is a contract,
+  run the contract's code either to completion or until the
+  execution runs out of gas.
+- If the value transfer failed because the sender did not have
+  enough money, or the code execution ran out of gas, revert 
+  all state changes except the payment of the fees, and add 
+  the fees to the miner's account
+- Otherwise, refund the fees for all remaining gas to 
+  the sender, and send the fees paid for gas consumed to the
+  miner.
+</pre>
+  <span xsmall>Offline vs Online TX signing</span>
+<pre xxxsmall zoom>
+    OFFLINE TX SIGNING (RECOMENDED)           |    "ON-LINE" TX SIGNING (LESS SECURE, DISCOURAGED)
+                                              | 
+The "raw" TX must be signed first             | - An Ethereum node (geth, parity,...) will be used.
+by an offline (js,python,hardware wallet,...) | - It forces to have the wallet on the client node and 
+client using a private key ("wallet")         |   unlock the account. Unless the wallet is hardware
+with or without connection to any ethereum    |   secured is usually less safe than client signature
+network node.                                 |   (but offline clients can also be insecure or
+The signed TX is then sent to the network.    |   hacked)
+</pre>
+</td>  
+<td>
+  <span bgorange>Events &amp; LOGS</span>
+<pre xxxsmall zoom bgorange>
+BEST PATTERNS:
+- External clients must be able to restore current contract state
+  by just reading events.
+- Ethereum can return just a very limited information in each
+  read-only query. (Up to 7 fields). That means that reports and
+  data-analysis must be done on event logs.
+- Contract/s state/s must be consulted only by code originated by
+  a new transaction trying to update the current state.
+
+- Logs: It is possible to store data in a specially indexed data structure 
+  that maps all the way up to the block level.<br/>
+  This feature called 'logs' is used to implement events.</li>
+- Contracts *CAN NOT* access log data after it has been created, but they 
+  can be efficiently accessed from outside the blockchain. <br/>
+  Since some part of the log data is stored in bloom filters,
+  it is possible to search for this data in an efficient and cryptographically 
+  secure way, so network peers that do not download the whole blockchain 
+  ("light clients") can still find these logs.</li>
+- Logs were designed to be a form of storage that costs significantly 
+  less gas than contract storage:
+  Logs basically[3] cost 8 gas per byte, whereas contract storage costs 20,000 gas per 32 bytes. 
+  Up to 3 parameters can be indexed.
+
+<b>Event Limits:</b>
+- Up to 3 indexed fields.
+- Up to 7 fields (indexed + non-indexed fields)
+- The size limit of one event is a function of the block's gas limit, 
+  ~ 3_145_192 (first seven digits of pi * 2)
+  With a gas costs of 76 gas per byte limit is about 41kb per log event.
+  REF: <a TODO href="http://jonathanpatrick.me/blog/ethereum-compressed-text"> Storing compressed text in Ethereum transaction logs</a>
+  
+<b>Solidity code:</b> 
+event EventDepositLog(  
+    uint256 indexed _market,  ← Up to 3 indexes
+    address indexed _sender,    Strings, arrays can *NOT* be used in indexes 
+    uint256 _amount,            (will be automatically replaced by its hash)
+    uint256 _time);
+
+<b>JS Client Log monitoring:</b>
+var myEventMonitor = 
+  myContract.MyEventNameLog(
+     {_sender: userAddress },           // ← filter by idx sender
+     {fromBlock: 0, toBlock: 'latest'}  // ← filter by block range*1
+  );                                         if ommited observe
+                                             "real-time" events
+
+myEventMonitor.watch(                  // ← Start watching
+  (err, result) => {
     if (err) { ...    return; }
     console.log(
          "_market:"+result.args._market
        + "_sender:"+result.args._sender );
   }
 )
+....
+myEventMonitor.stopWatching()          // ← Stop watching
 </pre>
 </td>  
 <td colsep></td>
@@ -552,6 +819,7 @@ such as serving an infrequently changed address for a name.
 <br/>
 Solidity Language
 <a xsmall bggreen href='https://remix.ethereum.org/#'>[REMIX-IDE ONLINE]</a>,
+<a xsmall bggreen href='https://ethfiddle.com/'      >[ethfiddle.com]</a>,
 <a xsmall href='http://solidity.readthedocs.io/en/develop/'>[SOLIDITY]</a>,<a xsmall href="https://solidity.readthedocs.io/en/latest/solidity-in-depth.html" bgorange>[in-Depth]</a>@ReadTheDocs,<a xsmall href='https://github.com/ConsenSys/smart-contract-best-practices'>[BEST PRACTICES]</a>
 
 
@@ -571,8 +839,8 @@ NumberUnit = ('wei' | 'szabo' | 'finney' | 'ether') |
    M * 1 wei; // &lt;- correct
 
 ElementaryTypeName = 'address' /*20 byte*/| 'bool' | 'string' | 'var' 
-     |  'int(8|6|24|32|...|256)' 
-     | 'uint(8|6|24|32|...|256)' 
+     |  'int(8|16|24|32|...|256)' 
+     | 'uint(8|16|24|32|...|256)' 
      | 'byte(s|1-32)'
      | 'fixed'  | 'fixed(0|8|16|24|...|256)x(8|16|24|...|256)' &lt;- first+second&lt;=256 
      | 'ufixed' | 'ufixed(0|8|16|24|...|256)x(8|16|24|...|256)' &lt;- first+second&lt;=256
@@ -868,15 +1136,26 @@ function () payable {
 </pre>
 </td>  
 <td>
-  <span xsmall>STRUCTS, ENUMS</span>
+  <span xsmall>STRUCTS</span>
+<a href="https://solidity.readthedocs.io/en/latest/structure-of-a-contract.html#struct-types">Struct</a>
 <pre xxxsmall zoom>
-struct Voter {               ┃ enum State {
-  uint weight;               ┃    Created,
-  bool voted;                ┃    Locked,
-}                            ┃    Inactive 
-                             ┃ }
-                             ┃
-Voter v1 = Voter(1, flase);  ┃  State s1 = State.Created
+struct Voter {
+  uint weight;
+  bool voted;
+}
+
+Voter v1 = Voter(1, flase);  
+</pre>
+
+<a href="https://solidity.readthedocs.io/en/latest/structure-of-a-contract.html#enum-types">enum</a> 
+<pre xxxsmall zoom>
+enum State { Created, Locked, Inactive } // ← Definition
+State  s1 = State.Created                // ← Ussage
+uint8  u1 = uint8 (State.Created)        // ← Explicit uintXX to enum
+uint16 u2 = uint16(State.Created) 
+State  s2 = State(u1)                    // ← uintXX to enum using enum constructor
+                                              Will raise an assert exception if
+                                              u1 is outside the State bounds.
 </pre>
 
  <span xsmall>Ret.Structs in pub.funs</span>
@@ -2147,96 +2426,61 @@ Amongst others contains
   Development Tools <a href='http://ethereum.stackexchange.com/questions/269/what-exactly-is-an-ethereum-client-and-what-clients-are-there/335'>[REF@Stackoverflow]</a>
 <table>
 <tr>
-<td>
-  <ul xxxsmall zoom>
-  <li><a href='http://ethereum.github.io/browser-solidity'><def>Browser Solidity</def></a></li>
-  <li><a href='https://yakindu.github.io/solidity-ide/'>Yakindu Solidity: State-of-the-art Eclipse IDE!!</a></li>
-  <li><a href='https://plugins.jetbrains.com/plugin/9475-intellij-solidity'>Solidity IntelliJ plugin</a> (alpha/bet/betaa state, not using latest compiler versions)</li>
-  <li TODO><a href="https://remix.ethereum.org/"><def>Remix Online Solidity IDE</def></a> </li>
-  <li>Start ethereum Node in test network:
+<td> 
+   Non Classified
 <pre xxxsmall zoom>
-$ geth --rpcapi personal,db,eth,net,web3 --rpc --rinkeby
-or
-$ parity --chain testnet
-</pre>
-  </li>
-  <li><a href='http://truffleframework.com/docs/'><def>Truffle Framework</def></a>
-    smart contract compile, link, deploy, binary management, testing, 
-    interactive console, auto-rebuild on-change, external script runner that executes scripts 
-    within a Truffle environment. Ussage:
-<pre>
-$ mkdir demo &amp;&amp; cd demo # create project working dir:
-$ truffle init # Init truffle.
-Dapp work:
-$ cp .../""MyContract"".sol contracts
-(remove default example contracts in ./contracts and migrations/2_deploy_contracts.js  if desired)
-
-$ "edit" migrations/2_deploy_contracts.js to add MyContract
-WARN: ¡¡¡do not touch 1_initial_migration.js!!!
-
-
-Compile sol to json: WARN: (requires solc installed)
-$ truffle compile
-(compiles /contracts/*.sol → build/contracts/*.json )
-JS clients apps can then use the contract with code similar to:
-import metacoin_artifacts from '../../build/contracts/MetaCoin.json'
-
-Migrate to default network defined in truffle.js (localhost:8545)
-(Ussually this correspond to the testrpc daemon)
-$ truffle migrate
-$ truffle test 
----------------------------
-Deploy to ""real""/""test"" network
-
-$ truffle deploy 
-# sends contract to the Ethe. network. Will also update
-# contracts.json adding the {""address"":...""} for the
-#deployed contract
----------------------------
-Create  ""JS"" front-end app (if profile present)
-$ truffle serve # start web server with front-end
-<!-- TODO_START :
-config/app.json: build, deploy and ether-node rpc setup
-./app: JS front-end app.
-"truffle compile generated config/development/contracts.json: 
-Contains the JS interface to the Eth. contract."
-test/example.js:
-Note: 
- contract.value.call() -> NO new transactions => NO Eth expended
- contract.setValue(5) -> new transaction => eth expended     
-      
-contract('Example', function(accounts) {
-  it('should do more complex interaction', function(done) {
-    var example = Example.at(Example.deployed_address);
-    example.value.call().then( function(value) {
-      assert.equal(value, 0, 'Value should be zero after deployment');
-    }).then(function() {
-      return example.setValue(5);
-    }).then(function(tx) {
-      return example.value.call();
-    }).then(function(value) {
-      assert.equal(value, 5, 'Value should be five');
-    })
-    .then(done).catch(done);
-  });
-});
-Deploying new contract:
-> web3.eth.getCoinbase(function(e,r) { console.log(e, r); })
-null ""0x82e.....""
-> Example.new({ from: ""=x82e..."" }).then(function(instance) { ... })
--->
-</pre>
-  </li>
-  <li TODO><a href='https://github.com/ethpm/ethpm-js'>https://github.com/ethpm/ethpm-js</a>
+  <a TODO href='https://github.com/ethpm/ethpm-js'>https://github.com/ethpm/ethpm-js</a>
       Javascript library for publishing and consuming Ethereum packages,
       provides utilities for publishing and consuming Ethereum packages based
       on the Ethereum Package Manager specification. It is meant to be integrated
-      directly into development tools to support their use of the Ethereum Package Management ecosystem.
-  </li>
-  <li><a href="https://etherscan.io/pushTx"><def>https://etherscan.io/pushTx</def></a>: Send raw-transactions</li>
-  </ul>
+      directly into development tools to support their use of the Ethereum Package
+      Management ecosystem.
+
+  <a TODO href='https://yakindu.github.io/solidity-ide/'>Yakindu Solidity IDE (Eclipse based)</a>
+
+  
+  <a href="https://etherscan.io/pushTx">https://etherscan.io/pushTx</a>
+      Send raw-transactions
+  <a href="http://man.openbsd.org/OpenBSD-current/man1/tmux.1">tmux:</a> General (BSD/Linux/UNIX) tool for multiplexing terminals and create long-running
+      sessions that persists ssh disconnections.
+      - It allows for example to have an terminal with vim editing solidity files,
+        another one editing JS files, another one with the truffle debugger,  
+        the geth console, ...
+      - Sessions will persists until the PC/server is restarted. We can disconnect
+        and reconnect to the same session repeatedly. The terminal layout will be
+        saved. 
+      - It also allow different users to share the session and terminals and is
+        very efficient in terms of bandwidth (when compared to VNC or RDesktop),
+        since there are not graphics involved.
+</pre>
 </td>
-<td colsep>Truffle</td>
+<td colsep></td>
+<td colsep>Javascript</td>
+<td>
+<a href="https://github.com/ethereum/wiki/wiki/JavaScript-API">JS API<a href="https://github.com/ethereum/wiki/wiki/JavaScript-API">:
+<pre xxxsmall zoom>
+eth_accounts                                           eth_getTransactionCount
+eth_blockNumber                                        eth_getTransactionReceipt
+eth_call                                               eth_hashrate
+eth_coinbase                                           eth_mining
+eth_compileSolidity                                    eth_newBlockFilter
+eth_estimateGas                                        eth_newFilter (includes log/event filters)
+eth_gasPrice                                           eth_sendTransaction
+eth_getBalance                                         eth_sendRawTransaction
+eth_getBlockByNumber                                   eth_sign
+eth_getBlockByHash                                     eth_syncing
+eth_getCode (only supports block number “latest”)      eth_uninstallFilter
+eth_getCompilers                                       net_listening
+eth_getFilterChanges                                   net_peerCount
+eth_getFilterLogs                                      net_version
+eth_getLogs                                            miner_start
+eth_getStorageAt                                       miner_stop
+eth_getTransactionByHash                               rpc_modules
+eth_getTransactionByBlockHashAndIndex                  web3_clientVersion
+eth_getTransactionByBlockNumberAndIndex                web3_sha3
+</pre>
+</td>
+
 <td>
   <a xsmall TODO href="https://www.truffleframework.com/">Truffle Framework</a>
   <hr xxxsmall />
@@ -2244,7 +2488,7 @@ null ""0x82e.....""
 <pre xxxsmall zoom>
 $ mkdir fibonacci
 $ cd fibonacci
-$ truffle init  # ← Create a bare truffle project:
+$ <b>truffle init</b>  # ← Create a bare truffle project:
 $ vim Smart-Contract contracts/Fibonacci.sol:
     | pragma solidity ^0.4.22;
     | contract Fibonacci {
@@ -2266,6 +2510,7 @@ $ vim Smart-Contract contracts/Fibonacci.sol:
     |     }
     | }
 $ vim migrations/2_deploy_contracts.js:
+WARN: ¡¡¡do not touch 1_initial_migration.js!!!
     | var Fibonacci = artifacts.require("Fibonacci");
 
     | module.exports = function(deployer) {
@@ -2281,6 +2526,22 @@ $ vim truffle-config.js:
     |     }
     |   }
     | };
+$ <b>truffle compile</b>
+(compiles /contracts/*.sol → build/contracts/*.json )
+JS clients apps can then use the contract with code similar to:
+import metacoin_artifacts from '../../build/contracts/MetaCoin.json'
+
+Migrate to default network defined in truffle.js (localhost:8545)
+(Ussually this correspond to the testrpc daemon)
+$ <b>truffle migrate</b>
+$ vim test/TestFibonacci.js
+$ <b>truffle test</b>
+
+$ <b>truffle deploy</b> <span TODO>Deploy to ""real""/""test"" network</span>
+                        # sends contract to the Ethe. network. Will also update
+                        # contracts.json adding the {""address"":...""} for the
+                        #deployed contract
+
 </pre>
    Truffle Solidity Debugger
 <pre xxxsmall zoom>
@@ -2377,6 +2638,225 @@ truffle(development)> <b>Fibonacci.deployed().then(function(instance){return ins
 </pre>
 </td>
 <td>
+  <a TODO xsmall href="https://github.com/trufflesuite/truffle/blob/next/packages/truffle-contract/test/events.js#L118-L143">Truffle: Testing events</a> 
+<pre xxxsmall zoom>
+var assert = require("chai").assert;
+var util = require("./util");
+
+describe("Events", function() {
+  var Example;
+  var accounts;
+  var web3;
+  var providerOptions = { vmErrorsOnRPCResponse: false };
+
+  <b>before</b>(async function() {
+    this.timeout(10000);
+    Example = await util.createExample();
+    return util.setUpProvider(Example, providerOptions).then(result => {
+      web3 = result.web3;
+      accounts = result.accounts;
+    });
+  });
+
+  it('should expose the "on" handler / format event correctly', function(done) {
+    Example.new(1).then(example => {
+      const event = example.ExampleEvent();
+
+      event.on("data", function(data) {
+        assert.equal("ExampleEvent", data.event);
+        assert.equal(accounts[0], data.args._from);
+        assert.equal(8, data.args.num); // 8 is a magic number inside Example.sol
+        this.removeAllListeners();
+        done();
+      });
+
+      example.triggerEvent();
+    });
+  });
+
+  it('should expose the "once" handler', function(done) {
+    Example.new(1).then(example => {
+      const event = example.ExampleEvent();
+
+      event.once("data", function(data) {
+        assert.equal("ExampleEvent", data.event);
+        assert.equal(accounts[0], data.args._from);
+        assert.equal(8, data.args.num); // 8 is a magic number inside Example.sol
+        this.removeAllListeners();
+        done();
+      });
+
+      example.triggerEvent();
+    });
+  });
+
+  it("should be possible to listen for events with a callback", function(done) {
+    const callback = (err, data) => {
+      assert.equal("ExampleEvent", data.event);
+      assert.equal(accounts[0], data.args._from);
+      assert.equal(8, data.args.num);
+      done();
+    };
+
+    Example.new(1).then(example => {
+      example.ExampleEvent(callback);
+      example.triggerEvent();
+    });
+  });
+
+  it("event emitter should fire repeatedly (without duplicates)", async function() {
+    let emitter;
+    let counter = 0;
+    const example = await Example.new(1);
+
+    example.ExampleEvent().on("data", function() {
+      emitter = this;
+      counter++;
+    });
+
+    await example.triggerEventWithArgument(1);
+    await example.triggerEventWithArgument(2);
+    await example.triggerEventWithArgument(3);
+
+    assert(counter === 3, "emitter should have fired repeatedly");
+    emitter.removeAllListeners();
+  });
+
+  it("event callback should fire repeatedly (without duplicates)", async function() {
+    let counter = 0;
+    let duplicate = false;
+    const example = await Example.new(1);
+
+    example.ExampleEvent(function(err, res) {
+      if (res === false) duplicate = true;
+      counter++;
+    });
+    await example.triggerEventWithArgument(1);
+    await example.triggerEventWithArgument(2);
+    await example.triggerEventWithArgument(3);
+
+    assert(counter === 3, "callback should have been called repeatedly");
+    assert(duplicate === false, "must not fire duplicates as false result");
+  });
+
+  it("should listen for `allEvents`", async function() {
+    let emitter;
+    const events = [];
+    const eventNames = [];
+    const signatures = ["ExampleEvent", "SpecialEvent"];
+    const example = await Example.new(1);
+
+    example.allEvents().on("data", function(data) {
+      events.push(data);
+      data.event && eventNames.push(data.event);
+      emitter = this;
+    });
+
+    await example.triggerEvent();
+    await example.triggerSpecialEvent();
+
+    assert(
+      eventNames.includes(signatures[0]),
+      `Expected to hear ${signatures[0]}`
+    );
+    assert(
+      eventNames.includes(signatures[1]),
+      `Expected to hear ${signatures[1]}`
+    );
+
+    // Make sure we're formattingfor backwards compatibility
+    assert.equal(events[0].args._from, accounts[0]);
+    assert.equal(events[0].args.num, 8);
+
+    emitter.removeAllListeners();
+  });
+
+  it("should `getPastEvents`", async function() {
+    const signatures = ["ExampleEvent", "SpecialEvent"];
+    const example = await Example.new(1);
+    const options = { fromBlock: 0, toBlock: "latest" };
+
+    await example.triggerEvent();
+    await example.triggerEvent();
+
+    await example.triggerSpecialEvent();
+    await example.triggerSpecialEvent();
+
+    const exampleEvent = await example.getPastEvents("ExampleEvent", options);
+    const specialEvent = await example.getPastEvents("SpecialEvent", options);
+
+    assert(exampleEvent.length === 2);
+    assert(exampleEvent[0].event === signatures[0]);
+    assert(exampleEvent[1].event === signatures[0]);
+
+    // Make sure we're formatting for backwards compatibility
+    assert.equal(exampleEvent[0].args._from, accounts[0]);
+    assert.equal(exampleEvent[0].args.num, 8);
+
+    assert(specialEvent.length === 2);
+    assert(specialEvent[0].event === signatures[1]);
+    assert(specialEvent[1].event === signatures[1]);
+  });
+
+  // Event signature is:
+  // NumberEvent(int numA, int indexed numB, address addrC, uint numD, uint);
+  it("should reformat numbers in events to BN by default", function(done) {
+    Example.new(1).then(example => {
+      const event = example.NumberEvent();
+
+      event.once("data", function(data) {
+        const args = data.args;
+
+        assert(web3.utils.isBN(args[0])); // int named
+        assert(web3.utils.isBN(args[1])); // int named, indexed
+
+        assert(!web3.utils.isBN(args[2])); // Address
+
+        assert(web3.utils.isBN(args[3])); // uint named
+        assert(web3.utils.isBN(args[4])); // uint unnamed
+
+        assert(web3.utils.isBN(args.numA));
+        assert(web3.utils.isBN(args.numB));
+
+        assert(!web3.utils.isBN(args.addressC));
+
+        assert(web3.utils.isBN(args.numD));
+
+        assert(args.numA.toNumber() === 5);
+        assert(args.numD.toNumber() === 55);
+
+        this.removeAllListeners();
+        done();
+      });
+
+      example.triggerNumberEvent(5, 7, accounts[0], 55, 77);
+    });
+  });
+});
+</pre>
+<a xsmall TODO href="https://github.com/trufflesuite/truffle/blob/next/packages/truffle-contract/test/">Truffle tests</a>
+<pre xxxsmall zoom>
+<a TODO href="https://github.com/trufflesuite/truffle/blob/next/packages/truffle-contract/test/errors.js"         >test:errors.js          </a>
+<a TODO href="https://github.com/trufflesuite/truffle/blob/next/packages/truffle-contract/test/abiV2.js"          >test:abiV2.js           </a>
+<a TODO href="https://github.com/trufflesuite/truffle/blob/next/packages/truffle-contract/test/cloning.js"        >test:cloning.js         </a>
+<a TODO href="https://github.com/trufflesuite/truffle/blob/next/packages/truffle-contract/test/customoptions.js"  >test:customoptions.js   </a>
+<a TODO href="https://github.com/trufflesuite/truffle/blob/next/packages/truffle-contract/test/deploy.js"         >test:deploy.js          </a>
+<a TODO href="https://github.com/trufflesuite/truffle/blob/next/packages/truffle-contract/test/deprecated_keys.js">test:deprecated_keys.js </a>
+<a TODO href="https://github.com/trufflesuite/truffle/blob/next/packages/truffle-contract/test/linking.js"        >test:linking.js         </a>
+<a TODO href="https://github.com/trufflesuite/truffle/blob/next/packages/truffle-contract/test/methods.js"        >test:methods.js         </a>
+<a TODO href="https://github.com/trufflesuite/truffle/blob/next/packages/truffle-contract/test/networkObject.js"  >test:networkObject.js   </a>
+<a TODO href="https://github.com/trufflesuite/truffle/blob/next/packages/truffle-contract/test/networks.js"       >test:networks.js        </a>
+<a TODO href="https://github.com/trufflesuite/truffle/blob/next/packages/truffle-contract/test/separation.js"     >test:separation.js      </a>
+<a TODO href="https://github.com/trufflesuite/truffle/blob/next/packages/truffle-contract/test/util.js"           >test:util.js            </a>
+</pre>
+
+
+</td>
+
+
+<td colsep></td>
+<td colsep>JAVA</td>
+<td>
   <a href="https://docs.web3j.io/">Web3J</a><br/>
 <pre xxxsmall zoom>
 <a href="https://docs.web3j.io/getting_started.html">pom / gradle dependencies</a>
@@ -2433,6 +2913,10 @@ web3j.ethLogObservable(filter).subscribe(log -> {
 });
 </pre>
 </td>
+
+
+<td colsep></td>
+<td colsep>C#</td>
 <td>
   <a xsmall TODO href="https://nethereum.readthedocs.io/en/latest/">Nethereum</a><br/>
 <pre xxxsmall zoom>
@@ -2530,11 +3014,14 @@ Nethereum UI wallet sample      Cross platform wallet example using Nethereum, X
                                 with the Raspberry PI and Xbox.
 </pre>
 </td>
+
+<td colsep></td>
+<td colsep></td>
+
 <td>
-  Troubleshooting Common problems
-  <ul xxxsmall zoom>
-  <li><def>solc *bin output is empty, but there are no compilation warnings</def>
-<pre>
+    <span xsmall TODO>Dev.Troubleshooting</span>
+<pre xxxsmall zoom>
+<b>solc *bin output is empty, but there are no compilation warnings:</b>
 PROBLEM:
     Next code compiles "OK" using
     SOLC INPUT               |  SOLC OUTPUT
@@ -2554,148 +3041,22 @@ PROBLEM:
 SOLUTION:
    solc compiler consider the class abstract and does not generate any
    bin due to some of the following reasons:
-
- - B will need to provide parent A constructor with a parameter
-   contract B is A {
-     uint8 public b1;
+    - B will need to provide parent A constructor with a parameter
+      contract B is A {
+        uint8 public b1;
+      
+        <b blue>constructor(address _a) A(_a) { // or A(0x00112...)
+           ...
+        }</b>
+      }
    
-     <b blue>constructor(address _a) A(_a) { // or A(0x00112...)
-        ...
-     }</b>
-   }
+    - B does NOT implementsall mehtods of declared interfaces or base clases
 
- - B does NOT implementsall mehtods of declared interfaces or base clases
-</pre>
-  </li>
-  <li>Problem: <def>Transaction with same hash already imported</def> error:
-<pre>
-<a href="https://ethereum.stackexchange.com/questions/9055/cant-broadcast-ethereum-transaction-whats-wrong-with-this-transaction">REF.1</a>, <a href="https://gitter.im/web3j/web3j?at=58d1e9ce5917e26076be161c">REF 2.web3j Gitter</a><br/>
-Solution: This means that the same transaction is sent twice with onley the nonce different.<br/>
+
+<b>Problem: Transaction with same hash already imported  error:</b>
+<a href="https://ethereum.stackexchange.com/questions/9055/cant-broadcast-ethereum-transaction-whats-wrong-with-this-transaction">REF.1</a>, <a href="https://gitter.im/web3j/web3j?at=58d1e9ce5917e26076be161c">REF 2.web3j Gitter</a>
+Solution: This means that the same transaction is sent twice with onley the nonce different.
  Probably it's a client error.
-"""
-</pre>
-  </li>
-  </ul>
-</td>
-<td>
-  <span xsmall>Price Calculation</span>
-<pre xxxsmall zoom>
-Applies to public network and (optionally) to private/consortium networks.
-REF:
-- <a TODO href="https://github.com/ethereum/wiki/wiki/Design-Rationale#gas-and-fees">[Design-Rational: Gas and fees]</a>
-- <a href="https://blog.qtum.org/diving-into-the-ethereum-vm-6e8d5d2f3c30">[Instruction cost]</a> 
-The most expensive operations by far are storage usage:
-- sstore costs 20000 gas for first write to a new position
-- sstore costs  5000 gas for subsequent writes to an existing position
-- sload  costs   500 gas
-- Most instructions costs 3~10 gases.
-- Gas costs are set somewhat arbitrarily, and could well change in 
-  the future. As costs change, compilers would make different choices.
-
-TX cost: <a href="https://medium.com/@hayeah/how-to-decipher-a-smart-contract-method-call-8ee980311603">REF</a>
-- 21000 paid for every transaction.
--     4 paid for every zero byte of data or code for a transaction.
--    68 paid for every non-zero byte of data or code for a transaction.
-
-- Small negative numbers are mostly 1s, costing you quite a lot of gas.
-
-Logging Gas Costs:  <a href="https://blog.qtum.org/how-solidity-events-are-implemented-diving-into-the-ethereum-vm-part-6-30e07b3037b9">REF</a>
-  - The gas costs for the logging primitives depends on how many topics you have and how much data you log:
-    (constants are defined in protocol_params)
-
-LogDataGas       uint64 = 8   // Per byte in a LOG operation's data
-topicLogTopicGas uint64 = 375 // Per LOG 
-LogGas           uint64 = 375 // Per LOG operation
-MemoryGas        uint64 = 3    // Per byte of memory used
-
-If you are passing in the log data as calldata to a TX,
-you’ll need to pay for the transaction data too. The gas costs for calldata are:
-
-TxDataZeroGas      uint64 = 4     // zero tx data abyte
-TxDataNonZeroGas   uint64 = 68    // non-zero tx data byte
-
-Assuming all 32 bytes are non-zero, this is still a lot cheaper than storage:
-
-// cost of 32 bytes of log data
-32 * 68 = 2176 // tx data cost
-32 *  8 =  256 // log data cost
-32 *  3 =   96 // memory usage cost
-375 // log call cost
-----
-total (2176 + 256 + 96 + 375) ~14% of sstore for 32 bytes
-Most of the gas cost is actually spent on transaction data, not for the log operation itself
-
-The reason that a log operation is cheap is because the log data isn’t really 
-stored in the blockchain. Logs, in principle, can be recalculated on the fly
-as necessary.
-
-Miners, in particular, can simply throw away the log data, because future 
-calculations can't access past logs anyway.
-
-The network as a whole does not bear the cost of logs. 
-Only the API service nodes need to actually process, store, and index the logs.
-
-So the cost structure of logging is just the minimal cost to prevent log spamming.
-
-Extracted from stack-overflow:
-   Q: """The price of ETH has gone from ~8 USD/ETH to ~90 ETH/USD in 6 months,
-      but when I view transactions on the blockchain (example), I see that most
-      people are still using the default gas price of 2e10 wei/gas. Shouldn't
-      we be lowering the gas prices on our transactions to account for this 
-      price change? 
-      I have built a Dapp where low transaction fees are an important selling
-      point. I intend to drop
-      my gas price to 5e9 (a 75% reduction). Will my transactions still clear 
-      in a timely fashion?"""
-   A: """Absolutely. Everyone should. There's a great site here that will help
-     you understand gas and gas prices.
-     It's called Ethereum Gas Station: http://ethgasstation.info/
-      They just recently made this post which explains something they call the
-     Safe Gas Price:
-     https://medium.com/@ethgasstation/the-safe-low-gas-price-fb44fdc85b91"""
-
-
-(Interesting "offtopic") See Wikipedia entries on:
-  </li>
-  </ul>
-  <a href='http://ethgasstation.info/calculator.php'>eth gas station calc</a>
-200€/ether:
-Transaction gas price: 21000 gas/tx       32bytes Contract storage: 20000 gas
-+----------+-----------------+--------+   +----------+-----------------+--------+
-| gasprice | total gas price | total €|   | gasprice | total gas price | total €|
-+----------+-----------------+--------+   +----------+-----------------+--------+
-|  1gwei   | 21000 *  1gwei  | 0,0042 |   |  1gwei   | 21000 *  1gwei  | 0,0040 |
-| 20gwei   | 21000 * 20gwei  | 0,0420 |   | 20gwei   | 21000 * 20gwei  | 0,0400 |
-+----------+-----------------+--------+   +----------+-----------------+--------+
-
-For a transaction updating 64bytes (32bytes from debitor account to 32bytes creditor account)
-+----------+-----------+
-| gasprice | total € *1|
-+----------+-----------+
-|  1gwei   |   0,0122  |
-| 20gwei   |   0,2440  |
-+----------+-----------+
-
-Logs cost: 375 gas for a LOG operation + 8 gas per log data byte + 375 gas for each topic. 200€/eth:
-
-+----------+-----------+----------+--------------------+------------
-|log  size | num.topics| gasprice | total gas price*1  |     total €
-+----------+-----------+----------+--------------------+------------
-|1024bytes |     3     |   1gwei  |  9692 *  1gwei     | 0,0019384 €
-| 512bytes |     3     |   1gwei  |  5596 *  1gwei     | 0,0011192 €
-| 256bytes |     1     |   1gwei  |  2798 *  1gwei     | 0,0005596 €
-| 128bytes |     0     |   1gwei  |  1399 *  1gwei     | 0,0002798 €
-+----------+-----------+----------+--------------------+------------
-|          |           |  20gwei  |  9692 * 20gwei     | 0,0387680 €
-| 512bytes |     3     |   1gwei  |  5596 *  1gwei     | 0,0223840 €
-| 256bytes |     1     |   1gwei  |  2798 *  1gwei     | 0,0111920 €
-| 128bytes |     0     |   1gwei  |  1399 *  1gwei     | 0,0055960 €
-+----------+-----------+----------+--------------------+------------
-
-(375 gas/LOG * 1LOG ) + (8 gas/byte * 1024byte) + (375 gas/topic * 3 topic) = 375 + 8192 + 1125 = 9692
-(375 gas/LOG * 1LOG ) + (8 gas/byte *  512byte) + (375 gas/topic * 3 topic) = 375 + 4096 + 1125 = 5596
-(375 gas/LOG * 1LOG ) + (8 gas/byte *  512byte) + (375 gas/topic * 1 topic) = 375 + 2048 +  375 = 2798
-(375 gas/LOG * 1LOG ) + (8 gas/byte *  128byte) + (375 gas/topic * 0 topic) = 375 + 1024        = 1399    
 </pre>
 </td>
 
@@ -2751,9 +3112,6 @@ There are two kinds of connections which can be established.  A node can connect
 
 </pre>
 
-
-
- 
 </td>
 <td>
   <a href="https://github.com/ethereum/go-ethereum/wiki/JavaScript-Console">Geth Console</a>
@@ -2860,51 +3218,7 @@ console.dir(eth) does NOT work but all that needed is enter the object name in t
 →   submitTransaction: function(),                                            → }
 →   submitWork: function()
 → }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+</pre>
 </td>
 <td>
   Disk Space
@@ -2928,6 +3242,28 @@ geth full archive| 4_980_000 [2]|671G       | parity full archive|5_600_000   |1
 </pre>
 </td>
 <td colsep> </td>
+<td colsep>Pantheon</td>
+<td>
+<a xsmall TODO href="https://docs.pantheon.pegasys.tech/en/stable/">Pantheon</a>
+<pre xxxsmall zoom>
+What is Pantheon?
+
+Pantheon is an open-source Ethereum client developed under the Apache 2.0 
+license and written in Java. It runs on the Ethereum public network, private 
+networks, and test networks such as Rinkeby, Ropsten, and Görli. Pantheon 
+implements Proof of Work (Ethash) and Proof of Authority (Clique) consensus 
+mechanisms.
+
+You can use Pantheon to develop enterprise applications requiring secure, 
+high-performance transaction processing in a private network.
+
+Our roadmap includes Pantheon with privacy features, alternative consensus 
+mechanisms, and other enterprise features.
+</pre>
+
+
+</td>
+
 
 </tr>
 </table>
@@ -3100,30 +3436,6 @@ the bulk transfer.
   <span TODO>Whisper Alternatives: </span>
 <pre xxxsmall zoom>
 "Message Contract" and "Telehash"
-</pre>
-</td>
-<td>
-<a href="https://github.com/ethereum/wiki/wiki/JavaScript-API">JS API<a href="https://github.com/ethereum/wiki/wiki/JavaScript-API">:
-<pre xxxsmall zoom>
-eth_accounts                                           eth_getTransactionCount
-eth_blockNumber                                        eth_getTransactionReceipt
-eth_call                                               eth_hashrate
-eth_coinbase                                           eth_mining
-eth_compileSolidity                                    eth_newBlockFilter
-eth_estimateGas                                        eth_newFilter (includes log/event filters)
-eth_gasPrice                                           eth_sendTransaction
-eth_getBalance                                         eth_sendRawTransaction
-eth_getBlockByNumber                                   eth_sign
-eth_getBlockByHash                                     eth_syncing
-eth_getCode (only supports block number “latest”)      eth_uninstallFilter
-eth_getCompilers                                       net_listening
-eth_getFilterChanges                                   net_peerCount
-eth_getFilterLogs                                      net_version
-eth_getLogs                                            miner_start
-eth_getStorageAt                                       miner_stop
-eth_getTransactionByHash                               rpc_modules
-eth_getTransactionByBlockHashAndIndex                  web3_clientVersion
-eth_getTransactionByBlockNumberAndIndex                web3_sha3
 </pre>
 </td>
 <td>
@@ -3463,20 +3775,23 @@ $ crux --url=http://127.0.0.1:9001/ \          | crux --help reference:
 
 <td>
   <a TODO href='https://github.com/jpmorganchase/quorum/wiki/Getting-Set-Up'>Getting-Set-Up</a>
-  <ul xxxsmall zoom>
-  <li>Using Quorum requires installing, configuring and running 'Quorum Node' + 'Constellation server'
- <li>Manually set up Quorum: [ key generation, genesis block , constellation configuration ]</li>
- <li>Building Quorum Node From Source:
-<pre>
-git clone https://github.com/jpmorganchase/quorum.git
-cd quorum
-make all # Binaries output: ./build/bin
-make test
+<pre xxxsmall zoom>
+- Using Quorum requires installing, configuring 
+  and running 'Quorum Node' + 'Constellation server'
+- Manually set up Quorum: 
+  - key generation :
+  - genesis block  :
+  - constellation configuration:
 </pre>
-  </li>
-  </ul>
-  <hr xxxsmall >
-   Quorum-docker:
+
+  <a xsmall TODO href="https://github.com/jpmorganchase/quorum/wiki/Getting-Set-Up">Source Build:</a> 
+<pre xxxsmall zoom>
+$ git clone https://github.com/jpmorganchase/quorum.git
+$ cd quorum
+$ make all # Binaries output: ./build/bin
+$ make test
+</pre>
+  <a xsmall TODO href="https://github.com/jpmorganchase/quorum/wiki/Getting-Set-Up">source2(docker)image:</a> 
 <pre xxxsmall zoom>
 Build (just first time + updates):
 $ git clone https://github.com/agriessel/quorum-docker
@@ -3653,19 +3968,33 @@ well to private/consortium chains.
 
 <td>
   EEA Ethereum Network Protocol Sublayer (enodes, ...)
-  <ul xxxsmall zoom>
-  <li>Nodes MUST be identified and advertised using the Ethereum <a href="https://github.com/ethereum/wiki/wiki/enode-url-format">enode URL format</a></li>
-  <li> Implementations SHOULD use the <a href="https://github.com/ethereum/wiki/wiki/%C3%90%CE%9EVp2p-Wire-Protocol">DEVp2p Wire Protocol</a>
-       for messaging between nodes to establish and maintain a communications channel for use by higher layer protocols. <br/>
-       These higher layer protocols are known as capability protocols</li>
-  <li>The <a href="https://github.com/ethereum/wiki/wiki/Ethereum-Wire-Protocol">Ethereum-Wire-Protocol</a> defines the capability protocols for messaging between Ethereum client
-    nodes to exchange status, including block and transaction information.  [Ethereum Wire Protocol ]</li>
-  <li>messages are sent and received over an already established DEVp2p connection between nodes .</li>
-  <li>Implementations SHOULD support, at a minimum, [Ethereum Wire Protocols ] eth/62 and eth/63</li>
-  <li>Implementations MAY add new protocols or extend existing Ethereum protocols</li>
-  <li>To minimize the number of point -to-point connections needed between private nodes , some private nodes 
-     SHOULD be capable of relaying private transaction data to multiple other private nodes.</li>
-  </ul>
+<pre xxxsmall zoom>
+- Nodes MUST be identified and advertised using the 
+  Ethereum <a href="https://github.com/ethereum/wiki/wiki/enode-url-format">enode URL format</a>
+- Implementations SHOULD use the <a href="https://github.com/ethereum/wiki/wiki/%C3%90%CE%9EVp2p-Wire-Protocol">DEVp2p Wire Protocol</a>
+  for messaging between nodes to establish and maintain a 
+  communications channel for use by higher layer protocols.
+
+- These higher layer protocols are known as capability protocols
+
+- The <a href="https://github.com/ethereum/wiki/wiki/Ethereum-Wire-Protocol">Ethereum-Wire-Protocol</a> defines the capability 
+  protocols for messaging between Ethereum client nodes to 
+  exchange status, including block and TX info.
+
+- messages are sent and received over an already 
+  established DEVp2p connection between nodes. 
+
+- Implementations SHOULD support, at a minimum, 
+  Ethereum-Wire-Protocols eth/62 and eth/63
+
+- Implementations MAY add new protocols or extend 
+  existing Ethereum protocols
+
+- To minimize the number of point -to-point connections 
+  needed between private nodes , some private nodes 
+  SHOULD be capable of relaying private TX data to
+  multiple other private nodes.
+</pre>
 </td>
 
 <td>
@@ -3677,35 +4006,32 @@ NON  BYZANTINE FAULT TOLERANCE with next advantages:
   - absence of forking
   - Compared with QuorumChain, does NOT "unnecessarily" create empty blocks
 
-+--------------+----------------+--------------------------------------------------------+
-|Transport     | Ethereum p2p   |  Raft (over HTTP)                                      |
-|Layer         |                |                                                        |
-+--------------+----------------+--------------------------------------------------------+
-|DATA TYPE     | communicate TXs|  communicate full blocks                               | 
-+--------------+----------------+--------------------------------------------------------+
-|config params |                | Minting blocks frequency:  &lt;= 50ms ,                |
-|              |                |    (--raftblocktime (millisecs)                        |
-|              |                | --raftport newTCPPort default to 50400 )               |
-|              |                |                                                        |
-|              |                |  static-nodes.json: required                           |
-|              |                |  - initial list of nodes in the cluster                |
-|              |                |  - order *MUST BE EQUALS ACROSS PEERS*                 |
-|              |                |                                                        |
-|              |                | - ID URIs must include a raftport querystring param    |
-|              |                |   specifying the raft port for each peer:              |
-|              |                |    e.g. enode://abcd@127.0.0.1:30400?raftport=50400    |
-|              |                |                                                        |
-|              |                |                                                        |
-|              |                |                                                        |
-|              |                |                                                        |
-+--------------+----------------+--------------------------------------------------------+
++-----------+----------------+-------------------------------------------------+
+|Transport  | Ethereum p2p   |  Raft (over HTTP)                               |
+|Layer      |                |                                                 |
++-----------+----------------+-------------------------------------------------+
+|DATA TYPE  | communicate TXs|  communicate full blocks                        | 
++-----------+----------------+-------------------------------------------------+
+|config     |                | Minting blocks frequency:  &lt;= 50ms ,         |
+|params     |                |    (--raftblocktime (millisecs)                 |
+|           |                | --raftport newTCPPort default to 50400 )        |
+|           |                |                                                 |
+|           |                |  static-nodes.json: required                    |
+|           |                |  - initial list of nodes in the cluster         |
+|           |                |  - order *MUST BE EQUALS ACROSS PEERS*          |
+|           |                |                                                 |
+|           |                | - ID URIs must include a raftport querystring   |
+|           |                |   param specifying the raft port for each peer: |
+|           |                |   e.g.                                          |
+|           |                |    enode://abcd@127.0.0.1:30400?raftport=50400  |
++-----------+----------------+-------------------------------------------------+
 
 removing a node from the cluster from the JS console:
 # raft.removePeer(raftIdx)
                   ^
                   "1-indexed" index in the static peer list
 
-attaching a node to the cluster from the JS console:
+Attaching a node to the cluster from the JS console:
 
 # raft.addPeer("enode://abcd@127.0.0.1:30400?raftport=50400")
 Then (outside the JS console) start the new geth node with the
@@ -4970,6 +5296,49 @@ _______________________________
 </td>
 _________________________
 https://info.binance.com/en/research/marketresearch/img/BinanceResearch-JPMCoin.pdf
+_____________________________________
+http://blog.notdot.net/2012/08/Damn-Cool-Algorithms-Homomorphic-Hashing
+___________________________
+https://github.com/trufflesuite/ganache-cli/issues/154
+opics are order-dependent. A transaction with a log with topics [A, B] will be matched by the following topic filters:
+
+[] "anything"
+[A] "A in first position (and anything after)"
+[null, B] "anything in first position AND B in second position (and anything after)"
+[A, B] "A in first position AND B in second position (and anything after)"
+[[A, B], [A, B]] "(A OR B) in first position AND (A OR B) in second position (and anything after)"
 }}}
+_________________________________
+https://medium.com/@adrianmcli/migrating-your-truffle-project-to-web3-v1-0-ed3a56f11a4
+Migrating your Truffle project to Web3 v1.0 (2019-07-13)
+_________________
+Deed Token: Non fungible token, formilized in ERC-721:
+https://github.com/ethereum/EIPs/blob/master/EIPS/eip-721.md
+______________________________
+ 
+  <span xsmall>TXs in Solidity:</span>
+<pre xxxsmall zoom>
+addressInstance.balance (uint256): balance in Wei
+addressInstance.transfer(uint256 amount): 
+    msg.sender →(amount in wei) → addressInstance
+    throws on failure 
+
+addressInstance.send(uint256 amount): returns (bool):
+    msg.sender ->(amount in wei) ->addressInstance
+    returns true/false, does NOT throw an exception
+
+- In addressInstance.transfer (or send), if addressInstance
+  is a contract address, its code (more specifically: its fallback function, if present) 
+  will be executed together with the transfer call. This is a limitation of the EVM and
+  cannot be prevented. <br/>
+  If that execution runs out of gas or fails in any way, the Ether transfer will be
+  reverted and the current contract will stop with an exception.
+</pre>
+_____________________
+Solidity top questions by votes in ethereum.stackexchange.com:
+https://ethereum.stackexchange.com/questions/tagged/solidity?sort=votes&pageSize=15
+_____________________
+Ethereum Ontologies:
+https://media.consensys.net/ethon-introducing-semantic-ethereum-15f1f0696986
 -->
 </html>

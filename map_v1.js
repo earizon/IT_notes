@@ -205,20 +205,44 @@ function highlightSearch() {
   if (!singleLineOnly) regexFlags += "m";
   var query = new RegExp("(" + text + ")", regexFlags);
 
-  var matrix = [
-     document.querySelectorAll('td'),
-     document.querySelectorAll('*[zoom]') ]
-  for (col in matrix) { 
-    var nodeList = matrix[col]
-    for (row in nodeList) { 
-      var node = nodeList[row]
-      if (node.innerHTML == null) continue;
+//var matrix = [
+//   document.querySelectorAll('td'),
+//   document.querySelectorAll('*[zoom]') ]
+  var td_matrix = document.querySelectorAll('td')
+
+  var numberOfMatches = 0
+  var searchAndMark = function(node) {
       var htmlContent = (singleLineOnly) 
            ? node.innerHTML 
-           : node.innerHTML.replace(/\n/gm, '');
-      var searchFound = htmlContent.match(query);
-      if (!node.setAttribute) continue;
-      node.setAttribute("textFound", searchFound?"true":"false");
+           : node.innerHTML.replace(/\n/gm, '')
+      var searchFound = htmlContent.match(query)
+      node.setAttribute("textFound", searchFound?"true":"false")
+      window.lastElementFound = node
+      return searchFound
+  }
+  for (td_idx in td_matrix) { 
+    var td = td_matrix[td_idx];
+    if (td.querySelectorAll == undefined) continue;
+    var innerZoom_l = td.querySelectorAll('*[zoom]')
+    var foundElement = false
+    for (idx2 in innerZoom_l) {
+      var node = innerZoom_l[idx2]
+      if (node.innerHTML == null) continue
+      if (!node.setAttribute    ) continue
+      if (searchAndMark(node)) { 
+          numberOfMatches++ 
+          foundElement = true
+      }
+    }
+    if (!foundElement) {
+      if (searchAndMark(td)) { 
+          numberOfMatches++ 
+          foundElement = true
+      }
+    }
+
+    if (numberOfMatches == 1) {
+        doOpenZoom.call(window.lastElementFound, longPress.element);
     }
   }
 }

@@ -217,7 +217,7 @@ function highlightSearch() {
            : node.innerHTML.replace(/\n/gm, '')
       var searchFound = htmlContent.match(query)
       node.setAttribute("textFound", searchFound?"true":"false")
-      window.lastElementFound = node
+      if (searchFound) window.lastElementFound = node
       return searchFound
   }
   for (td_idx in td_matrix) { 

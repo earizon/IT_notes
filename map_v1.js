@@ -112,7 +112,8 @@ function onPageLoaded() {
    + '  <input id="singleLineOnly" type="checkbox"><code xsmall>single-line</code>'
    + '  <input id="caseSensitive"  type="checkbox"><code xsmall>Case-match</code>'
    + '</form>'
-   + '<a href="'+UP+'">FOLDER UP</a>&nbsp;'
+   + '<a href="'+UP+'">[FOLDER UP]</a>&nbsp;'
+   + '<a href="https://github.com/singlepagebookproject/IT_notes/issues">[Github pull requests]</a>&nbsp;'
    + '<b id="initialMessage" green small>&nbsp;&nbsp;&nbsp;TIP &gt;&gt; double-click or long-press cells to zoom &lt;&lt;</b><hr xxxsmall/>'
    + '<div id="zoomDiv"></div>'
    + '<div style="position:fixed; right:0.3%; top:0; width:auto;">'
@@ -241,9 +242,9 @@ function highlightSearch() {
       }
     }
 
-    if (numberOfMatches == 1) {
-        doOpenZoom.call(window.lastElementFound, longPress.element);
-    }
+  }
+  if (numberOfMatches == 1) {
+      doOpenZoom.call(window.lastElementFound, longPress.element);
   }
 }
 

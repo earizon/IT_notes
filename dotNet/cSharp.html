@@ -1,15 +1,12 @@
 <!DOCTYPE html>
 <html>
    <meta charset="UTF-8">
-   <title>C SHARP <!-- draft --></title>
+   <title>C SHARP <!-- alpha --></title>
 <head>
 <script src="../map_v1.js"></script>
 <link rel="stylesheet" type="text/css" href="../map_v1.css" />
 </head>
-
-
 <body>
-
 <a xsmall href="http://www.ecma-international.org/publications/standards/Ecma-334.htm">[ECMA-334 C# Lang. Spec]</a>,
 
 <a xsmall href="https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/index" bgorange>[C# prog.guide]</a>,
@@ -18,13 +15,17 @@
 <table>
 <tr>
 <td>
-  net, C#, STDlib versions
+  Net, C#, STDlib versions
 <pre xxxsmall zoom>
 <a href="https://docs.microsoft.com/en-us/dotnet/framework/migration-guide/versions-and-dependencies">[.NET Framework Ver]</a>
 4.7.x, 4.6.x, 4.5.x, 4, 3.5, 3.0, 2.0, 1.1, 1.0
 ^^^^^
  2018
 <a href="https://en.wikipedia.org/wiki/C_Sharp_%28programming_language%29#Versions">C# Versions</a>
+
+NOTE: - ASP.NET 5 is now ASP.NET Core 1.0.
+      - Entity Framework (EF) 7 is now Entity Framework (EF) Core 1.0.
+
        DATE  .Net Framework
 C# 1.0,2002  1.0
 C# 1.1,2003  1.1
@@ -874,9 +875,16 @@ SomeType[] array4 = new SomeType[10];
 
 </pre>
 
-<span xsmall>Walking over Array:</span>
+<span xsmall>Walking Array (IEnumerable/foreach):</span>
 <pre xxxsmall zoom>
 - Array type implements IEnumerable and IEnumerable<T> => <b>foreach</b> available
+
+- IEnumerable<T> interface has one method: GetEnumerator.
+  The object returned by GetEnumerator has a method to move 
+  to the next element, and a property that retrieves the
+  current element in the sequence.
+
+
 
 int[] numbers = { 4, 5, 6, 1, 2, 3, -2, -1 };  | int[,] numbers2D = { { 9, 99 }, { 3, 33 } };
                                                | 
@@ -1201,30 +1209,125 @@ How to: Use the My Namespace (C# Programming Guide)
 </pre>
 </td>
 <td>
-<a xsmall TODO href="https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/exceptions/">Exception Handling</a>
+<a xsmall href="https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/exceptions/">Exception Handling</a>
 <pre xxxsmall zoom>
-- Using Exceptions
-- Exception Handling
-- Creating and Throwing Exceptions
-- Compiler-Generated Exceptions
-- How to: Handle an Exception Using try-catch
-- How to: Execute Cleanup Code Using finally
-- How to: Catch a non-CLS Exception
+try {
+      file = fileInfo.OpenWrite();
+  } catch (DivideByZeroException e) {
+      Console.WriteLine("Attempted divide by zero.");
+  } catch (System.Exception e) {
+      ..
+  } finally {
+      /*  Use finally-block to release (non-memory) resources
+       *  (network/database connections, files, hardware resources).
+       *  
+       *  In an exception is raised, the finalizer is aborted
+       *  and the base finalizer, if any, is called.
+       */
+
+      if (file != null) { file.Close(); }
+  }
+
+  
+- <b>System.Exception</b>: Parent class for all exceptions
+  ^^^^^^^^^^^^^^^^
+  If you catch System.Exception, rethrow it always at the end of
+  the catch block.
+
+  Do not throw next exceptions directly/intentionally from your code:
+  - System.Exception
+  - System.SystemException
+  - System.NullReferenceException
+  - System.IndexOutOfRangeException 
+
+ - <b>Do not catch an exception unless you can handle it and leave
+     the application in a known state</b>. 
+ 
+ - <b>StackTrace</b>: 
+  Exceptions contain a property named StackTrace.
+  This string contains the name of the methods on the current call stack,
+  together with the file name and line number where the exception was
+  thrown for each method.
+   - A StackTrace object is created automatically by the common language
+     runtime (CLR) from the point of the throw statement, so that exceptions
+     must be thrown from the point where the stack trace should begin.
+
+- <b>Message</b>:
+  - All exceptions contain a property named Message. This string should
+   be set to explain the reason for the exception: 
+   <b>security sensitive information must NOT be put here</b>
+
+- <b>ArgumentException</b>:
+  ArgumentException contains a property named ParamName that should be
+  set to the name of the argument that caused the exception to be thrown.
+  In the case of a property setter, ParamName should be set to value.
+
+
+TODO: Do not create exceptions that can be thrown in debug mode but not 
+     release mode. To identify run-time errors during the development phase, 
+     use Debug Assert instead.
+
+Defining Exception Classes:
+- The derived classes should define at least four constructors:
+  - one default constructor
+  - one that sets the message property
+  - one that sets both the Message and InnerException properties. 
+  - The fourth constructor is used to serialize the exception.
+ 
+[Serializable()]
+public class InvalidDepartmentException : System.Exception {
+    public    InvalidDepartmentException()               : base() { }
+    public    InvalidDepartmentException(string message) : base(message) { }
+    public    InvalidDepartmentException(
+              string message,
+              System.Exception inner)                 : base(message, inner) { }
+    // A constructor is needed for serialization when an
+    // exception propagates from a remoting server to the client. 
+    protected InvalidDepartmentException(
+              System.Runtime.Serialization.SerializationInfo info,
+              System.Runtime.Serialization.StreamingContext context) :
+              base(info, context) { }
+}
+
+- <b>New properties should only be added to the exception class when
+    the data they provide is useful to resolving the exception.</b>. In this case
+    ToString() should be overridden to return the added information.
+
+<b>Compiler-Generated Exceptions</b>
+(Automatically thrown by the CLR)
+ArithmeticException         NullReferenceException
+ArrayTypeMismatchException  OutOfMemoryException
+DivideByZeroException       OverflowException
+IndexOutOfRangeException    StackOverflowException
+InvalidCastException        TypeInitializationException
+
+
+- Some .NET languages, including C++/CLI, allow objects to throw exceptions
+ that do not derive from Exception. Such exceptions are called non-CLS
+ exceptions or non-Exceptions. You cannot throw non-CLS exceptions in C# 
+ but you can catch them in two ways:
+ - catch (<b>RuntimeWrappedException</b> e)
+ - catch ()
 </pre>
 </td>
 <td>
 
 <a xsmall TODO href="https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/file-system/">File System</a>
 <pre xxxsmall zoom>
-- How to: Iterate Through a Directory Tree
-- How to: Get Information About Files, Folders, and Drives
-- How to: Create a File or Folder
-- How to: Copy, Delete, and Move Files and Folders
-- How to: Provide a Progress Dialog Box for File Operations
-- How to: Write to a Text File
-- How to: Read From a Text File
-- How to: Read a Text File One Line at a Time (Visual C#)
-- How to: Create a Key In the Registry (Visual C#)
+<a TODO href="https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/file-system/how-to-iterate-through-a-directory-tree">Walk Dir Tree</a>
+<a TODO href="https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/file-system/how-to-get-information-about-files-folders-and-drives">Get File/Folder Info</a>
+<a TODO href="https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/file-system/how-to-create-a-file-or-folder">Create File/Folder</a>
+<a TODO href="https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/file-system/how-to-copy-delete-and-move-files-and-folders">Copy/Delete/Move Files/Folders</a>
+<a TODO href="https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/file-system/how-to-write-to-a-text-file">Write Text File</a>
+<a TODO href="https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/file-system/how-to-read-from-a-text-file">Read Text File</a>
+<a href="https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/file-system/how-to-read-a-text-file-one-line-at-a-time">Read text File line-by-line</a>
+string line;  
+  
+System.IO.StreamReader file =  new System.IO.StreamReader(@"c:\test.txt");  
+while((line = file.ReadLine()) != null)  {  
+    System.Console.WriteLine(line);  
+}  
+file.Close();  
 </pre>
 </td>
 <td>
@@ -1269,50 +1372,210 @@ How to: Use the My Namespace (C# Programming Guide)
   +--------------------------------------------------+----------------------------------------------------+------------------------------------+
 </pre>
 <td>
-<a xsmall TODO href="https://docs.microsoft.com/en-us/dotnet/csharp/linq/">Lang.Integrated Query(LINQ)</a>
-<pre xxxsmall zoom>
-</pre>
-</td>
-<td>
-  App. Configuration
-<pre xxxsmall zoom>
-- configuration in .NET applications takes place in an XML .config file.
--  This XML formatted file has a <configuration> node, and a whole slew
-   of project specific nodes within. Getting a reference to the
-   configuration requires a call to OpenExeConfiguration.
 
-   Ex.:
-      System.Configuration.Configuration config =
-          ConfigurationManager.OpenExeConfiguration();
+<a xsmall href="https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/concepts/linq/">LINQ</a> 
+<pre xxxsmall zoom>
+- set of technologies to integrate query capabilities directly into the language:
+
+  DATA SOURCE → LINQ Query Expression → Result
+  ^^^^^^^^^^^
+  SQL Database
+  ADO .NET Datasets
+  XML documents/streams
+  dotNET collections
+
+Ex: 
+creating a data source, defining the query expression, and executing the query in a foreach statement.
+C#
+
+class LINQQueryExpressions {
+  static void Main() {
+    int[] <b blue>dataSource</b> = new int[]{97, ... };
+  
+    IEnumerable<int> <b orange>scoreQuery = 
+        from score in <b blue>dataSource</b>    // ← Query expresion
+        where score &gt; 80
+        select score;</b>
+
+    <b green>foreach</b> (int i in <b orange>scoreQuery</b>) { // ← <b green>Execution</b>
+        Console.Write(i + " ");
+    }
+  }
+}
+
+- Some query operations (Count, Max, ..) have no equivalent query expression clause 
+- Query expressions can be compiled to expression trees or to delegates,
+  depending on the type that the query is applied to.
+- IEnumerable<T> queries are compiled to delegates.
+- IQueryable and IQueryable<T> queries are compiled to expression trees. 
+
+
+<a TODO href="https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/concepts/linq/linq-to-xml">LINQ to XML</a> 
+<a TODO href="https://docs.microsoft.com/en-us/dotnet/framework/data/adonet/ef/language-reference/linq-to-entities#constructing-an-objectquery-instance">Constructing an ObjectQuery Instance</a> 
+
+<a TODO href="https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/concepts/linq/linq-to-objects">LINQ to Objects </a> 
+<a TODO href="https://docs.microsoft.com/en-us/dotnet/csharp/linq/linq-in-csharp">LINQ in C#</a> 
+<a TODO href="https://docs.microsoft.com/en-us/dotnet/csharp/linq/">Lang.Integrated Query(LINQ)</a>
+___________________________________________________
+<a href="https://docs.microsoft.com/en-us/dotnet/csharp/tutorials/working-with-linq">Linq TUTORIAL</a>
+Ex 1: 
+FARO SHUFFLE:
+⏵ split a card deck exactly in half
+⏵ then "shuffle" to interleave each one card 
+  from each half to rebuild the original deck.
+
+// Program.cs
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+LINQ CARD DECK CREATION: 
+- create two sequences to represent suites and ranks, respectively.
+
+ You'll create a really simple pair of iterator methods that will generate the ranks and suits as IEnumerable<T>s of strings:
+C#
+
+static IEnumerable<string> Suits() { ← Create sequence representing suites
+    yield return "clubs" ; yield return "diamonds";
+    yield return "hearts"; yield return "spades";
+}
+
+static IEnumerable<string> Ranks() { ← Create sequence representing ranks
+    yield return "two"  ; yield return "three"; yield return "four" ;
+    yield return "five" ; yield return "six"  ; yield return "seven";
+    yield return "eight"; yield return "nine" ; yield return "ten"  ;
+    yield return "jack" ; yield return "queen"; yield return "king" ;
+    yield return "ace"  ;
+}
+       ^^^^^^^^^^^^^^^^^^^^
+     compiler builds an object that implements IEnumerable<T>
+     and generates the sequence of strings as they are requested.
+
+static void Main(string[] args) { 
+  var startingDeck = from s in Suits()
+                     from r in Ranks()
+                     select new { Suit = s, Rank = r }
+                     .ToArray(); // Cache result into memory
+
+  // Alt 2: 
+  // var startingDeck = Suits().SelectMany(
+  //     suit => Ranks().Select(
+  //        rank => new { Suit = suit, Rank = rank }
+  //     )
+  // );
+  foreach (var card in startingDeck) {
+      Console.WriteLine(card);
+  }
+
+  var times = 0;
+  shuffle = startingDeck;
+  do { // (After 8 shuffles deck returns to startingDeck)
+    var top    = startingDeck.Take(26);  ← Split into top/bottom
+    var bottom = startingDeck.Skip(26);
+    var shuffle = top.InterleaveSequenceWith(bottom)  // * 1
+                  .ToArray(); // Cache into memory
+
+    foreach (var card in shuffle) { Console.WriteLine(card); }
+    Console.WriteLine();
+    times++;
+  } while (!startingDeck.SequenceEquals(shuffle));
+
+  Console.WriteLine(times);
+}
+
+*1 Extensions.cs:
+   using System;
+   using System.Collections.Generic;
+   using System.Linq;
    
-      // Now getting a reference is "straightforward".
-      var sectionName = “Whatever!”;
-      System.Configuration.AppSettingsSection section =
-       (System.Configuration.AppSettingsSection) config.GetSection(sectionName);
+   namespace LinqFaroShuffle {
+     public static class Extensions {
+       public static IEnumerable<T> 
+          InterleaveSequenceWith<T>(
+             <b>this</b>/*ext.modifier*/ IEnumerable<T> first,
+             IEnumerable<T> second) {
+         var firstIter = first.GetEnumerator();
+         var secondIter = second.GetEnumerator();
+   
+         while (firstIter.MoveNext() && secondIter.MoveNext()) {
+             yield return firstIter.Current;
+             yield return secondIter.Current;
+         }
+      }
+     }
 
-- Config file sections(config-groups):
-  SECTION         DESCRIPTION
- +-----------------------------------------------------------------+
- |Startup         Describes the .NET version to use                |
- +-----------------------------------------------------------------+
- |Runtime         Lists the .NET elements to bind to the executable|
- +-----------------------------------------------------------------+
- |Network         Describes proxy and other network settings       |
- +-----------------------------------------------------------------+
- |Cryptography    values referencing crypto resources              |
- +-----------------------------------------------------------------+
- |Configuration   The most used section. (custom sections)         |
- +-----------------------------------------------------------------+
- |Trace/Debug     Settings for tracing+logging                     |
- +-----------------------------------------------------------------+
- |appsettings     things like DDBB connection strings              |
- +-----------------------------------------------------------------+
- |websettings     ASP.NET specific details                         |
- +-----------------------------------------------------------------+
+     public static bool SequenceEquals<T>
+         (<b>this</b> /*ext.modifier*/ IEnumerable<T> first, IEnumerable<T> second) {
+       var result = true; // By default   
+       var it1 =  first.GetEnumerator();
+       var it2 = second.GetEnumerator();
+       while (it1.MoveNext() && it2.MoveNext()) {
+           if (!it1.Current.Equals(it2.Current)) { result = false; break; }
+       }
+       return result;
+     }
+   }
+
 </pre>
 </td>
 <td>
-<a xsmall TODO href="https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/concepts/async/">Async Programming</a>
+  <span xsmall bgorange>Configuration</span>
+<pre xxxsmall zoom bgorange>
+<b xsmall>Read from "File"</b>
+<a href="https://docs.microsoft.com/en-us/aspnet/core/fundamentals/configuration/index?view=aspnetcore-2.2">Official Doc REF</a>
+Microsoft.Extensions.Configuration.* NuGets: 
+multi-level hierarchy of stringKey-to-stringValue
+
+Configuration Providers:
+ - in-memory .NET objects
+ - INI/JSON/XML files     (Microsoft.Extensions.Configuration.INI/Json/XML     NuGet, ...)
+ - command-line arguments (Microsoft.Extensions.Configuration.CommandLine NuGet)
+ - environment variables
+ - encrypted user store
+ - custom provider        (Microsoft.Extensions.Configuration.Abstractions NuGet)
+
+
+To familiarize yourself with retrieving configuration settings, take a look at Figure 1.
+Figure 1 Configuration Basics Using the InMemoryConfigurationProvider and ConfigurationBinder Extension Methods
+
+public class Program {
+  static IReadOnlyDictionary&lt;string, string&gt; MyAppDefConfig{get;} =
+    new Dictionary&lt;string, string&gt;() {
+      ["Profile:UserName"] = Environment.UserName,
+      [$"AppConfiguration:ConnectionString"] = "myConfigValue1",
+    };
+
+
+  public static void Main(string[] args = null) {
+    ConfigurationBuilder configurationBuilder = // STEP 1: Instantiate new ConfigurationBuilder
+       new ConfigurationBuilder();
+    configurationBuilder                        // STEP 2: Add Provider to builder
+       .AddInMemoryCollection(MyAppDefConfig)                ←   In Memory
+       .AddJsonFile("Config.json", true /* => Optional */)   ← + JSON
+       .AddCommandLine(                                      ← + Command Line
+          args, GetSwitchMappings(MyAppDefConfig));
+    ;
+    IConfiguration Configuration =              // STEP 3: Build
+       configurationBuilder.Build();
+    var configKey1 = "Profile:UserName";        // USSAGE:
+    Console.WriteLine(
+       $"{Configuration[configKey1]}");
+    ...
+  }
+}
+<b xsmall>Write to "File"</b>
+<a  TODO href="https://stackoverflow.com/questions/40970944/how-to-update-values-into-appsetting-json">REF at stackoverflow</a> 
+<a href="https://github.com/aspnet/AspNetCore/issues/2973">Unresolved issue at Github</a> 
+
+
+
+</pre>
+
+<a xsmall TODO href="https://dotnet.today/en/aspnet5-vnext/security/app-secrets.html">Storing secrets</a> 
+
+</td>
+<td>
+<a xsmall href="https://docs.microsoft.com/en-us/dotnet/csharp/programming-guide/concepts/async/">Async Programming</a>
 <pre xxxsmall zoom>
 - async : used to declare an asynchronous function, which returns a Task.
           - All async methods must contain at least one "await" expression:
@@ -1628,97 +1891,70 @@ namespace AsyncFirstExample
         }  
     }  
 }  
-
 </td>
 <td>
-  <a href="https://docs.microsoft.com/en-us/nuget/what-is-nuget">[NuGet pck mng]</a>
-  <a href="https://nuget.org">[Nuget.org]</a>
+  <a xsmall href="https://docs.microsoft.com/en-us/nuget/what-is-nuget">[NuGet pck mng]</a>,
+  <a xsmall href="https://nuget.org">[Nuget.org]</a>
 <pre xxxsmall zoom>
-- tools handling how packages for .NET are created/hosted/consumed
-- NuGet (.nupkg) package = ZIP file containing:
-- compiled code (DLLs)
-- files related to that code
-- manifest (version,...)
-- refer to the package in code with using <namespace> where <namespace>
-   is specific to the package you're using. 
+@PROJECT DEVELOPING THE LIBRARY                                         @PROJECT USING THE LIBRARY
+-------------------------------                                         --------------------------
+                                                                           
+library -→ dotnet -→ myLib.1.0.0  -→ dotnet nuget push  -→|  nuget      |←--- $ dotnet add         
+source       pack    .nupkg                               |repository   |       package myLib1.0.0 
+Project                                                                                            
+           ^           ^               ^                         ^               ^                  
+           |           |               |                         |               |                           
+           |           |               |                         |               |                                     
+           |  - compiled        - Push to public nuget           |           
+           |    DLLs              URL="https://api.nuget.org"    |      download to project path
+           |  - resources         $ dotnet nuget push \          |      and add to nuget reference
+           |  - manifest            myLib.1.0.0.nupkg \          |      list to *.csproj like:
+           |     -*Coordinates*     -k $myNugetOrgKey \          |      ...
+           |       - identifier     -s $URL/v3/index.json        |      &lt;ItemGroup>
+           |       - version                                     |      &lt;PackageReference 
+           |   - localization   - Publish to local repository    |        Include="myLib" 
+           |   - debug symbols    repository:                    |        Version="1.0.0" />
+           |   - dependencies     $ nuget add myLib.1.0.0.nupkg \|       &lt;/ItemGroup>
+           |     version ranges   -Source $HOME\.nuget\packages  |      ^^^^^^^^^^^^^^^
+           |                                                     |      WARN: nuget install does
+           |                                                     |         *NOT*  update .csproj
+           |                                                     |
+           |                                                     |
+       Will take info from *.csproj                          \\myHost\packages
+       &lt;PackageId>MyPkg&lt;/PackageId>                          └─[packageID]
+       &lt;Version>1.0.0&lt;/Version>                                └─[version]
+       &lt;Authors>author1&lt;/Authors>                                ├─[packageID].[version].nupkg
+       &lt;Company>company&lt;/Company>                                ├─[packageID].[version].nupkg.sha512
+       &lt;PropertyGroup>                                              ├─[packageID].nuspec
+         ...                                                        └─lib
+         &lt;GeneratePackageOnBuild>                                     ├─netcoreapp2.1/packageID.dll
+           true                     ← automatically pack              ├─net451/packageID.dll
+         &lt;/GeneratePackageOnBuild> at (dotnet) build                     └─ ...  /packageID.dll
+         ...
+       &lt;/PropertyGroup>
 
-NuGet supports private hosts + public nuget.org
-                               ^^^^^^^^^^^^^^^^
-                               100,000+ packages
+    *1 <a href="https://docs.microsoft.com/en-us/dotnet/core/tools/dotnet-nuget-push?tabs=netcore2x">dotnet nuget push reference</a>
 
-creator ->(push .nupkg) -> HOST -> (pop .nupkg) -> Consumer
-
-
-- To maximize a package's compatibility, developers target <b>.NET Standard</b>
+- maximize compatibility by targeting <b>.NET Standard</b>
   which all .NET and .NET Core projects can consume.
 
-NuGet tools
-
-Tool            Platforms   Applicable Scenarios    Description
-nuget.exe CLI   All         Creation, Consumption   Provides all NuGet capabilities, with some commands 
-                                                    applying specifically to package creators, some applying 
-                                                    only to consumers, and others applying to both. For 
-                                                    example, package creators use the nuget pack command to 
-                                                    create a package from various assemblies and related files
-                                                    , package consumers use nuget install to include packages 
-                                                    in a project folder, and everyone uses nuget config to 
-                                                    set NuGet configuration variables. As a platform-agnostic 
-                                                    tool, the NuGet CLI does not interact with Visual Studio 
-                                                    projects.
-dotnet CLI      All         Creation, Consumption   Provides certain NuGet CLI capabilities directly within 
-                                                    the .NET Core tool chain. As with the NuGet CLI, the 
-                                                    dotnet CLI does not interact with Visual Studio 
-                                                    projects.
-Package Manager VS Win... 
-UI/Console                
-Manage NuGet UI VS Mac ...
-MSBuild         Windows     Creation, Consumption   ...
-
-
-<b>dependencies Management</b>
-- Uses a tree "graph"
-- Transitive dependencies
-- package Coordinates:
-    - package identifier
-    - version number
-
-- A NuGet <b orange>reference list</b> is created on 
-  package installation and can be used
-   to restore packages elsewhere
-
-<b>Build systems like Azure DevOps </b> provide "NuGet restore" steps
- to restore using just the reference list 
-- when cloning a repository <b>nuget restore -NuGet CLI-</b>
-  (dotnet restore -dotnet CLI-) is enough to obtain all
-  necessary packages.
-
-<b orange>reference list</b> is maintained in one of two 
-    package management formats:
-- <b orange>packages.config:</b> (NuGet 1.0+) XML file with flat 
-  list of all dependencies in project. (legacy)
-  Installed or restored packages are stored in a packages folder.
-- <b orange>&lt;PackageReference&gt; (@project file)</b> (NuGet 4.0+
-  and all .NET Core projects):
-  keeps a list of project's top-level dependencies
-  obj/project.assets.json is dynamically generated to manage the
-  overall dependency graph of the packages that a project uses along
-  with all down-level dependencies.
-
-TIP: Various nuget.exe CLI commands, like nuget install, do not automatically
-    add the package to the reference list. The list is updated when
-    installing a package with the Visual Studio Package Manager (UI or Console), 
-    and with dotnet.exe CLI.
+- * 2<b orange>NuGet reference list</b>:
+  - created on (dotnet add package ...) installation 
+    in *.csproj:
+  - can be used later to re-install packages elsewhere with:
+    $ <b>nuget  restore</b> # alt 1
+    $ <b>dotnet restore</b> # alt 2 (Looks to fail with password protected repos)
+  - <b orange>&lt;PackageReference&gt; (@project file)</b> 
+    - From NuGet 4.0+ and .NET Core
+    - reference list of project's top-level dependencies
+      (generated obj/project.assets.json contains resolved tree)
 
 <b>NuGet package cache</b>   : Boots performance, avoids re-downloading 
 <b>global packages folder</b>: shortcut (re)installation (shared by different
                                projects).
-- NuGet maintains also all the specifications related to how 
-  packages are structured (including localization and debug symbols)
-  and how they are referenced (including <b>version ranges</b> and
-  pre-release versions.)
-
 </pre>
-
+</td>
+<td>
   <a xsmall TODO href="XXX">dotnet CLI</a><br/>
     <span bgorange xsmall>(skeleton → add pkgs → run →....)</span>
 <pre xxxsmall zoom bgorange>
@@ -1859,7 +2095,7 @@ nuget.org -> select profile -> select Manage Packages
 
    - Select Ctrl-F5 to run the app in non-debug mode @  localhost:5000 
 
-<a xsmall href="https://docs.microsoft.com/en-us/aspnet/core/tutorials/first-mvc-app/adding-controller?view=aspnetcore-2.2&tabs=visual-studio">Add A Controller</a>
+<a href="https://docs.microsoft.com/en-us/aspnet/core/tutorials/first-mvc-app/adding-controller?view=aspnetcore-2.2&tabs=visual-studio">Add A Controller</a>
 - Visual Studio -> Solution Explorer -> right-click Controllers > Add > Controller Contextual menu
 - In the Add Scaffold dialog box, select MVC Controller - Empty
 - Add MVC controller and name it
@@ -1870,30 +2106,28 @@ using Microsoft.AspNetCore.Mvc;
 using System.Text.Encodings.Web;
 
 namespace MvcMovie.Controllers {
-    public class HelloWorldController : Controller {                   +----------> Views/HelloWorld/Index.cshtml:
+    public class HelloWorldController : Controller {                   +----------→ Views/HelloWorld/Index.cshtml:
         //                                                             |            @{
         // GET: /HelloWorld/                                           |                ViewData["Title"] = "Index";
         public IActionResult Index() { return View(); }                |            }
         //                                    ^^^^^^                   |            
-        //                                    defaults to -------------+            &lt;h2>Index&lt;/h2>
-     // public string        Index() { return "This is my default action..."; }     &lt;p>Hello from our View Template!&lt;/p>
+        //                                    defaults to -------------+            &lt;h2&gt;Index&lt;/h2&gt;
+     // public string        Index() { return "This is my default action..."; }     &lt;p&gt;Hello from our View Template!&lt;/p&gt;
 
         // 
         // GET: /HelloWorld/Welcome/ 
-        public IActionResult Welcome(string name, int numTimes = 1)          +----> Views/HelloWorld/Welcome.cshtml.
+        public IActionResult Welcome(string name, int numTimes = 1)          +----→ Views/HelloWorld/Welcome.cshtml.
             //                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^                |      @{
             //                  ?name=Rick&numtimes=4                        |          ViewData["Title"] = "Welcome";
             //      Use  <b>HtmlEncoder.Default.Encode</b>($"{name}...");    |      }
             //      to  protect the app from malicious input                 |      
-            ViewData["Message"] = "Hello " + name;                           |      &lt;h2>Welcome&lt;/h2>
-            ViewData["NumTimes"] = numTimes;                                 |      &lt;ul>
+            ViewData["Message"] = "Hello " + name;                           |      &lt;h2&gt;Welcome&lt;/h2&gt;
+            ViewData["NumTimes"] = numTimes;                                 |      &lt;ul&gt;
             return View();  // defaults to ----------------------------------+          @for (int i = 0; i &lt; (int)ViewData["NumTimes"]; i++)
         }                                                                               {
-                                                                                            &lt;li>@ViewData["Message"]&lt;/li>
+                                                                                            &lt;li&gt;@ViewData["Message"]&lt;/li&gt;
                                                                                         }
-                                                                                    &lt;/ul>
-
-
+                                                                                    &lt;/ul&gt;
     }
 }
 
@@ -1910,12 +2144,12 @@ app.UseMvc(routes => {
         // "/" defaults to "Home" controller and the "Index" method 
         // specified in the template line highlighted above.
 });
-
-
-
+</td>
+<td>
 <a xsmall href="https://docs.microsoft.com/en-us/aspnet/core/tutorials/first-mvc-app/adding-view?view=aspnetcore-2.2&tabs=visual-studio">Add a view</a>
-  - Visual Studio -> Right click on Views folder -> Add > New Folder and name the folder HelloWorld.
-  - Right click on the Views/HelloWorld folder, and then Add > New Item.
+<pre xxxsmall zoom>
+  - Visual Studio → Right click on Views folder → Add → New Folder and name the folder HelloWorld.
+  - Right click on the Views/HelloWorld folder, and then Add → New Item.
   - In the Add New Item - MvcMovie dialog
     - In the search box in the upper-right, enter view
     - Select Razor View
@@ -1948,9 +2182,10 @@ app.UseMvc(routes => {
 &lt;/html>
 
 <b>Passing Data from Controller to View</b>
-
-
+</td>
+<td>
 <a xsmall href="https://docs.microsoft.com/en-us/aspnet/core/tutorials/first-mvc-app/adding-model?view=aspnetcore-2.2&tabs=visual-studio">Add a Model</a>
+<pre xxxsmall zoom>
 - Makes use of the Entity Framework Core (EF) Core object-relational mapping (ORM)
 - Visual Studio -> Right-click the Models folder > Add > Class. Name the class Movie.
   ..../Movie.cs:
@@ -2075,11 +2310,17 @@ public async Task&lt;IActionResult> Index() {
    ...
 }
 ...
+</td>
+<td>
+<a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/tutorials/first-mvc-app/working-with-sql?view=aspnetcore-2.2&tabs=visual-studio">work with sql</a>
+<pre xxxsmall zoom>
+</pre>
 
-<a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/tutorials/first-mvc-app/working-with-sql?view=aspnetcore-2.2&tabs=visual-studio"></a>
 
+</td>
+<td>
 <a xsmall href="https://docs.microsoft.com/en-us/aspnet/core/tutorials/first-mvc-app/controller-methods-views?view=aspnetcore-2.2">processing POSTs</a>
-
+<pre xxxsmall zoom>
   Ex: HTTP POST Edit method:
 
     // POST: Movies/Edit/5
@@ -2102,9 +2343,12 @@ public async Task&lt;IActionResult> Index() {
         return RedirectToAction("Index");
         return View(movie);
     }
+</td>
+<td>
 
-<a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/tutorials/first-mvc-app/search?view=aspnetcore-2.2"></a>
 
+<a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/tutorials/first-mvc-app/search?view=aspnetcore-2.2">Add search</a>
+<pre xxxsmall zoom>
 public async Task&lt;IActionResult> Index(string searchString) {
 //                                        ^^^^^^^^^^^^^^^^^^^   
 //                          /Movies/Index?searchString=...
@@ -2121,10 +2365,15 @@ public async Task&lt;IActionResult> Index(string searchString) {
     }
     return View(await movies.ToListAsync());
 }
-
-<a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/tutorials/first-mvc-app/new-field?view=aspnetcore-2.2&tabs=visual-studio">Add a new field to an ASP.NET Core MVC app</a>
-
+</td>
+<td>
+<a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/tutorials/first-mvc-app/new-field?view=aspnetcore-2.2&tabs=visual-studio">Add new field</a>
+<pre xxxsmall zoom>
+</pre>
+</td>
+<td>
 <a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/tutorials/first-mvc-app/validation?view=aspnetcore-2.2">Add validation</a>
+<pre xxxsmall zoom>
 - Adding validation rules to the movie model
 - DataAnnotations provides a built-in set of declaratively validation attributes.
   (<b>[Required]</b>, <b>[StringLength]</b>, <b>[RegularExpression]</b>, and <b>[Range]</b> validation attributes)
@@ -2429,6 +2678,12 @@ public async Task&lt;IActionResult> Delete(int id, bool notUsed)
 <pre xxxsmall zoom>
 </pre>
 </td>
+</tr>
+</table>
+
+<table>
+<tr>
+
 <td>
 <a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/mvc/controllers/actions?view=aspnetcore-2.2">Controllers</a>
 <pre xxxsmall zoom>
@@ -2443,7 +2698,7 @@ public async Task&lt;IActionResult> Delete(int id, bool notUsed)
 <a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/mvc/models/file-uploads?view=aspnetcore-2.2">File Uploads</a>
 </td>
 <td>
-<a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/mvc/controllers/dependency-injection?view=aspnetcore-2.2">Dep.Inject-Controllers</a>
+<a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/mvc/controllers/dependency-injection?view=aspnetcore-2.2">Depen Inject Controllers</a>
 </td>
 <td>
 <a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/mvc/views/dependency-injection?view=aspnetcore-2.2">Dep.Inject-Views</a>
@@ -2451,19 +2706,1095 @@ public async Task&lt;IActionResult> Delete(int id, bool notUsed)
 <td>
 <a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/mvc/controllers/testing?view=aspnetcore-2.2">Unit Test</a>
 </td>
+</tr>
+</table>
+<table>
+<tr>
+
 <td>
-<a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/fundamentals/app-state?view=aspnetcore-2.2">Sess+App.State</a>
+<a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/fundamentals/index?view=aspnetcore-2.2&tabs=windows#host">The host</a> 
+<pre xxxsmall zoom>
+An ASP.NET Core app builds a host object on startup,
+encapsulating all of the app's resources, such as:
+- An HTTP server implementation
+- Middleware components
+- Logging
+- DI
+- Configuration
+
+</pre>
+</td>
+<td>
+<a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/fundamentals/configuration/index?view=aspnetcore-2.2">Configuration</a> 
+<pre xxxsmall zoom>
+
+Configuration in ASP.NET Core
+
+- key-value established by configuration providers
+- Configuration providers read configuration data from:
+  - Azure Key Vault
+  - Command-line arguments  Ex: dotnet run Key1=value1 --CommandLineKey2=value2 /CommandLineKey3=value3
+                                dotnet run --Key1 value1 /CommandLineKey2 value2
+                                dotnet run CommandLineKey1= CommandLineKey2=value2
+  - Custom providers (installed or created)
+  - Directory files
+  - Environment variables  (ASPNETCORE_* urls Logging ENVIRONMENT contentRoot AllowedHosts applicationName CommandLine)
+  - In-memory .NET objects
+  - Settings files
+
+<b>Host Config</b>
+- Host configuration key-value pairs become part of the app's global configuration. 
+- CreateDefaultBuilder provides default configuration for the app in the following order:
+  - ASPNETCORE_ Env. variables 
+    The ASPNETCORE_ prefix is stripped when the configuration key-value pairs are loaded.
+  - Command-line arguments using the Command-line Configuration Provider.
+
+- App configuration is provided from:
+  - appsettings.json 
+  - appsettings.{Environment}.json
+  - Secret Manager when apps runs in the Development environment
+  - Environment variables. Custom prefixes are stripped
+  - Command-line arguments
+
+
+<b>Hierarchical configuration data</b>
+   INPUT Config JSON       Translate to ":" separated config keys:
+   {
+     "section0": {
+       "key0": "value",    section0:key0
+       "key1": "value"     section0:key1
+     },                    
+     "section1": {         
+       "key0": "value",    section1:key0
+       "key1": "value"     section1:key1
+     }
+   }
+
+   See also GetSection and GetChildren methods
+   (Microsoft.Extensions.Configuration package) 
+
+- File Configuration Providers have the ability to reload configuration 
+  when an underlying settings file is changed after app startup.
+
+<b>KEY CONVENTIONS</b>
+  - IConfiguration can be injected into a Razor Pages PageModel to obtain configuration for the class. Ex:
+    public class IndexModel : PageModel {
+        private readonly IConfiguration <b>_config</b>;
+        public IndexModel(IConfiguration config) { _config = config; }
+    }
+    (not available to Config. providers as it's not available when they're set up by the host)
+  
+ - Keys are case-INsensitive.
+ - If value for a key is set by different config.providers last one is used.
+ - "__" is replaced by ":"
+ - "--" is replaced by ":" in Azure Key Vault
+ - ConfigurationBinder supports binding arrays to objects using array indices in configuration keys.
+
+<b>CONFIGURATION VALUES CONVENTIONS:</b>
+ - Values are strings.
+ - Null values can't be stored in configuration or bound to objects.
+
+<b>PROVIDERS</b>
+(initialized in a new WebHostBuilder with CreateDefaultBuilder)
+  - Azure Key Vault
+  - Command-line Configuration Provider
+  - Custom configuration provider
+  - Environment Variables Configuration Provider
+  - File Configuration Provider (INI, JSON, XML)
+                                Ussually appsettings.json → appsettings.{Environment}.json
+  - Key-per-file Configuration Provider
+  - Memory Configuration Provider
+  - User secrets (File in the user profile directory)
+
+<b>ConfigureAppConfiguration</b>
+(building the host)
+- specify the app's configuration providers in addition to those added automatically by CreateDefaultBuilder:
+
+public class Program {
+    public static Dictionary<string, string> arrayDict = new Dictionary<string, string> {
+      {"array:entries:0", "value0"},
+      {"array:entries:1", "value1"},
+      {"array:entries:2", "value2"},
+    };
+
+    public static void Main(string[] args) {
+        CreateWebHostBuilder(args).Build().Run();
+    }
+
+    public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
+      WebHost.CreateDefaultBuilder(args)
+        .ConfigureAppConfiguration((hostingContext, <b orange>config /* will be available to app's starup */</b>) =>
+        {
+          <b orange>config</b>.SetBasePath(Directory.GetCurrentDirectory());
+          <b orange>config</b>.AddInMemoryCollection(arrayDict);
+          <b orange>config</b>.AddJsonFile("json_array.json", optional: false, reloadOnChange: false);
+          <b orange>config</b>.AddJsonFile("starship.json", optional: false, reloadOnChange: false);
+          <b orange>config</b>.AddXmlFile("tvshow.xml", optional: false, reloadOnChange: false);
+          <b orange>config</b>.AddEFConfiguration(options => options.UseInMemoryDatabase("InMemoryDb"));
+          <b orange>config</b>.AddCommandLine(args);
+        })
+        .UseStartup<Startup>();
+}
+
+
+
+<b>Bind to an (POCO) object graph</b>
+
+
+Bind is capable of binding an entire POCO object graph. 
+
+Models/TvShow.cs:                              tvshow.xml:
+
+public class TvShow {                          <?xml version="1.0" encoding="UTF-8"?>
+  public Metadata Metadata { get; set; }       <configuration>
+  public Actors Actors { get; set; }             <tvshow>
+  public string Legal { get; set; }                <metadata>
+}                                                    <series>Dr. Who</series>
+                                                     <title>The Sun Makers</title>
+public class Metadata {                              <airdate>11/26/1977</airdate>
+  public string Series { get; set; }                 <episodes>4</episodes>
+  public string Title { get; set; }                </metadata>
+  public DateTime AirDate { get; set; }            <actors>
+  public int Episodes { get; set; }                  <names>Tom Baker, Louise Jameson, John Leeson</names>
+}                                                  </actors>
+                                                   <legal>(c)1977 BBC https://www.bbc.co.uk/programmes/b006q2x0</legal>
+public class Actors {                            </tvshow>
+  public string Names { get; set; }            </configuration>
+}
+
+// C# Ussage:
+var tvShow = new TvShow();
+// Alt 1         : Bind    (@Microsoft.Extensions.Configuration.Binder (@Microsoft.AspNetCore.App metapackage) )
+   _config.GetSection("tvshow").Bind(tvShow);
+   TvShow = tvShow;
+// Alt 2 Prefered:  Get<T> (@Microsoft.Extensions.Configuration.Binder (@Microsoft.AspNetCore.App metapackage) )
+TvShow = _config.GetSection("tvshow").Get<TvShow>();
+
+<a TODO href="XXXX">Missing values error control</a> 
+
+<a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/fundamentals/configuration/options?view=aspnetcore-2.2">Configuration Options</a> 
+</pre>
+
+</td>
+<td>
+<a xsmall href="https://docs.microsoft.com/en-us/aspnet/core/fundamentals/startup?view=aspnetcore-2.2">Startup</a>
+<pre xxxsmall zoom>
+<b>Startup.cs:</b>
+- Optionally includes ConfigureServices method to configure the app's services.
+  - Service:
+    - reusable component that provides app functionality.
+    - configured ("registered") in ConfigureServices and consumed across the app
+      via dependency injection (DI) or ApplicationServices.
+- Includes a  (non-optional) Configure method to create the app's
+  request processing pipeline.
+
+public class Startup {
+    private readonly IHostingEnvironment _env;
+    private readonly IConfiguration      _config;
+    private readonly ILoggerFactory      _loggerFactory;
+
+    public Startup(IHostingEnvironment env, IConfiguration config, 
+        ILoggerFactory loggerFactory) {
+        _env = env;
+        _config = config;
+        _loggerFactory = loggerFactory;
+    }
+
+    // Called by the host before the Configure method.
+    // Typical pattern: is to call all the Add{Service} methods 
+    // and then call all of the services.Configure{Service} methods.
+    // <b>A typical ASP.NET Core app registers services
+    // for Entity Framework, Identity, and MVC</b>.
+    public void <b>ConfigureServices/* register services here */</b>
+        (IServiceCollection services) {
+      var logger = _loggerFactory.CreateLogger<Startup>();
+      if (_env.IsDevelopment()) {
+        // Dev. service config
+        logger.LogInformation("Development environment"); 
+      } else {
+        // Non-devel service config
+        logger.LogInformation($"Environment: {_env.EnvironmentName}");
+      }
+      // Configuration is available during startup.
+      // Ex.: ( _config["key"], _config["subsect:subopt1"])
+
+
+      services.AddDbContext<ApplicationDbContext>(options =>
+          options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+
+      services.AddIdentity<ApplicationUser, IdentityRole>()
+          .AddEntityFrameworkStores<ApplicationDbContext>()
+          .AddDefaultTokenProviders();
+      services.AddMvc();
+  
+      // Add application services.
+      services.AddTransient<IEmailSender, AuthMessageSender>();
+      services.AddTransient<ISmsSender, AuthMessageSender>();
+    }
+
+    public void <b>Configure</b>(IApplicationBuilder app) {
+       /* - Setup HTTP request pipeline by adding middleware components
+        *
+        * - The ASP.NET Core templates configure the pipeline with support for:
+        *   - Developer Exception Page
+        *   - Exception handler
+        *   - HTTP Strict Transport Security (HSTS)
+        *   - HTTPS redirection
+        *   - Static files
+        *   - General Data Protection Regulation (GDPR)
+        *   - ASP.NET Core MVC and Razor Pages
+        *
+        * - app.Use* adds new middleware components to the request pipeline.
+        *
+        *
+        */
+        if (env.IsDevelopment()) {
+            app.UseDeveloperExceptionPage();
+        } else {
+            app.UseExceptionHandler("/Error");
+            app.UseHsts();
+        }
+        app.UseHttpsRedirection();
+        app.UseStaticFiles();     // ← Add <content_root>/wwwroot static file support. 
+        app.UseCookiePolicy();    // ← Adds CookiePolicyMiddleware handler for cookie policy capabilities.
+        app.UseMvc();             // ← adds Routing Middleware and configures MVC as default handler
+    }
+}
+
+- The Startup class is usually specified at build time by calling the
+  WebHostBuilderExtensions.UseStartup<TStartup> method on the host builder:
+
+  public class Program
+  {
+      public static void Main(string[] args)
+      {
+          CreateWebHostBuilder(args).Build().Run();
+      }
+  
+      public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
+          WebHost.CreateDefaultBuilder(args)
+              .UseStartup<Startup>();
+  }
+
+  <b></b>The (IWeb)Host provides services that are available to the Startup 
+  class constructor. 
+
+- Once the Starup has executed, both the host and app services are
+  available in <b>Configure</b> and throughout the app.
+
+- A common use of dependency injection into the Startup class is to inject:
+  - IHostingEnvironment to configure services by environment.
+  - IConfiguration      to read configuration.
+  - ILoggerFactory      to create a logger in Startup.ConfigureServices.
+
+- alternatively use a conventions-based approach, using the appropriate Startup
+  class at runtime.
+  The class whose name suffix matches the current environment is prioritized:
+  StartupDevelopment will be used if present over Startup class.
+ For more information, see Use multiple environments.
+
+ - For features that require substantial setup, there are Add{Service} extension
+  methods on IServiceCollection.
+
+
+<b>configure services and request Pipeline without using a Startup class</b>
+public class Program {
+    public static IHostingEnvironment HostingEnvironment { get; set; }
+    public static IConfiguration Configuration { get; set; }
+
+    public static void Main(string[] args) {
+        CreateWebHostBuilder(args).Build().Run();
+    }
+
+    public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
+      WebHost.CreateDefaultBuilder(args)
+        .ConfigureAppConfiguration((hostingContext, config) => {
+          HostingEnvironment = hostingContext.HostingEnvironment;
+          Configuration = config.Build();
+        })
+        .ConfigureServices(services => {
+         ...
+        })
+        .Configure(app => {
+          var loggerFactory = app.ApplicationServices
+              .GetRequiredService<ILoggerFactory>();
+          var logger = loggerFactory.CreateLogger<Program>();
+          logger.LogInformation("Logged in Configure");
+
+          if (HostingEnvironment.IsDevelopment()) { ...  }
+          else { ...  }
+          var configValue = Configuration["subsection:suboption1"];
+          ...
+        });
+}
+
+<b>IStartupFilter</b>
+IStartupFilter allows to ensure that middleware runs before/after middleware added
+by libraries at the start or end of the app's request processing pipeline.
+- implements a single method, Configure, receiving and returning an Action<IApplicationBuilder>. 
+</pre>
+<a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/fundamentals/environments?view=aspnetcore-2.2#environment-based-startup-class-and-methods">Multi Env.Startup</a>
+<pre xxxsmall zoom>
+</pre>
+</td>
+<td>
+<a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/fundamentals/error-handling?view=aspnetcore-2.2#startup-exception-handling">Startup Exception Handling</a> 
+</td>
+<td>
+  <span xsmall>IWebHost vs IWebHostBuilder vs  BuildWebHost</span>
+<pre xxxsmall zoom>
+- <a href="https://stackoverflow.com/questions/52085806/what-is-the-difference-between-iwebhost-webhostbuilder-buildwebhost">REF@Stackoverflow</a>
+- IWebHost: the general "thing" that hosts and runs your web application.
+  It gets created when your application starts up, and then it will construct
+  all the necessary pieces, like the Kestrel web server, the application
+  middleware pipeline, and all the other bits, and connects them, so that your
+  application is ready to serve your requests.
+
+- IWebHostBuilder: The web host builder is basically a factory to create a
+  web host. It is the thing that constructs the web host but also configures
+  all the necessay bits the web host needs to determine how to run the web 
+  application.  
+  - With ASP.NET Core 2, you will usually create a "default web host builder"
+    which will already come with a lot defaults. For example, the default web
+    host will set up the Kestrel web server, enable and configure logging,
+    and add support for the appsettings.json configuration.
+
+- BuildWebHost is part of the older convention before ASP.NET Core 2.1
+  where the default pattern in the Program.cs was to build the web host 
+  in a separate method. With 2.1, this was changed so that the method
+  would no longer build the web host directly but just create the web 
+  host builder (hence the method now being called CreateWebHostBuilder).
+  to make the CreateWebHostBuilder reuseable. 
+  For example, to reuse in integration testing using the TestHost.
+ 
+- The default pattern in Program.cs (ASP.NET Core 2.1+) will be:
+
+public class Program {
+  public static void Main(string[] args) {<b>
+    CreateWebHostBuilder(args)
+      .Build()
+      .Run();</b>
+  }
+
+  public static IWebHostBuilder CreateWebHostBuilder(string[] args) =>
+      WebHost.CreateDefaultBuilder(args) // default settings and config
+          .UseStartup<Startup>();        // use 'Startup' class
+}
+</pre>
+</td>
+<td colsep> </td>
+<td>
+<a xsmall href="https://docs.microsoft.com/en-us/aspnet/core/fundamentals/app-state?view=aspnetcore-2.2">Sess+App.State</a>
+<pre xxxsmall zoom>
+State can be stored using several approaches. 
+   STORAGE APPROACH      STORAGE MECHANISM
+   Cookies               HTTP cookies (may include data stored using server-side app code)
+   Session state         HTTP cookies and server-side app code
+   TempData              HTTP cookies or session state
+   Query strings         HTTP query strings
+   Form Hidden fields    HTTP form fields
+   HttpContext.Items     Server-side app code
+   Cache                 Server-side app code
+   Dependency Injection  Server-side app code
+
+<b>Cookies</b>
+ - store data across requests. 
+ - sent with every request, size should be kept to a minimum.
+   (unique session identifier,...)
+ - Size and number restricted by HTTP clients.
+ - must be validated by the app.
+ - can be deleted by users and expire on clients.
+ - Generally the most durable form of data persistence on the client.
+
+<b>Session state  (ASP.NET Core)</b>
+ - Use a session ID cookie to keep a cache for the user session.
+   (time between log-in and log-out)
+ - The session cookie is encrypted via IDataProtector.
+ - Not supported in SignalR apps since a SignalR Hub may execute 
+   independent of an HTTP context.  For example,  when a long polling
+   request is held open by a hub beyond the lifetime of the request's 
+    HTTP context.
+ - HttpContext.Session (ISession implementation) is available after
+   session state is configured.
+   SetInt32(ISession, String, Int32)     Get(ISession, String)
+   SetString(ISession, String, String)   GetInt32(ISession, String)
+                                         GetString(ISession, String)
+   - Ex. Razon Page using session:
+     @page
+     @using Microsoft.AspNetCore.Http
+     @model IndexModel
+     public class IndexModel : PageModel {
+         public const string <b orange>SessionKeyName</b> = "_Name";
+         public string SessionInfo_Name { get; private set; }
+         public void OnGet() {
+           if (string.IsNullOrEmpty(HttpContext.<b>Session.GetString</b>(<b orange>SessionKeyName</b>))) {
+               HttpContext.Session.SetString(<b orange>SessionKeyName</b>, "The Doctor");
+           }
+         }
+     }
+     
+    - The in-memory cache provider stores session data in the memory of 
+      the server where the app resides. In a server farm scenario:
+      - Use sticky sessions to tie each session to a specific app instance
+        on an individual server. 
+      - Azure App Service uses Application Request Routing (ARR) to enforce
+        sticky sessions by default. 
+      - Sticky sessions can affect scalability and complicate web app updates.
+        A better approach is to use a Redis or SQL Server distributed cache,
+        which doesn't require sticky sessions. 
+   
+  - Configuration:
+    - Microsoft.AspNetCore.Session: (included in the Microsoft.AspNetCore.App metapackage)
+      provides middleware for managing session state. 
+      To enable the session middleware, Startup must contain:
+      - Any of the IDistributedCache memory caches.
+      - The IDistributedCache implementation is used as a backing store for session.
+      - A call to AddSession in ConfigureServices.
+      - A call to UseSession in Configure.
+    - Ex:
+      public class Startup {
+        public void ConfigureServices(IServiceCollection services) {
+          services.AddDistributedMemoryCache();
+          services.AddSession(options => {
+              options.IdleTimeout = TimeSpan.FromSeconds(10/* short timeout for easy testing */);
+              options.Cookie.HttpOnly = true;
+              options.Cookie.IsEssential = true;
+          });
+          services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
+        }
+      
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env) {
+          if (env.IsDevelopment()) { app.UseDeveloperExceptionPage(); }
+          else {
+              app.UseExceptionHandler("/Error");
+              app.UseHsts();
+          }
+          app.UseHttpsRedirection();
+          app.UseStaticFiles();
+          app.UseSession();                      // ← Order of middleware is important.
+          app.UseHttpContextItemsMiddleware();   //   InvalidOperationException exception occurs
+          app.UseMvc();                          // ← when UseSession is invoked after UseMvc.
+        }
+      }
+  - <b>Load session state asynchronously</b>
+    - If LoadAsync isn't called first, the underlying session record is loaded synchronously.
+    - Setup:
+      - wrap DistributedSessionStore and DistributedSession implementations with 
+        versions that throw an exception if the LoadAsync method isn't called before
+        TryGetValue, Set, or Remove. Register the wrapped versions in the services container.
+
+  - <b>Session options</b>
+    OPTION         DESCRIPTION
+    Cookie         cookie settings.
+                   (CookieName, Path, SameSite, HttpOnly, IsEssential)
+    IdleTimeout    Default to 20 minutes.
+    IOTimeout      max. amount of time allowed to load a session 
+                   from the store or to commit it back to the store.
+                   (only asynchronous operations).
+                   Use InfiniteTimeSpan to disable. (1 minute by default).
+<b TODO>TempData</b>
+ - ASP.NET Core exposes the TempData property of a Razor Pages page model or TempData of an MVC controller.
+ - This property stores data until it's read. 
+ - The Keep and Peek methods can be used to examine the data without deletion.
+ - TempData is particularly useful for redirection when data is required
+   for more than a single request. TempData is implemented by TempData providers
+   using either cookies or session state.
+
+<b>HttpContext.Items</b> collection
+  - used to store data while processing a single request(discarded after response)
+  - Items collection is often used to allow components or
+    middleware to communicate when they operate at different points
+    in time during a request and have no direct way to pass parameters.
+
+  - Example: isVerified added to Items collection.
+    app.Use(async (context, next) => {
+        ...
+        context.Items["isVerified"] = true;
+        await next.Invoke();
+    });
+    Later in the pipeline:
+    app.Run(async (context) => {
+        await context.Response.WriteAsync($"Verified: {context.Items["isVerified"]}");
+    });
+  
+  - (See also how to use unique object keys to avoid key collisions among different apps).
+
+<b>Cache</b>
+  - App can control the lifetime of cached items.
+  - No associated with requests/users/sessions.
+  - <a TODO href="https://docs.microsoft.com/en-us/aspnet/core/performance/caching/response?view=aspnetcore-2.2">Response Caching</a> 
+
+<b>Dependency Injection</b>
+  - Use Dependency Injection to make data available to all users:
+  - Ex:
+    - SETUP-STEP 1: Define a service containing the data.
+      public class MyAppData {
+          // Declare properties and methods
+      }
+    - SETUP-STEP 2: Add the service class to Startup.ConfigureServices:
+      public void ConfigureServices(IServiceCollection services) {
+          services.AddSingleton<MyAppData>();
+      }
+    - USSAGE: Consume the data service class:
+      public class IndexModel : PageModel {
+          public IndexModel(MyAppData myService) {
+              // Do something with the service
+          }
+      }
+</pre>
+  <span xsmall>Troubleshooting</span>
+  
+<pre xxxsmall zoom>
+Problem: """Unable to resolve service for type 
+             'Microsoft.Extensions.Caching.Distributed.IDistributedCache'
+          while attempting to activate
+             'Microsoft.AspNetCore.Session.DistributedSessionStore'.
+         """
+Solution: This is usually caused by failing to configure at least one
+          IDistributedCache implementation.
+
+Problem: Session storage fails to store the session data.
+Solution: The recommended approach to check for errors is to call await
+          feature.Session.CommitAsync(); from app code when the app is
+          done writing to the session. CommitAsync throws an exception if
+          the backing store is unavailable.
+           If CommitAsync fails, the app can process the exception. 
+          LoadAsync throws under the same conditions where the data store is unavailable.
+</pre>
+</td>
+<td colsep></td>
+<td>
+  <a xsmall TODO href="https://devblogs.microsoft.com/aspnet/jwt-validation-and-authorization-in-asp-net-core/">JWT AAA</a> 
+<pre xxxsmall zoom>
+</pre>
+</td>
+
+<td>
+- <a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/fundamentals/dependency-injection?view=aspnetcore-2.2">Dependency Injection</a>
+<pre xxxsmall zoom>
+Dependency injection in ASP.net steps:
+- STEP 1: use of an interface to define the dependency implementation.
+          public interface IMyDependency {
+              Task WriteMessage(string message);
+          }
+- STEP 2: Register the dependency in a service container in the app's
+          Startup.ConfigureServices method.
+          ASP.NET Core provides a built-in service container, IServiceProvider.
+- STEP 3: Injection of the service into the constructor of the class 
+          where it's used.
+          ASP.net framework takes on the responsibility of creating an
+          instance of the dependency and disposing of it when it's no longer needed.
+
+
+public class MyDependencyImpl : IMyDependency {
+    
+
+    public Task WriteMessage(string message)
+    {
+        _logger.LogInformation(
+            "MyDependency.WriteMessage called. Message: {MESSAGE}", 
+            message);
+
+        return Task.FromResult(0);
+    }
+}
+
+MyDependency requests an ILogger<TCategoryName> in its constructor. It's not unusual to use dependency injection in a chained fashion. Each requested dependency in turn requests its own dependencies. The container resolves the dependencies in the graph and returns the fully resolved service. The collective set of dependencies that must be resolved is typically referred to as a dependency tree, dependency graph, or object graph.
+
+IMyDependency and ILogger<TCategoryName> must be registered in the service container. IMyDependency is registered in Startup.ConfigureServices. ILogger<TCategoryName> is registered by the logging abstractions infrastructure, so it's a framework-provided service registered by default by the framework.
+
+The container resolves ILogger<TCategoryName> by taking advantage of (generic) open types, eliminating the need to register every (generic) constructed type:
+C#
+
+services.AddSingleton(typeof(ILogger<T>), typeof(Logger<T>));
+
+In the sample app, the IMyDependency service is registered with the concrete type MyDependency. The registration scopes the service lifetime to the lifetime of a single request. Service lifetimes are described later in this topic.
+C#
+
+public void ConfigureServices(IServiceCollection services)
+{
+    services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
+
+    services.AddScoped<IMyDependency, MyDependency>();
+    services.AddTransient<IOperationTransient, Operation>();
+    services.AddScoped<IOperationScoped, Operation>();
+    services.AddSingleton<IOperationSingleton, Operation>();
+    services.AddSingleton<IOperationSingletonInstance>(new Operation(Guid.Empty));
+
+    // OperationService depends on each of the other Operation types.
+    services.AddTransient<OperationService, OperationService>();
+}
+
+Note
+
+Each services.Add{SERVICE_NAME} extension method adds (and potentially configures) services. For example, services.AddMvc() adds the services Razor Pages and MVC require. We recommended that apps follow this convention. Place extension methods in the Microsoft.Extensions.DependencyInjection namespace to encapsulate groups of service registrations.
+
+If the service's constructor requires a built in type, such as a string, the type can be injected by using configuration or the options pattern:
+C#
+
+public class MyDependency : IMyDependency
+{
+    public MyDependency(IConfiguration config)
+    {
+        var myStringValue = config["MyStringKey"];
+
+        // Use myStringValue
+    }
+
+    ...
+}
+
+An instance of the service is requested via the constructor of a class where the service is used and assigned to a private field. The field is used to access the service as necessary throughout the class.
+
+In the sample app, the IMyDependency instance is requested and used to call the service's WriteMessage method:
+C#
+
+public class IndexModel : PageModel
+{
+    private readonly IMyDependency _myDependency;
+
+    public IndexModel(
+        IMyDependency myDependency, 
+        OperationService operationService,
+        IOperationTransient transientOperation,
+        IOperationScoped scopedOperation,
+        IOperationSingleton singletonOperation,
+        IOperationSingletonInstance singletonInstanceOperation)
+    {
+        _myDependency = myDependency;
+        OperationService = operationService;
+        TransientOperation = transientOperation;
+        ScopedOperation = scopedOperation;
+        SingletonOperation = singletonOperation;
+        SingletonInstanceOperation = singletonInstanceOperation;
+    }
+
+    public OperationService OperationService { get; }
+    public IOperationTransient TransientOperation { get; }
+    public IOperationScoped ScopedOperation { get; }
+    public IOperationSingleton SingletonOperation { get; }
+    public IOperationSingletonInstance SingletonInstanceOperation { get; }
+
+    public async Task OnGetAsync()
+    {
+        await _myDependency.WriteMessage(
+            "IndexModel.OnGetAsync created this message.");
+    }
+}
+
+Framework-provided services
+
+The Startup.ConfigureServices method is responsible for defining the services the app uses, including platform features, such as Entity Framework Core and ASP.NET Core MVC. Initially, the IServiceCollection provided to ConfigureServices has the following services defined (depending on how the host was configured):
+Service Type    Lifetime
+Microsoft.AspNetCore.Hosting.Builder.IApplicationBuilderFactory     Transient
+Microsoft.AspNetCore.Hosting.IApplicationLifetime   Singleton
+Microsoft.AspNetCore.Hosting.IHostingEnvironment    Singleton
+Microsoft.AspNetCore.Hosting.IStartup   Singleton
+Microsoft.AspNetCore.Hosting.IStartupFilter     Transient
+Microsoft.AspNetCore.Hosting.Server.IServer     Singleton
+Microsoft.AspNetCore.Http.IHttpContextFactory   Transient
+Microsoft.Extensions.Logging.ILogger<T>     Singleton
+Microsoft.Extensions.Logging.ILoggerFactory     Singleton
+Microsoft.Extensions.ObjectPool.ObjectPoolProvider  Singleton
+Microsoft.Extensions.Options.IConfigureOptions<T>   Transient
+Microsoft.Extensions.Options.IOptions<T>    Singleton
+System.Diagnostics.DiagnosticSource     Singleton
+System.Diagnostics.DiagnosticListener   Singleton
+
+When a service collection extension method is available to register a service (and its dependent services, if required), the convention is to use a single Add{SERVICE_NAME} extension method to register all of the services required by that service. The following code is an example of how to add additional services to the container using the extension methods AddDbContext, AddIdentity, and AddMvc:
+C#
+
+public void ConfigureServices(IServiceCollection services)
+{
+    services.AddDbContext<ApplicationDbContext>(options =>
+        options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+
+    services.AddIdentity<ApplicationUser, IdentityRole>()
+        .AddEntityFrameworkStores<ApplicationDbContext>()
+        .AddDefaultTokenProviders();
+
+    services.AddMvc();
+}
+
+For more information, see the ServiceCollection Class in the API documentation.
+Service lifetimes
+
+Choose an appropriate lifetime for each registered service. ASP.NET Core services can be configured with the following lifetimes:
+
+Transient
+
+Transient lifetime services are created each time they're requested from the service container. This lifetime works best for lightweight, stateless services.
+
+Scoped
+
+Scoped lifetime services are created once per client request (connection).
+
+Warning
+
+When using a scoped service in a middleware, inject the service into the Invoke or InvokeAsync method. Don't inject via constructor injection because it forces the service to behave like a singleton. For more information, see ASP.NET Core Middleware.
+
+Singleton
+
+Singleton lifetime services are created the first time they're requested (or when ConfigureServices is run and an instance is specified with the service registration). Every subsequent request uses the same instance. If the app requires singleton behavior, allowing the service container to manage the service's lifetime is recommended. Don't implement the singleton design pattern and provide user code to manage the object's lifetime in the class.
+
+Warning
+
+It's dangerous to resolve a scoped service from a singleton. It may cause the service to have incorrect state when processing subsequent requests.
+Constructor injection behavior
+
+Services can be resolved by two mechanisms:
+
+    IServiceProvider
+    ActivatorUtilities – Permits object creation without service registration in the dependency injection container. ActivatorUtilities is used with user-facing abstractions, such as Tag Helpers, MVC controllers, and model binders.
+
+Constructors can accept arguments that aren't provided by dependency injection, but the arguments must assign default values.
+
+When services are resolved by IServiceProvider or ActivatorUtilities, constructor injection requires a public constructor.
+
+When services are resolved by ActivatorUtilities, constructor injection requires that only one applicable constructor exists. Constructor overloads are supported, but only one overload can exist whose arguments can all be fulfilled by dependency injection.
+Entity Framework contexts
+
+Entity Framework contexts are usually added to the service container using the scoped lifetime because web app database operations are normally scoped to the client request. The default lifetime is scoped if a lifetime isn't specified by an AddDbContext<TContext> overload when registering the database context. Services of a given lifetime shouldn't use a database context with a shorter lifetime than the service.
+Lifetime and registration options
+
+To demonstrate the difference between the lifetime and registration options, consider the following interfaces that represent tasks as an operation with a unique identifier, OperationId. Depending on how the lifetime of an operations service is configured for the following interfaces, the container provides either the same or a different instance of the service when requested by a class:
+C#
+
+public interface IOperation
+{
+    Guid OperationId { get; }
+}
+
+public interface IOperationTransient : IOperation
+{
+}
+
+public interface IOperationScoped : IOperation
+{
+}
+
+public interface IOperationSingleton : IOperation
+{
+}
+
+public interface IOperationSingletonInstance : IOperation
+{
+}
+
+The interfaces are implemented in the Operation class. The Operation constructor generates a GUID if one isn't supplied:
+C#
+
+public class Operation : IOperationTransient, 
+    IOperationScoped, 
+    IOperationSingleton, 
+    IOperationSingletonInstance
+{
+    public Operation() : this(Guid.NewGuid())
+    {
+    }
+
+    public Operation(Guid id)
+    {
+        OperationId = id;
+    }
+
+    public Guid OperationId { get; private set; }
+}
+
+An OperationService is registered that depends on each of the other Operation types. When OperationService is requested via dependency injection, it receives either a new instance of each service or an existing instance based on the lifetime of the dependent service.
+
+    When transient services are created when requested from the container, the OperationId of the IOperationTransient service is different than the OperationId of the OperationService. OperationService receives a new instance of the IOperationTransient class. The new instance yields a different OperationId.
+    When scoped services are created per client request, the OperationId of the IOperationScoped service is the same as that of OperationService within a client request. Across client requests, both services share a different OperationId value.
+    When singleton and singleton-instance services are created once and used across all client requests and all services, the OperationId is constant across all service requests.
+
+C#
+
+public class OperationService
+{
+    public OperationService(
+        IOperationTransient transientOperation,
+        IOperationScoped scopedOperation,
+        IOperationSingleton singletonOperation,
+        IOperationSingletonInstance instanceOperation)
+    {
+        TransientOperation = transientOperation;
+        ScopedOperation = scopedOperation;
+        SingletonOperation = singletonOperation;
+        SingletonInstanceOperation = instanceOperation;
+    }
+
+    public IOperationTransient TransientOperation { get; }
+    public IOperationScoped ScopedOperation { get; }
+    public IOperationSingleton SingletonOperation { get; }
+    public IOperationSingletonInstance SingletonInstanceOperation { get; }
+}
+
+In Startup.ConfigureServices, each type is added to the container according to its named lifetime:
+C#
+
+public void ConfigureServices(IServiceCollection services)
+{
+    services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
+
+    services.AddScoped<IMyDependency, MyDependency>();
+    services.AddTransient<IOperationTransient, Operation>();
+    services.AddScoped<IOperationScoped, Operation>();
+    services.AddSingleton<IOperationSingleton, Operation>();
+    services.AddSingleton<IOperationSingletonInstance>(new Operation(Guid.Empty));
+
+    // OperationService depends on each of the other Operation types.
+    services.AddTransient<OperationService, OperationService>();
+}
+
+The IOperationSingletonInstance service is using a specific instance with a known ID of Guid.Empty. It's clear when this type is in use (its GUID is all zeroes).
+
+The sample app demonstrates object lifetimes within and between individual requests. The sample app's IndexModel requests each kind of IOperation type and the OperationService. The page then displays all of the page model class's and service's OperationId values through property assignments:
+C#
+
+public class IndexModel : PageModel
+{
+    private readonly IMyDependency _myDependency;
+
+    public IndexModel(
+        IMyDependency myDependency, 
+        OperationService operationService,
+        IOperationTransient transientOperation,
+        IOperationScoped scopedOperation,
+        IOperationSingleton singletonOperation,
+        IOperationSingletonInstance singletonInstanceOperation)
+    {
+        _myDependency = myDependency;
+        OperationService = operationService;
+        TransientOperation = transientOperation;
+        ScopedOperation = scopedOperation;
+        SingletonOperation = singletonOperation;
+        SingletonInstanceOperation = singletonInstanceOperation;
+    }
+
+    public OperationService OperationService { get; }
+    public IOperationTransient TransientOperation { get; }
+    public IOperationScoped ScopedOperation { get; }
+    public IOperationSingleton SingletonOperation { get; }
+    public IOperationSingletonInstance SingletonInstanceOperation { get; }
+
+    public async Task OnGetAsync()
+    {
+        await _myDependency.WriteMessage(
+            "IndexModel.OnGetAsync created this message.");
+    }
+}
+
+Two following output shows the results of two requests:
+
+First request:
+
+Controller operations:
+
+Transient: d233e165-f417-469b-a866-1cf1935d2518
+Scoped: 5d997e2d-55f5-4a64-8388-51c4e3a1ad19
+Singleton: 01271bc1-9e31-48e7-8f7c-7261b040ded9
+Instance: 00000000-0000-0000-0000-000000000000
+
+OperationService operations:
+
+Transient: c6b049eb-1318-4e31-90f1-eb2dd849ff64
+Scoped: 5d997e2d-55f5-4a64-8388-51c4e3a1ad19
+Singleton: 01271bc1-9e31-48e7-8f7c-7261b040ded9
+Instance: 00000000-0000-0000-0000-000000000000
+
+Second request:
+
+Controller operations:
+
+Transient: b63bd538-0a37-4ff1-90ba-081c5138dda0
+Scoped: 31e820c5-4834-4d22-83fc-a60118acb9f4
+Singleton: 01271bc1-9e31-48e7-8f7c-7261b040ded9
+Instance: 00000000-0000-0000-0000-000000000000
+
+OperationService operations:
+
+Transient: c4cbacb8-36a2-436d-81c8-8c1b78808aaf
+Scoped: 31e820c5-4834-4d22-83fc-a60118acb9f4
+Singleton: 01271bc1-9e31-48e7-8f7c-7261b040ded9
+Instance: 00000000-0000-0000-0000-000000000000
+
+Observe which of the OperationId values vary within a request and between requests:
+
+    Transient objects are always different. The transient OperationId value for both the first and second client requests are different for both OperationService operations and across client requests. A new instance is provided to each service request and client request.
+    Scoped objects are the same within a client request but different across client requests.
+    Singleton objects are the same for every object and every request regardless of whether an Operation instance is provided in ConfigureServices.
+
+Call services from main
+
+Create an IServiceScope with IServiceScopeFactory.CreateScope to resolve a scoped service within the app's scope. This approach is useful to access a scoped service at startup to run initialization tasks. The following example shows how to obtain a context for the MyScopedService in Program.Main:
+C#
+
+public static void Main(string[] args)
+{
+    var host = CreateWebHostBuilder(args).Build();
+
+    using (var serviceScope = host.Services.CreateScope())
+    {
+        var services = serviceScope.ServiceProvider;
+
+        try
+        {
+            var serviceContext = services.GetRequiredService<MyScopedService>();
+            // Use the context here
+        }
+        catch (Exception ex)
+        {
+            var logger = services.GetRequiredService<ILogger<Program>>();
+            logger.LogError(ex, "An error occurred.");
+        }
+    }
+
+    host.Run();
+}
+
+Scope validation
+
+When the app is running in the Development environment, the default service provider performs checks to verify that:
+
+    Scoped services aren't directly or indirectly resolved from the root service provider.
+    Scoped services aren't directly or indirectly injected into singletons.
+
+The root service provider is created when BuildServiceProvider is called. The root service provider's lifetime corresponds to the app/server's lifetime when the provider starts with the app and is disposed when the app shuts down.
+
+Scoped services are disposed by the container that created them. If a scoped service is created in the root container, the service's lifetime is effectively promoted to singleton because it's only disposed by the root container when app/server is shut down. Validating service scopes catches these situations when BuildServiceProvider is called.
+
+For more information, see ASP.NET Core Web Host.
+Request Services
+
+The services available within an ASP.NET Core request from HttpContext are exposed through the HttpContext.RequestServices collection.
+
+Request Services represent the services configured and requested as part of the app. When the objects specify dependencies, these are satisfied by the types found in RequestServices, not ApplicationServices.
+
+Generally, the app shouldn't use these properties directly. Instead, request the types that classes require via class constructors and allow the framework inject the dependencies. This yields classes that are easier to test.
+
+Note
+
+Prefer requesting dependencies as constructor parameters to accessing the RequestServices collection.
+Design services for dependency injection
+
+Best practices are to:
+
+    Design services to use dependency injection to obtain their dependencies.
+    Avoid stateful, static method calls.
+    Avoid direct instantiation of dependent classes within services. Direct instantiation couples the code to a particular implementation.
+    Make app classes small, well-factored, and easily tested.
+
+If a class seems to have too many injected dependencies, this is generally a sign that the class has too many responsibilities and is violating the Single Responsibility Principle (SRP). Attempt to refactor the class by moving some of its responsibilities into a new class. Keep in mind that Razor Pages page model classes and MVC controller classes should focus on UI concerns. Business rules and data access implementation details should be kept in classes appropriate to these separate concerns.
+Disposal of services
+
+The container calls Dispose for the IDisposable types it creates. If an instance is added to the container by user code, it isn't disposed automatically.
+C#
+
+// Services that implement IDisposable:
+public class Service1 : IDisposable {}
+public class Service2 : IDisposable {}
+public class Service3 : IDisposable {}
+
+public interface ISomeService {}
+public class SomeServiceImplementation : ISomeService, IDisposable {}
+
+public void ConfigureServices(IServiceCollection services)
+{
+    // The container creates the following instances and disposes them automatically:
+    services.AddScoped<Service1>();
+    services.AddSingleton<Service2>();
+    services.AddSingleton<ISomeService>(sp => new SomeServiceImplementation());
+
+    // The container doesn't create the following instances, so it doesn't dispose of
+    // the instances automatically:
+    services.AddSingleton<Service3>(new Service3());
+    services.AddSingleton(new Service3());
+}
+
+Default service container replacement
+
+The built-in service container is meant to serve the needs of the framework and most consumer apps. We recommend using the built-in container unless you need a specific feature that it doesn't support. Some of the features supported in 3rd party containers not found in the built-in container:
+
+    Property injection
+    Injection based on name
+    Child containers
+    Custom lifetime management
+    Func<T> support for lazy initialization
+
+See the Dependency Injection readme.md file for a list of some of the containers that support adapters.
+
+The following sample replaces the built-in container with Autofac:
+
+    Install the appropriate container package(s):
+        Autofac
+        Autofac.Extensions.DependencyInjection
+
+    Configure the container in Startup.ConfigureServices and return an IServiceProvider:
+    C# 
+
+public IServiceProvider ConfigureServices(IServiceCollection services)
+{
+    services.AddMvc();
+    // Add other framework services
+
+    // Add Autofac
+    var containerBuilder = new ContainerBuilder();
+    containerBuilder.RegisterModule<DefaultModule>();
+    containerBuilder.Populate(services);
+    var container = containerBuilder.Build();
+    return new AutofacServiceProvider(container);
+}
+
+To use a 3rd party container, Startup.ConfigureServices must return IServiceProvider.
+
+Configure Autofac in DefaultModule:
+C#
+
+    public class DefaultModule : Module
+    {
+        protected override void Load(ContainerBuilder builder)
+        {
+            builder.RegisterType<CharacterRepository>().As<ICharacterRepository>();
+        }
+    }
+
+At runtime, Autofac is used to resolve types and inject dependencies. To learn more about using Autofac with ASP.NET Core, see the Autofac documentation.
+Thread safety
+
+Create thread-safe singleton services. If a singleton service has a dependency on a transient service, the transient service may also require thread safety depending how it's used by the singleton.
+
+The factory method of single service, such as the second argument to AddSingleton<TService>(IServiceCollection, Func<IServiceProvider,TService>), doesn't need to be thread-safe. Like a type (static) constructor, it's guaranteed to be called once by a single thread.
+Recommendations
+
+    async/await and Task based service resolution is not supported. C# does not support asynchronous constructors, therefore the recommended pattern is to use asynchronous methods after synchronously resolving the service.
+
+    Avoid storing data and configuration directly in the service container. For example, a user's shopping cart shouldn't typically be added to the service container. Configuration should use the options pattern. Similarly, avoid "data holder" objects that only exist to allow access to some other object. It's better to request the actual item via DI.
+
+    Avoid static access to services (for example, statically-typing IApplicationBuilder.ApplicationServices for use elsewhere).
+
+    Avoid using the service locator pattern. For example, don't invoke GetService to obtain a service instance when you can use DI instead. Another service locator variation to avoid is injecting a factory that resolves dependencies at runtime. Both of these practices mix Inversion of Control strategies.
+
+    Avoid static access to HttpContext (for example, IHttpContextAccessor.HttpContext).
+
+Like all sets of recommendations, you may encounter situations where ignoring a recommendation is required. Exceptions are rare—mostly special cases within the framework itself.
+
+DI is an alternative to static/global object access patterns. You may not be able to realize the benefits of DI if you mix it with static object access.
+</pre>
+<a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/mvc/controllers/dependency-injection?view=aspnetcore-2.2"      >Dep.Inj. into controllers</a> 
+<a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/security/authorization/dependencyinjection?view=aspnetcore-2.2">Dep.Inj. into handlers   </a> 
+<a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/mvc/views/dependency-injection?view=aspnetcore-2.2"            >Dep.Inj. into views      </a> 
+<a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/fundamentals/middleware/extensibility?view=aspnetcore-2.2"     >Factory-based middleware activation in ASP.NET Core</a> 
+
+
+
+</td>
+<td>
+- <a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/tutorials/first-mvc-app/start-mvc?view=aspnetcore-2.2&tabs=visual-studio">Get started with ASP.NET Core MVC</a>
 </td>
 </tr>
 </table>
 <table>
 <tr>
-<td>
-- <a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/fundamentals/dependency-injection?view=aspnetcore-2.2">[Dependency Injection]</a>
-</td>
-<td>
-- <a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/tutorials/first-mvc-app/start-mvc?view=aspnetcore-2.2&tabs=visual-studio">Get started with ASP.NET Core MVC</a>
-</td>
 <td>
 - <a xsmall TODO href="https://docs.microsoft.com/en-us/ef/">[Entity Framework]</a>
 </td>
@@ -2475,65 +3806,19 @@ public async Task&lt;IActionResult> Delete(int id, bool notUsed)
 </td>
 <td>
 - <a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/fundamentals/environments?view=aspnetcore-2.2">Multi.ENVs</a>
-
+</td>
+</tr>
+</table>
+<table>
+<tr>
+<td>
+<a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/security/authentication/identity?view=aspnetcore-2.2&tabs=visual-studio#pw">Configure Indentity Services</a> 
 </td>
 <td>
 - <a xsmall TODO href="https://docs.microsoft.com/en-us/aspnet/core/tutorials/publish-to-azure-webapp-using-vs?view=aspnetcore-2.2">Publish to Azure</a>
 </td>
 <td>
 - <a xsmall TODO href="https://azure.microsoft.com/en-us/resources/samples/active-directory-dotnet-webapp-openidconnect-aspnetcore/">Integrating AzureAD+aspNETCore WebApp</a>
-</td>
-</tr>
-</table>
-<br/>
-  Mono
-<table>
-<tr>
-<td>
-  <a TODO href="https://www.mono-project.com/docs/about-mono/languages/csharp/">About Mono</a>
-</td>
-<td>
-  <a TODO href="https://www.mono-project.com/docs/tools+libraries/tools/">Mono tools</a>
-<pre xxxsmall zoom>
-Main tools
-https://www.mono-project.com/
-<a TODO href="https://www.mono-project.com/docs/advanced/runtime/"               >mono</a>:
-- runtime and Just In Time compiler (JIT)
-<a TODO href="https://www.mono-project.com/docs/about-mono/languages/csharp/"    >mcs</a> :
-- C# compiler
-<a TODO href="https://www.mono-project.com/docs/advanced/assemblies-and-the-gac/">gacutil :
-- install versioned assemblies into
-  the system Global Assembly Cache (GAC)
-  to become part of the assemblies that
-  are available for all apps at runtime.
-<a TODO href="https://www.mono-project.com/docs/web/aspnet/"                     >xsp</a> :
-- Stand alone ASP.NET web services and
-  web application server
-<a TODO href=""                                                          >mono-config</a> :
-- Stand alone ASP.NET web services and
-  Mono runtime file format configuration
-
-<a TODO href="/docs/tools+libraries/tools/mkbundle"                         >mkbundle</a> :
-- Create and cross-compile self-contained executables with no external dependencies.
-
-- Check <a href="https://www.mono-project.com/docs/tools+libraries/tools/">link</a> for
-  other tools.
-</pre>
-</td>
-
-<td>
-  <a TODO href="https://www.mono-project.com/docs/advanced/runtime/">Mono Runtime</a>
-<pre xxxsmall zoom>
-</pre>
-  <a href="http://docs.go-mono.com/?link=root:/classlib">Mono BaseClass Library</a>
-<pre xxxsmall zoom>
-</pre>
-</td>
-<td>
-  <a TODO href="https://www.mono-project.com/docs/advanced/embedding/">Mono Embedding</a>
-</td>
-<td>
-  <a TODO href="https://www.mono-project.com/docs/advanced/embedding/scripting/">Mono Scripting</a>
 </td>
 </tr>
 </table>
@@ -3183,13 +4468,40 @@ This article is licensed under the GNU Free Documentation License. It uses mater
 
 Except where otherwise indicated, Everything.Explained.Today is © Copyright 2009-2018, A B Cryer, All Rights Reserved. Cookie policy.
 
-
 </td>
 ___________________
 http://everything.explained.today/Microsoft_Visual_Studio_Debugger/
+_________________________
+https://codeburst.io/schedule-background-jobs-using-hangfire-in-net-core-2d98eb64b196
+_________________________
+- Managed exceptions in the .NET Framework are implemented on top of the
+  Win32 structured exception handling mechanism. 
+  For more information, see Structured Exception Handling (C/C++) and A Crash Course on the Depths of Win32 Structured Exception Handling.
+________________________________________________
+- https://docs.microsoft.com/en-us/dotnet/standard/framework-libraries
+_______________________________
+- https://docs.microsoft.com/en-us/aspnet/core/fundamentals/servers/kestrel?view=aspnetcore-2.2
+_______________________________
+https://docs.microsoft.com/en-us/aspnet/core/security/data-protection/introduction?view=aspnetcore-2.2
 
-}
+https://docs.microsoft.com/en-us/aspnet/core/security/data-protection/implementation/key-storage-providers?view=aspnetcore-2.2&tabs=visual-studio
+________________________________
+https://stackoverflow.com/questions/37322565/dotnet-run-or-dotnet-watch-with-development-environment-from-command-line
+- dotnet run OR dotnet watch with development environment from command line?
+_______________________
+http://bitoftech.net/2014/06/01/token-based-authentication-asp-net-web-api-2-owin-asp-net-identity/
 
+________________
+Very good video tutoriols about ASP.NET core, C#, SQL Server, Angular,...
+https://www.youtube.com/user/kudvenkat/playlists
+_________________
+https://www.infoq.com/news/2019/04/csharp-defered-error-handling
+______________
+https://docs.microsoft.com/en-us/dotnet/framework/app-domains/assemblies-in-the-common-language-runtime
+_____________________
+https://docs.microsoft.com/en-us/aspnet/mvc/overview/security/create-an-aspnet-mvc-5-app-with-facebook-and-google-oauth2-and-openid-sign-on
+https://docs.microsoft.com/en-us/aspnet/mvc/overview/performance/bundling-and-minification
+_____________________
 -->
 
 </html>

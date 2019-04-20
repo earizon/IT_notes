@@ -219,6 +219,20 @@ function onPageLoaded() {
      // Touch screen do not have enough resolution to click on
      //  internal td elements
   }
+  nodeList = document.querySelectorAll('*[zoom]')
+  for (idx in nodeList) { 
+      if (!!! nodeList[idx].innerHTML) continue;
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/g\*([^\*\n]*)\*/g, "<b green >  $1 </b>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/r\*([^\*\n]*)\*/g, "<b red   >  $1 </b>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/b\*([^\*\n]*)\*/g, "<b blue  >  $1 </b>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/o\*([^\*\n]*)\*/g, "<b orange>  $1 </b>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /\*([^\*\n]*)\*/g, "<b       > $1 </b>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/g\|([^\*\n]*)\|/g, "<span green >  $1 </span>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/r\|([^\*\n]*)\|/g, "<span red   >  $1 </span>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/b\|([^\*\n]*)\|/g, "<span blue  >  $1 </span>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/o\|([^\*\n]*)\|/g, "<span orange>  $1 </span>")   
+  }
+
 
   for (idx=0; idx<document.styleSheets[0]['cssRules'].length; idx++){
       if( document.styleSheets[0]['cssRules'][idx].selectorText == "#zoomDiv") {

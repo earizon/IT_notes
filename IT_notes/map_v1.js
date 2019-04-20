@@ -101,6 +101,69 @@ function doOpenZoom(e)      {
   return false;
 }
 
+var help = '<h1>HELPMan to the rescue!!!</h1>' 
+         + '<h2>Using the content:</h2>' 
+         + '<ul>' 
+         + '<li> Enter a text and press the "Regex Search" button to highlight cells with matching content.<br/>'
+         + '     Browse visually around the highlighted content to see if the context matches with the search.'
+         + '</li>' 
+         + '<li> <b>double-click</b> or <b>long-press</b> to zoom into highlighted content</b><br/></li>' 
+         + '<li> All cells and all "greyed" context can be zoom-in for reading</li>' 
+         + '<li> TIP: If just a single search is found it will automatically zoom-in the content.'
+         + '     This can be used to create external links to you page that automatically opens the '
+         + '     desired cell/content using a link similar to: '
+         + '     <a href="https://singlepagebookproject.github.io/IT_notes/DevOps/linux_administration_summary.html?query=port+knock">this link</a>'
+         + '</li>' 
+         + '</ul>' 
+         + '' 
+         + '<h2>Editing the content:</h2>' 
+         + '<ul>' 
+         + '<li>Content is plain html</li>' 
+         + '<li> Use <a href="https://github.com/singlepagebookproject/IT_notes/issues">GitHub pull request</a> to request occasional changes.<br/></li>' 
+         + '<li> Become a member of <a href="https://github.com/singlepagebookproject/">The Single-Page-Book Project@GitHub</a> to add you own page books.<br/></li>' 
+         + '<li> Text diagrams are really welcome in this project. Some basic help to create txt diagram follows: '
+         + '<pre>'
+         + '(Copy&Paste into your favourite editor)              \n'
+         + '<b>Common Arrows</b>         <b>Less/Greater-than</b>\n'
+         + '← →  ↑ ↓  ⇿           html-friendly replacements     \n'
+         + '                      ˂  ˃                           \n'
+         + '<b>Boxes</b>                                    <b>Trees</b> \n'
+         + '┌─────┬─────┐ ┌───┐  ┌────┐  ┌───┬───┬───┐ ├─ level1.1     \n'
+         + '│     │     │ │   │  │    │  │   │   │   │ │  │            \n'
+         + '│     │     │ │   │  ├────┤  │   │   │   │ │  ├─ level2.1  \n'
+         + '├─────┼─────┤ │   │  │    │  │   │   │   │ │  │   │        \n'
+         + '│     │     │ └───┘  ├────┤  │   │   │   │ │  │   └─ level3\n'
+         + '│     │     │        │    │  └───┴───┴───┘ │  │            \n'
+         + '└─────┴─────┘        └────┘                │  └─ level2.2  \n'
+         + '                                           │               \n'
+         + '                                           └─ level1.2     \n'
+         + '<b>Other useful symbols:</b>                        \n'
+         + ' https://en.wikipedia.org/wiki/Arrows_(Unicode_block)  \n'
+         + '    0   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F     \n'
+         + 'U+219x  ←   ↑   →   ↓   ↔   ↕   ↖   ↗   ↘   ↙   ↚   ↛   ↜   ↝   ↞   ↟ \n'
+         + 'U+21Ax  ↠   ↡   ↢   ↣   ↤   ↥   ↦   ↧   ↨   ↩   ↪   ↫   ↬   ↭   ↮   ↯ \n'
+         + 'U+21Bx  ↰   ↱   ↲   ↳   ↴   ↵   ↶   ↷   ↸   ↹   ↺   ↻   ↼   ↽   ↾   ↿ \n'
+         + 'U+21Cx  ⇀   ⇁   ⇂   ⇃   ⇄   ⇅   ⇆   ⇇   ⇈   ⇉   ⇊   ⇋   ⇌   ⇍   ⇎   ⇏ \n'
+         + 'U+21Dx  ⇐   ⇑   ⇒   ⇓   ⇔   ⇕   ⇖   ⇗   ⇘   ⇙   ⇚   ⇛   ⇜   ⇝   ⇞   ⇟ \n'
+         + 'U+21Ex  ⇠   ⇡   ⇢   ⇣   ⇤   ⇥   ⇦   ⇧   ⇨   ⇩   ⇪   ⇫   ⇬   ⇭   ⇮   ⇯ \n'
+         + 'U+21Fx  ⇰   ⇱   ⇲   ⇳   ⇴   ⇵   ⇶   ⇷   ⇸   ⇹   ⇺   ⇻   ⇼   ⇽   ⇾   ⇿ \n'
+         + '\n'
+         + '\n'
+         + '</pre>'
+         + '</li>'
+         + '<li><a href="http://asciiflow.com/">Ascii Flow online diagram editor</a> easify txt diagrams</li>'
+         + '<li><a href="https://htmleditor.io">htmleditor.io</a> light-weigth online html editor</li> can also be helpful</li>'
+         + '<li>HINT: txt editors with block and/or column edit mode (Vim, UltraEdit, gedit, Notepad++, Eclipse, ...) will make your life much easier</li>'
+         + '<li>HINT: Vim is the best text editor. Love him and it will love you for the rest of your life!</li>'
+         + '</ul>'
+   
+function doHelp() {
+    ctx = {
+        outerHTML : help
+    }
+    doOpenZoom.call(ctx);
+}
+
 function onPageLoaded() {
   var UP = "../"
   // Append search, zoomDiv, zoom Buttons :
@@ -111,9 +174,10 @@ function onPageLoaded() {
    + '  <input name="searchit" type="button" value="Regex Search" onClick="highlightSearch()">'
    + '  <input id="singleLineOnly" type="checkbox"><code xsmall>single-line</code>'
    + '  <input id="caseSensitive"  type="checkbox"><code xsmall>Case-match</code>'
+   + '  &nbsp;<input type="button" value="Please, HELP MeeEeeeEeeee!" bggreen onClick="doHelp()">'
    + '</form>'
-   + '<a href="'+UP+'">FOLDER UP</a>&nbsp;'
-   + '<b id="initialMessage" green small>&nbsp;&nbsp;&nbsp;TIP &gt;&gt; double-click or long-press cells to zoom &lt;&lt;</b><hr xxxsmall/>'
+   + '<a href="'+UP+'">[FOLDER UP]</a>&nbsp;'
+   + '<a href="https://github.com/singlepagebookproject/IT_notes/issues">[Github pull requests]</a>&nbsp;'
    + '<div id="zoomDiv"></div>'
    + '<div style="position:fixed; right:0.3%; top:0; width:auto;">'
    + '<b style="font-size:1.5rem" orange><a onclick="onZoomOut()">[-A]</a></b>'
@@ -123,7 +187,14 @@ function onPageLoaded() {
   document.body.insertBefore(searchDiv,document.body.children[0]);
 
   zoomDivDOM = document.getElementById('zoomDiv')
-  document.addEventListener('keyup',function(e) { if (e.code !== "Escape") return; doCloseZoom(); })
+  document.addEventListener('keyup',
+      function(e) {
+          if (e.code === "Escape") doCloseZoom(); 
+          if (e.code === "F1")     doHelp(); 
+
+      }
+  )
+
   // Change default a.target to blank. Ussually this is bad practice 
   // but this is the exception to the rule
   var nodeList = document.querySelectorAll('a')
@@ -148,6 +219,20 @@ function onPageLoaded() {
      // Touch screen do not have enough resolution to click on
      //  internal td elements
   }
+  nodeList = document.querySelectorAll('*[zoom]')
+  for (idx in nodeList) { 
+      if (!!! nodeList[idx].innerHTML) continue;
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/g\*([^\*\n]*)\*/g, "<b green >  $1 </b>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/r\*([^\*\n]*)\*/g, "<b red   >  $1 </b>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/b\*([^\*\n]*)\*/g, "<b blue  >  $1 </b>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/o\*([^\*\n]*)\*/g, "<b orange>  $1 </b>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /\*([^\*\n]*)\*/g, "<b       > $1 </b>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/g\|([^\*\n]*)\|/g, "<span green >  $1 </span>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/r\|([^\*\n]*)\|/g, "<span red   >  $1 </span>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/b\|([^\*\n]*)\|/g, "<span blue  >  $1 </span>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/o\|([^\*\n]*)\|/g, "<span orange>  $1 </span>")   
+  }
+
 
   for (idx=0; idx<document.styleSheets[0]['cssRules'].length; idx++){
       if( document.styleSheets[0]['cssRules'][idx].selectorText == "#zoomDiv") {
@@ -205,21 +290,45 @@ function highlightSearch() {
   if (!singleLineOnly) regexFlags += "m";
   var query = new RegExp("(" + text + ")", regexFlags);
 
-  var matrix = [
-     document.querySelectorAll('td'),
-     document.querySelectorAll('*[zoom]') ]
-  for (col in matrix) { 
-    var nodeList = matrix[col]
-    for (row in nodeList) { 
-      var node = nodeList[row]
-      if (node.innerHTML == null) continue;
+//var matrix = [
+//   document.querySelectorAll('td'),
+//   document.querySelectorAll('*[zoom]') ]
+  var td_matrix = document.querySelectorAll('td')
+
+  var numberOfMatches = 0
+  var searchAndMark = function(node) {
       var htmlContent = (singleLineOnly) 
            ? node.innerHTML 
-           : node.innerHTML.replace(/\n/gm, '');
-      var searchFound = htmlContent.match(query);
-      if (!node.setAttribute) continue;
-      node.setAttribute("textFound", searchFound?"true":"false");
+           : node.innerHTML.replace(/\n/gm, '')
+      var searchFound = htmlContent.match(query)
+      node.setAttribute("textFound", searchFound?"true":"false")
+      if (searchFound) window.lastElementFound = node
+      return searchFound
+  }
+  for (td_idx in td_matrix) { 
+    var td = td_matrix[td_idx];
+    if (td.querySelectorAll == undefined) continue;
+    var innerZoom_l = td.querySelectorAll('*[zoom]')
+    var foundElement = false
+    for (idx2 in innerZoom_l) {
+      var node = innerZoom_l[idx2]
+      if (node.innerHTML == null) continue
+      if (!node.setAttribute    ) continue
+      if (searchAndMark(node)) { 
+          numberOfMatches++ 
+          foundElement = true
+      }
     }
+    if (!foundElement) {
+      if (searchAndMark(td)) { 
+          numberOfMatches++ 
+          foundElement = true
+      }
+    }
+
+  }
+  if (numberOfMatches == 1) {
+      doOpenZoom.call(window.lastElementFound, longPress.element);
   }
 }
 

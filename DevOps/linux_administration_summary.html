@@ -283,40 +283,7 @@ $ useradd -D [options] # update default values
   --selinux-user SEUSER : SELinux user for the user's login
 </pre>
 
-  <span xsmall>basic user audit:</span>
-<pre xxxsmall zoom>
-$ who     ← Displays current users logged into the system and the  logged-in time
-$ w       ← Displays who is logged into the system and <b>what they are doing</b> (procs. they are running). 
-$ users   ← Displays only user names who are currently logged in
-$ last    ← Displays records of users-logged-in time, <b>remote IP or PTTY</b>, reboot time, 
-$ lastlog ← Displays list of users and what day/time they logged into the system.
-$ whoami  ← Tells the user who they are currently logged in as
-$ ac      ← Tell how much time users are logged in.
-            (sudo apt install acct, sudo dnf install psacct, ...)
-            It pulls its data from the current wtmp file.
-            Ex:
-            $ <b>ac</b>
-            → total     1261.72
-            $ <b>ac -p</b>  ← total hours by user
-            → shark        5.24
-            → nemo         5.52
-            → shs       1251.00
-            → total     1261.76
-            $ <b>$ ac -d | tail -10</b>  ← daily counts of how many hours users were logged in
-            → Jan 11  total        0.05
-            → Jan 12  total        1.36
-            → Jan 13  total       16.39
-            → Jan 15  total       55.33
-            → Jan 16  total       38.02
-            → Jan 17  total       28.51
-            → Jan 19  total       48.66
-            → Jan 20  total        1.37
-            → Jan 22  total       23.48
-            → Today   total        9.83
-</pre>
-  <hr xxxsmall />
-
-  <span xsmall>basic process audit/control</span>
+  <span xsmall>basic process monit/control</span>
 <pre xxxsmall zoom bgorange>
 $ <b>ps</b>   ← shows list of the processes running. i
          Without options: processes belonging to current user&amp;with a controlling terminal
@@ -1075,15 +1042,207 @@ $ tar cjf - myDirToBackup \       # local
   "cd myBackupPath && tar -xjf -" # remote
 </pre>
   </li>
-  <li><a href="https://github.com/Leo-G/backup-bash">"Real time" backup with rsync and bash</li>
+  <li><a href="https://github.com/Leo-G/backup-bash">"Real time" backup with rsync and bash</a>
   </ul>
-</td>  
+</td>
 <td colsep></td>
-<td colsep>Sec.Audit</td>
+<td colsep>Audit</td>
 </td>
 <td>
-  <a href="https://www.nongnu.org/tiger/">Tiger</a><br/>
-  <span xsmall>Quick Audit&amp;Intrusion Detection</span>
+  <span xsmall>basic user audit:</span>
+<pre xxxsmall zoom>
+$ who     ← Displays current users logged into the system and the  logged-in time
+$ w       ← Displays who is logged into the system and <b>what they are doing</b> (procs. they are running). 
+$ users   ← Displays only user names who are currently logged in
+$ last    ← Displays records of users-logged-in time, <b>remote IP or PTTY</b>, reboot time, 
+$ lastlog ← Displays list of users and what day/time they logged into the system.
+$ whoami  ← Tells the user who they are currently logged in as
+$ ac      ← Tell how much time users are logged in.
+            (sudo apt install acct, sudo dnf install psacct, ...)
+            It pulls its data from the current wtmp file.
+            Ex:
+            $ <b>ac</b>
+            → total     1261.72
+            $ <b>ac -p</b>  ← total hours by user
+            → shark        5.24
+            → nemo         5.52
+            → shs       1251.00
+            → total     1261.76
+            $ <b>$ ac -d | tail -10</b>  ← daily counts of how many hours users were logged in
+            → Jan 11  total        0.05
+            → Jan 12  total        1.36
+            → Jan 13  total       16.39
+            → Jan 15  total       55.33
+            → Jan 16  total       38.02
+            → Jan 17  total       28.51
+            → Jan 19  total       48.66
+            → Jan 20  total        1.37
+            → Jan 22  total       23.48
+            → Today   total        9.83
+</pre>
+</td>
+<td>
+  <span xsmall>Audit framework</span>
+<pre xxxsmall zoom>
+<a href="https://www.youtube.com/watch?v=x2u_prS2HmM">Video REF</a> 
+*ARCHITECTURE:*                                          *LOG "TOPICS":*
+                                                          ---------------------
+ audit.rules      auditd.conf                             user
+     +              +                                     group
+     |              |                                     Audit ID
+     |              |                                     Remote Hostname
+     |              |                                     Remote Host Address
+     |              |  +-→ audispd                        System call
+     v              v  |                                  System call arguments
+  auditctl +---→b*auditd*           +-→ g*aureport*       File
+     |              ^  |            |                     File Operations
+     |              ║  +-→ /var/log/audit/audit.log       Session
+     |              ║               |                     Success|Failure
+     |              ║               +-→ g*ausearch*
+     |              ║
+     +-------+      ║
+             |      ║
+Running      |      ║      autrace
+process      |      ║        |
+    +   +----|----------+    |
+    |   |    +-→o*audit*|    |
+    +--→+           ^   +←---+       
+        |           ║   |                  Lecture:
+        | KERNEL════╝   |                  ═══ : control
+        +---------------+                  --- : data-flow
+
+  - b*auditd daemon* centralize log writing to disk/network
+  
+  - o*audit module@KERNEL* handles the audit rules
+    (audtictl gets in charge of passing audit.rules to audit@KERNEL
+    It also intercepts system calls.
+  
+  g*CLI UTILITIES*:
+  |- g*aureport* creates human-readable reports. Useful options:
+  |  --summary
+  |  --failed
+  |  --start, --end (aureport understands 'today', 'yesterday', 'now',
+  |                  'recent', 'this-week', 'this-month', 'this-year')
+  |  --auth, --avc, --login, --user, --executable, --syscall
+  |
+  |- g*ausearch* "drills deeper" into the details of a
+  |   particular event
+
+
+  - autrace is the "ptrace" or "strace" for audit events
+    (audit the audit)
+  
+  - Audispd (dispatcher) provides a plugin system to dispath
+    to other places (remote machines, Prometheus,...)
+  In RHEL 8+ it has been integrated into auditd. <a href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8-beta/html/8.0_beta_release_notes/new-features">REF</a> 
+</pre>
+
+  <span xsmall>"Full" Journey</span>
+<pre xxxsmall zoom>
+-*INITIAL SETUP:*
+ 1) Audit Daemon Configuration -→  /etc/audit/auditd.conf
+    Defines how the audit system works once the daemon is running.
+    Default settings ussually are right-enough
+ 2) Audit Rules:
+  r*WARN: No default rules are set*
+  r*WARN: First match wins!
+    - Used to define *what we are interested in auditing*
+    - three basic types of audit rules:
+      - Basic audit system parameters
+      - File and directory watches   
+      - System call audits
+    Ex. Audit rules
+    | # basic audit system parameters
+    | -D   ← Delete all previous rules (recommended)
+    | -b   ← How many buffer  do we want to have
+    | -f 1 ← 0: ignore failures 
+    |        1: syslog
+    |        2: panic
+    | -e 1 ← 0: disable logging
+    |        1: enable
+    |        2: inmutable (not even root can change without reboot)
+    | # some file and dirs. watches
+    | -w /home/myUser/MySecrets  -p rxwa
+    | -w /sbin/auditctl          -p x
+    | # Example system call rule
+    | -a entry,always -S umask
+  
+ 3) Audispd Daemon Configuration (now part of auditd)
+
+*Daily use*
+Normally you find an event class of interest with aureport and then
+drill down into the nitty-gritty with ausearch
+
+$*sudo aureport --summary*
+Summary Report
+======================
+Range of time in logs:    12/31/1969 19:00:00.000 - 04/20/2019 07:42:51.715
+Selected time for report: 12/31/1969 19:00:00     - 04/20/2019 07:42:51.715
+Number of changes in configuration             : 971
+Number of changes to accounts, groups, or roles: 36
+Number of logins                               : 2992
+Number of failed logins                        : 497
+Number of authentications                      : 3161
+Number of failed authentications               : 438
+Number of users                                : 8
+Number of terminals                            : 30
+Number of host names                           : 16
+Number of executables                          : 24
+Number of commands                             : 14
+Number of files                                : 2
+Number of AVC's                                : 3
+Number of MAC events                           : 3052
+Number of failed syscalls                      : 0
+Number of anomaly events                       : 92
+Number of responses to anomaly events          : 0
+Number of crypto events                        : 52922
+Number of integrity events                     : 0
+Number of virt events                          : 0
+Number of keys                                 : 0
+
+
+$*sudo aureport --login --failed 
+04/15/2019 16:54:29 (unknown) 211.252.85.100 ssh /usr/sbin/sshd no 21896
+04/15/2019 14:35:25 root      211.252.85.100 ssh /usr/sbin/sshd no 20413
+04/07/2019 20:10:13 (unknown) 51.68.35.150   ssh /usr/sbin/sshd no 11272
+04/07/2019 19:59:25 apache    51.68.35.150   ssh /usr/sbin/sshd no 10312
+...
+
+$ sudo aureport --syscall -fail 
+...
+   date        time    syscall    pid     comm      auid   event
+1. 04/09/2019  .....   87         4006    semodule  11112 *53039*
+
+$ sudo auserach -i -a *53039*
+.....
+
+*CREATE A PLOT OF EVENTS WITH:*
+$ sudo aureport -e -i --summary | *mkbar events*
+
+*Show relationship among users,system calls,... with mkgraph:*
+$ sudo aureport -s -i | aws '/^`[0-9]/ { printf "%s %s\n", $6, $4}' | \
+  sort | uniq |*mkgraph*syscall-vs-program
+
+
+*man*:
+man 8 auditd       man 8 ausearch
+man 5 auditd.conf  man 8 aureport
+man 8 auditctl     man 5 audispd.conf
+man 8 autrace      man 8 audispd
+
+*Other documentation*:
+/usr/share/doc/audit:
+ Contains README with basic design information and
+ sample .rules files for different scenarios:
+ -   capp.rules: Controlled Access Protection Profile (CAPP)
+ -   lspp.rules: Labeled Security  Protection Profile (LSPP) 
+ - nispom.rules: National Industrial Security Program Operating Manual Chapter 8 (NISPOM)
+ -   stig.rules: Secure Technical Implementation Guide (STIG)
+
+</pre>
+</td>
+<td>
+  <a href="https://www.nongnu.org/tiger/">Tiger</a>(<span xsmall>Kiss-IDS</span>)
 <pre xxxsmall zoom>
 (Unix/Linux)
 - open source shell-scripts collection for security audit and host intrusion detection.
@@ -1229,11 +1388,10 @@ For example, to get more information about the following messages, where [acc001
 
 --WARN-- [acc015w] Login ID nobody has a duplicate home directory (/nonexistent) with another user.  
 --WARN-- [path009w] /etc/profile does not export an initial setting for PATH.
-
-
 </pre>
-
-  Telegram Notifications
+</td>
+<td>
+  <span xsmall>Telegram Notifications</span>
 <pre xxxsmall zoom>
 <a href="https://ugeek.github.io/blog/post/2019-03-14-crea-un-bot-de-telegram-con-bash-y-una-sola-linea-de-terminal.html">(Original post, spanish)</a> 
 - Telegram API allows to easely craete bots to notify any event in our server (someone logged-in through ssh, ...)
@@ -1588,11 +1746,9 @@ Output Formats ( -o parameter )
 </pre>
 </td>
 <td colsep></td>  
-<td colsep>Soft&nbsp;install</td>  
+<td colsep>app.mng.</td>  
 <td>
   <a href="https://www.flatpak.org/">FlatPak</a>
- <hr xxxsmall />
- Basic Concepts
 <pre xxxsmall zoom>
 <b>Sandboxes</b>
 - each application is built and run in an isolated 'sandbox' environment
@@ -1704,7 +1860,7 @@ $ flatpak run com.xamarin.MonoDevelop
 </pre>
 </td>
 <td>
-<a href="https://dnf.readthedocs.io/en/latest/">DNF</a>(RedHat/Fedora/Centos)
+<a href="https://dnf.readthedocs.io/en/latest/">DNF</a>(RedHat rpm)
 <pre xxxsmall zoom>
 <a href="https://github.com/rpm-software-management">rpm soft. management @ GitHub</a>
 <b>MOST COMMONLY USED:</b>
@@ -1972,10 +2128,10 @@ Ex: Install Development Tools
 <b>$ sudo dnf groupinstall "Development Tools"</b>
 
 </pre>
-
+</td>
+<td>
   <a href="https://help.ubuntu.com/community/AptGet/Howto#Maintenance_commands">APT</a>(Debian/Ubuntu)
 <pre xxxsmall zoom>
-
   <a TODO href="https://help.ubuntu.com/community/SourcesList">Package source list: /etc/apt/sources.list file</a>
 
 
@@ -2061,9 +2217,8 @@ $ apt-cache pkgnames             ← provides a list of every package in the sys
 <b>Developer commands:</b>
 $ apt-get build-dep <package_name> 
 </pre>
-</pre>
-
-
+</td>
+<td>
   <a href="https://wiki.alpinelinux.org/wiki/Alpine_Linux_package_management"><code>apk</code></a> (Alpine/"Docker")
 <pre xxxsmall zoom>
 Because Alpine Linux is designed to run from RAM, package management involves two phases:
@@ -2650,8 +2805,6 @@ MASTER BOOT RECORD (MBR, OLD 80'S MS-DOS)          | GPT/GUID:
 <td colsep></td>
 <td colsep>LVM</td>
 <td>
- <span xsmall>(Logic.Vol.Mgr)</span>:
- <hr xxxsmall />
  <span xsmall>LVM Diagram</span>:
 <pre xxxsmall zoom bgorange>
  physical drive 1                                     logical-volume 1
@@ -4276,6 +4429,8 @@ _________________________
 Running Android apps on Linux
 https://www.2daygeek.com/anbox-best-android-emulator-for-linux/
 }}}
+______________________________
+
 -->
 </html>
 

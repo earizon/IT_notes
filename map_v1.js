@@ -231,6 +231,12 @@ function onPageLoaded() {
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/r\|([^\*\n]*)\|/g, "<span red   >  $1 </span>")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/b\|([^\*\n]*)\|/g, "<span blue  >  $1 </span>")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/o\|([^\*\n]*)\|/g, "<span orange>  $1 </span>")   
+      // Some utf-8 hand icons do not work properly while editing in vim/terminal
+      // but looks much better in the final HTML. Replace icons:
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☜/g, "👈")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☝/g, "👆")
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☞/g, "👉")
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☟/g, "👇")
   }
 
 

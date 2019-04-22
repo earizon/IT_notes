@@ -222,6 +222,14 @@ function onPageLoaded() {
   nodeList = document.querySelectorAll('*[zoom]')
   for (idx in nodeList) { 
       if (!!! nodeList[idx].innerHTML) continue;
+   // COMMENTED: Needs more testings 
+   // nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/(http.?:\/\/[^\b]*)\b/,"<a target='_blank' href='$1'>$1</a>")
+      // Open new window with pre-recoded search:[[Troubleshooting+restorecon?]]
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(
+          /\[\[([^\?]*)\?\]\]/g,
+          "<a href='"+window.location.href.split('?')[0]+"?query=$1'>$1</a>"+
+          "<a target='_blank' href='"+window.location.href.split('?')[0]+"?query=$1'>( ⏏ )</a>"
+      )
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/g\*([^\*\n]*)\*/g, "<b green >  $1 </b>")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/r\*([^\*\n]*)\*/g, "<b red   >  $1 </b>")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/b\*([^\*\n]*)\*/g, "<b blue  >  $1 </b>")   
@@ -294,7 +302,7 @@ function highlightSearch() {
   var regexFlags = "g";
   if (!caseSensitive) regexFlags += "i";
   if (!singleLineOnly) regexFlags += "m";
-  var query = new RegExp("(" + text + ")", regexFlags);
+  var query = new RegExp("[^=>](" + text + ")", regexFlags);
 
 //var matrix = [
 //   document.querySelectorAll('td'),
@@ -308,7 +316,9 @@ function highlightSearch() {
            : node.innerHTML.replace(/\n/gm, '')
       var searchFound = htmlContent.match(query)
       node.setAttribute("textFound", searchFound?"true":"false")
-      if (searchFound) window.lastElementFound = node
+      if (searchFound) {
+          window.lastElementFound = node
+      }
       return searchFound
   }
   for (td_idx in td_matrix) { 

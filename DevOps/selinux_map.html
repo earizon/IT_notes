@@ -11,7 +11,7 @@
 <table>
 <tr>
 <td>
-    External Refs
+  <span xsmall>Ext.Refs</span>
 <pre xxxsmall zoom>
 - <a href="https://github.com/SELinuxProject/selinux/wiki">[Selinux WiKi@GitHub]</a>,
 - <a href="https://github.com/SELinuxProject/setools/wiki">[Setools WiKi@GitHub]</a>,
@@ -24,113 +24,88 @@
 </pre>
 </td>
 <td>
-  Summary 
-<pre xxxsmall zoom>
-b*KERNEL OBJECTS CLASSES*  
-  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑   
-  Represent type-of-resources that must    
-  be protected (data, code, network sockets,...) 
-  ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓
-b*File            class* ← [append, create, lock, entrypoint,    ... ] ← semanage fcontext
-b*Process         class* ← [dyntransition, ptrace, fork, signal, ... ]
-b*INET Socket     class* ← [bind, read, ...                      ... ] ← semanage port|node
-b*...             class* ← [action1, action2, ...                ... ] ← semanage login|user|interface|...
-
-                           ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑    
-                          *HARDCODED* list of g*actions* defined
-                           for each se-linux kernel object class
-
-Full? list of object classes and actions can be found at:
-<a href="https://github.com/SELinuxProject/refpolicy/blob/master/policy/flask/access_vectors">Ref.Policy AVs@Github</a>
-                                 ┌────────── SELinux  4-tuple context ───────────────┐
-*All*(Kernel Object classes)   →  " user ":" role "               :"o*type*":" level "
-*instances* are*labeled*with       Role Based Access Control:         ^^^^         
- an*SELINUX-CONTEXT*:              - SELinux users are associated     USED FOR:
-        ↑                            to one or more roles,          o*TYPE-ENFORCEMENT*
-        │                          ─ each role may be associated
-        │                            to one or more Domain types.
-        │                          ─ Note: SElinux users are not
-        │                            normal linux users: Most 
-        │                            users are mapped to a single
-        │                            SELinux user.
-        │
-- Files and directories labeling is managed through extended file-system attributes
-- Processes, ports, ... labeling is managed by the kernel.
-
-
-*Sumarized Sequence diagram*
-
-    *PROCESS           LINUX                    SECURITY                SELinux     *
-    *                  KERNEL                   SERVER                  AV(AV-Cache)*
-  
-     RUNNING    →    request (hardcoded)     →   Query   →              Q:Is o*type1* allowed 
-    SE-CONTEXT      g*action1*over object         ↑↑↑↑↑↑↑                 g*action1* over
-  ...:o*type1*:..     (e.g. /var/html/file )      Note: Sec.Server        b*type2*   targeted object
-                            ↑↑↑↑↑↑↑↑↑↑↑↑↑↑        also computes a         (o*TYPE-ENFORCEMENT*)
-                          labeled with context    new SEContext or SID  A:*YES*|r*NO*
-                          ...:b*type2*:..         for an object.                  ↑↑
-                                                                              r*abort and audit*
-                                               
-                                               
-                                               
-                                               
-                                               
-</pre>                                                        
+  <span xsmall>Summary</span>
+<pre xxxsmall zoom { >
+┌──────────────────────────┬──────────────────────────────────────────────────────────────┐ ┌────────────────────────────┬──────────────────────────────────────┐
+│*SE─LINUX GLOBAL SUMMARY*:│                                                              │ │*INITIAL PRE─SETUP SUMMARY:*│                                      │   
+├──────────────────────────┘                                                              │ ├────────────────────────────┘                                      │
+│b*KERNEL OBJECTS CLASSES*                                                                │ │ Define SE-Linux System policy with a flow similar to:             │
+│  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑                                                                 │ │                                                                   │
+│  Represent type─of─resources                                                            │ │ create modules → load into kernel → Init bitmap─"matrix"          │
+│  handled by kernel (vs apps)  *HARDCODED* list of g*actions* defined  command line      │ │                                     context1─to─[context2,action] │
+│  that must be protected        for each se─linux kernel object class  management        │ │                                     ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ │  
+│  ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓       ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓     ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓  │ │                                               Access Vector  (AV) │
+│b*File            class*    ←→ [append, create, lock,         ... ] ← semanage fcontext  │ └───────────────────────────────────────────────────────────────────┘
+│b*Process         class*    ←→ [dyntransition, ptrace, fork,  ... ]                      │        
+│b*INET Socket     class*    ←→ [bind, read, ...               ... ] ← semanage port│node │ ┌─────────────────────────────────────────────────┬───────────────────────────────────────────────┐
+│b*login           class*    ←→ [action1, action2, ...         ... ] ← semanage login     │ │*STANDARD SElinux TYPE─ENFORCEMENT FLOW SUMMARY:*│                                               │
+│b*user            class*    ←→ [action1, action2, ...         ... ] ← semanage user      │ │(Once the policy has been loaded into kernel)    │                                               │
+│  ...                                                                        ...         │ ├─────────────────────────────────────────────────┘                                               │
+│                                                                                         │ │   PROCESS     →      System call           →  SECURITY             →  SELinux                   │
+│"Full" list of object classes and actions can be found at:                               │ │               →  (Kernel entry point)      →  SERVER@Kernel        →  AV (AV─Cache actually)    │
+│https://github.com/SELinuxProject/refpolicy/blob/master/policy/flask/access_vectors      │ │ ↑↑↑↑↑↑↑↑↑↑↑↑     ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑     ↑↑↑↑↑↑↑↑↑↑↑↑↑↑          ↑↑↑↑↑↑↑↑                  │
+│                                                                                         │ │   RUNNING         request (hardcoded)        Query if *type1*       Q:Iso*type1* allowed        │
+│                               ┌────────── SELinux  4─tuple context ───────────────┐     │ │  SE─CONTEXT     g*action1*over targeted      is allowed g*action1*      g*action1* over         │
+│*All*(Kernel Object classes) → " user ":" role "               :"o*type*":" level "      │ │...:o*type1*:.     object (labeled with       over b*type2*              b*type2* targeted object│
+│*instances* are*labeled*with    Role Based Access Control:         ^^^^                  │ │                   SEContext b*type2*)                               A:*YES*│r*NO*               │
+│ an*SELINUX─CONTEXT*:           ─ SELinux users are associated     USED FOR:             │ │                                                                               ↑↑                │
+│        ↑                         to one or more roles,          o*TYPE─ENFORCEMENT*     │ │                                                                             r*abort and audit*  │
+│        │                       ─ each role may be associated                            │ │                                                                          ☝                      │
+│        │                         to one or more Domain types.                           │ │                                                                      At this point is when      │
+│        │                       ─ Note: SElinux users are not                            │ │                                                                      SELinuxo*TYPE─ENFORCEMENT* │
+│        │                         normal linux users: Most                               │ │                                                                      is actually processed      │
+│        │                         users are mapped to a single                           │ └─────────────────────────────────────────────────────────────────────────────────────────────────┘
+│        │                         SELinux user.                                          │
+│        │                                                                                │ ┌─────────────────────┬────────────────────────┐
+│─ Files and directories labeling is managed through extended file─system attributes      │ │ DAC,MAC FLOW SUMMARY│                        │
+│─ Processes, ports, ... labeling is managed by the kernel.                               │ ├─────────────────────┘                        │
+└─────────────────────────────────────────────────────────────────────────────────────────┘ │ USER   ┌─────────→ ┌─────────┐               │
+ ┌────────────────────────────────────────────────┬──────────────────────────────────────┐  │ SPACE  │ ┌───────→ │ PROCESS │ ←────────┐    │
+ │*DISPLAYING SELINUX RELATED CONTEXT ATTRIBUTES:*│                                      │  │        │ │ ┌─────→ │"SUBJECT"│          │    │
+ ├────────────────────────────────────────────────┘                                      │  │        │ │ ┌─────→ └─────────┘          │    │
+ │- Use "─Z" flag to shell commands                                                      │  │        │ │ │            │               │    │
+ │ ┌────────────────────────────────────────────┬───────────────────────────────────────┐│  │        │ │ │            ↓               │    │
+ │ │FILE SYSTEM OBJECT                          │SUBJECTS                               ││  │ ────── │ │ │ ───── system─call ──────── │ ───│
+ │ │(files, dirs,..)                            │(running processes)                    ││  │ KERNEL │ │ │            │               │    │
+ │ │$*ls ─ldZ*                                  │                                       ││  │ SPACE  │ │ │            ↓               │    │
+ │ │  /usr/sbin/httpd   → o*httpd_exec_t       *│$*ps axZ │ grep [h]ttpd*               ││  │        │ │ │          Lookup            │    │
+ │ │  /var/www/html/    → o*httpd_sys_content_t*│unconfined_u:system_r:o*httpd_*t:s0 ...││  │        │ │ │           data             │    │
+ │ │  /etc/apache2/     → o*httpd_config_t     *│                                       ││  │        │ │ │            │               │Sys.│
+ │ │  /var/log/httpd/   → o*httpd_log_t        *│                                       ││  │        │ │ │ r*KO*      ↓               │call│
+ │ │  /etc/init.d/httpd → o*httpd_initrc_exec_t*│                                       ││  │        │ │ └─────────  Error            │Res.│
+ │ ├────────────────────────────────────────────┼───────────────────────────────────────┤│  │        │ │            Checks            │    │
+ │ │SOCKET                                      │  PORT                                 ││  │        │ │              │               │    │
+ │ │$ sudo netstat ─tnlpZ │ grep httpd          │  $ sudo semanage port ─l │ grep http  ││  │        │ │              │g*OK*          │    │
+ │ │....  unconfined_u:system_r:o*httpd_*t:s0 ..│  http_cache_port_t  tcp 3128,8080, ...││  │        │ │              ↓               │    │
+ │ │                                            │  ...                                  ││  │        │ │   r*KO*     DAC              │    │
+ │ │                                            │o*http_port_t*       tcp 80, 443       ││  │        │ └───────── permission          │    │
+ │ └────────────────────────────────────────────┴───────────────────────────────────────┘│  │        │              checks            │    │
+ └───────────────────────────────────────────────────────────────────────────────────────┘  │        │                │               │    │
+                                                                                            │        │                │               │    │
+                                                                                            │        │     r*KO*      ↓   g*OK*       │    │
+                                                                                            │        └─────────────  LSM  ────────────┘    │
+                                                                                            │                       hooks                  │
+                                                                                            │                        │ ^                   │
+                                                                                            │                  Action│ │g*OK*              │
+                                                                                            │                allowed?│ │r*KO*              │
+                                                                                            │                        ↓ │                   │
+                                                                                            │                       Linux                  │
+                                                                                            │                      Security                │
+                                                                                            │                       Module                 │
+                                                                                            │                    (e.g.SELinux)             │
+                                                                                            └──────────────────────────────────────────────┘
+</pre }>
 </td>
 <td>
-    Architecture Diagram
+  <span xsmall>Nomenclature</span>
 <pre xxxsmall zoom>
-USER     ┌─────────→ ┌─────────┐
-SPACE    │ ┌───────→ │ PROCESS │ ←────────┐     
-         │ │ ┌─────→ │"SUBJECT"│          │     
-         │ │ ┌─────→ └─────────┘          │     
-         │ │ │            │               │
-         │ │ │            │               │
-         │ │ │            ↓               │
-──────── │ │ │ ───── system-call ──────── │ ────
-         │ │ │            │               │
-KERNEL   │ │ │            │               │
-SPACE    │ │ │            ↓               │
-         │ │ │          Lookup            │
-         │ │ │           data             │
-         │ │ │            │               │
-         │ │ │            │               │System
-         │ │ │  "KO"      ↓               │call
-         │ │ └─────────  Error            │Result
-         │ │            Checks            │
-         │ │              │               │
-         │ │              │"OK"           │
-         │ │              │               │
-         │ │              ↓               │
-         │ │   "KO"      DAC              │
-         │ └───────── permission          │
-         │              checks            │
-         │                │               │
-         │                │               │
-         │     "KO"       ↓    "OK"       │
-         └─────────────  LSM  ────────────┘
-                        hooks
-                         │  ^
-                         │  │
-                    Call │  │ "OK"
-                    OK?  │  │ "KO"
-                         ↓  │
-                        Linux
-                       Security
-                        Module
-                     (e.g.SELinux)
-
-</pre>
-</td>
-<td>
-  Nomenclature
-<pre xxxsmall zoom>
-│─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
+┌─────────────────┬────────┬────────────────────────────────────────────────────────────────────────┐
 │ TERMINOLOGY     │ACRONYM │    DESCRIPTION                                                         │
 │─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
-│ Access  Vector  │AV      │ ─ bit map representing a set of permissions                            │
-│                 │        │   such as open, read, write,...                                        │
-│                 │        │   Defined by policy.                                                   │
+│ Access  Vector  │AV      │ - bit map representing a set of permissions such as open, read, ...    │
+│                 │        │ - Each policy defines a different AV.                                  │
+│                 │        │ - Actually is implemented as a hash table where the key is the tuple   │
+│                 │        │   (source-type, targeted-type, targeted-kernel-object-class)           │
 │─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
 │ Access Vector   │AVC     │ ─ SELinux Security  Server can take a time to calculate                │
 │ Cache           │        │   access decissions based on SE─rules.                                 │
@@ -183,6 +158,9 @@ SPACE    │ │ │            ↓               │
 │                 │        │ ─ "Today" it is more commonly used for                                 │
 │                 │        │   application separation utilising the                                 │
 │                 │        │   Multi─Category Security variant.                                     │
+│─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
+│ SELinux Policy  │        │ - Set of (thousands of) rules that define the type-enforcement rules   │
+│                 │        │   in the AV bitmap matrix/hashtable                                    │
 │─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
 │ Object  Manager │OM      │ ─ Userspace&amp;kernel components responsible                          │
 │                 │        │   management (object labeling, creation, access, destruction)          │
@@ -238,281 +216,125 @@ SPACE    │ │ │            ↓               │
 │ ────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
 </pre>
 </td>
-
-
-
 <td>
-  <span xsmall>(SEL)Kernel Object Classes</span>
+  <span xsmall>Object Classes</span>
 <pre xxxsmall zoom>
+SELinux Kernel Object Classes:
 Summary extracted from
-<a href="https://raw.githubusercontent.com/SELinuxProject/refpolicy/master/policy/flask/access_vectors">https://raw.githubusercontent.com/SELinuxProject/refpolicy/master/policy/flask/access_vectors</a>
-
-*common file       class dir             class file           class lnk_file    class chr_file        class blk_file*
-                   inherits file         inherits file        inherits file     inherits file         inherits file
-  {                {                     {                    {                 {                     {
-      ioctl            add_name              execute_no_trans     open              execute_no_trans       open
-      read             remove_name           entrypoint           audit_access      entrypoint             audit_access
-      write            reparent              execmod              execmod           execmod                execmod
-      create           search                open             }                     open               }
-      getattr          rmdir                 audit_access                           audit_access
-      setattr          open              }                                      }
-      lock             audit_access
-      relabelfrom      execmod
-      relabelto    }
-      append       
-      map         *class sock_file    class fifo_file    class fd*
-      unlink       inherits file      inherits file      {
-      link         {                  {                      use
-      rename           open               open           }
-      execute          audit_access       audit_access
-      swapon           execmod            execmod
-      quotaon      }                  }
-      mounton        
-  }                                 
-                    
-*NETWORK-RELATED OBJECTS.*
-common socket          *class socket*              *class rawip_socket*   *class unix_stream_socket* 
-                         inherits socket            inherits socket        inherits socket           
-{                      *class netlink_socket*       {                      {                           
-# inherited from file   inherits socket                 node_bind              connectto               
-    ioctl              *class packet_socket         }                          newconn                 
-    read                inherits socket                                       acceptfrom               
-    write              *class key_socket*                                 }                            
-    create              inherits socket             
-    getattr            *class unix_dgram_socket*    
-    setattr             inherits socket             
-    lock            
-    relabelfrom        *class tcp_socket*   *class udp_socket*    *class node*     *class netif*
-    relabelto           inherits socket      inherits socket       {                {
-    append              {                    {                         tcp_recv         tcp_recv
-    map                     connectto            node_bind             tcp_send         tcp_send
-# socket-specific           newconn          }                         udp_recv         udp_recv
-    bind                    acceptfrom                                 udp_send         udp_send
-    connect                 node_bind                                  rawip_recv       rawip_recv
-    listen                  name_connect                               rawip_send       rawip_send                                                   
-    accept              }                                              enforce_dest     dccp_recv                                                    
-    getopt                                                             dccp_recv        dccp_send
-    setopt                                                             dccp_send        ingress
-    shutdown                                                           recvfrom         egress
-    recvfrom                                                           sendto       }
-    sendto                                                         }
-    recv_msg         
-    send_msg         
-    name_bind
-}
+https://raw.githubusercontent.com/SELinuxProject/refpolicy/master/policy/flask/access_vectors
+*│common file       │class dir      │class file       │class lnk_file │class chr_file   │class blk_file *       │ *NETWORK─RELATED OBJECTS.*
+ │                  │inherits file  │inherits file    │inherits file  │inherits file    │inherits file          │ *│common socket           │class socket               │class rawip_socket    │class unix_stream_socket* 
+ │                  │               │                 │               │                 │                       │  │                        │ inherits socket           │inherits socket       │inherits socket           
+ │ioctl             │add_name       │execute_no_trans │open           │execute_no_trans │open                   │  │                       *│class netlink_socket*      │                      │
+ │read              │remove_name    │entrypoint       │audit_access   │entrypoint       │audit_access           │  │# inherited from file   │inherits socket            │node_bind             │connectto               
+ │write             │reparent       │execmod          │execmod        │execmod          │execmod                │  │ioctl                  *│class packet_socket        │                      │newconn                 
+ │create            │search         │open             │               │open             │                       │  │read                    │inherits socket                                   │acceptfrom               
+ │getattr           │rmdir          │audit_access                     │audit_access                             │  │write                  *│class key_socket*                                 │                            
+ │setattr           │open           │                                 │                                         │  │create                  │inherits socket             
+ │lock              │audit_access                                                                               │  │getattr                *│class unix_dgram_socket*    
+ │relabelfrom       │execmod                                                                                    │  │setattr                 │inherits socket             
+ │relabelto         │                                                                                           │  │lock                
+ │append                                                                                                        │  │relabelfrom            *│class tcp_socket     │class udp_socket      │class node       │class netif*
+ │map              *│class sock_file   │class fifo_file   │class fd*                                            │  │relabelto               │inherits socket      │inherits socket       │                 │
+ │unlink            │inherits file     │inherits file     │                                                     │  │append                  │                     │                      │tcp_recv         │tcp_recv
+ │link              │                  │                  │use                                                  │  │map                     │connectto            │node_bind             │tcp_send         │tcp_send
+ │rename            │open              │open              │                                                     │  │# socket─specific       │newconn              │                      │udp_recv         │udp_recv
+ │execute           │audit_access      │audit_access                                                            │  │bind                    │acceptfrom                                  │udp_send         │udp_send
+ │swapon            │execmod           │execmod                                                                 │  │connect                 │node_bind                                   │rawip_recv       │rawip_recv
+ │quotaon           │                  │                                                                        │  │listen                  │name_connect                                │rawip_send       │rawip_send
+ │mounton                                                                                                       │  │accept                  │                                            │enforce_dest     │dccp_recv
+ │                                                                                                              │  │getopt                                                               │dccp_recv        │dccp_send
+                                                                                                                │  │setopt                                                               │dccp_send        │ingress
+                                                                                                                │  │shutdown                                                             │recvfrom         │egress
+                                                                                                                │  │recvfrom                                                             │sendto          
+                                                                                                                │  │sendto
+                                                                                                                │  │recv_msg             
+                                                                                                                │  │send_msg             
+                                                                                                                │  │name_bind       
 
 
-*common ipc*    │ *common database* │ *common x_device*      │ *class filesystem*
- {              │  {                │  {                     │  {
-     create     │      create       │  /*pointer,keyboard*/  │      mount
-     destroy    │      drop         │      getattr           │      remount
-     getattr    │      getattr      │      setattr           │      unmount
-     setattr    │      setattr      │      use               │      getattr
-     read       │      relabelfrom  │      read              │      relabelfrom
-     write      │      relabelto    │      write             │      relabelto
-     associate  │  }                │      getfocus          │      transition
-     unix_read                      │      setfocus          │      associate
-     unix_write                     │      bell              │      quotamod
- }                                  │      force_cursor      │      quotaget
-                                    │      freeze            │  }
-                                    │      grab
-                                    │      manage
-                                    │      list_property
-                                    │      get_property
-                                    │      set_property
-                                    │      add
-                                    │      remove
-                                    │      create
-                                    │      destroy
-                                    │  }
+*│common ipc       │common database    │common x_device         │class filesystem*           │ *PROCESS─RELATED OBJECTS*                   │ *CAPABILITY RELATED*                        │ *SYSTEM OPERATIONS*    *│SERVICES*
+ │                 │                   │                        │                            │                                             │                                             │                         │
+ │create           │create             │/*pointer,keyboard*/    │mount                       │   *│class process*    *│class process2*     │   *│common cap*           *│common cap2*    │   *│class system*       *│class service*
+ │destroy          │drop               │getattr                 │remount                     │    │                   │                    │    │                       │                │    │                     │
+ │getattr          │getattr            │setattr                 │unmount                     │    │fork               │nnp_transition      │    │chown                  │mac_override    │    │ipc_info         │start
+ │setattr          │setattr            │use                     │getattr                     │    │transition         │nosuid_transition   │    │dac_override           │mac_admin       │    │syslog_read      │stop
+ │read             │relabelfrom        │read                    │relabelfrom                 │    │sigchld            │                    │    │dac_read_search        │syslog          │    │syslog_mod       │status
+ │write            │relabelto          │write                   │relabelto                   │    │sigkill                                 │    │fowner                 │wake_alarm      │    │syslog_console   │reload
+ │associate        │                   │getfocus                │transition                  │    │sigstop                                 │    │fsetid                 │block_suspend   │    │module_request   │enable
+ │unix_read                            │setfocus                │associate                   │    │signull                                 │    │kill                   │audit_read      │    │module_load      │disable
+ │unix_write                           │bell                    │quotamod                    │    │signal                                  │    │setgid                 │                │    │halt             │
+ │                                     │force_cursor            │quotaget                    │    │ptrace                                  │    │setuid                                  │    │reboot
+                                       │freeze                                               │    │getsched                                │    │setpcap                                 │    │status
+                                       │grab                                                 │    │setsched                                │    │linux_immutable                         │    │start
+                                       │manage                                               │    │getsession                              │    │net_bind_service                        │    │stop
+                                       │list_property                                        │    │getpgid                                 │    │net_broadcast                           │    │enable
+                                       │get_property                                         │    │setpgid                                 │    │net_admin                               │    │disable
+                                       │set_property                                         │    │getcap                                  │    │net_raw                                 │    │reload
+                                       │add                                                  │    │setcap                                  │    │ipc_lock                                │        
+                                       │remove                                               │    │share                                   │    │ipc_owner                               │        
+                                       │create                                               │    │getattr                                 │    │sys_module                              
+                                       │destroy                                              │    │setexec                                 │    │sys_rawio                               
+                                                                                             │    │setfscreate                             │    │sys_chroot            
+                                                                                             │    │noatsecure                              │    │sys_ptrace            
+                                                                                             │    │siginh                                  │    │sys_pacct             
+                                                                                             │    │setrlimit                               │    │sys_admin             
+                                                                                             │    │rlimitinh                               │    │sys_boot              
+                                                                                             │    │dyntransition                           │    │sys_nice              
+                                                                                             │    │setcurrent                              │    │sys_resource          
+                                                                                             │    │execmem                                 │    │sys_time              
+                                                                                             │    │execstack                               │    │sys_tty_config        
+                                                                                             │    │execheap                                │    │mknod                 
+                                                                                             │    │setkeycreate                            │    │lease                 
+                                                                                             │    │setsockcreate                           │    │audit_write           
+                                                                                             │    │getrlimit                               │    │audit_control         
+                                                                                                                                           │    |setfcap               
 
-
-
-*PROCESS-RELATED OBJECTS*                   │ *CAPABILITY RELATED*                       │ *SYSTEM OPERATIONS*   │ *SERVICES*
-                                            │                                            │                       │
-  *class process*    *class process2*       │   *common cap*           *common cap2*     │   *class system*      │ *class service*
-   {                  {                     │    {                     {                 │    {                  │  {
-       fork               nnp_transition    │        chown                 mac_override  │        ipc_info       │      start
-       transition         nosuid_transition │        dac_override          mac_admin     │        syslog_read    │      stop
-       sigchld        }                     │        dac_read_search       syslog        │        syslog_mod     │      status
-       sigkill                              │        fowner                wake_alarm    │        syslog_console │      reload
-       sigstop                              │        fsetid                block_suspend │        module_request │      enable
-       signull                              │        kill                  audit_read    │        module_load    │      disable
-       signal                               │        setgid            }                 │        halt           │  }
-       ptrace                               │        setuid                              │        reboot
-       getsched                             │        setpcap                             │        status
-       setsched                             │        linux_immutable                     │        start
-       getsession                           │        net_bind_service                    │        stop
-       getpgid                              │        net_broadcast                       │        enable
-       setpgid                              │        net_admin                           │        disable
-       getcap                               │        net_raw                             │        reload
-       setcap                               │        ipc_lock                            │        
-       share                                │        ipc_owner                           │        
-       getattr                              │        sys_module                          │        
-       setexec                              │        sys_rawio                           │   }
-       setfscreate                          │        sys_chroot
-       noatsecure                           │        sys_ptrace
-       siginh                               │        sys_pacct
-       setrlimit                            │        sys_admin
-       rlimitinh                            │        sys_boot
-       dyntransition                        │        sys_nice
-       setcurrent                           │        sys_resource
-       execmem                              │        sys_time
-       execstack                            │        sys_tty_config
-       execheap                             │        mknod
-       setkeycreate                         │        lease
-       setsockcreate                        │        audit_write
-       getrlimit                            │        audit_control
-   }                                        │        setfcap
-                                            │    }
 *OTHERS*
    security, capability, X-Windows, Netlink, D-BUS,  nscd, IPSEC, dccp, memprotect
    db_database/db_table/db_column/..., (network) peer, tun_socket, binder
    infiniband*, ...
-
 - ...
 </pre>
 </td>
 <td>
   <span xsmall>FS-LABELING</span>
 <pre xxxsmall zoom>
-☞Remember:
- - Files and directories labeling is managed through extended file-system attributes
- - Processes, ports, ... labeling is managed by the kernel.
+- When a new file-alike object is created its contexts
+  is copied (by default) from its parent's directory
+  by default. 
+- This behaviour can be modified with a type_transition rule
+  in the policy.
 
-The*Z*flag is used to show extended SElinux attributes on files/directories
-$*ls ─ldZ*                                    
-  /usr/sbin/httpd    o*httpd_exec_t       *       
-  /var/www/html/     o*httpd_sys_content_t*
-  /etc/apache2/      o*httpd_config_t     *     
-  /var/log/httpd/    o*httpd_log_t        *
-  /etc/init.d/httpd  o*httpd_initrc_exec_t*
+$ sudo*chcon*--type <b orange>var_t</b> index.html  ← Changes context *temporarely*
+                                                         (FS relabel will revert changes)
 
-#*ps axZ | grep [h]ttpd*
-unconfined_u:system_r:<b orange>httpd_</b>t:s0 ...
+$ sudo*restorecon* -v index.html
+$ sudo*restorecon* reset index.html                 ← similar to fixfiles(8) suited
+  unconfined_u:object_r:o*var_t*:s0 →                 for individual file or dir. relabeling
+  unconfined_u:object_r:o*httpd_sys_content_t*:s0
 
-# netstat -tnlpZ | grep httpd
-....         :::80  ....  unconfined_u:system_r:<b orange>httpd_</b>t:s0 ...
+OTHERS:
+*fixfiles(8)     *  Relabels FS objects. By default         
+                    relabel all mounted FSs that support    
+                    SELinux unless mounted with the         
+                    context mount option, automatically     
+                    detemining the file sec.ctx specs       
+                    to use for the labeling.                
+ 
+*genhomedircon(8)*  Script for generating correct file ctx 
+                    specs for user's home directories.
+ 
+*matchpathcon(8) *  Returns the default ctx for a path
+                    based on the active policy's file ctx file
 
-# semanage port -l | grep http
-http_cache_port_t  tcp 3128,8080, 8118, 8123, 10001-10010
-http_cache_port_t  udp 3130
-<b orange>http_port_t        tcp 80, 443</b>
-...
+See also:[[Troubleshooting+restorecon?]]
 </pre>
-   Juggling with labels
+</td> 
+<td> 
+  <span xsmall TODO>Process LABELING FLOW</span>
 <pre xxxsmall zoom>
-- SELinux aware tools (chcon, restorecon, ...)
-- Contexts are set when file are created based on parent's directory
-  by default. A Policy can define: 
-  - """when app labeled 'foo_t'creates a
-       file in a directory labeled 'bar_t', 
-       transition to 'baz_t' label."""
-    Ex. dhclient ('dhclient_t') creates a file /etc/resolv.conf
-       labeled 'net_conf_t' in /etc ('etc_t')
-- RPMs can set context at install time
 - Login process sets a default context (unconfined for targeted policy)
-- semanage can be used to maange settings for:
-  - login, user, port, interface, module
-  - node, file context, boolean, permissive state, dontaudit
-</pre>
-</td>
-<td>
-  <span xsmall>TYPE ENFORCEMENT</span>
-<pre xxxsmall zoom>
-- "Part of the policy that says:
-   a process running with the label httpd_t can have read access
-   to a file labeled httpd_config_t"
-
-The sheer number of TE rules (~ "thousands") can make understanding 
-policies challenging, but the rules themselves are not complex. 
-There are a relatively few varieties, and they all fall into two 
-basic categories: 
-- access vector (AV): allow or audit access between two types.
-  SYNTAX:
-  | <b>allow</b> <b orange>src_domain</b> <b green>target_type</b>:<b blue>class</b> { <b green>permissions</b> };
-  | ^
-  | <b>Rule name: allow | dontaudit | auditallow | neverallow</b>
-  | 
-  | <b orange>src_domain</b>: the process domain , i.e, the type assigned to running process  
-  | 
-  | <b green>target_type</b>:<b blue>class</b> := Apply <b green>permission</b> to  <b blue>class</b> (file, FS, IPC, Shared Memory, ...) 
-  | <b green>           </b>:tagged as <b green>target_type</b>
-  | 
-  | - tuple (<b orange>src_domain</b>,<b green>target_type</b>,<b blue>class</b>) is used as key in the hashtable.
-  | - Two rules matching the same triplet key "merge" their permissions.
-  | - Adding a new rule with a matching tripplet will also merge to existing perms.
-  |   (There is no way then to delete permission, only to add)
-  | 
-  | <b green>permissions</b>: Any space-separated list of permissions that apply to the
-  | <b green>           </b>: given  <b blue>class</b> (file, ...)
-
-
-
-- type rules: control default labeling decisions under 
-              certain circumstances. In particular they
-              specify default types for objects created
-              or relabeled at runtime
-
-  SYNTAX:
-  | Rule name        := type_transition | type_change
-  | src_type(s)      type of the createing or owning process (current domain)
-  | target_type(s)   type of the object contaning the new or relabeled object
-  | object class(es) class(es)of object(s) being created or relabeled
-  | Default type     The single default type for the new or relabeled object
-  | Note: object class is not associated with the target type. 
-  |       Instead, it refers to the objects that will be labeled with the
-  |       default type.
-  | Currently (WARN:2006), there are two forms of the type_transition rule.
-  | - DEFAULT DOMAIN TRANSITION EVENTS:
-  |   Ex:
-  |   type_transition user_t passwd_exec_t : process passwd_t;
-  |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  |   """ when a process of type user_t executes a
-  |       file of type passwd_exec_t, the process type
-  |       will attempt to transition, by default, to
-  |       passwd_t unless otherwise requested.""" <b>
-  |   NOTICE:
-  |   - The target type (passwd_exec_t) is implicitly 
-  |     associated with the file-object-class when the stated
-  |     object class is "process".
-  |   - The stated object class (process) is associated 
-  |     with the source and default types.</b>
-  |   - The AV rules must also allow  at least three accesses:
-  |      - execute The source type (init_t) must have execute 
-  |        permission for files with the target type
-  |        (apache_exec_t).
-  |      - transition The source domain (init_t) must
-  |        have transition permission to the default
-  |        type (apache_t).
-  |      - entrypoint The new (default) type (apache_t)
-  |        must have entrypoint permission to files with
-  |        the target type (apache_exec_t)
-  |      Ex:
-  |      type_transition init_t apache_exec_t : process apache_t;
-  |      # Requires next "allow" Access Vector:
-  |      allow init_t apache_exec_t : file execute;
-  |      allow init_t apache_t      : process transition;
-  |      allow apache_t apache_exec_t : file entrypoint;
-  |
-  |
-  | - OBJECT TRANSITIONS TO SPECIFY DEFAULT OBJECT LABELING:
-  |   (By default created objects receive the type of its "parent")
-  | Ex:
-  | type_transition passwd_t tmp_t : file passwd_tmp_t;
-  | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  | """ when a process of type passwd_t creates an
-  |   ordinary file (file object class) in a directory of 
-  |   type tmp_t the file, by default, should have the 
-  |   type passwd_tmp_t if allowed by the policy. """
-  | NOTICE:
-  | -  object-class refers but to the default type (passwd_tmp_t).
-  | - tmp_t is implicitly associated with the dir-object class
-  |   because that is the only object class that can contain files.
-  | - AV rules must also allow the access for the default
-  |   labeling to occur. (add_name, write, and search for 
-  |   directories of type tmp_t, and write and create for
-  |   files of type passwd_tmp_t).
 </pre>
 </td>
 <td>
@@ -554,6 +376,8 @@ afs     1.8.2
 <td>
   <span xsmall>Booleans</span>
 <pre xxxsmall zoom>
+<a href="https://linux.die.net/man/8/booleans">man 8 booleans</a>
+- Allow to customize a given policy at runtime.
 - Common to-many-apps actions that can be allowed/denied are "grouped"
   into booleans
   Ex:
@@ -561,9 +385,13 @@ afs     1.8.2
   - """ Can httpd use mod_auth_ntlm_winbind ? """
   - ...
 
-$ sudo*getsebool -a*                      ← Show all booleans
+$ sudo*getsebool -a*                     ← Show all booleans
 
-$*setsebool* "mySELinuxBoolean" 0|1  [-P] ← Set boolean
+$*setsebool* -P "mySELinuxBoolean" 0|1   ← Set boolean
+              ☝(opt.flag.)
+              Persist reboot
+
+$*togglesebool* -P "mySELinuxBoolean"    ← toggle 1⇿0 value
 
 *List Booleans Set*
 - Take a look at the "booleans.local" file under
@@ -574,6 +402,8 @@ $*setsebool* "mySELinuxBoolean" 0|1  [-P] ← Set boolean
 
   | httpd_read_user_content=1
   | httpd_enable_homedirs=1
+
+
 </pre>
 </td>
 <td>
@@ -1111,40 +941,6 @@ sestatus(8)                  Return various status info, such as
               services in new intended domain
 </pre>
 
-  <span xsmall>FS Context labeling</span>
-<pre xxxsmall zoom>
-*chcon(1)        *  Changes sec.ctx or part of it *temporarely*
-                    (FS relabel will revert changes)
-                    for file-related object classes 
-                    (files, dirs,..) 
-                    Ex:
-                    # chcon --type <b orange>var_t</b> /var/www/html/index.html
-
- 
-*fixfiles(8)     *  Relabels FS objects. By default         
-                    relabel all mounted FSs that support    
-                    SELinux unless mounted with the         
-                    context mount option, automatically     
-                    detemining the file sec.ctx specs       
-                    to use for the labeling.                
- 
-*restorecon(8)   *  labeling utility similar to fixfiles(8)
-                    except but suited for individual 
-                    file or dir. relabeling
-
-                    Ex:
-                    # restorecon -v /var/www/html/index.html
-                    # restorecon reset /var/www/html/index.html
-                    → context unconfined_u:object_r:o*var_t*:s0 → unconfined_u:object_r:o*httpd_sys_content_t*:s0
- 
-*setfiles(8)     *  "old" fixfiles(8) utility
- 
-*genhomedircon(8)*  Script for generating correct file ctx 
-                    specs for user's home directories.
- 
-*matchpathcon(8) *  Returns the default ctx for a path
-                    based on the active policy's file ctx file
-</pre>
 
    <span xsmall>Policy</span>
 <pre xxxsmall zoom>
@@ -1189,13 +985,7 @@ audit2why(1)             Tries to provide a by comparing with
 ausearch(8)              Basic interpretation of audti messages.
                          -m avc pull out just AVC messages.
 </pre>
-   <span xsmall>Booleans</span>
-<pre xxxsmall zoom>
-booleans(8)  
-getsebool(8) 
-setsebool(8) 
-togglesebool(8)        
-</pre>
+
 </td>
 
 <td>
@@ -1222,6 +1012,60 @@ togglesebool(8)
 Creating new Policies
 <table>
 <tr>
+<td>
+  <span xsmall>Policy RULES</span>
+<pre xxxsmall zoom>
+- The set of (possibly thousands of) rules define a given policy.
+  ┌──────────────────────────┬─────────────────────────────────────────────────────────────┐
+  │*ACCESS VECTOR(AV) RULES*:│                                                             │
+  ├──────────────────────────┘                                                             │
+  │- Define the AV bitmap from source types to*existing*[target+type:kernel-class] objects │
+  ├────────────────────────────────────────────────────────────────────────────────────────┤
+  │ SYNTAX:                                                                                │
+  │ *allow*       o*src_domain*       g*target_type*:b*class* { g*permissions* };          │
+  │  ↑↑↑↑↑          ↑↑↑↑↑↑↑↑↑↑          ↑↑↑↑↑↑↑↑↑↑↑    ↑↑↑↑↑      ↑↑↑↑↑↑↑↑↑↑↑              │  
+  │  allow          running process     TODO??????     files      sub─list of              │
+  │  dontaudit      domain ("type")                    socket     class─actions            │
+  │  auditallow                                        IPC        allowed for              │
+  │  neverallow                                        ...        source─to─target         │
+  │                                                               types                    │
+  │              (o*src_domain*   ,   g*target_type*, b*class*)   types                    │
+  │              └─── tuple used as key in AV hashtable  ─────┘                            │
+  │                 ─ Two rules matching the same triplet key will                         │
+  │                   "merge" their permissions.                                           │
+  │                 ─ Permissions can NOT be deleted, only added                           │
+  └────────────────────────────────────────────────────────────────────────────────────────┘
+  ┌─────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │*TYPE RULES*:│                                                                                                                                │ 
+  ├─────────────┘                                                                                                                                │ 
+  │─ control default labeling decisions when*new objects*are created*AT RUNTIME*                                                                 │
+  ├──────────────────────────────────────────────────────┬──────────────────┬────────────────────────────────────────────────────┬───────────────┤
+  │ TYPE─TRANSITION─SYNTAX:(new running─process labeling)│                  │ OBJECT─TRANSITION─SYNTAX (new file─object labeling)│               │
+  ├──────────────────────────────────────────────────────┘                  ├────────────────────────────────────────────────────┘               │
+  │                                                                         │ (default to "parent")                                              │
+  │ *type_transition* g*user_t*  b*passwd_exec_t*:o*process* *passwd_t*;    │ *type_transition* passwd_t tmp_t : file passwd_tmp_t;              │
+  │                                ^^^^^^^^^^^^^    ^^^^^^^                 │                   ^^^^^    ^^^^^                                   │
+  │                                targeted type    source object─class     │            object class    implicitly associated with              │
+  │                       implicitely associated    associated with source  │       refers to default    dir─object class(only one               │
+  │                       with file─object─class    (g*user_t*) and default │     type (passwd_tmp_t)    that can contain files)                 │
+  │                                                  types.                 │                                                                    │
+  │ └───────────────────────────────────────────────────────────────────┘   │ └───────────────────────────────────────────────────┘              │
+  │     ☝This rules means:                                                  │           ☝This rules means:                                       │
+  │      """when a *oprocess* of type g*user_t* executes a                  │  """ when a process of type passwd_t creates an                    │
+  │         file of type b*passwd_exec_t*, the process type                 │    ordinary file (file object class) in a directory of             │
+  │         will attempt to transition, by default, to                      │    type tmp_t the file, by default, should have the                │
+  │         *passwd_t* unless otherwise requested.  """                     │    type passwd_tmp_t if allowed by the policy. """                 │
+  │                                                                         │  NOTICE:                                                           │
+  │ Ex:                                                                     │                                                                    │
+  │ *type_transition* g*init_t* b*apache_exec_t* :o*process* *apache_t*;    │  ─ AV rules must also allow the access for the default             │
+  │                                                                         │    labeling to occur. (add_name, write, and search for             │
+  │  allow g*init_t*  b*apache_exec_t*   : file    execute;                 │    directories of type tmp_t, and write and create for             │
+  │  allow g*init_t*   *apache_t*        : process transition;              │    files of type passwd_tmp_t).                                    │
+  │  allow  *apache_t*b*apache_exec_t*   : file    entrypoint;              │                                                                    │
+  └─────────────────────────────────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────┘
+</pre>
+</td>
+
 <td>
   Compiling new policy:
 <a href="https://wiki.gentoo.org/wiki/SELinux/Tutorials/Creating_your_own_policy_module_file">REF</a>

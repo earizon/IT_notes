@@ -8,668 +8,127 @@
 </head>
 
 <body>
+Creating new Policies
 <table>
 <tr>
 <td>
-  <span xsmall>Ext.Refs</span>
+  <span xsmall>Policy RULES</span>
 <pre xxxsmall zoom>
-- <a href="https://github.com/SELinuxProject/selinux/wiki">[Selinux WiKi@GitHub]</a>,
-- <a href="https://github.com/SELinuxProject/setools/wiki">[Setools WiKi@GitHub]</a>,
-- <a href="https://github.com/SELinuxProject/cil/wiki"    >[CIL     WiKi@GitHub]</a>,
-
-- <a href="https://github.com/SELinuxProject/refpolicy"   >[Ref.Policy]</a>,
-- <a href="http://selinuxbyexample.com/">[(Book) SELinux by Example]</a>
-- <a href="http://www.freetechbooks.com/the-selinux-notebook-the-foundations-t785.html">[(Book) The SELinux Notebook - The Foundations]</a>
-- <a href="https://www.youtube.com/watch?v=cNoVgDqqJmM&feature=youtu.be">[Stop disabling SELinux</a>
+- The set of (possibly thousands of) rules define a given policy.
+  ┌──────────────────────────┬─────────────────────────────────────────────────────────────┐
+  │*ACCESS VECTOR(AV) RULES*:│                                                             │
+  ├──────────────────────────┘                                                             │
+  │- Define the AV bitmap from source types to*existing*[target+type:kernel-class] objects │
+  ├────────────────────────────────────────────────────────────────────────────────────────┤
+  │ SYNTAX:                                                                                │
+  │ *allow*       o*src_domain*       g*target_type*:b*class* { g*permissions* };          │
+  │  ↑↑↑↑↑          ↑↑↑↑↑↑↑↑↑↑          ↑↑↑↑↑↑↑↑↑↑↑    ↑↑↑↑↑      ↑↑↑↑↑↑↑↑↑↑↑              │  
+  │  allow          running process     TODO??????     files      sub─list of              │
+  │  dontaudit      domain ("type")                    socket     class─actions            │
+  │  auditallow                                        IPC        allowed for              │
+  │  neverallow                                        ...        source─to─target         │
+  │                                                               types                    │
+  │              (o*src_domain*   ,   g*target_type*, b*class*)   types                    │
+  │              └─── tuple used as key in AV hashtable  ─────┘                            │
+  │                 ─ Two rules matching the same triplet key will                         │
+  │                   "merge" their permissions.                                           │
+  │                 ─ Permissions can NOT be deleted, only added                           │
+  └────────────────────────────────────────────────────────────────────────────────────────┘
+  ┌─────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │*TYPE RULES*:│                                                                                                                                │ 
+  ├─────────────┘                                                                                                                                │ 
+  │─ control default labeling decisions when*new objects*are created*AT RUNTIME*                                                                 │
+  ├──────────────────────────────────────────────────────┬──────────────────┬────────────────────────────────────────────────────┬───────────────┤
+  │ TYPE─TRANSITION─SYNTAX:(new running─process labeling)│                  │ OBJECT─TRANSITION─SYNTAX (new file─object labeling)│               │
+  ├──────────────────────────────────────────────────────┘                  ├────────────────────────────────────────────────────┘               │
+  │                                                                         │ (default to "parent")                                              │
+  │ *type_transition* g*user_t*  b*passwd_exec_t*:o*process* *passwd_t*;    │ *type_transition* passwd_t tmp_t : file passwd_tmp_t;              │
+  │                                ^^^^^^^^^^^^^    ^^^^^^^                 │                   ^^^^^    ^^^^^                                   │
+  │                                targeted type    source object─class     │            object class    implicitly associated with              │
+  │                       implicitely associated    associated with source  │       refers to default    dir─object class(only one               │
+  │                       with file─object─class    (g*user_t*) and default │     type (passwd_tmp_t)    that can contain files)                 │
+  │                                                  types.                 │                                                                    │
+  │ └───────────────────────────────────────────────────────────────────┘   │ └───────────────────────────────────────────────────┘              │
+  │     ☝This rules means:                                                  │           ☝This rules means:                                       │
+  │      """when a *oprocess* of type g*user_t* executes a                  │  """ when a process of type passwd_t creates an                    │
+  │         file of type b*passwd_exec_t*, the process type                 │    ordinary file (file object class) in a directory of             │
+  │         will attempt to transition, by default, to                      │    type tmp_t the file, by default, should have the                │
+  │         *passwd_t* unless otherwise requested.  """                     │    type passwd_tmp_t if allowed by the policy. """                 │
+  │                                                                         │  NOTICE:                                                           │
+  │ Ex:                                                                     │                                                                    │
+  │ *type_transition* g*init_t* b*apache_exec_t* :o*process* *apache_t*;    │  ─ AV rules must also allow the access for the default             │
+  │                                                                         │    labeling to occur. (add_name, write, and search for             │
+  │  allow g*init_t*  b*apache_exec_t*   : file    execute;                 │    directories of type tmp_t, and write and create for             │
+  │  allow g*init_t*   *apache_t*        : process transition;              │    files of type passwd_tmp_t).                                    │
+  │  allow  *apache_t*b*apache_exec_t*   : file    entrypoint;              │                                                                    │
+  └─────────────────────────────────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────┘
 </pre>
 </td>
 <td>
-  <span xsmall>Summary</span>
-<pre xxxsmall zoom { >
-┌──────────────────────────┬──────────────────────────────────────────────────────────────┐ ┌────────────────────────────┬──────────────────────────────────────┐
-│*SE─LINUX GLOBAL SUMMARY*:│                                                              │ │*INITIAL PRE─SETUP SUMMARY:*│                                      │   
-├──────────────────────────┘                                                              │ ├────────────────────────────┘                                      │
-│b*KERNEL OBJECTS CLASSES*                                                                │ │ Define SE-Linux System policy with a flow similar to:             │
-│  ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑                                                                 │ │                                                                   │
-│  Represent type─of─resources                                                            │ │ create modules → load into kernel → Init bitmap─"matrix"          │
-│  handled by kernel (vs apps)  *HARDCODED* list of g*actions* defined  command line      │ │                                     context1─to─[context2,action] │
-│  that must be protected        for each se─linux kernel object class  management        │ │                                     ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑ │  
-│  ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓       ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓     ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓  │ │                                               Access Vector  (AV) │
-│b*File            class*    ←→ [append, create, lock,         ... ] ← semanage fcontext  │ └───────────────────────────────────────────────────────────────────┘
-│b*Process         class*    ←→ [dyntransition, ptrace, fork,  ... ]                      │        
-│b*INET Socket     class*    ←→ [bind, read, ...               ... ] ← semanage port│node │ ┌─────────────────────────────────────────────────┬───────────────────────────────────────────────┐
-│b*login           class*    ←→ [action1, action2, ...         ... ] ← semanage login     │ │*STANDARD SElinux TYPE─ENFORCEMENT FLOW SUMMARY:*│                                               │
-│b*user            class*    ←→ [action1, action2, ...         ... ] ← semanage user      │ │(Once the policy has been loaded into kernel)    │                                               │
-│  ...                                                                        ...         │ ├─────────────────────────────────────────────────┘                                               │
-│                                                                                         │ │   PROCESS     →      System call           →  SECURITY             →  SELinux                   │
-│"Full" list of object classes and actions can be found at:                               │ │               →  (Kernel entry point)      →  SERVER@Kernel        →  AV (AV─Cache actually)    │
-│https://github.com/SELinuxProject/refpolicy/blob/master/policy/flask/access_vectors      │ │ ↑↑↑↑↑↑↑↑↑↑↑↑     ↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑↑     ↑↑↑↑↑↑↑↑↑↑↑↑↑↑          ↑↑↑↑↑↑↑↑                  │
-│                                                                                         │ │   RUNNING         request (hardcoded)        Query if *type1*       Q:Iso*type1* allowed        │
-│                               ┌────────── SELinux  4─tuple context ───────────────┐     │ │  SE─CONTEXT     g*action1*over targeted      is allowed g*action1*      g*action1* over         │
-│*All*(Kernel Object classes) → " user ":" role "               :"o*type*":" level "      │ │...:o*type1*:.     object (labeled with       over b*type2*              b*type2* targeted object│
-│*instances* are*labeled*with    Role Based Access Control:         ^^^^                  │ │                   SEContext b*type2*)                               A:*YES*│r*NO*               │
-│ an*SELINUX─CONTEXT*:           ─ SELinux users are associated     USED FOR:             │ │                                                                               ↑↑                │
-│        ↑                         to one or more roles,          o*TYPE─ENFORCEMENT*     │ │                                                                             r*abort and audit*  │
-│        │                       ─ each role may be associated                            │ │                                                                          ☝                      │
-│        │                         to one or more Domain types.                           │ │                                                                      At this point is when      │
-│        │                       ─ Note: SElinux users are not                            │ │                                                                      SELinuxo*TYPE─ENFORCEMENT* │
-│        │                         normal linux users: Most                               │ │                                                                      is actually processed      │
-│        │                         users are mapped to a single                           │ └─────────────────────────────────────────────────────────────────────────────────────────────────┘
-│        │                         SELinux user.                                          │
-│        │                                                                                │ ┌─────────────────────┬────────────────────────┐
-│─ Files and directories labeling is managed through extended file─system attributes      │ │ DAC,MAC FLOW SUMMARY│                        │
-│─ Processes, ports, ... labeling is managed by the kernel.                               │ ├─────────────────────┘                        │
-└─────────────────────────────────────────────────────────────────────────────────────────┘ │ USER   ┌─────────→ ┌─────────┐               │
- ┌────────────────────────────────────────────────┬──────────────────────────────────────┐  │ SPACE  │ ┌───────→ │ PROCESS │ ←────────┐    │
- │*DISPLAYING SELINUX RELATED CONTEXT ATTRIBUTES:*│                                      │  │        │ │ ┌─────→ │"SUBJECT"│          │    │
- ├────────────────────────────────────────────────┘                                      │  │        │ │ ┌─────→ └─────────┘          │    │
- │- Use "─Z" flag to shell commands                                                      │  │        │ │ │            │               │    │
- │ ┌────────────────────────────────────────────┬───────────────────────────────────────┐│  │        │ │ │            ↓               │    │
- │ │FILE SYSTEM OBJECT                          │SUBJECTS                               ││  │ ────── │ │ │ ───── system─call ──────── │ ───│
- │ │(files, dirs,..)                            │(running processes)                    ││  │ KERNEL │ │ │            │               │    │
- │ │$*ls ─ldZ*                                  │                                       ││  │ SPACE  │ │ │            ↓               │    │
- │ │  /usr/sbin/httpd   → o*httpd_exec_t       *│$*ps axZ │ grep [h]ttpd*               ││  │        │ │ │          Lookup            │    │
- │ │  /var/www/html/    → o*httpd_sys_content_t*│unconfined_u:system_r:o*httpd_*t:s0 ...││  │        │ │ │           data             │    │
- │ │  /etc/apache2/     → o*httpd_config_t     *│                                       ││  │        │ │ │            │               │Sys.│
- │ │  /var/log/httpd/   → o*httpd_log_t        *│                                       ││  │        │ │ │ r*KO*      ↓               │call│
- │ │  /etc/init.d/httpd → o*httpd_initrc_exec_t*│                                       ││  │        │ │ └─────────  Error            │Res.│
- │ ├────────────────────────────────────────────┼───────────────────────────────────────┤│  │        │ │            Checks            │    │
- │ │SOCKET                                      │  PORT                                 ││  │        │ │              │               │    │
- │ │$ sudo netstat ─tnlpZ │ grep httpd          │  $ sudo semanage port ─l │ grep http  ││  │        │ │              │g*OK*          │    │
- │ │....  unconfined_u:system_r:o*httpd_*t:s0 ..│  http_cache_port_t  tcp 3128,8080, ...││  │        │ │              ↓               │    │
- │ │                                            │  ...                                  ││  │        │ │   r*KO*     DAC              │    │
- │ │                                            │o*http_port_t*       tcp 80, 443       ││  │        │ └───────── permission          │    │
- │ └────────────────────────────────────────────┴───────────────────────────────────────┘│  │        │              checks            │    │
- └───────────────────────────────────────────────────────────────────────────────────────┘  │        │                │               │    │
-                                                                                            │        │                │               │    │
-                                                                                            │        │     r*KO*      ↓   g*OK*       │    │
-                                                                                            │        └─────────────  LSM  ────────────┘    │
-                                                                                            │                       hooks                  │
-                                                                                            │                        │ ^                   │
-                                                                                            │                  Action│ │g*OK*              │
-                                                                                            │                allowed?│ │r*KO*              │
-                                                                                            │                        ↓ │                   │
-                                                                                            │                       Linux                  │
-                                                                                            │                      Security                │
-                                                                                            │                       Module                 │
-                                                                                            │                    (e.g.SELinux)             │
-                                                                                            └──────────────────────────────────────────────┘
-</pre }>
-</td>
-<td>
-  <span xsmall>Nomenclature</span>
+  Workflow
 <pre xxxsmall zoom>
-┌─────────────────┬────────┬────────────────────────────────────────────────────────────────────────┐
-│ TERMINOLOGY     │ACRONYM │    DESCRIPTION                                                         │
-│─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
-│ Access  Vector  │AV      │ - bit map representing a set of permissions such as open, read, ...    │
-│                 │        │ - Each policy defines a different AV.                                  │
-│                 │        │ - Actually is implemented as a hash table where the key is the tuple   │
-│                 │        │   (source-type, targeted-type, targeted-kernel-object-class)           │
-│─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
-│ Access Vector   │AVC     │ ─ SELinux Security  Server can take a time to calculate                │
-│ Cache           │        │   access decissions based on SE─rules.                                 │
-│                 │        │ ─ The AVC stores such decissions to speed up following                 │
-│                 │        │   access avoiding to recompute.                                        │
-│                 │        │ ─ two AVCs exists:                                                     │
-│                 │        │   ─ 1.kernel AVC caching decisions from Security Server                │
-│                 │        │       on behalf of kernel based object managers.                       │
-│                 │        │   ─ 2.userspace AVC built into libselinux that caches                  │
-│                 │        │       decisions when SELinux─aware applications use                    │
-│                 │        │       avc_open(3) with avc_has_perm (3) or avc_has_perm_noaudit(3)     │
-│                 │        │       function calls saving kernel calls after first                   │
-│                 │        │       decision has been made.                                          │
-│─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
-│ Bell─La Padula  │BLP     │                                                                        │
-│─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
-│ Common  Criteria│CC      │                                                                        │
-│─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
-│ Common          │CIL     │                                                                        │
-│ Intermediate    │        │                                                                        │
-│ Language        │        │                                                                        │
-│─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
-│ Discretionary   │DAC     │                                                                        │
-│ Access          │        │                                                                        │
-│ Control         │        │                                                                        │
-│─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
-│ SELinux         │        │ ─ consists of one or more processes associated                         │
-│ Domain          │        │   to the type component of a Security Context.                         │
-│─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
-│ Flux  Advanced  │FLASK   │ ─ See Flux  Research  Group  (http://www.cs.utah.edu/flux/)            │
-│ Security Kernel │        │   μ─kernel Environment (Fluke)                                         │
-│─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
-│ Linux Security  │LSM     │ ─ framework providing hooks into kernel components                     │
-│ Module          │        │   (e.g. disk, net─services,...) used by                                │
-│                 │        │   security modules (SELinux, ....) to perform                          │
-│                 │        │   access control checks.                                               │
-│─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
-│ Mandatory Access│MAC     │ ─ access control mechanism enforced by the system,                     │
-│ Control         │        │   e.g. 'hard─wiring' the OS and applications or                        │
-│                 │        │   via policies enforced by the administrator.                          │
-│─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
-│ Multi─Category  │MCS     │                                                                        │
-│ Security        │        │                                                                        │
-│─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
-│ Multi─Level     │MLS     │ ─ Based on Bell─La Padula model for                                    │
-│ Security        │        │   confidentiality in that (for example) a                              │
-│                 │        │   process running at a 'Confidential' level                            │
-│                 │        │   can read / write at their current level but                          │
-│                 │        │   only read down levels or write up levels.                            │
-│                 │        │ ─ "Today" it is more commonly used for                                 │
-│                 │        │   application separation utilising the                                 │
-│                 │        │   Multi─Category Security variant.                                     │
-│─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
-│ SELinux Policy  │        │ - Set of (thousands of) rules that define the type-enforcement rules   │
-│                 │        │   in the AV bitmap matrix/hashtable                                    │
-│─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
-│ Object  Manager │OM      │ ─ Userspace&amp;kernel components responsible                          │
-│                 │        │   management (object labeling, creation, access, destruction)          │
-│                 │        │   of SELinux object under their control.                               │
-│─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
-│ Security        │SID     │                                                                        │
-│ Identifier      │        │                                                                        │
-│─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
-│ Simplified      │SMACK   │                                                                        │
-│ Mandatory       │        │                                                                        │
-│ Access Control  │        │                                                                        │
-│ Kernel          │        │                                                                        │
-│─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
-│ Super─user      │SUID    │                                                                        │
-│ Identifier      │        │                                                                        │
-│─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
-│ Type Enforcement│TE      │ ─ set of rules declared in Policy describe                             │
-│                 │        │   how the domain will interact with objects                            │
-│                 │        │ ─ In practice: the AV bit─map used to check                            │
-│                 │        │   where type1 is allowed actionN over type2                            │
-│─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
-│ User  Identifier│UID     │                                                                        │
-│─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
-│ X(window) Access│XACE    │                                                                        │
-│ Control         │        │                                                                        │
-│ Extension       │        │                                                                        │
-│─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
-│ Security Server │        │   A sub─system in the Linux kernel that makes access decisions         │
-│                 │        │   and computes security contexts based on Policy on behalf of          │
-│                 │        │   SELinux─aware applications and Object Managers.                      │
-│                 │        │   The Security Server does not enforce a decision, it merely           │
-│                 │        │   states whether the operation is allowed or not according to the      │
-│                 │        │   Policy. It is  the  SELinux─aware  application  or Object            │
-│                 │        │   Manager responsibility to enforce the decision.                      │
-│─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
-│ Security Context│        │   An SELinux Security Context is a variable length string that         │
-│                 │        │   consists  of  the  following  mandatory  components                  │
-│                 │        │   user:role:type and an optional [:range] component.                   │
-│                 │        │   Generally abbreviated  to 'context', and sometimes  called a         │
-│                 │        │   'label'.                                                             │
-│─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
-│ Security        │SID     │   SIDs are unique opaque integer values mapped by the kernel           │
-│ Identifier      │        │   Security Server and userspace AVC that represent a Security Context. │
-│                 │        │   The SIDs generated by the kernel Security Server are u32             │
-│                 │        │   values that are  passed via the Linux Security Module                │
-│                 │        │   hooks to/from the kernel Object Managers.                            │
-│─────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
-│ Type Enforcement│        │   SELinux makes use of a specific style of type enforcement            │
-│                 │        │   (TE) to enforce Mandatory Access Control. This is where all          │
-│                 │        │   subjects and objects have a type identifier associated to them       │
-│                 │        │   that can then be used to enforce rules laid down by                  │
-│                 │        │   Policy                                                               │
-│ ────────────────┼────────┼────────────────────────────────────────────────────────────────────────│
+- Switch to permisive mode.
+- Test new policy.
+- Check violations in logs (See troubleshooting with audit2allow to produce new rules)
 </pre>
 </td>
-<td>
-  <span xsmall>Object Classes</span>
-<pre xxxsmall zoom>
-SELinux Kernel Object Classes:
-Summary extracted from
-https://raw.githubusercontent.com/SELinuxProject/refpolicy/master/policy/flask/access_vectors
-*│common file       │class dir      │class file       │class lnk_file │class chr_file   │class blk_file *       │ *NETWORK─RELATED OBJECTS.*
- │                  │inherits file  │inherits file    │inherits file  │inherits file    │inherits file          │ *│common socket           │class socket               │class rawip_socket    │class unix_stream_socket* 
- │                  │               │                 │               │                 │                       │  │                        │ inherits socket           │inherits socket       │inherits socket           
- │ioctl             │add_name       │execute_no_trans │open           │execute_no_trans │open                   │  │                       *│class netlink_socket*      │                      │
- │read              │remove_name    │entrypoint       │audit_access   │entrypoint       │audit_access           │  │# inherited from file   │inherits socket            │node_bind             │connectto               
- │write             │reparent       │execmod          │execmod        │execmod          │execmod                │  │ioctl                  *│class packet_socket        │                      │newconn                 
- │create            │search         │open             │               │open             │                       │  │read                    │inherits socket                                   │acceptfrom               
- │getattr           │rmdir          │audit_access                     │audit_access                             │  │write                  *│class key_socket*                                 │                            
- │setattr           │open           │                                 │                                         │  │create                  │inherits socket             
- │lock              │audit_access                                                                               │  │getattr                *│class unix_dgram_socket*    
- │relabelfrom       │execmod                                                                                    │  │setattr                 │inherits socket             
- │relabelto         │                                                                                           │  │lock                
- │append                                                                                                        │  │relabelfrom            *│class tcp_socket     │class udp_socket      │class node       │class netif*
- │map              *│class sock_file   │class fifo_file   │class fd*                                            │  │relabelto               │inherits socket      │inherits socket       │                 │
- │unlink            │inherits file     │inherits file     │                                                     │  │append                  │                     │                      │tcp_recv         │tcp_recv
- │link              │                  │                  │use                                                  │  │map                     │connectto            │node_bind             │tcp_send         │tcp_send
- │rename            │open              │open              │                                                     │  │# socket─specific       │newconn              │                      │udp_recv         │udp_recv
- │execute           │audit_access      │audit_access                                                            │  │bind                    │acceptfrom                                  │udp_send         │udp_send
- │swapon            │execmod           │execmod                                                                 │  │connect                 │node_bind                                   │rawip_recv       │rawip_recv
- │quotaon           │                  │                                                                        │  │listen                  │name_connect                                │rawip_send       │rawip_send
- │mounton                                                                                                       │  │accept                  │                                            │enforce_dest     │dccp_recv
- │                                                                                                              │  │getopt                                                               │dccp_recv        │dccp_send
-                                                                                                                │  │setopt                                                               │dccp_send        │ingress
-                                                                                                                │  │shutdown                                                             │recvfrom         │egress
-                                                                                                                │  │recvfrom                                                             │sendto          
-                                                                                                                │  │sendto
-                                                                                                                │  │recv_msg             
-                                                                                                                │  │send_msg             
-                                                                                                                │  │name_bind       
-
-
-*│common ipc       │common database    │common x_device         │class filesystem*           │ *PROCESS─RELATED OBJECTS*                   │ *CAPABILITY RELATED*                        │ *SYSTEM OPERATIONS*    *│SERVICES*
- │                 │                   │                        │                            │                                             │                                             │                         │
- │create           │create             │/*pointer,keyboard*/    │mount                       │   *│class process*    *│class process2*     │   *│common cap*           *│common cap2*    │   *│class system*       *│class service*
- │destroy          │drop               │getattr                 │remount                     │    │                   │                    │    │                       │                │    │                     │
- │getattr          │getattr            │setattr                 │unmount                     │    │fork               │nnp_transition      │    │chown                  │mac_override    │    │ipc_info         │start
- │setattr          │setattr            │use                     │getattr                     │    │transition         │nosuid_transition   │    │dac_override           │mac_admin       │    │syslog_read      │stop
- │read             │relabelfrom        │read                    │relabelfrom                 │    │sigchld            │                    │    │dac_read_search        │syslog          │    │syslog_mod       │status
- │write            │relabelto          │write                   │relabelto                   │    │sigkill                                 │    │fowner                 │wake_alarm      │    │syslog_console   │reload
- │associate        │                   │getfocus                │transition                  │    │sigstop                                 │    │fsetid                 │block_suspend   │    │module_request   │enable
- │unix_read                            │setfocus                │associate                   │    │signull                                 │    │kill                   │audit_read      │    │module_load      │disable
- │unix_write                           │bell                    │quotamod                    │    │signal                                  │    │setgid                 │                │    │halt             │
- │                                     │force_cursor            │quotaget                    │    │ptrace                                  │    │setuid                                  │    │reboot
-                                       │freeze                                               │    │getsched                                │    │setpcap                                 │    │status
-                                       │grab                                                 │    │setsched                                │    │linux_immutable                         │    │start
-                                       │manage                                               │    │getsession                              │    │net_bind_service                        │    │stop
-                                       │list_property                                        │    │getpgid                                 │    │net_broadcast                           │    │enable
-                                       │get_property                                         │    │setpgid                                 │    │net_admin                               │    │disable
-                                       │set_property                                         │    │getcap                                  │    │net_raw                                 │    │reload
-                                       │add                                                  │    │setcap                                  │    │ipc_lock                                │        
-                                       │remove                                               │    │share                                   │    │ipc_owner                               │        
-                                       │create                                               │    │getattr                                 │    │sys_module                              
-                                       │destroy                                              │    │setexec                                 │    │sys_rawio                               
-                                                                                             │    │setfscreate                             │    │sys_chroot            
-                                                                                             │    │noatsecure                              │    │sys_ptrace            
-                                                                                             │    │siginh                                  │    │sys_pacct             
-                                                                                             │    │setrlimit                               │    │sys_admin             
-                                                                                             │    │rlimitinh                               │    │sys_boot              
-                                                                                             │    │dyntransition                           │    │sys_nice              
-                                                                                             │    │setcurrent                              │    │sys_resource          
-                                                                                             │    │execmem                                 │    │sys_time              
-                                                                                             │    │execstack                               │    │sys_tty_config        
-                                                                                             │    │execheap                                │    │mknod                 
-                                                                                             │    │setkeycreate                            │    │lease                 
-                                                                                             │    │setsockcreate                           │    │audit_write           
-                                                                                             │    │getrlimit                               │    │audit_control         
-                                                                                                                                           │    |setfcap               
-
-*OTHERS*
-   security, capability, X-Windows, Netlink, D-BUS,  nscd, IPSEC, dccp, memprotect
-   db_database/db_table/db_column/..., (network) peer, tun_socket, binder
-   infiniband*, ...
-- ...
-</pre>
-</td>
-<td>
-  <span xsmall>FS-LABELING</span>
-<pre xxxsmall zoom>
-- When a new file-alike object is created its contexts
-  is copied (by default) from its parent's directory
-  by default. 
-- This behaviour can be modified with a type_transition rule
-  in the policy.
-
-$ sudo*chcon*--type <b orange>var_t</b> index.html  ← Changes context *temporarely*
-                                                         (FS relabel will revert changes)
-
-$ sudo*restorecon* -v index.html
-$ sudo*restorecon* reset index.html                 ← similar to fixfiles(8) suited
-  unconfined_u:object_r:o*var_t*:s0 →                 for individual file or dir. relabeling
-  unconfined_u:object_r:o*httpd_sys_content_t*:s0
-
-OTHERS:
-*fixfiles(8)     *  Relabels FS objects. By default         
-                    relabel all mounted FSs that support    
-                    SELinux unless mounted with the         
-                    context mount option, automatically     
-                    detemining the file sec.ctx specs       
-                    to use for the labeling.                
  
-*genhomedircon(8)*  Script for generating correct file ctx 
-                    specs for user's home directories.
- 
-*matchpathcon(8) *  Returns the default ctx for a path
-                    based on the active policy's file ctx file
+<td>
+  Compiling new policy:
+<a href="https://wiki.gentoo.org/wiki/SELinux/Tutorials/Creating_your_own_policy_module_file">REF</a>
 
-See also:[[Troubleshooting+restorecon?]]
-</pre>
-</td> 
-<td> 
-  <span xsmall TODO>Process LABELING FLOW</span>
 <pre xxxsmall zoom>
-- Login process sets a default context (unconfined for targeted policy)
+WARN: In some cases, you might need to update your policy to be compatible 
+      with upstream SELinux policy changes. 
+
+Tipical policy module (*.pp file) looks like:
+
+localpolicy.pp 
+*.te: type enforcement
+*.fc: file contexts (optional)
+*.if: interfaces (optional)
+
+
+PRE-SETUP:
+ $ sudo yum install -y selinux-policy-devel
+
+
+<b>STEP 01: vim localpolicy.te:</b>
+
+policy_module(localpolicy, 1.0)  ← localpolicy must match localpolicy.te prefix
+gen_require(`                    ← backtick (`) denotes the start/end of the block 
+  type user_t;                   ← gen_require block is used to "reuse"reference policy,
+  type var_log_t;                  and will be translated during the make -f ... command 
+')                                 earlier on towards SELinux rules. 
+
+allow user_t var_log_t:dir { getattr search open read };
+
+<b>STEP 02: create SELinux policy module localpolicy.pp:</b>
+# sudo make -f /usr/share/selinux/devel/Makefile localpolicy.pp
+
+                                                          ^must "match"
+                                                           localpolicy.te prefix
+
+
+<b>STEP 03: Load the file:</b>
+# sudo setenforce permissive
+# sudo semodule -i /path/to/localpolicy.pp  
+WARN: semodule does NOT need "-P". Will remain loaded after reboots.
+(to disable use # sudo semodule -d localpolicy)
+
+# sudo 
 </pre>
 </td>
 <td>
-  <code xsmall> /etc/selinux/config</code>
-<pre xxxsmall zoom>
-# This file controls the state of SELinux on the system.
-# SELINUX := enforcing permissive  ← permissive must be used to test changes/debug only.
-disabled
-SELINUX=enforcing
-# SELINUXTYPE= can take one of these two values:
-#     <b>targeted</b>: Only list of targeted processes are protected (default)
-#                     In deny-by-default every access is denied unless approved by policy
-#     <b>minimum </b>: Modification of targeted policy. Only selected processes are protected. 
-#     <b>mls     </b>: Multi Level Security protection.
-SELINUXTYPE=targeted
-</pre>
-</td>
-<td>
-  <span xsmall>SELinux bootup sequence</span>
-<pre xxxsmall zoom>
-- When an SELinux-enabled system starts, the policy is loaded
-  into memory organized in modules.
-  "semodule" can be used for a number other tasks like installing,
-  removing, reloading, upgrading, enabling and disabling SELinux policy modules.
-        
-#~ <b>se</b>module -l # lists modules currently loaded
-(output will be similar to ...)
-abrt    1.2.0
-accountsd       1.0.6
-acct    1.5.1
-afs     1.8.2
-...
-
-
-- SELinux context for remote FS can be specified at mount time.
-</pre>
-</td>
-
-<td>
-  <span xsmall>Booleans</span>
-<pre xxxsmall zoom>
-<a href="https://linux.die.net/man/8/booleans">man 8 booleans</a>
-- Allow to customize a given policy at runtime.
-- Common to-many-apps actions that can be allowed/denied are "grouped"
-  into booleans
-  Ex:
-  - """ Do we allow  the ftp server access to home directories? """
-  - """ Can httpd use mod_auth_ntlm_winbind ? """
-  - ...
-
-$ sudo*getsebool -a*                     ← Show all booleans
-
-$*setsebool* -P "mySELinuxBoolean" 0|1   ← Set boolean
-              ☝(opt.flag.)
-              Persist reboot
-
-$*togglesebool* -P "mySELinuxBoolean"    ← toggle 1⇿0 value
-
-*List Booleans Set*
-- Take a look at the "booleans.local" file under
-  /etc/selinux/targeted/modules/active/
-  Ex:
-  | # This file is auto-generated by libsemanage
-  | # Do not edit directly.
-
-  | httpd_read_user_content=1
-  | httpd_enable_homedirs=1
-
-
-</pre>
-</td>
-<td>
-  <span xsmall>Troubleshooting</span>
-<pre xxxsmall zoom>
-*Q: What an SELinux error means?*
- A: It means:
-   *A.1: file-system labeling is wrong*
-      Fix examples:
-      Ex 1:
-        # sudo *chcon* --reference /var/www/html /var/www/html/index.html
-      Ex 2:
-        #*restorecon*-vR /var/www/html 
-          ^^^^^^^^^^
-          uses info from /etc/selinux/targeted/contexts/files/file_contexts, ...
-          to determine what a file or dir's ctx should be
-      Ex 3:
-        #*semanage* fcontext -a -e /var/www/ /my/alternative/www/
-                    ^^^^^^^^ 
-           WARN: we are just defining what the context is,
-                 we are not writing what the 
-                 extended attributes are. It just means:
-                 "On relable it must look like this"
-        # restorecon -vR /my/alternative/www
-          ^^^^^^^^^^ 
-          must be run to actually proceed with relabeling
-
-   *A.2: Policy needs to be tweaked*
-     - booleans
-     - policy modules
-   *A.3: A bug in the policy*
-     - App vendors must supply policy modules for SELinux systems.
-       You must submit a ticket to the app vendor following next steps:
-       - STEP 1:
-         # setenforce 0 ← change to "permissive" mode and run
-                          the application through all its paces
-                          to log *all SELinux denials*
-       - STEP 2:
-         From /var/log/messages Copy&amp;Paste the proposed solution:
-         # grep httpd /var/log/audit/audit.log | \
-          *audit2allow* -Mo*quirrellocal*
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-           generate  new policy file
-
-       - STEP 3:
-         #*semodule -i* o*squirrellocal.pp* ← Import the new module
-
-       - STEP 4:
-         # setenforce 1                     ← Re-enable enforcement
-
-  r*A.4: You have been, or are being, broken into!!*
-
-*BUG FIXING GENERAL PROCEDURE*
-
- *STEP 01: Check /var/log/messages*
-  ...
-  ...  setroubleshoot: SELinux is preventing /usr/bin/httpd from getattr access on the directory /home/fred. *For complet SELinux messages, run sealert -l 37acc7d8-e955-4333-123a-1d027dbcea72*
- 
- *STEP 02: Run the indicated command*
-  ~# sealert -l 37acc7d8-e955-4333-123a-1d027dbcea72
-  → SELinux is preventing /usr/sbin/httpd from search access on the directory /home/fred
-  → ...<b orange>
-  → Do
-  → setsebool -P httpd_read_user_content 1
-  → ...
-  → setsebool -P httpd_enable_homedirs 1</b>
-
-Stackoverflow Ex:<a href="http://stackoverflow.com/questions/23851452/cant-resolve-domain-names-in-php-under-apache/24019910#24019910">Fix Apache DNS problem:</a>
-   $ setsebool -P nis_enabled 0  
-   $ setsebool -P httpd_can_network_connect 1
-                ☝ 
-                -P flag: change also boot-time default
-                         otherwise, changes are lost 
-                         after reboot
-
-*AUDITING SELINUX ERROR MESSAGES.*
-#~ ausearch   -m *avc*          -c httpd  
-   ☝              ☝ 
-   standard       filter by 
-   linux          AVC related 
-   audit          messaged
-   framework
-   tool
-   (auditd daemon
-    must be running)
-→ ...
-→ time → Thu Aug 21 16:42:17 2014
-→ type=AVC msg=audit(1408603337.115:914): avc:  denied  { getattr } for  pid=10204 comm="httpd" path="/www/html/index.html" dev="dm-0" ino=8445484 scontext=system_u:system_r:httpd_t:s0 tcontext=unconfined_u:object_r:default_t:s0 tclass=file
-  ☝ translates to:
-    type=AVC: ...: avc: The message comes from the AVC log and it's an AVC event.
-    denied { getattr }: The permission that was attempted and the result it got.
-                        In this case the get attribute operation was denied.
-    pid=10204           process id of the process that attempted the access.
-    comm="httpd"        shows the process command for the pid 
-    path:               resource trying to be accessed. 
-    dev :               device
-    ino :               inode
-    scontext:           source security context of the process.
-    tcontext:           target security context of the resource.
-    tclass:             target resource class.
-
-*sealert tool*
-#~ cat /var/log/messages | grep "SELinux is preventing"
-→ ...
-→ ... setroubleshoot: SELinux is preventing /usr/bin/su from using the setuid capability \
-      For complete SELinux messages. run sealert -l o*e9e6c6d8-f217-414c-a14e-4bccb70cfbce*
-#~ sealert -l o*e9e6c6d8-f217-414c-a14e-4bccb70cfbce*
-→ SELinux is preventing /usr/bin/su from using the setuid capability.
-→ ...
-→ Raw Audit Messages
-→ type=AVC msg=audit(1408931985.387:850): avc:  denied  { setuid } for  pid=5855 comm="sudo" capability=7  scontext=user_u:user_r:user_t:s0 tcontext=user_u:user_r:user_t:s0 tclass=capability
-→ type=SYSCALL msg=audit(1408931985.387:850): arch=x86_64 syscall=setresuid success=no exit=EPERM a0=ffffffff a1=1 a2=ffffffff a3=7fae591b92e0 items=0 ppid=5739 pid=5855 auid=1008 uid=0 gid=1008 euid=0 suid=0 fsuid=0 egid=0 sgid=1008 fsgid=0 tty=pts2 ses=22 comm=sudo exe=/usr/bin/sudo subj=user_u:user_r:user_t:s0 key=(null)
-→ 
-→ Hash: su,user_t,user_t,capability,setuid
-→ 
-</pre>
-</td>
-<td colsep></td>
-<td>
-  <a href="https://www.digitalocean.com/community/tutorials/an-introduction-to-selinux-on-centos-7-part-3-users">SELinux users fine-tunning</a>
-<pre xxxsmall zoom>
-An important concept of SELinux is that TE rules associate privileges and accesses with programs, not users.
-Users are not entirely ignored by SELinux. It is possible for the policy to specify multiple domain types (and thus differing sets of privilege) for the same program based on the user who runs the program. This allows for the concept of roles, which we discuss further in Chapter 6, “Roles and Users.” Nonetheless, the level of access control is still based on the program’s domain type and not the user’s privileges.
-
-
-You do not create an SELinux user with a command, 
-nor does it have its own login access to the server.
-SELinux users are defined in the policy loaded into
-memory at boot time, and there are only a few of these users. 
-
-Linux User ← N-to-1 → SELinux user ← 1-to-N →  roles → process domain (*_t)
-
-* Check linux_user N-to-1 SELinux_user relationship:
-  #~ semanage login -l   
-  (Example CentOS 7 output)
-  → Login Name           SELinux User         MLS/MCS Range        Service
-  → 
-  → __default__          unconfined_u         s0-s0:c0.c1023       *
-  → root                 unconfined_u         s0-s0:c0.c1023       *
-  → system_u             system_u             s0-s0:c0.c1023       *
-  → ^^^^^^^^^^^          ^^^^^^^^^^^^         ^^^^^^^^^^^          
-  → ^ linux user 1 ←→ 1  SE user              Multi Level/Category Sec.
-
-* Check SELinux_user 1-to-N SElinux_role relationship:
-  #~ semanage user -l
-  (Example CentOS 7 output)
-  →                 Labeling  ... 
-  → SELinux User    Prefix    ...    SELinux Roles
-  → 
-  → guest_u         user      ...    guest_r
-  → root            user      ...    staff_r sysadm_r system_r unconfined_r
-  → staff_u         user      ...    staff_r sysadm_r system_r unconfined_r
-  → sysadm_u        user      ...    sysadm_r
-  → system_u        user      ...    system_r unconfined_r
-  → unconfined_u    user      ...    system_r unconfined_r
-  → user_u          user      ...    user_r
-  → xguest_u        user      ...    xguest_r
-    
-- A user "enters a roll"           when policy grants it.
-- A role "access a process domain" when policy grants it. 
-
-<b>Ex 1: Restricting su/sudo </b>
-regularuser@localhost ~]$ su - switcheduser
-Password: XXXX
-→ [switcheduser@localhost ~]$
-
-#~ semanage login -a -s user_u regularuser # Remap linux_user to user_u user
-[regularuser@localhost ~]$ su - switcheduser
-Password: XXXX
-→ su: Authentication failure
-
-[regularuser@localhost ~]$ id -Z
-user_u:user_r:user_t:s0
-
-<b>Ex 2: Restricting Permissions to Run Scripts</b>
-By default, SELinux allows users mapped to the guest_t account to exec $HOME/* scripts 
-#~ getsebool allow_guest_exec_content
-→ guest_exec_content - -> on
-
-#~ semanage login -a -s guest_u guestuser
-semanage login -l
-
-[guestuser@localhost ~]$ ~/myscript.sh
-→ This is a test script
-
-#~ setsebool allow_guest_exec_content off
-[guestuser@localhost ~]$ ~/myscript.sh
- → bash: /home/guestuser/myscript.sh: Permission denied
-
-<b>Ex 3: SELinux in Action 3: Restricting Access to Services</b>
-Let's now how roles also play a part in restricting user access.
-
-#~ service httpd stop
-[restricteduser@localhost ~]$ id -Z
-unconfined_u:unconfined_r:unconfined_t:s0-s0:c0.c1023
-[restricteduser@localhost ~]$ service httpd start
-→ Redirecting to /bin/systemctl start  httpd.service
-→ Failed to issue method call: Access denied
-
-#~ visudo
-+ restricteduser ALL=(ALL)      ALL
-[restricteduser@localhost ~]$ sudo service httpd start
-→ ...
-→ [sudo] password for restricteduser:
-→ Redirecting to /bin/systemctl start  httpd.service
-Keep sudo permissions but restrict apache start/stop control.
-#~ semanage login -a -s user_u restricteduser
-#~ seinfo -uuser_u -x # shows the roles user_u can assume 
-→  user_u
-→     default level: s0
-→     range: s0
-→     roles:
-→        object_r   ←
-→        user_r     ←
-
-#~ seinfo -ruser_r -x #  check what domains the user_r role is authorized to enter:
-→  user_r                                 
-→     Dominated Roles:                    
-→        user_r                           
-→     Types:                              
-→        git_session_t                    
-→        sandbox_x_client_t               
-→        git_user_content_t               
-→        virt_content_t                   
-→        policykit_grant_t                
-→        httpd_user_htaccess_t            
-→        telepathy_mission_control_home_t 
-→        qmail_inject_t                   
-→        gnome_home_t                     
-→        ...                              
-→        ...                              
-#~ seinfo -ruser_r -x | grep httpd
-→        ...                              
-→        httpd_user_htaccess_t
-→        httpd_user_script_exec_t
-→        httpd_user_ra_content_t
-→        httpd_user_rw_content_t
-→        httpd_user_script_t
-→        httpd_user_content_t
-<b>httpd_t is missing!!! => Can NOT start/stop the service
-[restricteduser@localhost ~]$ sudo service httpd start
-→ sudo: PERM_SUDOERS: setresuid(-1, 1, -1): Operation not permitted
-
-SELinux Audit Logs
-
-- auditd  : userspace component of the Linux auditing system
-  /var/log/audit/audit.log used if auditd is running.
-                           Records keep detailed information 
-  /var/log/messages        used if auditd is stopped (and rsyslogd is running)
-                           Records keep easy-to-read version
-
-- rsyslogd: system utility providing support for message logging.
-</pre>
-  <br/>
-
   <a href="http://blog.siphos.be/2015/07/restricting-even-root-access-to-a-folder/">Restricting root access to F.S.</a> 
 <pre xxxsmall zoom>
 (Date Sat 11 July 2015 By Sven Vermeulen Category SELinux)
 
-- The use of a pre-existing policy means that some roles are already 
-  identified and privileges are already granted to users - often these
-  higher privileged roles are assigned to the Linux root user as not
-  to confuse users. But that does mean that restricting root access to
-  a folder means that some additional countermeasures need to be implemented.
+- Ussually a policy grants some privileges to "root" users.
 
-STEP 01: Create new policy restricting access to /etc/private:
+- Let's try to restrict root-access to a folder:
+
+STEP 01:*Create new policy*restricting access to /etc/private:
  policy_module(myprivate, 1.0)
  
  type <b orange>etc_private_t</b>;                 ← type allowed to be used for files 
@@ -896,327 +355,6 @@ NEXT: all that needed is to have an initial location marked as `ca_misc_t`
   | ')
 </pre>
 </td>
-<td colsep></td>
-<td>
-  <span xsmall>SEL status info</span>
-<pre xxxsmall zoom>
-avcstat(8)                   Shows statistics&counters (AVC cache hits, ...)
-getenforce(8)                Display current mode string ("permissive", "enforcing")
-selinuxenabled(1)            help-utility for shell scripts
-
-sestatus(8)                  Return various status info, such as
-                             enforcing mode, current policy version
-                             and name, Boolean status
-  $ sudo *sestatus*  
-  → SELinux status:                 enabled
-  → SELinuxfs mount:                /sys/fs/selinux
-  → SELinux root directory:         /etc/selinux
-  → Loaded policy name:             targeted
-  → Current mode:                   permissive
-  → Mode from config file:          error (Success)
-  → Policy MLS status:              enabled
-  → Policy deny_unknown status:     allowed
-  → Max kernel policy version:      28
-</pre>
-
-  <span xsmall>Switch Enforcement</span>
-<pre xxxsmall zoom>
-#*setenforce* permissive ← Useful for fixing new apps
-#*setenforce* enforcing
-</pre>
-
-  <span xsmall>Process</span>
-<pre xxxsmall zoom>
-*runcon(1)*   run command with given ctx (user, role and domain)
-
-*secon(1) *   See ctx from a file|program|user-input 
-
-*newrole(1)*  creates new shell running with new sec.ctx.
-              Use must specify new role and/or type.
-              type is derived from role if not specified.
-
-*run_init(9)* Runs initrc script using the sec.ctx.
-              found in current policy's ctx/initrc_context 
-              file. Ussually used to restart system
-              services in new intended domain
-</pre>
-
-
-   <span xsmall>Policy</span>
-<pre xxxsmall zoom>
-<b>se</b>search:
-- search access allowed for source/target domains:
-#~ sesearch --allow \
-   --source <b orange>httpd_t</b>              # domain for apache process
-   --target <b orange>httpd_sys_content_t</b>  # type   for /var/www/html files
-   --class <b blue>file</b> 
-(output will be similar to...)
-Found 4 semantic av rules:
-   allow o*httpd_t httpd_sys_content_t* : b*file* <b green>{ ioctl read getattr lock open }</b> ;
-   allow o*httpd_t httpd_content_type * : b*file* <b green>{ ioctl read getattr lock open }</b> ;
-   allow o*httpd_t httpd_content_type * : b*file* <b green>{ ioctl read getattr lock open }</b> ;
-   allow o*httpd_t httpdcontent       * : b*file* <b green>{ ioctl read write create getattr setattr lock append unlink link rename execute open }</b> ;
-
-checkpolicy(8)           policy compiler generating kernel       
-                         loadable version. Can be used to debug  
-                         a policy in that it can mimimc some of  
-                         the capabilities of the SEL sec.server. 
-
-
-semanage(8)              configure certain policy elements      
-                         without editing/recompiling source:    
-                         - mapping user to se_users             
-                         - mapping ctx for network ports,       
-                           interfaces, and nodes(hosts),        
-                           file context mapping.                    
-
-load_policy(8)           load policy into the kernel. 
-                         In enforcing mode, it must be run in a
-                         domain with load_policy permissions.
-
-audit2allow(1)           Takes the AVC audit denial messages and
-                         outputs allow policy rules that, if added,
-                         will allow further attemps.
-
-audit2why(1)             Tries to provide a by comparing with
-                         policy rules. (useful to identify
-                         constrain violations.
-
-ausearch(8)              Basic interpretation of audti messages.
-                         -m avc pull out just AVC messages.
-</pre>
-
-</td>
-
-<td>
-  <a href="https://github.com/TresysTechnology/setools/wiki">policy analysis tools</a>
-<pre xxxsmall zoom>
-|<a ____="                                    ">Tool Name   </a>| Use
-|<t                                           />------------</t>|----------------------------------
-|<a href="https://linux.die.net/man/1/apol"    >apol (GUI)  </a>| perform various types of analyses
-|<t                                           />------------</t>|----------------------------------
-|<a href="https://linux.die.net/man/1/sediff"  >sediff      </a>| Compare two policies to find differences.
-|<t                                           />------------</t>|----------------------------------
-|<a href="                                    ">sedta       </a>| Perform domain transition analyses.
-|<t                                           />------------</t>|----------------------------------
-|<a href="https://linux.die.net/man/1/seinfo"  >seinfo      </a>| List policy components.
-|<t                                           />------------</t>|----------------------------------
-|<a href="                                    ">seinfoflow  </a>| Perform information flow analyses.
-|<t                                           />------------</t>|----------------------------------
-|<a href="https://linux.die.net/man/1/sesearch">sesearch(8) </a>|policy query tool, Search rules (allow, type_transition, etc.)
-|<t                                           />------------</t>|----------------------------------
-</pre>
-</td>
-</table>
-
-Creating new Policies
-<table>
-<tr>
-<td>
-  <span xsmall>Policy RULES</span>
-<pre xxxsmall zoom>
-- The set of (possibly thousands of) rules define a given policy.
-  ┌──────────────────────────┬─────────────────────────────────────────────────────────────┐
-  │*ACCESS VECTOR(AV) RULES*:│                                                             │
-  ├──────────────────────────┘                                                             │
-  │- Define the AV bitmap from source types to*existing*[target+type:kernel-class] objects │
-  ├────────────────────────────────────────────────────────────────────────────────────────┤
-  │ SYNTAX:                                                                                │
-  │ *allow*       o*src_domain*       g*target_type*:b*class* { g*permissions* };          │
-  │  ↑↑↑↑↑          ↑↑↑↑↑↑↑↑↑↑          ↑↑↑↑↑↑↑↑↑↑↑    ↑↑↑↑↑      ↑↑↑↑↑↑↑↑↑↑↑              │  
-  │  allow          running process     TODO??????     files      sub─list of              │
-  │  dontaudit      domain ("type")                    socket     class─actions            │
-  │  auditallow                                        IPC        allowed for              │
-  │  neverallow                                        ...        source─to─target         │
-  │                                                               types                    │
-  │              (o*src_domain*   ,   g*target_type*, b*class*)   types                    │
-  │              └─── tuple used as key in AV hashtable  ─────┘                            │
-  │                 ─ Two rules matching the same triplet key will                         │
-  │                   "merge" their permissions.                                           │
-  │                 ─ Permissions can NOT be deleted, only added                           │
-  └────────────────────────────────────────────────────────────────────────────────────────┘
-  ┌─────────────┬────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
-  │*TYPE RULES*:│                                                                                                                                │ 
-  ├─────────────┘                                                                                                                                │ 
-  │─ control default labeling decisions when*new objects*are created*AT RUNTIME*                                                                 │
-  ├──────────────────────────────────────────────────────┬──────────────────┬────────────────────────────────────────────────────┬───────────────┤
-  │ TYPE─TRANSITION─SYNTAX:(new running─process labeling)│                  │ OBJECT─TRANSITION─SYNTAX (new file─object labeling)│               │
-  ├──────────────────────────────────────────────────────┘                  ├────────────────────────────────────────────────────┘               │
-  │                                                                         │ (default to "parent")                                              │
-  │ *type_transition* g*user_t*  b*passwd_exec_t*:o*process* *passwd_t*;    │ *type_transition* passwd_t tmp_t : file passwd_tmp_t;              │
-  │                                ^^^^^^^^^^^^^    ^^^^^^^                 │                   ^^^^^    ^^^^^                                   │
-  │                                targeted type    source object─class     │            object class    implicitly associated with              │
-  │                       implicitely associated    associated with source  │       refers to default    dir─object class(only one               │
-  │                       with file─object─class    (g*user_t*) and default │     type (passwd_tmp_t)    that can contain files)                 │
-  │                                                  types.                 │                                                                    │
-  │ └───────────────────────────────────────────────────────────────────┘   │ └───────────────────────────────────────────────────┘              │
-  │     ☝This rules means:                                                  │           ☝This rules means:                                       │
-  │      """when a *oprocess* of type g*user_t* executes a                  │  """ when a process of type passwd_t creates an                    │
-  │         file of type b*passwd_exec_t*, the process type                 │    ordinary file (file object class) in a directory of             │
-  │         will attempt to transition, by default, to                      │    type tmp_t the file, by default, should have the                │
-  │         *passwd_t* unless otherwise requested.  """                     │    type passwd_tmp_t if allowed by the policy. """                 │
-  │                                                                         │  NOTICE:                                                           │
-  │ Ex:                                                                     │                                                                    │
-  │ *type_transition* g*init_t* b*apache_exec_t* :o*process* *apache_t*;    │  ─ AV rules must also allow the access for the default             │
-  │                                                                         │    labeling to occur. (add_name, write, and search for             │
-  │  allow g*init_t*  b*apache_exec_t*   : file    execute;                 │    directories of type tmp_t, and write and create for             │
-  │  allow g*init_t*   *apache_t*        : process transition;              │    files of type passwd_tmp_t).                                    │
-  │  allow  *apache_t*b*apache_exec_t*   : file    entrypoint;              │                                                                    │
-  └─────────────────────────────────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────┘
-</pre>
-</td>
-
-<td>
-  Compiling new policy:
-<a href="https://wiki.gentoo.org/wiki/SELinux/Tutorials/Creating_your_own_policy_module_file">REF</a>
-
-<pre xxxsmall zoom>
-WARN: In some cases, you might need to update your policy to be compatible 
-      with upstream SELinux policy changes. 
-
-Tipical policy module (*.pp file) looks like:
-
-localpolicy.pp 
-*.te: type enforcement
-*.fc: file contexts (optional)
-*.if: interfaces (optional)
-
-
-PRE-SETUP:
- $ sudo yum install -y selinux-policy-devel
-
-
-<b>STEP 01: vim localpolicy.te:</b>
-
-policy_module(localpolicy, 1.0)  ← localpolicy must match localpolicy.te prefix
-gen_require(`                    ← backtick (`) denotes the start/end of the block 
-  type user_t;                   ← gen_require block is used to "reuse"reference policy,
-  type var_log_t;                  and will be translated during the make -f ... command 
-')                                 earlier on towards SELinux rules. 
-
-allow user_t var_log_t:dir { getattr search open read };
-
-<b>STEP 02: create SELinux policy module localpolicy.pp:</b>
-# sudo make -f /usr/share/selinux/devel/Makefile localpolicy.pp
-
-                                                          ^must "match"
-                                                           localpolicy.te prefix
-
-
-<b>STEP 03: Load the file:</b>
-# sudo setenforce permissive
-# sudo semodule -i /path/to/localpolicy.pp  
-WARN: semodule does NOT need "-P". Will remain loaded after reboots.
-(to disable use # sudo semodule -d localpolicy)
-
-# sudo 
-</pre>
-</td>
-
-<td>
-  Context Transition
-<pre xxxsmall zoom >
-proc_a @ contexta_t   → run app_x     → proc_b running @ contextb_t
-                            ↑
-                        entrypoint to
-                         new context 
-
-Ex:
-#~ ls -Z /usr/sbin/vsftpd 
--r-x------ root root system_u:object_r:<b orange>ftpd_exec_t</b>:s0 /usr/sbin/vsftpd
-                                       <b orange>^entrypoint</b> 
-                                       <b orange>to  new    </b> 
-                                       <b orange>context    </b>
-
-#~ps -eZ  | egrep "(init_t|vsftpd)"
-system_u:system_r:<b orange>init_t</b>:s0 ... systemd
-system_u:system_r:<b orange>ftpd_t</b>:s0 ... vsftpd
-
- <b>Domain transition rules:</b>
- - source context "proc_a" must have execute permission for entrypoint (app_x)
- - "app_x" file context must be identified as an entrypoint for the target domain
- - original domain (contexta_t) must be allowed to transition to the target domain (contextb_t)
-  In the previous example:
-  STEP 01: Check source domain <b orange>init_t</b> have execute permission on
-  ftpd_exec_t entrypoint:
-    #~ sesearch -s init_t -t ftpd_exec_t -c file -p execute -Ad
-    → allow init_t ftpd_exec_t : file { read getattr execute open } ;
-   
-  STEP 02: Check binary file is entrypoint for the target domain <b orange>ftpd_t</b>:
-    #~ <b>se</b>search -s <b orange>ftpd_t</b> \
-         -t <b orange>ftpd_exec_t</b> -c file \
-         -p <b green>entrypoint</b> -Ad
-    → allow ftpd_t ftpd_exec_t : file { ioctl read getattr lock execute execute_no_trans <b green>entrypoint</b> open } ;
-
-  STEP 03: Check source domain init_t have transition permission to target ftpd_t:
-    #~ <b>se</b>search -s <b orange>init_t</b> -t <b orange>ftpd_t</b> \
-          -c process -p transition -Ad
-    → allow init_t ftpd_t : process transition ;
-</pre>
-
-  Workflow
-<pre xxxsmall zoom>
-- Switch to permisive mode.
-- Test new policy.
-- Check violations in logs (See troubleshooting with audit2allow to produce new rules)
-</pre>
-    
-
-  Verify current file  against file_context(.local) ddbb 
-<pre xxxsmall zoom >
-#~ matchpathcon -V /www/html/index.html # -V: Verify
-In case of mismatch an error similar to next one will be displayed:
-/www/html/index.html has context unconfined_u:object_r:default_t:s0, should be system_u:object_r:httpd_sys_content_t:s0 
-</pre>
-
-  Computing SE context output
-<pre xxxsmall zoom>
-The table shows how the components from the source context scon, target context tcon and class tclass are used to compute the new context newcon (referenced by SIDs for  avc_compute_create(3)).
-<b>avc_compute_create and security_compute_create</b>
-USER                                    | ROLE                                          | TYPE                                          | RANGE
-----------------------------------------+-----------------------------------------------+-----------------------------------------------+-----------------------------------------------------
-                                        |                                               |                                               | 
-IF default_user tclass target rule THEN | IF there is a valid role_transition rule THEN | IF there is a valid type_transition rule THEN | IF there is a valid range_transition rule THEN
-  use tcon user                         |    use the rules new_role                     |   use the rules default_type                  |   use the rules new_range
-ELSE                                    | OR IF default_role tclass source rule THEN    | OR IF default_type tclass source rule THEN    | OR IF default_range tclass source low rule THEN
-  use scon user                         |    use scon role                              |   use scon type                               |   use scon low
-                                        | OR IF default_role tclass target rule THEN    | OR IF default_type tclass target rule THEN    | OR IF default_range tclass source high rule THEN 
-                                        |    use tcon role                              |   use tcon type                               |   use scon high
-                                        | OR IF tclass is process or *socket  THEN      | OR IF tclass is process or *socket THEN       | OR IF default_range tclass source low_high rule THEN
-                                        |    use scon role                              |   use scon type                               |   use scon range
-                                        | ELSE                                          | ELSE                                          | OR IF default_range tclass target low rule THEN 
-                                        |    Use object_r                               |   use tcon type                               |   use tcon low
-                                                                                                                                        | OR IF default_range tclass target high rule THEN
-                                                                                                                                        |   use tcon high
-                                                                                                                                        | OR IF default_range tclass target low_high rule THEN
-                                                                                                                                        |   use tcon range
-                                                                                                                                        | OR IF tclass is process or *socket THEN
-                                                                                                                                        |   use scon range
-                                                                                                                                        | ELSE
-                                                                                                                                        |   use scon low
-_______________________________________________________________________________________________________________________________________________________________________________________________
-<b>avc_compute_member and security_compute_member</b>
-USER                                    | ROLE                                          | TYPE                                          | RANGE
-----------------------------------------+-----------------------------------------------+-----------------------------------------------+-----------------------------------------------------
-                                        |                                               |                                               | 
-IF default_user tclass target rule THEN | If there is a valid role_transition rule THEN | If there is a valid type_transition rule THEN | If default_range tclass source low rule THEN
-  use tcon user                         |   use the rules new_role                      |   use the rules default_type                  |   use scon low
-ELSE                                    | OR IF default_role tclass source rule THEN    | OR IF default_type tclass source rule THEN    | OR IF default_range tclass source high rule THEN 
-  Use scon user                         |   use scon role                               |   use scon type                               |   use scon high
-                                        | OR IF default_role tclass target rule THEN    | OR IF default_type tclass target rule THEN    | OR IF default_range tclass source low_high rule THEN
-                                        |   use tcon role                               |   use tcon type                               |   use scon range
-                                        | OR IF tclass is process or *socket , THEN     | OR IF tclass is process or *socket , THEN     | OR IF default_range tclass target low rule THEN
-                                        |   use scon role                               |   use scon type                               |   use tcon low
-                                        | ELSE                                          | ELSE                                          | OR IF default_range tclass target high rule THEN
-                                        |   Use object_r                                |   use tcon type                               |   use tcon high
-                                                                                                                                        | OR IF default_range tclass target low_high rule THEN
-                                                                                                                                        |   use tcon range
-                                                                                                                                        | OR IF tclass is process or *socket , THEN
-                                                                                                                                        |   use scon range
-                                                                                                                                        | ELSE
-                                                                                                                                        |   Use scon low
-</pre>
-</td>
 
 <td>
   Who is Who
@@ -1258,6 +396,25 @@ Sven Vermeulen, author of SELinux Cookbook
 </pre>
 
 
+</td>
+<td>
+  <a href="https://github.com/TresysTechnology/setools/wiki">policy analysis tools</a>
+<pre xxxsmall zoom>
+|<a ____="                                    ">Tool Name   </a>| Use
+|<t                                           />------------</t>|----------------------------------
+|<a href="https://linux.die.net/man/1/apol"    >apol (GUI)  </a>| perform various types of analyses
+|<t                                           />------------</t>|----------------------------------
+|<a href="https://linux.die.net/man/1/sediff"  >sediff      </a>| Compare two policies to find differences.
+|<t                                           />------------</t>|----------------------------------
+|<a href="                                    ">sedta       </a>| Perform domain transition analyses.
+|<t                                           />------------</t>|----------------------------------
+|<a href="https://linux.die.net/man/1/seinfo"  >seinfo      </a>| List policy components.
+|<t                                           />------------</t>|----------------------------------
+|<a href="                                    ">seinfoflow  </a>| Perform information flow analyses.
+|<t                                           />------------</t>|----------------------------------
+|<a href="https://linux.die.net/man/1/sesearch">sesearch(8) </a>|policy query tool, Search rules (allow, type_transition, etc.)
+|<t                                           />------------</t>|----------------------------------
+</pre>
 </td>
 
 
@@ -1403,6 +560,95 @@ setcon(3)
 getcon(3)                      
 getpidcon(3)                   
 getpidcon(3)                   
+_____________________
+  command line      
+  management        
+   ↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓  
+← semanage fcontext  
+                     
+← semanage port│node 
+← semanage login     
+← semanage user      
+          ...        
+
+ Role Based Access Control:    
+ ─ SELinux users are associated
+   to one or more roles,       
+ ─ each role may be associated 
+   to one or more Domain types.
+ ─ Note: SElinux users are not 
+   normal linux users: Most    
+   users are mapped to a single
+   SELinux user.               
+__________________________________
+checkpolicy(8)           policy compiler generating kernel       
+                         loadable version. Can be used to debug  
+                         a policy in that it can mimimc some of  
+                         the capabilities of the SEL sec.server. 
+
+load_policy(8)           load policy into the kernel. 
+                         In enforcing mode, it must be run in a
+                         domain with load_policy permissions.
+____________________
+$ sudo dnf install setools-console 
+$ dnf repoquery -l setools-console
+...
+/usr/bin/*sediff*
+/usr/bin/*seinfo*
+/usr/bin/*sesearch*
+/usr/share/man/man1/sediff.1.gz
+/usr/share/man/man1/seinfo.1.gz
+/usr/share/man/man1/seinfoflow.1.gz
+/usr/share/man/man1/sesearch.1.gz
+____________________
+
+  Computing SE context output
+<pre xxxsmall zoom>
+The table shows how the components from the source context scon, target context tcon and class tclass are used to compute the new context newcon (referenced by SIDs for  avc_compute_create(3)).
+<b>avc_compute_create and security_compute_create</b>
+USER                                    | ROLE                                          | TYPE                                          | RANGE
+----------------------------------------+-----------------------------------------------+-----------------------------------------------+-----------------------------------------------------
+                                        |                                               |                                               | 
+IF default_user tclass target rule THEN | IF there is a valid role_transition rule THEN | IF there is a valid type_transition rule THEN | IF there is a valid range_transition rule THEN
+  use tcon user                         |    use the rules new_role                     |   use the rules default_type                  |   use the rules new_range
+ELSE                                    | OR IF default_role tclass source rule THEN    | OR IF default_type tclass source rule THEN    | OR IF default_range tclass source low rule THEN
+  use scon user                         |    use scon role                              |   use scon type                               |   use scon low
+                                        | OR IF default_role tclass target rule THEN    | OR IF default_type tclass target rule THEN    | OR IF default_range tclass source high rule THEN 
+                                        |    use tcon role                              |   use tcon type                               |   use scon high
+                                        | OR IF tclass is process or *socket  THEN      | OR IF tclass is process or *socket THEN       | OR IF default_range tclass source low_high rule THEN
+                                        |    use scon role                              |   use scon type                               |   use scon range
+                                        | ELSE                                          | ELSE                                          | OR IF default_range tclass target low rule THEN 
+                                        |    Use object_r                               |   use tcon type                               |   use tcon low
+                                                                                                                                        | OR IF default_range tclass target high rule THEN
+                                                                                                                                        |   use tcon high
+                                                                                                                                        | OR IF default_range tclass target low_high rule THEN
+                                                                                                                                        |   use tcon range
+                                                                                                                                        | OR IF tclass is process or *socket THEN
+                                                                                                                                        |   use scon range
+                                                                                                                                        | ELSE
+                                                                                                                                        |   use scon low
+_______________________________________________________________________________________________________________________________________________________________________________________________
+<b>avc_compute_member and security_compute_member</b>
+USER                                    | ROLE                                          | TYPE                                          | RANGE
+----------------------------------------+-----------------------------------------------+-----------------------------------------------+-----------------------------------------------------
+                                        |                                               |                                               | 
+IF default_user tclass target rule THEN | If there is a valid role_transition rule THEN | If there is a valid type_transition rule THEN | If default_range tclass source low rule THEN
+  use tcon user                         |   use the rules new_role                      |   use the rules default_type                  |   use scon low
+ELSE                                    | OR IF default_role tclass source rule THEN    | OR IF default_type tclass source rule THEN    | OR IF default_range tclass source high rule THEN 
+  Use scon user                         |   use scon role                               |   use scon type                               |   use scon high
+                                        | OR IF default_role tclass target rule THEN    | OR IF default_type tclass target rule THEN    | OR IF default_range tclass source low_high rule THEN
+                                        |   use tcon role                               |   use tcon type                               |   use scon range
+                                        | OR IF tclass is process or *socket , THEN     | OR IF tclass is process or *socket , THEN     | OR IF default_range tclass target low rule THEN
+                                        |   use scon role                               |   use scon type                               |   use tcon low
+                                        | ELSE                                          | ELSE                                          | OR IF default_range tclass target high rule THEN
+                                        |   Use object_r                                |   use tcon type                               |   use tcon high
+                                                                                                                                        | OR IF default_range tclass target low_high rule THEN
+                                                                                                                                        |   use tcon range
+                                                                                                                                        | OR IF tclass is process or *socket , THEN
+                                                                                                                                        |   use scon range
+                                                                                                                                        | ELSE
+                                                                                                                                        |   Use scon low
+</pre>
 
 -->
 

@@ -2323,484 +2323,282 @@ Information on Packages
 <br/>
 Storage
 <table>
-<td colsep>Basic&nbsp;FS.Mng</td>
 <td>
-   <span xsmall>Moving around FS</span>
 <pre xxxsmall zoom>
-<b>Display current working directory</b>
-$ pwd  # pwd: "P"rint "W"orking "D"irectory
-<b>Change working directory</b>
-$ cd /home/myUser/Dowload
-$ pushd . # Store current dir. in stack
-$ cd      # With no args move to $HOME directory
-$ cd ~    # ~ is alias for $HOME
-$ cd ..   # Change to parent directory
-$ popd    # Move to last dir. in stack (and remove from stack)
-
-<b>(ls "file or directory") List "file" or "files in directory"</b>
-With no file or directory list info in current working directory
-ls -l :  ("long"), show permissions, file size, modification date, ownership
-ls -a :  ("all" ), shows also hidden files (files/dirs starting with ".") 
-ls -d :  Show only directory entry, do NOT display directory contents 
-ls -F :  ("format") append helper graphical symbol like '*' for executable files
-ls -S :  sort by size output in descending order
-ls -R :  ("recursive") list recursively children directories
+  <span xsmall>File System Management Basics</span>
+┌──────────────────┬────────────────────────────────────┐ ┌────────────────┬────────────────────────────────────┐ ┌─────────────────┬─────────────────────────────────────┐ 
+│*MOVING AROUND FS*│                                    │ │*LISTING  FILES*│                                    │ │*HARD/SOFT LINKS*│                                     │ 
+├──────────────────┘                                    │ ├────────────────┘                                    │ ├─────────────────┘                                     │ 
+│ $*pwd*           ← "P"rint "W"orking "D"irectory      │ │$*ls" -"optionalFlags"   ← list files in current     │ │- In UNIX ano*inode* is the low-level structure        │ 
+│ $*cd*/my/new/dir ← "C"hange "d"irectory               │ │      ^^^^^^^^^^^^^^^^     directory                 │ │  that stores the physical location in disk of         │ 
+│ $*cd*            ← move to $HOME directory            │ │ -l: ("long"), show permissions, size,               │ │  a given file. This "inode" is not visible to         │ 
+│ $*cd ~*          ← '~' is alias for $HOME             │ │     modification date, ownership                    │ │  the user.                                            │ 
+│ $ pushd.         ← Remember current dir.              │ │ -a: ("all" ), shows also hidden (.*) files          │ │- The user visible entities are the file system        │ 
+│                    (put on FILO stack)                │ │ -d: Show only directory entry(vs directory contents)│ │  paths, that point to the real inodes:                │ 
+│ $ cd ..   # Change to parent directory                │ │ -F: ("format") append helper symbol                 │ │ /my/file/path →points→o*inode* →points→  physical     │ 
+│ $ popd           ← change to last dir. in stack       │ │ -S: sort by size in descending order                │ │                  to               to   block_on_disk  │ 
+└───────────────────────────────────────────────────────┘ │ -R: ("recursive") list recursively children dirs    │ │ ^^^^^^^^^^^^^           ^^^^^^         ^^^^^^^^^^^^^  │ 
+                                                          └─────────────────────────────────────────────────────┘ │ visible in          invisible to      managed by HD,  │ 
+┌──────────────────────┬────────────────────────────┐     ┌──────────────┬──────────────────────────────────────┐ │ user shells,        users, managed    internal circuit│ 
+│*CREATE NEW DIRECTORY*│                            │     │*MOVING FILES*│                                      │ │ GUI explorers,..    by the OS kernel  networks NAS,...│ 
+├──────────────────────┘                            │     ├──────────────┘                                      │ │                                                       │ 
+│$*mkdir*-p ~/projects/project01 # ←  Make directory│     │$*mv*myFile1 /my/path02/  # ← move myFile1 to        │ │                                                       │ 
+│         ↑                                         │     │                       ^      /my/path02 directory   │ │$*ln -s*/my/file/path  /my/symbolic/link               │ 
+│     withouth -p will fail if                      │     │                    ┌──┘                             │ │  ^^ ^^                                                │ 
+│     ~/projects directory does                     │     │r*WARN*: The final '/' indicates taht path02         │ │ *create symbolic (-s) link*                           │ 
+│     NOT YET exits. With -p it                     │     │         is a directory.                             │ │- A symbolic links is a sortcut                        │ 
+│     will be created automatically                 │     │         Otherwise if "path02" does NOT exits,       │ │  pointing to a visible filepath                       │ 
+└───────────────────────────────────────────────────┘     │         myFile1 will move to the '/my/' directory   │ │                                                       │ 
+                                                          │         and renamed as wrongl 'path02' file.        │ │                                                       │ 
+                                                          └─────────────────────────────────────────────────────┘ │r*WARN:*If the original /my/file/path is               │ 
+┌────────────────┬───────────────────────────────┐        ┌──────────────┬──────────────────────────────────────┐ │        deleted or moved the link is broken.           │ 
+│*COPYING FILES**│                               │        │*RENAME FILES*│                                      │ │                                                       │ 
+├────────────────┘                               │        ├──────────────┘                                      │ │$*ln* my/file/path  /my/hard/link                      │
+│$*cp*   fileToCopy      /destination/directory/ │        │$*mv*myFile1 finalName # ← move myFile1 to new name  │ │  ^^                                                   │ 
+│$*cp*-R directoryToCopy /destination/directory/ │        │                       ^   (rename) finalName        │ │- With no -s(ymbolyc) flag the link will point         │ 
+│     ^^                                         │        └─────────────────────────────────────────────────────┘ │  to the realo*inode*. Deleting the original file      │ 
+│     -R: Recursive copy of dir.content          │                                                                │  will not affect the new path.                        │ 
+└────────────────────────────────────────────────┘        ┌───────────────────────────────────────────────┬─────┐ │- In can also be created pointing directly to          │ 
+┌──────────────────────────┬─────────────────────┐        │*REMOVE FILES AND CONTENT BY OVERWRITING FIRST*│     │ │  the o*inode*.                                        │ 
+│*REMOVE FILES/DIRECTORIES*│                     │        ├───────────────────────────────────────────────┘     │ │                                                       │ 
+├──────────────────────────┘                     │        │$*shred*-n 2 -z -v /tmp/myImportantSecret            │ │  /my/symbolic/Link                                    │ 
+│$*rm*-r -f file                                 │        │           ↑  ↑  ↑                                   │ │   ↓                                                   │ 
+│     ^^ ^^                                      │        │           │  │  └── show progress                   │ │  /my/file/path ──────┐                                │ 
+│     |  force deletetion, do not confirm        │        │           │  └───── Finally write over with zeroes  │ │                      ↓        physical                │ 
+│     |  useful for automated scripts            │        │           └──────── Overwrite twice with random data│ │                   o*inode*──→ block                   │ 
+│     |                                          │        │                                                     │ │                      ↑ ↑      on disk                 │ 
+│     Recursive deletion.                        │        │@[https://linux.die.net/man/1/shred]                 │ │  /my/hard/link ──────┘ |                              │ 
+│   r*WARN*: Be very careful,                    │        │prevent data from being recovered by                 │ │                        |                              │
+│            specially as root user              │        │hackers using software (and most                     │ │                  - the inode will increase its        │
+└────────────────────────────────────────────────┘        │probably hardware)                                   │ │                    number of references after a       │
+                                                          └─────────────────────────────────────────────────────┘ │                    hard-link.                         │
+                                                                                                                  │                  - the inode (file) will exists       │
+┌──────────────────────┬──────────────────────────────┐    ┌────────────────────────────┬────────────────────┐    │                    until all hardlinks(references)    │
+│*SEARCHING FILES/DATA*│                              │    │*CHECK DISK FREE/USED SPACE*│                    │    │                    are deleted.                       │
+├──────────────────────┘                              │    ├────────────────────────────┘                    │    └───────────────────────────────────────────────────────┘
+│@[https://linux.die.net/man/1/find]                  │    │@[https://linux.die.net/man/0/df]                │
+│                                                     │    │$*df*-k -h  # *D*isk*  F*ree                     │  ┌─────────────────┬───────────────────────────────┐
+│$*find*           \                                  │    │      ↑  ↑                                       │  │*GRAPHICAL TOOLS*│                               │
+│   /var/lib       \   ←     find inside /var/lib     │    │      │  └── show in human readable units        │  ├─────────────────┘                               │
+│   -type f        \   ←     objects of type 'file'   │    │      └───── scale size by 1K before printing    │  │- Easier to use, but not scriptable.             │
+│                            (ignore dirs, links, ...)│    │                                                 │  │- Discouraged for system administration.         │
+│   -iname "*html" \   ← AND whose name matches *html │    │@[https://linux.die.net/man/1/du]                │  │                                                 │
+│                             name:do NOT ignore case │    │$*du*-sch dir1 file2 # *D*isk  *U*ssage          │  │$*mc*      ← Execute the Midnight Commander      │
+│                            iname:do     ignore case │    │      ↑↑↑                                        │  │$*rancher* ← Execute rancher.                    │
+│   -mmin  -30     \   ← AND whose modification time  │    │      ││└── show in human readable units         │  │             Light and Nice Console File Manager │
+│                            is '30 or less'(-30)     │    │      │└─── produce a grand total                │  │             with VI Key Bindings                │
+│                            minutes (mmin)           │    │      └──── display only total for each arg      │  │$*nnn*     ← one of the fastest and most         │
+│   -msize +20k        ← AND whose size (msize) is    │    └─────────────────────────────────────────────────┘  │             lightweight file managers:          │
+│                            20k(ilobytes) or more    │                                                         │             ~50KB binary using ~3.5MB resident  │
+│                                                     │                                                         │             memory at runtime:                  │
+│$*find*           \   ←     find                     │                                                         │        @[https://github.com/jarun/nnn#features] │
+│   /var/lib       \   ←     inside /var/lib          │                                                         └─────────────────────────────────────────────────┘
+│   -type f        \   ←     object of type 'file'    │   
+│   -iname "*html" \   ← AND whose name matches '*html│   
+│ o*-exec* b*grep "myStyleSheet.css"*b*{} \;*         │   
+│    ^^^^    ^^^^^^^^^^^^^^^^^^^^^^    ^^^^^          │   
+│+*execute*b*this command*           b*for each *     │   
+│                                   b*found file*     │   
+└─────────────────────────────────────────────────────┘   
+                                                          
+                                                          
 </pre>
-
-   <span xsmall>handling files/dirs</span>
-<pre xxxsmall zoom>
-<b>Create directory</b>
-mkdir -p /home/myUser/work/project01 # -p: will create any non-existing directory up to project01
-                                     #     Withouth -p mkdir will fail if /home/myUser/work does not exists
-
-<b>Moving files</b>
-$ mv /my/path01/myFile1  /my/path02/   # move myFile1 from path01 to path02 directory
-<b>Rename file</b>
-$ mv myOriginalName  myFinalName   # use the mv (move) command to rename
-<b>copying files</b>
-$ cp    /tmp/fileToCopy       /home/myUser/ # copy to destination directory
-$ cp -R /tmp/directoryToCopy  /home/myUser/ # copy recursively (-R) directory to destination directory
-
-
-<b>Remove files/directories</b>
-$ rm -f file       # force (-f) file deletion.  The -f option is useful for automated scripts
-
-                   # Be very careful with recursive deletions. Specially as root user
-
-<b>Securely remove files by overwriting first</b>
-$ shred -n 2 -z -v /tmp/myImportantSecret  # -n 2: Overwrite twice with random data
-                                           # finally write over with zeroes (-z)
-                                           # -v: Show progress
-
-<a href="https://linux.die.net/man/1/shred">shred</a> prevent data from being recovered by software (and most probably hardware)
-</pre>
-
-   <span xsmall>Hard/Soft Links</span>
-<pre xxxsmall zoom>
-In unix an "inode" is the low-level structure that stores the physical location in disk of
-a given file. This "inode" is not visible to the user. 
-The user visible entities are the file system paths, that point to the real inodes.
-
-When a new file is created we have an structure similar to:
-
-   /my/file/path  (points to)  → inode   (points to) →  physical_block_on_disk
-   ^visible in              ^invisible to               ^managed by hard-disk
-    user shells,             users, managed              internal circuitry
-    GUI explorers,...        by the OS kernel            (or networks NAS)
-
-* We can create <b>symbolic links</b> to a file_path, that are "sortcuts" to access
-  a file_path from another file_path like (ln -s):
-  
-     $ ln -s /my/file/path   /my/newLocation/file/path/symLink
-     
-      This will leave and structure similar to:
-     
-        /my/file/path   →  inode   →  physical_block_on_disk
-         ↑
-         │
-        /my/newLocation/file/path/symLink
-     
-     If the original /my/file/path is deleted or moved the links is broken.
-  
-  
-* A hard-link can also be created pointing direcly to the inode, like (ln):
-     $ ln /my/file/path   /my/newLocation/file/path2
-
-      This will leave and structure similar to:
-     
-        /my/file/path   
-                                    →  inode   →  physical_block_on_disk
-        /my/newLocation/file/path2
-
-The underlying inode will increase the number of references. The file data can be
-accesses independently by the original /my/file/path or the new /my/newLocation/file/path2.
-The inode (file) wil exists until all hardlinks or references are deleted.
-</pre>
-</td> 
-<td> 
-   <span xsmall>Searching files/data</span>
-<pre xxxsmall zoom>
-<b><a href="https://linux.die.net/man/1/find">find</a> files whose name ends in "html"</b>
-Ex 1: "complex" find 
-Command             |   Human explanation
-(split into lines   |
- for readability)   |
-------------------- +--------------------
-$ find              |   let's display find results
-   /var/lib         | ←     starting in this base directory and subdirectories
-   -type f          | ← AND of type file (ignore directories, links, ...)
-   -iname "*html"   | ← AND whose name matches *html (iname:ignore case, name: case sensitive)
-   -mmin  -30       | ← AND whose modification time is 30 or less (-30) minutes (-mmin)
-   -msize +20k      | ← AND whose size (msize) is 20kilobytes or more (+20)
-
-Ex 2: find files and <b orange>for each found file execute</b> a <b blue>given command (grep ...)</b>
-$ find 
-   /var/lib
-   -type f
-   -iname "*html"
-   <b orange>-exec</b> <b blue>grep "myStyleSheet.css"</b> <b orange>{} \;</b>
-</pre>
-
-  <span xsmall>Check disk free/used space:</span>
-<pre xxxsmall zoom>
-<a href="https://linux.die.net/man/0/df">man 1 df</a> 
-$ df -kh  # Check free space
-
-<a href="https://linux.die.net/man/1/du">man 1 du</a>
-$ du -sch dir1 dir2  # check "d"isk "u"ssage of dir1 dir2
-</pre>
-  
-  <span xsmall>Graphical tools:</span>
-<pre xxxsmall zoom>
-"Graphical Console" (ncurses)
-mc     : (Midnight Commander) Linux version of Norton Comander
-rancher: Light and Nice Console File Manager with VI Key Bindings
-nnn    : one of the fastest and most lightweight file managers:
-        ~50KB binary using ~3.5MB resident memory at runtime.
-        <a href="https://github.com/jarun/nnn#features">List of features</a>
-</pre>
-
 </td>
 <td>
-  <span xsmall>Monitor files open:</span>
 <pre xxxsmall zoom>
-<a href="https://linux.die.net/man/8/lsof">man 8 lsof</a>
-# list files open by process "pID"
-$ sudo lsof -p <b orange>511</b> #
-(output can be similar ...)
-COMMAND   <b orange>PID</b>  USER   FD      TYPE     DEVICE SIZE/OFF    NODE NAME
-avahi-dae <b orange>511</b> avahi  cwd       DIR        8,1       67 1274283 /etc/avahi
-avahi-dae <b orange>511</b> avahi  rtd       DIR        8,1       67 1274283 /etc/avahi
-avahi-dae <b orange>511</b> avahi  txt       REG        8,1   136264 2568376 /usr/sbin/avahi-daemon
-avahi-dae <b orange>511</b> avahi  DEL       REG        8,1          1713236 /usr/lib64/libnss_sss.so.2;5ae2fcc0
-avahi-dae <b orange>511</b> avahi  DEL       REG        8,1          1390813 /usr/lib64/...
-avahi-dae <b orange>511</b> avahi    0r      CHR        1,3      0t0    1028 /dev/null
-avahi-dae <b orange>511</b> avahi    1u     unix 0xff222c00      0t0   20500 socket
-avahi-dae <b orange>511</b> avahi    3u     unix 0xffb84400      0t0   18699 /var/run/avahi-daemon/socket
-avahi-dae <b orange>511</b> avahi    7w     FIFO        0,8      0t0   20324 pipe
-avahi-dae <b orange>511</b> avahi   11r  a_inode        0,9        0    7017 inotify
-avahi-dae <b orange>511</b> avahi   12u     IPv4      21553      0t0     UDP *:mdns
-avahi-dae <b orange>511</b> avahi   13u     IPv4      21554      0t0     UDP *:44720
-avahi-dae <b orange>511</b> avahi   14u  netlink                 0t0   21555 ROUTE
-...
+  <span xsmall>Monitor files:</span>
+┌──────────────────────────────┬─────────────────────────────────────────────────────────────────────────┐
+│*LIST FILES OPEN BY A PROCESS*│                                                                         │
+├──────────────────────────────┘                                                                         │
+│@[https://linux.die.net/man/8/lsof]                                                                     │
+│$ sudo*lsof*-po*511*                                                                                    │
+│             ↑                                                                                          │
+│             └── running process with ID=511                                                            │
+│                                                                                                        │
+│(output will be similar ...)                                                                            │
+│  COMMAND   o*PID*  USER   FD      TYPE     DEVICE SIZE/OFF    NODE NAME                                │
+│  avahi-dae o*511* avahi  cwd       DIR        8,1       67 1274283 /etc/avahi                          │
+│  avahi-dae o*511* avahi  txt       REG        8,1   136264 2568376 /usr/sbin/avahi-daemon              │
+│  avahi-dae o*511* avahi  DEL       REG        8,1          1713236 /usr/lib64/libnss_sss.so.2;5ae2fcc0 │
+│  avahi-dae o*511* avahi  DEL       REG        8,1          1390813 /usr/lib64/...                      │
+│  avahi-dae o*511* avahi    0r      CHR        1,3      0t0    1028 /dev/null                           │
+│  avahi-dae o*511* avahi    1u     unix 0xff222c00      0t0   20500 socket                              │
+│  avahi-dae o*511* avahi    3u     unix 0xffb84400      0t0   18699 /var/run/avahi-daemon/socket        │
+│  avahi-dae o*511* avahi    7w     FIFO        0,8      0t0   20324 pipe                                │
+│  avahi-dae o*511* avahi   11r  a_inode        0,9        0    7017 inotify                             │
+│  avahi-dae o*511* avahi   12u     IPv4      21553      0t0     UDP *:mdns                              │
+│  avahi-dae o*511* avahi   13u     IPv4      21554      0t0     UDP *:44720                             │
+│  avahi-dae o*511* avahi   14u  netlink                 0t0   21555 ROUTE                               │
+│  ...                                                                                                   │
+└────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
-# list processes using any file in etc
-$ sudo lsof <b orange>/etc/*</b>
-(output can be similar ...)
-COMMAND     PID      USER   FD   TYPE DEVICE SIZE/OFF      NODE NAME
-avahi-dae   511     avahi  cwd    DIR    8,1       67 101274283 <b orange>/etc/</b>avahi
-avahi-dae   511     avahi  rtd    DIR    8,1       67 101274283 <b orange>/etc/</b>avahi
-java      41043 azureuser  296r   REG    8,1      393       154 <b orange>/etc/</b>os-release
-java      41043 azureuser  297r   REG    8,1      393       154 <b orange>/etc/</b>os-release
+┌──────────────────────────────────────┬───────────────────────────────────────────┐
+│*LIST PROCESSES USING ANY FILE IN ETC*│                                           │
+├──────────────────────────────────────┘                                           │
+│$ sudo lsof o*/etc/*                                                              │
+│(output can be similar ...)                                                       │
+│COMMAND     PID      USER   FD   TYPE DEVICE SIZE/OFF      NODE NAME              │
+│avahi-dae   511     avahi  cwd    DIR    8,1       67 101274283 o*/etc/*avahi     │
+│avahi-dae   511     avahi  rtd    DIR    8,1       67 101274283 o*/etc/*avahi     │
+│java      41043 azureuser  296r   REG    8,1      393       154 o*/etc/*os-release│
+│java      41043 azureuser  297r   REG    8,1      393       154 o*/etc/*os-release│
+│...                                                                               │
+└──────────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────┬───────────────────────────┐ ┌─────────────────────────────────────┬───────────────────────────────┐
+│*MONITOR FILE/DIR. ACCESS*│                           │ │*AUDIT LAST ACCESS/EXECUTION OF FILE*│                               │
+├──────────────────────────┘                           │ ├─────────────────────────────────────┘                               │
+│@[https://linux.die.net/man/1/inotifywait]            │ │$*stat*/usr/bin/sort                                                 │
+│Ex:*Wait for changes, then execute someCommand*       │ │  File: /usr/bin/sort                                                │
+│LIST_OF_FILES_TO_MONITOR="file1 file2 ..."            │ │  Size: 144016          Blocks: 288     IO Block: 4096   regular file│
+│while  true ; do                                      │ │Device: fd00h/64768d    Inode: 263476   Links: 1                     │
+│ *inotifywait*-q -e modify ${LIST_OF_FILES_TO_MONITOR}│ │Access: (0755/-rwxr-xr-x)  Uid: (    0/ root)   Gid: (    0/    root)│
+│  someCommandToExecute                                │ │Context: system_u:object_r:bin_t:s0                                  │
+│done                                                  │ │Access: 2019-05-18 15:00:03.242672510 -0400                          │
+│                                                      │ │Modify: 2018-11-07 10:14:42.000000000 -0500                          │
+│See also                                              │ │Change: 2019-01-17 08:14:01.789349117 -0500                          │
+│@[https://linux.die.net/man/1/inotifywatch]           │ │ Birth: -                                                            │
+│  (gather filesystem access statistics)               │ │                                                                     │
+└──────────────────────────────────────────────────────┘ │For an executable access will show when it was last executed         │
+                                                         └─────────────────────────────────────────────────────────────────────┘
 </pre>
-
-  <span xsmall>Monitor file/dir. access</span>
-<pre xxxsmall zoom>
-<a href="https://linux.die.net/man/1/inotifywait">man 1 inotifywait</a>: Wait for changes, then execute someCommand
-while  true ; do
-    inotifywait -q -e modify fileToMonitor1 fileToMonitor2 ... ;  someCommandToExecute ; done
-done
-
-<a TODO href="https://linux.die.net/man/1/inotifywatch">man 1 inotifywatch</a>: gather filesystem access statistics
-</pre>
-
-   <span xsmall>file last access/exec</span>
-<pre xxxsmall zoom>
-(basic audit)
-$ stat myFile.txt   
-    File: myFile.txt
-    Size: 5557            
-  Blocks: 16
-IO Block: 4096   regular file
-  Device: 800h/2048d      
-   Inode: 1554743
-   Links: 1
-  Access: (0644/-rw-r--r--)
-     Uid: ( 1000/ earizon)
-     Gid: ( 1000/ earizon)
-  <b>Access: 2018-09-12 14:31:06.882431359 +0000</b>
-  <b>Modify: 2018-08-29 16:15:31.000000000 +0000</b>
-  <b>Change: 2018-09-12 14:31:06.882431359 +0000</b>
- Birth: -
-
-For an executable access will show when it was last executed
-</pre>
-
 </td>
 <td colsep></td>
-<td colsep>Block&nbsp;Storage</td>
 <td>
-  <span xsmall>List block devices</span>
 <pre xxxsmall zoom>
-[root@localhost earizon]# lsblk
-NAME            MAJ:MIN RM   SIZE RO TYPE MOUNTPOINT
-sda               8:0    0 223.6G  0 disk
-├─sda1            8:1    0     1G  0 part /boot
-└─sda2            8:2    0 222.6G  0 part
-  ├─fedora-root 253:0    0    50G  0 lvm  /
-  ├─fedora-swap 253:1    0   7.8G  0 lvm  [SWAP]
-  └─fedora-home 253:2    0 164.8G  0 lvm  /home
-sdb               8:16   0 931.5G  0 disk
-└─sdb1            8:17   0 931.5G  0 part /mount/disk01
-sdd               8:48   0 465.7G  0 disk
-└─sdd1            8:49   0 465.7G  0 part
-mmcblk0         179:0    0  29.7G  0 disk
-└─mmcblk0p1     179:1    0  29.7G  0 part /run/media/myUser/C852-6915
+  <span xsmall>Block&nbsp;Storage</span>
+┌──────────────────────┬─────────────────────────────────────────────────────────────────────────┐┌────────────┬────────────────────────────────────────────────────────────────────────────────────┐
+│*ANNOTATED /etc/fstab*│                                                                         ││*GPT vs MBR*│                                                                                    │
+├──────────────────────┘                                                                         │├────────────┴────────────────────────────────────────────────────────────────────────────────────┤
+│  $ cat /etc/fstab | nl -                                                                       ││*GPT/GUID:*                                          │*MASTER BOOT RECORD (MBR, OLD 80'S MS-DOS)*│
+│→ 1 /dev/mapper/fedora-root                        /               ext4   defaults          1 1 ││- Suported by Linux GRUB 2                           │- Designed when HD were  tens of megabytes.│
+│→ 2 UUID=735acb4c-29bc-4ce7-81d9-83b778f6fc81      /boot           ext4   defaults          1 2 ││  and GParted                                        │- First 512 bytes of disk                  │
+│→ 3 LABEL=backups                                  /mnt/backups    xfs    defaults          1 2 ││- Globally Unique Identifiers                        │  - 446 Bytes bootloader                   │
+│→ 4 /dev/mapper/fedora-home                        /home           ext4   defaults          1 2 ││  Partition Table                                    │  -  64 Partition table                    │
+│→ 5 /dev/mapper/fedora-swap                        swap            swap   defaults          0 0 ││- Part of UEFI specs                                 │  -   2 boot signature                     │
+│→ 6 PARTUUID=8C208C30-4E8F-4096-ACF9-858959BABBAA  /mnt/ddbb       xfs    defaults          1 2 ││- Linux can use it with UEFI                         │- limited to 4 primary partitions          │
+│→ 6 "some network attached device"                 /var/.../       xfs    defaults,nofail*3 1 2 ││  or legacy BIOS                                     │  - A single primary partition can hold an │
+│    └───────────────────┬───────────────────┘      └─────┬────┘   └──┬──┘ └───┬───┘         │ │ ││- no more primary/logical partitions.                │    extended partition with unlimited      │
+│                        ↓                                ↓           ↓        ↓             │ │ ││- 64-bit disk pointers allows 264                    │    logical      partitions.               │
+│       partition device (dev/...),                 mount point in   FS    CSV mount options │ │ ││  total sectors:                                     │- original addressing:                     │
+│       partition Universal Unique ID (UUID) or     FS tree hierchy  type  for the FS type.  │ │ ││  - 512-byte blocks allows for                       │    (ylinders, heads, sectors)             │
+│       partition LABEL  or PARTUUID (GPT)                                 Different FSs can │ │ ││    8 zebibytes.                                     │  -  2TB max size ( 512bytes block)        │
+│       identifies the partition.                                          have different    │ │ ││- fault-tolerance: partition table in                │  - 16TB max size (4099bytes block)i       │
+│       UUID *2 are prefered to /dev/sd...                                 mount opts. plus  │ │ ││  first, last sector of disk                         │    with LBA hack                          │
+│       like /dev/sdb3 since the device name                               common ones to    │ │ ││─ cyclic redundancy check (CRC)                      ├───────────────────────────────────────────┘
+│       can change for USB or plugable devices                             all FS *1         │ │ ││  checksum to verify its own integrity,              │ ┌────────────────────┬────────────────────────────────────┐
+│                                                                                            │ │ ││  and of the partition table                         │ │*LIST BLOCK DEVICES*│                                    │
+│           this flag determines the                                                         │ │ ││- Unique IDs for disks and partitions.               │ ├────────────────────┘                                    │
+│           FS check order during boot:                   used by dump(8) to determine ←─────┘ │ ││NOTE:  GPT-GUIDs identifies disk tables              │ │$ sudo lsblk                                             │
+│           (0 disables the check)                        which ext2/3 FS need backup          │ ││           UUIDs identifies filesystems              │ │NAME            MAJ:MIN RM   SIZE RO TYPE MOUNTPOINT     │
+│           - root (/)  should be 1                       (default to 0)                       │ ││           (blkid)                                   │ │sda               8:0    0 223.6G  0 disk                │
+│           - Other FSs should be 2                                                            │ ││                                                     │ │├─sda1            8:1    0     1G  0 part /boot          │
+│                         ↑                                                                    │ ││$ sudo*gdisk /dev/sdc*                               │ │└─sda2            8:2    0 222.6G  0 part                │
+│                         └────────────────────────────────────────────────────────────────────┘ ││→ GPT fdisk (gdisk) version 0.8.1                    │ │  ├─fedora-root 253:0    0    50G  0 lvm  /              │
+│                                                                                                ││→ Partition table scan:                              │ │  ├─fedora-swap 253:1    0   7.8G  0 lvm  [SWAP]         │
+│*1 defaults mount options common to all File System types:                                      ││→   MBR: protective                                  │ │  └─fedora-home 253:2    0 164.8G  0 lvm  /home          │
+│   rw     : Read/write vs 'ro' (read only)                                                      ││→   BSD: not present                                 │ │sdb               8:16   0 931.5G  0 disk                │
+│   suid   : Allow set-user-ID | set-group-ID bits (nosuid: Ignore them)                         ││→   APM: not present                                 │ │└─sdb1            8:17   0 931.5G  0 part /mount/disk01  │
+│   dev    : Interpret character or block special devices                                        ││→   GPT: <b>present</b>                              │ │sdd               8:48   0 465.7G  0 disk                │
+│   exec   : Permit execution of binaries                                                        ││→ Found valid GPT with protective MBR;               │ │└─sdd1            8:49   0 465.7G  0 part                │
+│   auto   :                                                                                     ││  using GPT.                                         │ │mmcblk0         179:0    0  29.7G  0 disk                │
+│   nouser : Do NOT allow ordinary user to mount the filesystem.                                 ││→ Command (? for help):                              │ │└─mmcblk0p1     179:1    0  29.7G  0 part /run/media/C852│
+│   async  : Do not force synchronous I/O to file system.                                        ││  → Disk /dev/sdc: 39070... sectors, 1.8TiB          │ └─────────────────────────────────────────────────────────┘
+│            (WARN: sync may cause life-cycle shortening in flash drives)                        ││  → Logical sector size: 512 bytes                   │
+│                                                                                                ││                         ^^^                         │
+│                                                                                                ││                     4096 physical                   │
+│                                                                                                ││                     in new disks                    │
+│*2 Next command list the UUIDs of partitions:                                                   ││  → Disk identifier (GUID):                          │
+│     $ blkid                                                                                    ││    *058D39EE-5D06-409F-AA0C-298A3E6CC302*           │
+│   → /dev/sda1: LABEL="storage" UUID="60e97193-e9b2-495f-8db1-651f3a87d455" TYPE="ext4"         ││  → Partition table holds up to 128 entries          │
+│   → /dev/sda2: LABEL="oldhome" UUID="e6494a9b-5fb6-4c35-ad4c-86e223040a70" TYPE="ext4"         ││  → First usable sector is 34,                       │
+│   → /dev/sdb1:                 UUID="db691ba8-bb5e-403f-afa3-2d758e06587a" TYPE="xfs" ...      ││    last usable sector is 3907029134                 │
+│                                ^^^^                                                            ││  → Partitions will be aligned on 2048-sector        │
+│                                tags the filesystem actually (vs the partition itself)          ││    boundaries                                       │
+│                                                                                                ││  → Total free space is 819142765 sectors (390.6 GiB)│
+│*3 TODO: Differences between nobootwait and nofail:                                             ││  → NUMBER  START       END       SIZE  CODE  NAME   │
+│   nofail: allows the boot sequence to continue even if the drive fails to mount.               ││  →        SECTOR    SECTOR                          │
+│           On cloud systems it ussually allows for ssh access in case of failure                ││  →    1     2048   1953791  953.0 MiB  0700         │
+└────────────────────────────────────────────────────────────────────────────────────────────────┘│  →    2  1953792  80078847   37.3 GiB  0700         │
+                                                                                                  │  → ...                                              │
+                                                                                                  └─────────────────────────────────────────────────────┘
+┌────────────────┬──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│*DEVICE MAPPER *│                                                                                                                                                                      │
+├────────────────┘                                                                                                                                                                      │
+│ @[https://en.wikipedia.org/wiki/Device_mapper]                                                                                                                                        │
+│ - kernel framework mapping virtual block devices                                          ┌──────────────────────────────────┬───────────────────────────────────────────────────────┐│
+│   to one (or more) physical block device                                                  │*DEVICE─MAPPER LOGICAL-TO-TARGET:*│                                                       ││
+│ - Optionally can process and filter in/out data                                           ├──────────────────────────────────┘                                                       ││
+│ ┌───────────────────────────────────────────────┬───────────────────────────────┐         │*MAPPED DEVICE*              │          *MAPPING TABLE*             │*TARGET DEVICE*      ││
+│ │*DMSETUP — LOW LEVEL LOGICAL VOLUME MANAGEMENT*│                               │         │ (LOGICAL DRIVE)             │                                      │ PLUGIN (INSTANCE/s) ││
+│ ├───────────────────────────────────────────────┘                               │         │                             │                                      │                     ││
+│ │@[https://linux.die.net/man/8/dmsetup]                                         │         │ logical device provided by  │ entry1:                              │ - filters           ││
+│ │CY&P from @[https://wiki.gentoo.org/wiki/Device-mapper]                        │         │ device-mapper driver.       │ mapped-device1    ←→ target-device1  │ - access physical   ││
+│ │"""                                                                            │         │ It provides an interface to │ └─ start address   └┬─ start address │   devices           ││
+│ │Normally, users rarely use dmsetup directly. The dmsetup is a very low level,  │         │ operate on.                 │                     └─ sector-length │                     ││
+│ │LVM, mdtool or cryptsetup is generally the  preferred way to do it,            │         │                             │ entry2:                              │ Example plugins:    ││
+│ │ as it takes care of saving the metadata and issuing the dmsetup commands.     │         │ Ex:                         │ mapped-device2    ←→ target-device2  │ - mirror for RAID   ││
+│ │ However, sometimes it is desirable to deal with directly:                     │         │ - LVM2 logical volumes      │ └─ start address   └┬─ start address │ - linear   for LVM2 ││
+│ │sometimes for recovery purposes, or to use a target that han't yet been ported │         │ - dm-multipath pseudo-disks │                     └─ sector-length │ - stripped for LVM2 ││
+│ │to LVM.                                                                        │         │ - "docker images"           │ entry3:                ^^^^^^^^^^^^^ │ - snapshot for LVM2 ││
+│ │"""                                                                            │         │                             │ ....                   1sector = 512 │ - dm-multipath      ││
+│ └───────────────────────────────────────────────────────────────────────────────┘         │                             │                                 bytes│                     ││
+│ ┌──────────┬──────────────────────────────┐ ┌──────────┬─────────────────────────────────┐│                             │  NOTE: 1 sector = 512 bytes          │                     ││
+│ │*EXAMPLES*│                              │ │*FEATURES*│                                 │└─────────────────────────────┴──────────────────────────────────────┴─────────────────────┘│
+│ ├──────────┘                              │ ├──────────┘                                 │┌────────────┬───────────────────────────────────────────────────────────────────────┐      │
+│ │- Two disks may be concatenated into one │ │- The device mapper "touch" various layers  ││*DATA FLOW:*│                                                                       │      │
+│ │  logical volume with a pair of linear   │ │  of the Linux kernel's storage stack.      │├────────────┘                                                                       │      │
+│ │  mappings, one for each disk.           │ │                                            ││ App → (Data) → MAPPED DEVICE → DEVICE MAPPER     →  TARGET-DEVICE   → Physical     │      │
+│ │                                         │ │- Functions provided by the device mapper   ││                                Route to target      PLUGIN instance   Block Device │      │
+│ │- crypt target encrypts the data passing │ │ include linear, striped and error mappings,││                                based on:                                           │      │
+│ │  through the specified device,          │ │  as well as crypt and multipath targets.   ││                                - MAPPED-DEVICE                                     │      │
+│ │  by using the Linux kernel's Crypto API.│ └────────────────────────────────────────────┘│                                - MAPPING-TABLE                                     │      │
+│ └─────────────────────────────────────────┘                                               │                                                                                    │      │
+│                                                                                           │ Data can be also modified in transition, which is performed, for example,          │      │
+│ ┌───────────────────────────────────────────────┬─────────────────────────────────┐       │ in the case of device mapper providing disk encryption or simulation of            │      │
+│ │*KERNEL FEATURES AND PROJECTS ARE BUILT ON TOP*│                                 │       │ unreliable hardware behavior.                                                      │      │
+│ ├───────────────────────────────────────────────┘                                 │       └────────────────────────────────────────────────────────────────────────────────────┘      │
+│ │Note: user-space apps talk to the device mapper via <b>libdevmapper.so</b>       │                                                                                                   │
+│ │  which in turn issues ioctls to the /dev/mapper/control device node.            │                                                                                                   │
+│ │                                                                                 │   ┌───────────────────────────┬─────────────────────────────────────────────────┐                 │
+│ │- cryptsetup    : utility to setup disk encryption based on dm-crypt             │   │*AVAILABLE MAPPING TARGETS*│                                                 │                 │
+│ │- dm-crypt/LUKS : mapping target providing volume encryption                     │   ├───────────────────────────┘                                                 │                 │
+│ │- dm-cache      : mapping target providing creation of hybrid volumes            │   │- cache    : allows creation of hybrid volumes, by using solid-state drives  │                 │
+│ │- dm-integrity  : mapping target providing data integrity, either                │   │             (SSDs) as caches for hard disk drives (HDDs)                    │                 │
+│ │                  using checksumming or cryptographic verification,              │   │- crypt    : provides data encryption, by using kernel Crypto API            │                 │
+│ │                  also used with LUKS                                            │   │- delay    : delays reads and/or writes to different devices (testing)       │                 │
+│ │- dm-log-writes : mapping target that uses two devices, passing through          │   │- era      : behaves in a way similar to the linear target, while it keeps   │                 │
+│ │                  the first device and logging the write operations performed    │   │             track of blocks that were written to within a user-defined      │                 │
+│ │                  to it on the second device                                     │   │             period of time                                                  │                 │
+│ │- dm-verity     : validates the data blocks contained in a file system           │   │- error    : simulates I/O errors for all mapped blocks      (testing)       │                 │
+│ │                  against a list of cryptographic hash values, developed as      │   │- flakey   : simulates periodic unreliable behaviour         (testing)       │                 │
+│ │                  part of the Chromium OS project                                │   │- linear   : maps a continuous range of blocks onto another block device     │                 │
+│ │- dmraid(8)     : provides access to "fake" RAID configurations via the          │   │- mirror   : maps a mirrored logical device, while providing data redundancy │                 │
+│ │                  device mapper                                                  │   │- multipath: supports the mapping of multipathed devices, through usage of   │                 │
+│ │- DM Multipath  : provides I/O failover and load-balancing of block devices      │   │             their path groups                                               │                 │
+│ │                  within the Linux kernel                                        │   │- raid     : offers an interface to Linux kernel's software RAID driver (md) │                 │
+│ │                                                                                 │   │- snapshot : (and snapshot-origin) used for creation of LVM snapshots,       │                 │
+│ │                  - allows to configure multiple I/O paths between server nodes  │   │             as part of the underlying copy-on-write scheme                  │                 │
+│ │                    and storage arrays(separate cables|switches|controllers)     │   │- striped  : stripes the data across physical devices, with the number of    │                 │
+│ │                    into a single mapped/logical device.                         │   │             stripes and the striping chunk size as parameters               │                 │
+│ │                                                                                 │   │- thin     : allows creation of devices larger than the underlying           │                 │
+│ │                  - Multipathing aggregates the I/O paths, creating a new device │   │             physical device, physical space is allocated only when          │                 │
+│ │                    that consists of the aggregated paths.                       │   │             written to                                                      │                 │
+│ │                                                                                 │   │- zero     : equivalent of /dev/zero, all reads return blocks of zeros,      │                 │
+│ │- Docker        : uses device mapper to create copy-on-write storage for         │   │             and writes are discarded                                        │                 │
+│ │                  software containers                                            │   └─────────────────────────────────────────────────────────────────────────────┘                 │
+│ │                                                                                 │                                                                                                   │
+│ │- DRBD          : Distributed Replicated Block Device                            │                                                                                                   │
+│ │                                                                                 │                                                                                                   │
+│ │- kpartx(8)     : utility called from hotplug upon device maps creation and      │                                                                                                   │
+│ │                  deletion                                                       │                                                                                                   │
+│ │- LVM2          : logical volume manager for the Linux kernel                    │                                                                                                   │
+│ │                                                                                 │                                                                                                   │
+│ │- Linux version of TrueCrypt                                                     │                                                                                                   │
+│ └─────────────────────────────────────────────────────────────────────────────────┘                                                                                                   │
+└───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘ 
 </pre>
 
-
-  <span xsmall>annotated <code>/etc/fstab</code></span>
-<pre xxxsmall zoom>
-  $ cat /etc/fstab | nl -
-→ 1 /dev/mapper/fedora-root                        /               ext4   defaults          1 1
-→ 2 UUID=735acb4c-29bc-4ce7-81d9-83b778f6fc81      /boot           ext4   defaults          1 2
-→ 3 LABEL=backups                                  /mnt/backups    xfs    defaults          1 2
-→ 4 /dev/mapper/fedora-home                        /home           ext4   defaults          1 2
-→ 5 /dev/mapper/fedora-swap                        swap            swap   defaults          0 0
-→ 6 PARTUUID=8C208C30-4E8F-4096-ACF9-858959BABBAA  /mnt/ddbb       xfs    defaults          1 2
-→ 6 "some network attached device"                 /var/.../       xfs    defaults,nofail*3 1 2
-    └───────────────────┬───────────────────┘      └─────┬────┘   └──┬──┘ └───┬───┘         │ │
-                        ↓                                ↓           ↓        ↓             │ │
-       partition device (dev/...),                 mount point in   FS    CSV mount options │ │
-       partition Universal Unique ID (UUID) or     FS tree hierchy  type  for the FS type.  │ │
-       partition LABEL  or PARTUUID (GPT)                                 Different FSs can │ │
-       identifies the partition.                                          have different    │ │
-       UUID *2 are prefered to /dev/sd...                                 mount opts. plus  │ │
-       like /dev/sdb3 since the device name                               common ones to    │ │
-       can change for USB or plugable devices                             all FS *1         │ │
-                                                                                            │ │
-           this flag determines the                                                         │ │
-           FS check order during boot:                   used by dump(8) to determine ←─────┘ │
-           (0 disables the check)                        which ext2/3 FS need backup          │
-           - root (/)  should be 1                       (default to 0)                       │
-           - Other FSs should be 2                                                            │
-                         ↑                                                                    │ 
-                         └────────────────────────────────────────────────────────────────────┘ 
-   
-*1 defaults mount options common to all File System types: 
-   rw     : Read/write vs 'ro' (read only)
-   suid   : Allow set-user-ID | set-group-ID bits (nosuid: Ignore them)
-   dev    : Interpret character or block special devices
-   exec   : Permit execution of binaries
-   auto   :
-   nouser : Do NOT allow ordinary user to mount the filesystem.
-   async  : Do not force synchronous I/O to file system.
-            (WARN: sync may cause life-cycle shortening in flash drives)
-   
-    
-    
-*2 Next command list the UUIDs of partitions:
-     $ blkid
-   → /dev/sda1: LABEL="storage" UUID="60e97193-e9b2-495f-8db1-651f3a87d455" TYPE="ext4" 
-   → /dev/sda2: LABEL="oldhome" UUID="e6494a9b-5fb6-4c35-ad4c-86e223040a70" TYPE="ext4" 
-   → /dev/sdb1:                 UUID="db691ba8-bb5e-403f-afa3-2d758e06587a" TYPE="xfs" PARTUUID="788369ae-01"
-                                ^^^^ 
-                                tags the filesystem actually (vs the partition itself)
-
-*3 <a TODO href="https://unix.stackexchange.com/questions/53456/what-is-the-difference-between-nobootwait-and-nofail-in-fstab">REF</a>
-- nofail:  allows the boot sequence to continue even if the drive fails to mount.
-           On cloud systems it ussually allows for ssh access in case of failure
-</pre>
-
-<a href="https://en.wikipedia.org/wiki/Device_mapper">Device mapper</a>
-
-<pre xxxsmall zoom>
-device mapper: kernel framework mapping virtual block devices to 
-               one (or more) physical block device (with the posibility
-               to process&amp;filter in/out data)
-
-<b>DEVICE-MAPPER ARCHITECTURE:</b>
-<b>
- MAPPED DEVICE               │           MAPPING TABLE              │ TARGET DEVICE</b>
- (LOGICAL DRIVE)             │                                      │ PLUGIN (INSTANCE/s)
-                             │                                      │
- logical device provided by  │ entry1:                              │ - filters
- device-mapper driver.       │ mapped-device1    ←→ target-device1  │ - access physical devices
- It provides an interface to │ └─ start address   └┬─ start address │ 
- operate on.                 │                     └─ sector-length │ 
-                             │ entry2:                              │ Example plugins:
- Ex:                         │ mapped-device2    ←→ target-device2  │ - mirror for RAID
- - LVM2 logical volumes      │ └─ start address   └┬─ start address │ - linear   for LVM2 
- - dm-multipath pseudo-disks │                     └─ sector-length │ - stripped for LVM2
- - "docker images"           │ entry3:                ^^^^^^^^^^^^^ │ - snapshot for LVM2
-                             │ ....                   1sector = 512 │ - dm-multipath
-                             │                                 bytes│
-                             │  NOTE: 1 sector = 512 bytes          │
-
-<b>DATA FLOW:</b>
-                                         
-App → (Data) → MAPPED DEVICE →          DEVICE MAPPER               →  TARGET-DEVICE     → Physical 
-                                        Route to target                PLUGIN instance     Block Device
-                                        based on:       
-                                        - MAPPED-DEVICE 
-                                        - MAPPING-TABLE                
-
-- Data can be also modified in transition, which is performed, for example,
-  in the case of device mapper providing disk encryption or simulation of
-  unreliable hardware behavior.
-
-
-<b>Features</b>
-- The device mapper "touch" various layers of the Linux kernel's storage stack.
-
-- Functions provided by the device mapper include linear, striped and error mappings,
-  as well as crypt and multipath targets.
-
-Exs.:
-  - Two disks may be concatenated into one logical volume with a pair
-    of linear mappings, one for each disk.
-
-  - crypt target encrypts the data passing through the specified device,
-    by using the Linux kernel's Crypto API.
-
-<b>available mapping targets</b>
- - cache    : allows creation of hybrid volumes, by using solid-state drives 
-              (SSDs) as caches for hard disk drives (HDDs)
- - crypt    : provides data encryption, by using kernel Crypto API
- - delay    : delays reads and/or writes to different devices (testing)
- - era      : behaves in a way similar to the linear target, while it keeps 
-              track of blocks that were written to within a user-defined
-              period of time
- - error    : simulates I/O errors for all mapped blocks      (testing)
- - flakey   : simulates periodic unreliable behaviour         (testing)
- - linear   : maps a continuous range of blocks onto another block device
- - mirror   : maps a mirrored logical device, while providing data redundancy
- - multipath: supports the mapping of multipathed devices, through usage of 
-              their path groups
- - raid     : offers an interface to Linux kernel's software RAID driver (md)
- - snapshot : (and snapshot-origin) used for creation of LVM snapshots,
-              as part of the underlying copy-on-write scheme
- - striped  : stripes the data across physical devices, with the number of
-              stripes and the striping chunk size as parameters
- - thin     : allows creation of devices larger than the underlying 
-              physical device, physical space is allocated only when
-              written to
- - zero     : equivalent of /dev/zero, all reads return blocks of zeros,
-              and writes are discarded
-
-<b>kernel features and projects are built on top</b>
-Note: user-space apps talk to the device mapper via <b>libdevmapper.so</b>
-  which in turn issues ioctls to the /dev/mapper/control device node.
-
-  - cryptsetup    : utility to setup disk encryption based on dm-crypt
-  - dm-crypt/LUKS : mapping target providing volume encryption
-  - dm-cache      : mapping target providing creation of hybrid volumes
-  - dm-integrity  : mapping target providing data integrity, either
-                    using checksumming or cryptographic verification,
-                    also used with LUKS
-  - dm-log-writes : mapping target that uses two devices, passing through
-                    the first device and logging the write operations performed
-                    to it on the second device
-  - dm-verity     : validates the data blocks contained in a file system
-                    against a list of cryptographic hash values, developed as 
-                    part of the Chromium OS project
-  - dmraid(8)     : provides access to "fake" RAID configurations via the 
-                    device mapper
-  - DM Multipath  : provides I/O failover and load-balancing of block devices
-                    within the Linux kernel
-
-                    - allows to configure multiple I/O paths between server nodes 
-                      and storage arrays(separate cables|switches|controllers) 
-                      into a single mapped/logical device.
-                    
-                    - Multipathing aggregates the I/O paths, creating a new device
-                      that consists of the aggregated paths.
-
-
-  - Docker        : uses device mapper to create copy-on-write storage for
-                    software containers
-
-  - DRBD          : Distributed Replicated Block Device
-
-  - kpartx(8)     : utility called from hotplug upon device maps creation and deletion
-
-  - LVM2          : logical volume manager for the Linux kernel
-
-  - Linux version of TrueCrypt
-
-  <a href="https://linux.die.net/man/8/dmsetup">man 8 dmsetup</a>
-
-dmsetup — low level logical volume management
-
-SYNOPSIS
-  dmsetup clear device_name
-  dmsetup create device_name [-u|--uuid uuid] [--addnodeoncreate|--addnodeonresume] [-n|--notable|--table {table|table_file}] [--readahead
-           {[+]sectors|auto|none}]
-  dmsetup deps [-o options] [device_name]
-  dmsetup help [-c|-C|--columns]
-  dmsetup info [device_name]
-  dmsetup info -c|-C|--columns [--count count] [--interval seconds] [--nameprefixes] [--noheadings] 
-               [-o fields] [-O|--sort sort_fields] [--sepa‐rator separator] [device_name]
-  dmsetup load device_name [--table {table|table_file}]
-  dmsetup ls [--target target_type] [--exec command] [--tree] [-o options]
-  dmsetup mangle [device_name]
-  dmsetup message device_name sector message
-  dmsetup mknodes [device_name]
-  dmsetup reload device_name [--table {table|table_file}]
-  dmsetup remove [-f|--force] [--retry] [--deferred] device_name
-  dmsetup remove_all [-f|--force] [--deferred]
-  dmsetup rename device_name new_name
-  dmsetup rename device_name --setuuid uuid
-  dmsetup resume device_name [--addnodeoncreate|--addnodeonresume] [--noflush] [--nolockfs] [--readahead {[+]sectors|auto|none}]
-  dmsetup setgeometry device_name cyl head sect start
-  dmsetup splitname device_name [subsystem]
-  dmsetup stats command [options]
-  dmsetup status [--target target_type] [--noflush] [device_name]
-  dmsetup suspend [--nolockfs] [--noflush] device_name
-  dmsetup table [--target target_type] [--showkeys] [device_name]
-  dmsetup targets
-  dmsetup udevcomplete cookie
-  dmsetup udevcomplete_all [age_in_minutes]
-  dmsetup udevcookie
-  dmsetup udevcreatecookie
-  dmsetup udevflags cookie
-  dmsetup udevreleasecookie [cookie]
-  dmsetup version
-  dmsetup wait [--noflush] device_name [event_nr]
-  dmsetup wipe_table device_name [-f|--force] [--noflush] [--nolockfs]
-
-  devmap_name major minor
-  devmap_name major:minor
-</pre>
-  MBR vs GPT
-<pre xxxsmall zoom>
-MASTER BOOT RECORD (MBR, OLD 80'S MS-DOS)          | GPT/GUID:
-- Designed when HD were  tens of megabytes.        | - Suported by Linux GRUB 2 and GParted
-- First 512 bytes of disk                          | - Globally Unique Identifiers Partition Table
-  - 446 Bytes bootloader                           | - Part of UEFI specs
-  -  64 Partition table                            | - Linux can use it with UEFI or legacy BIOS
-  -   2 boot signature                             | - no more primary/logical partitions.
-- limited to 4 primary partitions                  | - 64-bit disk pointers allows 264 total sectors:
-  - A single primary partition can hold an         |   - 512-byte blocks allows for 8 zebibytes.
-    extended partition with unlimited logical      | - fault-tolerance: partition table in first, last 
-    partitions.                                    |   sector of disk
-- original addressing: cylinders, heads, sectors.  | - cyclic redundancy check (CRC) checksum to verify 
-  - 2TB max size ( 512bytes block)                 |   its own integrity, and of the partition table
-  -16TB max size (4099bytes block) with LBA hack   | - Unique IDs for disks and partitions.
-                                                   | NOTE:  GPT-GUIDs identifies disk tables
-                                                   |            UUIDs identifies filesystems  (blkid)
-                                                   |
-                                                   | # <b>gdisk /dev/sdc</b>
-                                                   | → GPT fdisk (gdisk) version 0.8.1
-                                                   | → Partition table scan:
-                                                   | →   MBR: protective    
-                                                   | →   BSD: not present   
-                                                   | →   APM: not present   
-                                                   | →   GPT: <b>present</b>
-                                                   | → Found valid GPT with protective MBR; using GPT.
-                                                   | → Command (? for help): (press <b>"p"</b> key)
-                                                   |   → Disk /dev/sdc: 3907029168 sectors, 1.8 TiB
-                                                   |   → Logical sector size: 512 bytes   ← 4096 physical in new diskss
-                                                   |   → Disk identifier (GUID): <b>058D39EE-5D06-409F-AA0C-298A3E6CC302</b>
-                                                   |   → Partition table holds up to 128 entries
-                                                   |   → First usable sector is 34, last usable sector is 3907029134
-                                                   |   → Partitions will be aligned on 2048-sector boundaries
-                                                   |   → Total free space is 819142765 sectors (390.6 GiB)
-                                                   |   → NUMBER  START (SECTOR)    END (SECTOR)  SIZE       CODE  NAME
-                                                   |   →    1            2048         1953791   953.0 MiB   0700  
-                                                   |   →    2         1953792        80078847    37.3 GiB   0700  
-                                                   |   → ...
-</pre>
 </td>
 <td colsep></td>
 <td colsep>LVM</td>
@@ -5071,7 +4869,18 @@ ______________________________
 https://en.wikipedia.org/wiki/Netlink
 ____________________________
 https://www.freedesktop.org/wiki/Software/dbus/
-
+____________________________________
+https://github.com/leandromoreira/linux-network-performance-parameters
+_______________________________
+https://www.putorius.net/at-command-linux.html
+____________________
+jq "sed for JSON"
+http://manpages.ubuntu.com/manpages/trusty/man1/jq.1.html
+https://www.infoq.com/news/2019/05/web-assembly-jq-cli-port
+_________________________
+https://www.linuxuprising.com/2019/05/drill-new-desktop-file-search-utility.html
+_____________________
+https://sysdig.com/blog/selinux-seccomp-falco-technical-discussion/
 -->
 </html>
 

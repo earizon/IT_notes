@@ -42,38 +42,47 @@ RECORD
 </td>
 <td colsep> </td>
 <td>
-  TOPIC and partitions
-  <ul xxxsmall zoom>
-  <li>Category or feed name to which records are published</li>
-  <li>
 <pre xxxsmall zoom>
-producer (1 ←→ 1) topic (1 ←→ 0...N) subscribers
+   <span xsmall>TOPIC and partitions</span> 
+*TOPIC*: Category or feed name to which records are published
 
-topic 1 ←→ (partitioned) log  (<b>Immutable sequence</b> of records)
- LOG
-┌────────────────────────┬──────────────────────┐ 
-│                        │      records         │  
-│                        │  ─────────────────── │  
-│ Partition 0 replica 1  │  0 1 2 3 4 5 6 7 ... │  Producer chooses "at will" which record
-│ Partition 0 replica 2  │  0 1 2 3 4 5 6 7 ... │  is assigned to which partition
-│ Partition 1 replica 1  │  0 1 2 3 4 5 ...     │  
-│ Partition 1 replica 2  │  0 1 2 3 4 5 ...     │  producers wait (optionally?)  on acknowledgement so    
-│ Partition 2 replica 1  │  0 1 2 3 4 5 6 ...   │  that a write isn't considered complete until it is fully
-│ Partition 2 replica 2  │  0 1 2 3 4 5 6 ...   │  replicated and guaranteed to persist even if the server
-└────────────────────────┴──────────────────────┘  written to fails. 
-   ↑                        ^
-   │                        record.offset (sequential id)
-   │                        uniquelly indentifies the record
-   │                        within the partition
-   │
-   Partitions serve several purposes:
-    - allow scaling beyond a single server
-      (individual partition must fit on the host server)
-    - act as the unit of parallelism
+        ☞: By configuring which topics can produce or consume 
+           data multi-tenancy can be enabled
+
+┌────────┐             ┌─────┐            ┌───────────┐
+│PRODUCER│ 1 ←──────→1 │TOPIC│ 1 ←→ 0...N │SUBSCRIBERS│
+└────────┘             └─────┘            └───────────┘
+    │                    ↑ 1                
+    │                    ↓ 1
+producer chooses     ┌─────────────┐            ┌────────┐
+"at will" which      │(partitioned)│ 1 ←→ 0...N │ replica│
+record is assigned   │    LOG      │            │  node  │
+to which  partition  └─────────────┘            └────────┘
+    │
+    │                                               *Immutable sequence* 
+    │                                                of records
+    │                     ┌───┬────────────────────┬────↓↓↓↓──────────────┐ 
+    │                     │LOG│                    │      records         │  
+    │                     ├───┘                    │  ─────────────────── │  
+    └────────────────────→│ Partition 0 replica  1 │  0 1 2 3 4 5 6 7 ... │
+(optionally) producers can│ Partition 0 replica  2 │  0 1 2 3 4 5 6 7 ... │
+wait on acknowledgement.  │ Partition 1 replica  1 │  0 1 2 3 4 5 ...     │  
+A write is not considered │ Partition 1 replica  2 │  0 1 2 3 4 5 ...     │
+complete until it's fully │ Partition 2 replica  1 │  0 1 2 3 4 5 6 ...   │
+replicated and guaranteed │ Partition 2 replica  2 │  0 1 2 3 4 5 6 ...   │
+to persist even on reboots└──↑─────────────────────┴──────────────────────┘
+                             │                        ←── offset ─→
+                             │             record.offset (sequential id)
+                             │             uniquelly indentifies the record
+                             │             within the partition
+                             │
+                     Partitions serve several purposes:
+                     - allow scaling beyond a single server
+                       (individual partition must fit on the host server)
+                     - act as the unit of parallelism
+                          *RETENTION POLICY* indicates how much time the records
+                          ill be available for compsumption before being discarded.
 </pre>
-  <li><code>Retention policy</code> indicates how much time the
-    records will be available for compsumption before being discarded.</li>
-  <li>Note: By configuring which topics can produce or consume data multi-tenancy can be enabled</li>
   </ul>
   Partition replication
   <ul xxxsmall zoom>
@@ -466,6 +475,12 @@ Kafka's core messaging features, including Connect, Streams, the REST Proxy,
 Schema Registry, KSQL, Control Center, and others. """
 _______________________
 https://www.infoq.com/articles/apache-kafka-best-practices-to-optimize-your-deployment
+_______________
+REF Cheatsheets:
+https://lzone.de/cheat-sheet/Kafka
+https://ronnieroller.com/kafka/cheat-sheet
+https://abdulhadoop.wordpress.com/2017/11/06/kafka-command-cheat-sheet/
+https://github.com/Landoop/kafka-cheat-sheet
 -->
 
 </html>

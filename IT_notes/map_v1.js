@@ -230,11 +230,16 @@ function onPageLoaded() {
           "<a href='"+window.location.href.split('?')[0]+"?query=$1'>$1</a>"+
           "<a target='_blank' href='"+window.location.href.split('?')[0]+"?query=$1'>( ⏏ )</a>"
       )
+                                                              // @[   http.....  ]
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/@\[(http[^\]]*)\]/g,"<a target='_new' href='$1'> [$1]</a>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/@\[([^\]]*)\]/g,    "<a               href='$1'> [$1]</a>")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/g\*([^\*\n]*)\*/g, "<b green >  $1 </b>")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/r\*([^\*\n]*)\*/g, "<b red   >  $1 </b>")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/b\*([^\*\n]*)\*/g, "<b blue  >  $1 </b>")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/o\*([^\*\n]*)\*/g, "<b orange>  $1 </b>")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /\*([^\*\n]*)\*/g, "<b       > $1 </b>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[˂]/g, "&lt;")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[˃]/g, "&gt;")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/g\|([^\*\n]*)\|/g, "<span green >  $1 </span>")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/r\|([^\*\n]*)\|/g, "<span red   >  $1 </span>")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/b\|([^\*\n]*)\|/g, "<span blue  >  $1 </span>")   

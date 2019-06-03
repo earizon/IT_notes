@@ -228,8 +228,8 @@ function onPageLoaded() {
       // Open new window with pre-recoded search:[[Troubleshooting+restorecon?]]
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(
           /\[\[([^\?]*)\?\]\]/g,
-          "<a href='"+window.location.href.split('?')[0]+"?query=$1'>$1</a>"+
-          "<a target='_blank' href='"+window.location.href.split('?')[0]+"?query=$1'>( ⏏ )</a>"
+          "<a href='"+window.location.href.split('?')[0]+"?query=$1'>$1</a>"
+        + "<a target='_blank' href='"+window.location.href.split('?')[0]+"?query=$1'>( ⏏ )</a>"
       )
                                                               // @[   http.....  ]
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/@\[(http[^\]]*)\]/g,"<a target='_new' href='$1'> [$1]</a>")   

@@ -184,6 +184,7 @@ function onPageLoaded() {
    + '<b style="font-size:1.5rem"       >                                 </b>'
    + '<b style="font-size:2.0rem" orange><a onclick="onZoomIn ()">[A+]</a></b>'
    + '</div>'
+   + '<br/>'
   document.body.insertBefore(searchDiv,document.body.children[0]);
 
   zoomDivDOM = document.getElementById('zoomDiv')
@@ -227,8 +228,8 @@ function onPageLoaded() {
       // Open new window with pre-recoded search:[[Troubleshooting+restorecon?]]
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(
           /\[\[([^\?]*)\?\]\]/g,
-          "<a href='"+window.location.href.split('?')[0]+"?query=$1'>$1</a>"+
-          "<a target='_blank' href='"+window.location.href.split('?')[0]+"?query=$1'>( ⏏ )</a>"
+          "<a href='"+window.location.href.split('?')[0]+"?query=$1'>$1</a>"
+        + "<a target='_blank' href='"+window.location.href.split('?')[0]+"?query=$1'>( ⏏ )</a>"
       )
                                                               // @[   http.....  ]
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/@\[(http[^\]]*)\]/g,"<a target='_new' href='$1'> [$1]</a>")   

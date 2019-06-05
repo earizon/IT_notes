@@ -152,7 +152,9 @@ var help = '<h1>HELPMan to the rescue!!!</h1>'
          + '</pre>'
          + '</li>'
          + '<li><a href="http://asciiflow.com/">Ascii Flow online diagram editor</a> easify txt diagrams</li>'
-         + '<li><a href="https://htmleditor.io">htmleditor.io</a> light-weigth online html editor</li> can also be helpful</li>'
+         + '<li><a href="http://www.figlet.org/">figlet.org</a>: Create large ascii letters</li>'
+         + '<li><a href="https://htmleditor.io">htmleditor.io</a> light-weigth online html editor</li>'
+
          + '<li>HINT: txt editors with block and/or column edit mode (Vim, UltraEdit, gedit, Notepad++, Eclipse, ...) will make your life much easier</li>'
          + '<li>HINT: Vim is the best text editor. Love him and it will love you for the rest of your life!</li>'
          + '</ul>'
@@ -228,8 +230,8 @@ function onPageLoaded() {
       // Open new window with pre-recoded search:[[Troubleshooting+restorecon?]]
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(
           /\[\[([^\?]*)\?\]\]/g,
-          "<a href='"+window.location.href.split('?')[0]+"?query=$1'>$1</a>"+
-          "<a target='_blank' href='"+window.location.href.split('?')[0]+"?query=$1'>( ⏏ )</a>"
+          "<a href='"+window.location.href.split('?')[0]+"?query=$1'>$1</a>"
+        + "<a target='_blank' href='"+window.location.href.split('?')[0]+"?query=$1'>( ⏏ )</a>"
       )
                                                               // @[   http.....  ]
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/@\[(http[^\]]*)\]/g,"<a target='_new' href='$1'> [$1]</a>")   

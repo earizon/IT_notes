@@ -80,6 +80,11 @@ volume      volumes        |   inspect     Return low-level information on Docke
                            |   wait        Block until one or more containers stop, then print their exit codes
 </pre>
 </td>
+<td title>
+    Docker<br/>
+    Install and<br/>
+    setup
+</td>
 <td>
 <pre xxxsmall zoom>
 <span xsmall>Proxy settings</span>
@@ -158,100 +163,15 @@ Live Restore Enabled: false
 
 
 </td>
-<td>
- <pre xxxsmall zoom>
-<span xsmall>Managing containers:</span>
-Boot-up container:
-   $ docker run --rm -d  --name clock jdeiviz/clock # -d: "Daemon"  mode, --rm: Remove on exit
-   $ docker run --rm -it --name clock jdeiviz/clock # -it: (I)nteractive + (T)erminal
-     (Detach with ^P^Q, attach with 'docker attach clock')
-   $ docker run --rm -it --name clock jdeiviz/clock bashbash
-
-Show container logs:
-   $ docker logs docker 
-   $ logs --tail 3
-   $ docker logs --tail 1 --follow
-
-Stop container:
-   $ docker stop # Espera 10s docker kill
-
-Remove all containers:
-   $ docker container prune
-
-Listar all containers related commands: 
-   $ docker container
-</pre>
-</td>
-
-<td>
-<pre xxxsmall zoom>
-  <span xsmall>Managing images</span>
-(List all image related commands with: $ docker image)
-
-List local ("downloaded/instaled") images:
-  $ docker images
-
-Search remote images @ Docker Hub: | Download image from Docker Hub: | Upload image to Docker Hub:
-  $ docker search redis            |   $ docker pull debian:jessie   |   $ docker login
-                                                                     |   $ docker push /clock:1.0
-
-Remove (local) image:     
-  $ docker rmi /clock:1.0 
-  $ docker image prune    # Remove *all* non used images
-</pre>
-
-<pre xxxsmall zoom>
-<span xsmall>Build image</span>
-$ docker build \
-   --build-arg http_proxy=http://...:8080 \
-   --build-arg https_proxy=https://..:8080 \
-   -t figlet .
-
-$ cat ./Dockerfile
-FROM ubuntu
-
-RUN apt-get update
-# Instalar figlet
-
-ENTRYPOINT ["figlet", "-f", "script"]
-</pre>
-
-
-<pre xxxsmall zoom>
-  <span xsmall>Image tags</span>
-adding a tag to the image essentially adds an alias 
-The tags consists of: 
-    'registry_server'/'user_name'/'image_name':'tag'
-    ^^^^^^^^^^^^^^^^^
-    default one if not
-    indicated
-
-Tag image:                              
-  $ docker tag jdeiviz/clock /clock:1.0 
-</pre>
-<pre xxxsmall zoom>
-<span xsmall>Show image</span>
-<span xsmall>change history</span>
-   $ docker history /clock:1.0
-</pre>
-<pre xxxsmall zoom>
-<span xsmall>Commit image</span>
-<span xsmall>modifications</span>
-(Discouraged most of the time, modify Dockerbuild instead)
-host-mach $ docker run -it ubuntu bash     # Boot up existing image
-container # apt-get install ...            # Apply changes to running instance
-host-mach $ docker diff $(docker ps -lq)   # Show changes done in running container
-host-mach $ docker commit $(docker ps -lq) # Commit/Confirm changes
-host-mach $ docker tag figlet              # Tage new image 
-host-mach $ docker run -it figlet          # Boot new image instance
-</pre>
-
-</td>
 </tr>
 </table>
 
 <table>
 <tr>
+<td title>
+    Docker<br/>
+    components
+</td>
 <td>
 <pre xxxsmall zoom>
 <span xsmall>Docker Networks</span>
@@ -320,6 +240,211 @@ Ex.: Update redis version without loosing data:
 </td>
 <td>
 <pre xxxsmall zoom>
+<span xsmall>docker-compose</span>
+version: "3"
+services:
+  web:
+    build: .         # ← use Dockerfile to build image
+    ports:
+      - "8000:8000"
+  redis:
+    image: redis     # ← use DockerHub image
+    volumes:
+      - "redis-data:/data"
+
+volumes:
+  redis-data:
+</pre>
+</td>
+<td>
+<pre xxxsmall zoom>
+<a TODO xsmall href="https://docs.docker.com/registry/#what-it-is">Registry</a>
+(server store for images)
+</pre>
+</td>
+
+<td title>
+  Managing<br/>
+  Containers
+</td>
+<td>
+<pre xxxsmall zoom>
+<span xsmall>Boot-up/run container:</span>
+$ docker run \                             $ docker run \
+  --rm  \        ←------ Remove ---------→   --rm  \       
+  --name clock  \        on exit             --name clock  \
+ *-d*\             ← Daemon    interactive →*-ti*\ 
+                     mode      mode                       
+  jdeiviz/clock                              jdeiviz/clock
+
+
+<span xsmall>Show container logs:</span>
+$ docker logs docker 
+$ logs --tail 3
+$ docker logs --tail 1 --follow
+
+<span xsmall>Stop container:</span>
+$ docker stop # Espera 10s docker kill
+
+<span xsmall>Prune stopped containers:</span>
+
+$ docker container prune
+
+<span xsmall>container help:</span>
+$ docker container
+</pre>
+</td>
+
+
+<td title>
+    Monitoring<br/>
+    running<br/>
+    containers<br>
+</td>
+
+<td>
+<pre xxxsmall zoom>
+<span xsmall>Monitoring (Basic)</span>
+List containers instances:
+   $ docker ps     # only running
+   $ docker ps -a  # also finished, but not yet removed (docker rm ...)
+   $ docker ps -lq # TODO:
+
+"top" containers showing Net IO read/writes, Disk read/writes:
+   $ docker stats
+   | CONTAINER ID   NAME                    CPU %   MEM USAGE / LIMIT     MEM %   NET I/O          BLOCK I/O      PIDS
+   | c420875107a1   postgres_trinity_cache  0.00%   11.66MiB / 6.796GiB   0.17%   22.5MB / 19.7MB  309MB / 257kB  16
+   | fdf2396e5c72   stupefied_haibt         0.10%   21.94MiB / 6.796GiB   0.32%   356MB / 693MB    144MB / 394MB  39
+
+   $ docker top 'containerID'
+   | UID       PID     PPID    C  STIME  TTY   TIME     CMD
+   | systemd+  26779   121423  0  06:11  ?     00:00:00 postgres: ddbbName cache 172.17.0.1(35678) idle
+   | ...
+   | systemd+  121423  121407  0  Jul06  pts/0 00:00:44 postgres
+   | systemd+  121465  121423  0  Jul06  ?     00:00:01 postgres: checkpointer process
+   | systemd+  121466  121423  0  Jul06  ?     00:00:26 postgres: writer process
+   | systemd+  121467  121423  0  Jul06  ?     00:00:25 postgres: wal writer process
+   | systemd+  121468  121423  0  Jul06  ?     00:00:27 postgres: autovacuum launcher process
+   | systemd+  121469  121423  0  Jul06  ?     00:00:57 postgres: stats collector process
+
+</pre>
+<pre xxxsmall zoom>
+<span xsmall TODO>SysDig</span>
+Container-focused Linux troubleshooting and monitoring tool.
+
+Once Sysdig is installed as a process (or container) on the server,
+it sees every process, every network action, and every file action
+on the host. You can use Sysdig "live" or view any amount of historical 
+data via a system capture file.
+
+Example: take a look at the total CPU usage of each running container:
+   $ sudo sysdig -c topcontainers\_cpu
+   | CPU% container.name 
+   | ---------------------------------------------------- 
+   | 80.10% postgres
+   | 0.14% httpd
+   | ...
+   | 
+
+Example: Capture historical data:
+   $ sudo sysdig -w historical.scap
+
+Example: "Zoom into a client":
+   $ sudo sysdig -pc -c topprocs\_cpu container. name=client
+   | CPU% Process container.name
+   | ----------------------------------------------
+   | 02.69% bash client
+   | 31.04%curl client
+   | 0.74% sleep client
+</pre>
+<pre TODO xxxsmall zoom>
+<span xsmall> cAdvisor</span>
+<span xsmall>+Prometheus</span>
+<span xsmall>+Grafana</span>
+@[https://dzone.com/refcardz/intro-to-docker-monitoring?chapter=6]
+</pre>
+</td>
+<td colsep>
+</td>
+</tr>
+</table>
+<br/>
+<table>
+<tr>
+<td title>
+    Managing<br/>
+    Images
+</td>
+<td>
+<pre xxxsmall zoom>
+  <span xsmall>Managing images</span>
+(List all image related commands with: $ docker image)
+
+List local ("downloaded/instaled") images:
+  $ docker images
+
+Search remote images @ Docker Hub: | Download image from Docker Hub: | Upload image to Docker Hub:
+  $ docker search redis            |   $ docker pull debian:jessie   |   $ docker login
+                                                                     |   $ docker push /clock:1.0
+
+Remove (local) image:     
+  $ docker rmi /clock:1.0 
+  $ docker image prune    # Remove *all* non used images
+</pre>
+
+<pre xxxsmall zoom>
+<span xsmall>Build image</span>
+$ docker build \
+   --build-arg http_proxy=http://...:8080 \
+   --build-arg https_proxy=https://..:8080 \
+   -t figlet .
+
+$ cat ./Dockerfile
+FROM ubuntu
+
+RUN apt-get update
+# Instalar figlet
+
+ENTRYPOINT ["figlet", "-f", "script"]
+</pre>
+
+
+<pre xxxsmall zoom>
+  <span xsmall>Image tags</span>
+adding a tag to the image essentially adds an alias 
+The tags consists of: 
+    'registry_server'/'user_name'/'image_name':'tag'
+    ^^^^^^^^^^^^^^^^^
+    default one if not
+    indicated
+
+Tag image:                              
+  $ docker tag jdeiviz/clock /clock:1.0 
+</pre>
+<pre xxxsmall zoom>
+<span xsmall>Show image</span>
+<span xsmall>change history</span>
+   $ docker history /clock:1.0
+</pre>
+<pre xxxsmall zoom>
+<span xsmall>Commit image</span>
+<span xsmall>modifications</span>
+(Discouraged most of the time, modify Dockerbuild instead)
+host-mach $ docker run -it ubuntu bash     # Boot up existing image
+container # apt-get install ...            # Apply changes to running instance
+host-mach $ docker diff $(docker ps -lq)   # Show changes done in running container
+host-mach $ docker commit $(docker ps -lq) # Commit/Confirm changes
+host-mach $ docker tag figlet              # Tage new image 
+host-mach $ docker run -it figlet          # Boot new image instance
+</pre>
+</td>
+<td title>
+    Advanced<br/>
+    Image<br/>
+    creation<br>
+</td>
+<td>
+<pre xxxsmall zoom>
 <span xsmall>ONBUILD</span>
 <span xsmall>(base Dockerfile</span>
 <span xsmall> for devel)</span>
@@ -375,114 +500,68 @@ in the image extending base image:
 │ Check image size │ $ docker images               │ $ docker images                                │
 └──────────────────┴───────────────────────────────┴────────────────────────────────────────────────┘
 </pre>
-</td>
-<td>
-<pre xxxsmall zoom>
-<span xsmall>docker-compose</span>
-version: "3"
-services:
-  web:
-    build: .         # ← use Dockerfile to build image
-    ports:
-      - "8000:8000"
-  redis:
-    image: redis     # ← use DockerHub image
-    volumes:
-      - "redis-data:/data"
-
-volumes:
-  redis-data:
-</pre>
-</td>
-</tr>
-</table>
-
-<table>
-<tr>
-<td colsep></td>
-<td>
-<pre xxxsmall zoom>
-<a TODO xsmall href="https://docs.docker.com/registry/#what-it-is">Registry</a>
-(server store for images)
-</pre>
-</td>
-<td colsep></td>
-<td>
-<pre xxxsmall zoom>
-<span xsmall>Monitoring (Basic)</span>
-List containers instances:
-   $ docker ps     # only running
-   $ docker ps -a  # also finished, but not yet removed (docker rm ...)
-   $ docker ps -lq # TODO:
-
-"top" containers showing Net IO read/writes, Disk read/writes:
-   $ docker stats
-   | CONTAINER ID   NAME                    CPU %   MEM USAGE / LIMIT     MEM %   NET I/O          BLOCK I/O      PIDS
-   | c420875107a1   postgres_trinity_cache  0.00%   11.66MiB / 6.796GiB   0.17%   22.5MB / 19.7MB  309MB / 257kB  16
-   | fdf2396e5c72   stupefied_haibt         0.10%   21.94MiB / 6.796GiB   0.32%   356MB / 693MB    144MB / 394MB  39
-
-   $ docker top 'containerID'
-   | UID       PID     PPID    C  STIME  TTY   TIME     CMD
-   | systemd+  26779   121423  0  06:11  ?     00:00:00 postgres: ddbbName cache 172.17.0.1(35678) idle
-   | ...
-   | systemd+  121423  121407  0  Jul06  pts/0 00:00:44 postgres
-   | systemd+  121465  121423  0  Jul06  ?     00:00:01 postgres: checkpointer process
-   | systemd+  121466  121423  0  Jul06  ?     00:00:26 postgres: writer process
-   | systemd+  121467  121423  0  Jul06  ?     00:00:25 postgres: wal writer process
-   | systemd+  121468  121423  0  Jul06  ?     00:00:27 postgres: autovacuum launcher process
-   | systemd+  121469  121423  0  Jul06  ?     00:00:57 postgres: stats collector process
-
-</pre>
-</td>
-<td>
-<pre xxxsmall zoom>
-<span xsmall TODO>SysDig</span>
-Container-focused Linux troubleshooting and monitoring tool.
-
-Once Sysdig is installed as a process (or container) on the server,
-it sees every process, every network action, and every file action
-on the host. You can use Sysdig "live" or view any amount of historical 
-data via a system capture file.
-
-Example: take a look at the total CPU usage of each running container:
-   $ sudo sysdig -c topcontainers\_cpu
-   | CPU% container.name 
-   | ---------------------------------------------------- 
-   | 80.10% postgres
-   | 0.14% httpd
-   | ...
-   | 
-
-Example: Capture historical data:
-   $ sudo sysdig -w historical.scap
-
-Example: "Zoom into a client":
-   $ sudo sysdig -pc -c topprocs\_cpu container. name=client
-   | CPU% Process container.name
-   | ----------------------------------------------
-   | 02.69% bash client
-   | 31.04%curl client
-   | 0.74% sleep client
-</pre>
-<pre TODO xxxsmall zoom>
-<span xsmall> cAdvisor</span>
-<span xsmall>+Prometheus</span>
-<span xsmall>+Grafana</span>
-@[https://dzone.com/refcardz/intro-to-docker-monitoring?chapter=6]
-</pre>
-</td>
-<td colsep>
-</td>
-<td>
-<pre xxxsmall zoom>
-<span TODO xsmall>alpine how-to</span>
-</pre>
-</td>
-<td TODO>
 <pre xxxsmall zoom>
   <a xsmall href="https://github.com/GoogleContainerTools/distroless">Distroless</a>
+- "Distroless" images contain only your application and its runtime dependencies.
+(not package managers, shells,...)
+Notice: In kubernetes we can also use init containers with non-light images
+        containing all set of tools (sed, grep,...) for pre-setup, avoiding
+        any need to include in the final image. 
+
+Stable:                      experimental (2019-06)
+gcr.io/distroless/static     gcr.io/distroless/python2.7
+gcr.io/distroless/base       gcr.io/distroless/python3
+gcr.io/distroless/java       gcr.io/distroless/nodejs
+gcr.io/distroless/cc         gcr.io/distroless/java/jetty
+                             gcr.io/distroless/dotnet
+
+Ex java Multi-stage Dockerfile:
+@[https://github.com/GoogleContainerTools/distroless/blob/master/examples/java/Dockerfile]
+ *FROM*openjdk:11-jdk-slim  ASo*build-env*
+  ADD . /app/examples
+  WORKDIR /app
+  RUN javac examples/*.java
+  RUN jar cfe main.jar examples.HelloJava examples/*.class 
+  
+  FROM gcr.io/distroless/java:11
+  COPY --from=o*build-env* /app /app
+  WORKDIR /app
+  CMD ["main.jar"]
 </pre>
 </td>
+
+
+<td>
+<pre xxxsmall zoom>
+<span xsmall>alpine how-to</span>
+Next image (golang) is just*6Mbytes*in size:
+@[https://hub.docker.com/r/ethereum/solc/dockerfile]
+Dockerfile:
+    01	FROM alpine
+    02	MAINTAINER chriseth <chris@ethereum.org>
+    03	  
+    04	RUN \
+    05	  apk --no-cache --update add build-base cmake boost-dev git                                                && \
+    06	  sed -i -E -e 's/include &lt;sys\/poll.h>/include &lt;poll.h>/' /usr/include/boost/asio/detail/socket_types.hpp  && \
+    07	  git clone --depth 1 --recursive -b release https://github.com/ethereum/solidity                           && \
+    08	  cd /solidity && cmake -DCMAKE_BUILD_TYPE=Release -DTESTS=0 -DSTATIC_LINKING=1                             && \
+    09	  cd /solidity && make solc && install -s  solc/solc /usr/bin                                               && \
+    10	  cd / && rm -rf solidity                                                                                   && \
+    11	  apk del sed build-base git make cmake gcc g++ musl-dev curl-dev boost-dev                                 && \
+    12	  rm -rf /var/cache/apk/*
+
+Notes:
+  - line 07: *--depth 1*: faster cloning (just last commit)
+  - line 07: the cloned repo contains next *.dockerignore*:
+    01 # out-of-tree builds usually go here. This helps improving performance of uploading
+    02 # the build context to the docker image build server
+    03*/build*
+    04 
+    05 # in-tree builds
+    06*/deps*
+</pre>
+</td>
+
 </tr>
 </table>
 </body>

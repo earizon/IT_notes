@@ -93,7 +93,7 @@ function onZoomIn(){
 }
 function doOpenZoom(e)      { 
   zoomDivDOM.innerHTML = 
-     "<span style='font-size:1.0rem; color:blue;' onClick='doCloseZoom()'>(click here or press 'Esc' to close)<br/></span>" 
+     "<div style='float:left; font-size:2.0rem; color:blue;' onClick='doCloseZoom()'><span style='border:4px solid blue; background-color:#DDD'>✕</span>(or press 'Esc' to close)<br/></div><br/>" 
    + this.outerHTML; 
   zoomDivDOM.style.display="block";
   window.zoomDivDOM.scrollTop = 0;
@@ -121,8 +121,14 @@ var help = '<h1>HELPMan to the rescue!!!</h1>'
          + '<li>Content is plain html</li>' 
          + '<li> Use <a href="https://github.com/singlepagebookproject/IT_notes/issues">GitHub pull request</a> to request occasional changes.<br/></li>' 
          + '<li> Become a member of <a href="https://github.com/singlepagebookproject/">The Single-Page-Book Project@GitHub</a> to add you own page books.<br/></li>' 
+         + '<li> Highly random UUID can be generated <a href="#" onClick="generate_uuidv4()"> clicking here </a>'
+         + '<input type=text id="id_uuid_display" size="20em"/><br/>'
+         + 'The UUID can then be placed anywhere and use the URL extra query param ?query=UUID to point to a concrete block of info'
+         + '</li>'
+         + '(useful for safe internal links)'
+
          + '<li> Text diagrams are really welcome in this project. Some basic help to create txt diagram follows: '
-         + '<pre>'
+         + '<pre style="float:none;">'
          + '(Copy&Paste into your favourite editor)              \n'
          + '<b>Common Arrows</b>         <b>Less/Greater-than</b>\n'
          + '← →  ↑ ↓  ⇿           html-friendly replacements     \n'
@@ -150,6 +156,7 @@ var help = '<h1>HELPMan to the rescue!!!</h1>'
          + '\n'
          + '\n'
          + '</pre>'
+         + '<br/>'
          + '</li>'
          + '<li><a href="http://asciiflow.com/">Ascii Flow online diagram editor</a> easify txt diagrams</li>'
          + '<li><a href="http://www.figlet.org/">figlet.org</a>: Create large ascii letters</li>'
@@ -158,6 +165,7 @@ var help = '<h1>HELPMan to the rescue!!!</h1>'
          + '<li>HINT: txt editors with block and/or column edit mode (Vim, UltraEdit, gedit, Notepad++, Eclipse, ...) will make your life much easier</li>'
          + '<li>HINT: Vim is the best text editor. Love him and it will love you for the rest of your life!</li>'
          + '</ul>'
+
    
 function doHelp() {
     ctx = {
@@ -354,5 +362,15 @@ function highlightSearch() {
   if (numberOfMatches == 1) {
       doOpenZoom.call(window.lastElementFound, longPress.element);
   }
+}
+
+
+function generate_uuidv4() {
+  let UUID = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+  document.getElementById("id_uuid_display").value=UUID;
+
 }
 

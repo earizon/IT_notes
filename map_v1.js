@@ -91,9 +91,36 @@ function onZoomIn(){
   cellFontSize=cellFontSize + 0.05
   document.styleSheets[0]['cssRules'][idxXXXsmallRule].style['font-size']=cellFontSize+'rem';
 }
-function doOpenZoom(e)      { 
+var _visited=[]
+var _visited_idx=-1
+function goBack() {
+    if(_visited_idx == 0) return
+    _visited_idx--
+    let e = _visited[_visited_idx]
+    doOpenZoom.call(e, e, true);
+}
+function goForward() {
+    if(_visited_idx == _visited.length-1) return
+    _visited_idx++
+    let e = _visited[_visited_idx]
+    doOpenZoom.call(e, e, true);
+}
+function doOpenZoom(e, isHistoric)      { 
+  if (!!!isHistoric) { // Apend new history
+    _visited.push(this)
+    _visited_idx =_visited.length-1
+  }
+  let backNumber = _visited_idx;
+  let forwNumber = (_visited.length-1)-_visited_idx;
+  let backControl = (backNumber>0) ? "<span onClick='goBack   ()' style='color:blue; font-size:2.0rem'>"+backNumber+"⇦</span>" : ""
+  let forwControl = (forwNumber>0) ? "<span onClick='goForward()' style='color:blue; font-size:2.0rem'>⇨"+forwNumber+"</span>" : "" 
   zoomDivDOM.innerHTML = 
-     "<div style='float:left; font-size:2.0rem; color:blue;' onClick='doCloseZoom()'><span style='border:4px solid blue; background-color:#DDD'>✕</span>(or press 'Esc' to close)<br/></div><br/>" 
+     "<div style='float:left; font-size:2.0rem; color:blue;' onClick='doCloseZoom()'><span style='border:4px solid blue; background-color:#DDD'>✕</span>(or press 'Esc' to close)<br/></div>" 
+   + "<div style='float:left; '>"
+   + backControl
+   + forwControl
+   + "</div><br/>" 
+
    + this.outerHTML; 
   zoomDivDOM.style.display="block";
   window.zoomDivDOM.scrollTop = 0;
@@ -238,7 +265,8 @@ function onPageLoaded() {
       // Open new window with pre-recoded search:[[Troubleshooting+restorecon?]]
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(
           /\[\[([^\?]*)\?\]\]/g,
-          "<a href='"+window.location.href.split('?')[0]+"?query=$1'>$1</a>"
+//        "<a href='"+window.location.href.split('?')[0]+"?query=$1'>$1</a>"
+          "<a href='#' onClick='highlightSearch(\"$1\",true)'>$1</a>"
         + "<a target='_blank' href='"+window.location.href.split('?')[0]+"?query=$1'>( ⏏ )</a>"
       )
                                                               // @[   http.....  ]
@@ -281,8 +309,9 @@ function onPageLoaded() {
 
   var query = getParameterByName("query");
   if (query != null) {
-    document.getElementById("query").value = getParameterByName("query");
-    highlightSearch();
+//  document.getElementById("query").value = getParameterByName("query");
+//  highlightSearch(query);
+    highlightSearch(getParameterByName("query"));
   }
 }
 
@@ -299,8 +328,10 @@ function getParameterByName(name, url) {
 }
 
 var searchFound = false;
-function highlightSearch() {
+function highlightSearch(query) {
+  if (!!query) { document.getElementById("query").value = query; }
   var text = document.getElementById("query").value.replace(/ +/g,".*");
+console.log(text)
 
   var removeNodeList = document.querySelectorAll('*[textFound]');
   if (removeNodeList.length > 0) {
@@ -318,7 +349,7 @@ function highlightSearch() {
   var regexFlags = "g";
   if (!caseSensitive) regexFlags += "i";
   if (!singleLineOnly) regexFlags += "m";
-  var query = new RegExp("[^=>](" + text + ")", regexFlags);
+  var query = new RegExp("[^=>;](" + text + ")", regexFlags);
 
 //var matrix = [
 //   document.querySelectorAll('td'),
@@ -360,7 +391,8 @@ function highlightSearch() {
 
   }
   if (numberOfMatches == 1) {
-      doOpenZoom.call(window.lastElementFound, longPress.element);
+   // doOpenZoom.call(window.lastElementFound, longPress.element);
+      doOpenZoom.call(window.lastElementFound, window.lastElementFound);
   }
 }
 

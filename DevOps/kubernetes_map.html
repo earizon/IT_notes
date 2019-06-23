@@ -35,7 +35,8 @@
 <pre xxxsmall zoom>
 <span xsmall>External Links</span>
 - <a href="https://kubernetes.io/">Kubernetes</a>
-- <a href="https://kubernetes.io/docs/reference/kubernetes-api/">API Reference</a>
+- <a href="https://kubernetes.io/docs/reference/">Source Generated Reference</a>
+  API, API Client, CLI, Config,  Design Docs
 - <a xsmall href="https://www.youtube.com/watch?v=PH-2FfFD2PU">Desired State management"</a>
 - <a xsmall href="https://kubernetes.io/docs/reference/glossary/">Standardized Glossary</a>
 - <a xsmall href="https://kubernetes.io/docs/reference/tools/">Tools</a>
@@ -50,6 +51,9 @@
 *k8s Issues:*
   - <a href="https://kubernetes.io/docs/reference/issues-security/issues/">Kubernetes Issue Tracker</a>
   - <a href="https://kubernetes.io/docs/reference/issues-security/security/">Kubernetes Security and Disclosure Information</a>
+
+*k8s Enhancements*
+  - <a href="https://github.com/kubernetes/enhancements">Enhancement Tracking and Backlog</a>
 </pre>
 
 <pre xxxsmall zoom>
@@ -63,6 +67,8 @@
 <pre xxxsmall zoom>
 <span xsmall>cluster components</span>
 ref:@[https://kubernetes.io/docs/concepts/overview/components/]
+    @[https://kubernetes.io/docs/reference/#config-reference]
+
 MASTER/S COMPONENTS:
 
     |*Etcd*                          |*(REST)API Server:*
@@ -72,7 +78,7 @@ MASTER/S COMPONENTS:
     |- See ref1                      | - Offers APIs to configure:
     |                                |   - (many of)K8s workloads
     |                                |   - organizational units
-    |                                |
+    |                                | - validates and configures data for API objects
 
     |*Controller Manager Service*                |*Scheduler Service*                      | *cloud-controller-manager*
     | -*handles a number of controllers that:*   | - Assigns workloads to nodes            | - Kubernetes 1.6r*alpha feature*
@@ -81,15 +87,24 @@ MASTER/S COMPONENTS:
     |     - ensures number of replicas for       |   each server as well as the resources  | - affected controllers
     |       a service,                           |   allocated to existing workloads       |   - Node Controller
     |     - ...                                  |   assigned on each server.              |   - Route Controller
-    | - Implemented by*kube-controller-manager*                                            |   - Service Controller
-                                                                                           |   - Volume Controller
+    | - Implemented by*kube-controller-manager*  | - Manages availability, performance and |   - Service Controller
+    | - embeds k8s core control loops                capacity                              |   - Volume Controller
 
+
+    |*federation-apiserver*                  |*federation-controller-manager*
+    |- API server for federated clusters.    |- embeds the core control loops shipped
+                                             |  with Kubernetes federation.
 
 *NODE/S COMPONENTS:*
 
-    |*kubelet*             |*Container Runtime Interface (CRI)*      |*kube-proxy*
-    |                      |- Docker, ...                            |- network service abstraction
-                                                                     |  enabling SDNs
+    |*kubelet*                             |*Container Runtime Interface (CRI)*      |*kube-proxy*
+    |- run on each node                    |- Docker, ...                            |- network service abstraction
+    |- takes a set of PodSpecs and ensures |                                         |  enabling SDNs
+    |  thate described containers are      |                                         |- Can do simple TCP/UDP stream forwarding 
+    |  running and healthy.                |                                         |  or round-robin TCP/UDP forwarding across
+                                           |                                         |  a set of back-ends.
+
+
 ref1:
  @[https://kubernetes.io/docs/Architecture/architecture_map.html?query=service+registration+discovery]
 
@@ -127,7 +142,7 @@ ref1:
   ─ memory 
   ─ max.number of pods supported
 </pre>
-<pre xxxsmall zoom>
+<pre xxxsmall zoom bgorange>
 <span xsmall>Network</span>
 Network schema without Cloud-Controller:
 REF:@[https://kubernetes.io/docs/concepts/architecture/cloud-controller/]
@@ -238,8 +253,7 @@ g*RESOURCE TYPES*
 (ing)ingresses          │networkpolicies            │storageclasses
                         │(no)nodes                  │thirdpartyresources
 
-All existing API core types (node, pod, ...) are defined at:
-@[https://github.com/kubernetes/kubernetes/blob/master/pkg/apis/core/types.go]
+<a xsmall href="https://github.com/kubernetes/kubernetes/blob/master/pkg/apis/core/types.go">Full list APItypes</a> 
 
 ref1: @[https://kubernetes.io/docs/conceptsverview/kubernetes-api/]
 - External refs:
@@ -729,9 +743,14 @@ r*WARN:*
 - TODO: difference between requests and limits, see Resource QoS.
       @[https://github.com/kubernetes/community/blob/master/contributors/design-proposals/node/resource-qos.md]
 
-- spec.containers[].resources.limits.cpu
-- spec.containers[].resources.limits.memory
-- spec.containers[].resources.requests.cpu
+A Container:
+-   *can exceed* its resource*request*if the Node has memory available, 
+- is*not allowed*to use more than its resource *limit*.
+
+
+- spec.containers[].resources.limits.cpu              ← can NOT exceed resource limit → it will be scheduled 
+- spec.containers[].resources.limits.memory                                             for termination
+- spec.containers[].resources.requests.cpu            ← can     exceed resource request 
 - spec.containers[].resources.requests.memory
 - spec.containers[].resources.limits.ephemeral-storage     k8s 1.8+
 - spec.containers[].resources.requests.ephemeral-storage   k8s 1.8+
@@ -774,7 +793,6 @@ It is planned to add new resource types, including a node disk space resource, a
 </td>
 <td>
 Pods<br/>
-
 <pre xxxsmall zoom>
 <span xsmall>Pod</span>
 <span xsmall>basic execution</span>
@@ -837,6 +855,22 @@ Add next annotation to the Pod Spec:
 @[https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/]
 Pod.PodStatus.phase := Pending|Running|Succeeded|Failed
 </pre>
+<pre xxxsmall zoom>
+<span xsmall>Pod QoS</span>
+@[https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/]
+
+Pod.spec.qosClass := 
+Guaranteed   Assigned to pod when:
+             - All Pod-Containers have a defined cpu/mem. limit.
+             - All Pod-Containers have same cpu/mem.limit and same cpu/mem.request
+
+Burstable    Assigned to pod when: 
+             - criteria for QoS class Guaranteed is*NOT*met.
+             - 1+ Pod-Containers have memory or CPU request.
+
+BestEffort   Assigned to pod when:
+             - Pod-Containers do NOT have any memory/CPU request/limit
+</pre>
 
 <pre xxxsmall zoom >
 <span xsmall>Ex. Pod YAML Definition:</span>
@@ -865,19 +899,22 @@ containers:
 </pre>
 
 <pre xxxsmall zoom>
-<a xsmall TODO href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy">RestartPolicy</a><br/>
+<a xsmall TODO href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy">RestartPolicy</a>
 </pre>
 
 
 <pre xxxsmall>
 <span xsmall>Mng. running pod:</span>
-$ kubectl logs my-pod (-c my-container) (-f)
-                                         ^"tail -f"
-$ kubectl run -i --tty busybox --image=busybox -- sh
-$ kubectl attach my-pod -i
-$ kubectl port-forward my-pod 5000:6000  # Forward port 6000 of Pod -> 5000 local machine
-$ kubectl exec my-pod (-c my-container) -- ls / # Run command in existing pod
-$ kubectl top pod POD_NAME --containers
+<span xsmall>run,attach</span>
+<span xsmall>exec,top</span>
+<span xsmall>Mng. running pod:</span>
+  $ kubectl logs my-pod (-c my-container) (-f)
+                                           ^"tail -f"
+  $ kubectl run -i --tty busybox --image=busybox -- sh
+  $ kubectl attach my-pod -i
+  $ kubectl port-forward my-pod 5000:6000  # Forward port 6000 of Pod -> 5000 local machine
+  $ kubectl exec my-pod (-c my-container) -- ls / # Run command in existing pod
+  $ kubectl top pod POD_NAME --containers
 </pre>
 
 <pre xxxsmall zoom>
@@ -890,18 +927,325 @@ $ kubectl top pod POD_NAME --containers
 </td>
 <td>
 <pre xxxsmall zoom>
+<span xsmall>SecurityContext</span>
+@[https://kubernetes.io/docs/tasks/configure-pod-container/security-context/]
+@[https://github.com/kubernetes/community/blob/master/contributors/design-proposals/auth/security_context.md]
+Pod.spec.securityContext Ex:
+Ex:
+apiVersion: v1                            Exec a terminal into a running container adnd execute:
+kind: Pod                                 $ id
+metadata:                                *uid=1000 gid=3000 groups=2000*
+  name: security-context-demo                 ^^^^     ^^^^ 
+spec:                                         uid/gid 0/0 if not specified
+ *securityContext:  *
+ *  runAsUser: 1000 *
+ *  runAsGroup: 3000*
+ *  fsGroup: 2000* ← owned/writable by this GID when supported by volume
+  volumes:           
+  - name: sec-ctx-vol   ← Volumes will be relabeled with provided seLinuxOptions values
+    emptyDir: {}
+  containers:
+  - name: sec-ctx-demo
+    ...
+    volumeMounts:
+    - name: sec-ctx-vol
+      mountPath: /data/demo
+   *securityContext:*
+   *  allowPrivilegeEscalation: false*
+   *  capabilities:*
+   *    add: ["NET_ADMIN", "SYS_TIME"]* ← Provides a subset of 'root' capabilities:
+                                        @[https://github.com/torvalds/linux/blob/master/include/uapi/linux/capability.h]
+    * seLinuxOptions:*
+    *   level: "s0:c123,c456"*
+
+SecurityContext holds security configuration that will be applied to a container.
+Some fields are present in both SecurityContext and PodSecurityContext.  When both
+are set, the values in SecurityContext take precedence.
+type*SecurityContext*struct {
+    // The capabilities to add/drop when running containers.
+    // Defaults to the default set of capabilities granted by the container runtime.
+    // +optional
+    Capabilities *Capabilities
+    // Run container in privileged mode.
+    // Processes in privileged containers are essentially equivalent to root on the host.
+    // Defaults to false.
+    // +optional
+    Privileged *bool
+    // The SELinux context to be applied to the container.
+    // If unspecified, the container runtime will allocate a random SELinux context for each
+    // container.  May also be set in PodSecurityContext.  If set in both SecurityContext and
+    // PodSecurityContext, the value specified in SecurityContext takes precedence.
+    // +optional
+    SELinuxOptions *SELinuxOptions
+    // Windows security options.
+    // +optional
+    WindowsOptions *WindowsSecurityContextOptions
+    // The UID to run the entrypoint of the container process.
+    // Defaults to user specified in image metadata if unspecified.
+    // May also be set in PodSecurityContext.  If set in both SecurityContext and
+    // PodSecurityContext, the value specified in SecurityContext takes precedence.
+    // +optional
+    RunAsUser *int64
+    // The GID to run the entrypoint of the container process.
+    // Uses runtime default if unset.
+    // May also be set in PodSecurityContext.  If set in both SecurityContext and
+    // PodSecurityContext, the value specified in SecurityContext takes precedence.
+    // +optional
+    RunAsGroup *int64
+    // Indicates that the container must run as a non-root user.
+    // If true, the Kubelet will validate the image at runtime to ensure that it
+    // does not run as UID 0 (root) and fail to start the container if it does.
+    // If unset or false, no such validation will be performed.
+    // May also be set in PodSecurityContext.  If set in both SecurityContext and
+    // PodSecurityContext, the value specified in SecurityContext takes precedence.
+    // +optional
+    RunAsNonRoot *bool
+    // The read-only root filesystem allows you to restrict the locations that an application can write
+    // files to, ensuring the persistent data can only be written to mounts.
+    // +optional
+    ReadOnlyRootFilesystem *bool
+    // AllowPrivilegeEscalation controls whether a process can gain more
+    // privileges than its parent process. This bool directly controls if
+    // the no_new_privs flag will be set on the container process.
+    // +optional
+    AllowPrivilegeEscalation *bool
+    // ProcMount denotes the type of proc mount to use for the containers.
+    // The default is DefaultProcMount which uses the container runtime defaults for
+    // readonly paths and masked paths.
+    // +optional
+    ProcMount *ProcMountType
+}
+</pre>
+
+<pre xxxsmall zoom>
+<span xsmall>PodSecurityContext</span>
+// PodSecurityContext holds pod-level security attributes and common container settings
+// Some fields are also present in container.securityContext.  Field values of
+// container.securityContext take precedence over field values of PodSecurityContext.
+type*PodSecurityContext*struct {
+    // Use the host's network namespace.  If this option is set, the ports that will be
+    // used must be specified.
+    // Optional: Default to false
+    // +k8s:conversion-gen=false
+    // +optional
+    HostNetwork bool
+    // Use the host's pid namespace.
+    // Optional: Default to false.
+    // +k8s:conversion-gen=false
+    // +optional
+    HostPID bool
+    // Use the host's ipc namespace.
+    // Optional: Default to false.
+    // +k8s:conversion-gen=false
+    // +optional
+    HostIPC bool
+    // Share a single process namespace between all of the containers in a pod.
+    // When this is set containers will be able to view and signal processes from other conts
+    // in the same pod, and the first process in each container will not be assigned PID 1.
+    // HostPID and ShareProcessNamespace cannot both be set.
+    // Optional: Default to false.
+    // This field is beta-level and may be disabled with the PodShareProcessNamespace feature.
+    // +k8s:conversion-gen=false
+    // +optional
+    ShareProcessNamespace *bool
+    // The SELinux context to be applied to all containers.
+    // If unspecified, the container runtime will allocate a random SELinux context for each
+    // container.  May also be set in SecurityContext.  If set in
+    // both SecurityContext and PodSecurityContext, the value specified in SecurityContext
+    // takes precedence for that container.
+    // +optional
+    SELinuxOptions *SELinuxOptions
+    // Windows security options.
+    // +optional
+    WindowsOptions *WindowsSecurityContextOptions
+    // The UID to run the entrypoint of the container process.
+    // Defaults to user specified in image metadata if unspecified.
+    // May also be set in SecurityContext.  If set in both SecurityContext and
+    // PodSecurityContext, the value specified in SecurityContext takes precedence
+    // for that container.
+    // +optional
+    RunAsUser *int64
+    // The GID to run the entrypoint of the container process.
+    // Uses runtime default if unset.
+    // May also be set in SecurityContext.  If set in both SecurityContext and
+    // PodSecurityContext, the value specified in SecurityContext takes precedence
+    // for that container.
+    // +optional
+    RunAsGroup *int64
+    // Indicates that the container must run as a non-root user.
+    // If true, the Kubelet will validate the image at runtime to ensure that it
+    // does not run as UID 0 (root) and fail to start the container if it does.
+    // If unset or false, no such validation will be performed.
+    // May also be set in SecurityContext.  If set in both SecurityContext and
+    // PodSecurityContext, the value specified in SecurityContext takes precedence
+    // for that container.
+    // +optional
+    RunAsNonRoot *bool
+    // A list of groups applied to the first process run in each container, in addition
+    // to the container's primary GID.  If unspecified, no groups will be added to
+    // any container.
+    // +optional
+    SupplementalGroups []int64
+    // A special supplemental group that applies to all containers in a pod.
+    // Some volume types allow the Kubelet to change the ownership of that volume
+    // to be owned by the pod:
+    //
+    // 1. The owning GID will be the FSGroup
+    // 2. The setgid bit is set (new files created in the volume will be owned by FSGroup)
+    // 3. The permission bits are OR'd with rw-rw----
+    //
+    // If unset, the Kubelet will not modify the ownership and permissions of any volume.
+    // +optional
+    FSGroup *int64
+    // Sysctls hold a list of namespaced sysctls used for the pod. Pods with unsupported
+    // sysctls (by the container runtime) might fail to launch.
+    // +optional
+    Sysctls []Sysctl
+}
+</pre>
+
+<pre xxxsmall zoom>
+<span xsmall>ServiceAccount</span>
+@[https://kubernetes.io/docs/reference/access-authn-authz/service-accounts-admin/]
+@[https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/]
+
+- Processes in containers inside pods can also contact the apiserver.
+  When they do, they are authenticated as a particular Service Account 
+- provides an identity for processes that run in a Pod.
+- to access the API from inside a pod a mounted service account with
+  a 1-hour-expiration-token is provided.
+  (can be disabled with automountServiceAccountToken)
+- User accounts are for humans. Service accounts are for processes running on pods.
+- Service accounts are namespaced.
+- cluster users can create service accounts for specific tasks (i.e. principle of least privilege).
+- Allows to split auditing between humans and services.
+
+- Three separate components cooperate to implement the automation around service accounts:
+  - A*Service account admission controller*, part of the apiserver, thatsynchronously modify 
+    pods as they are created or updated:
+    - sets the ServiceAccount to default when not specified by pod.
+    - abort if ServiceAccount in the pod spec does NOT exists.
+    - ImagePullSecrets of ServiceAccount are added to the pod if none is specified by pod.
+    - Adds a volume to the pod which contains a token for API access.
+      (service account token expires after 1 hour or on pod deletion)
+    - Adds a volumeSource to each container of the pod mounted at
+      */var/run/secrets/kubernetes.io/serviceaccount*
+  - A*Token controller*, running as as part of controller-manager. It acts asynchronously and
+    - observes serviceAccount creation and creates a corresponding Secret to allow API access.
+    - observes serviceAccount deletion and deletes all corresponding ServiceAccountToken Secrets.
+    - observes secret addition, and ensures the referenced ServiceAccount exists, and adds a
+      token to the secret if needed.
+    - observes secret deletion and removes a reference from the corresponding ServiceAccount if needed.
+    NOTE: 
+      controller-manager*'--service-account-private-key-file'* indicates the priv.key signing tokens
+     - kube-apiserver   *'--service-account-key-file'*         indicates the matching pub.key verifying signatures
+    - A controller loop ensures a secret with an API token exists for each service account.
+
+    To create additional API tokens for a service account:
+    - create a new secret of type ServiceAccountToken like: 
+      (controller will update it with a generated token)
+      {
+        "kind":*"Secret"*,
+        "type":*"kubernetes.io/service-account-token"*
+        "apiVersion": "v1",
+        "metadata": {
+          "name": "mysecretname",
+          "annotations": {
+            "kubernetes.io/service-account.name" :
+              "myserviceaccount"  ← reference to service account
+          }
+        },
+      }
+  - A*Service account controller:*
+    - manages ServiceAccount inside namespaces,
+    - ensures a ServiceAccount named “default” exists in every active namespace.
+      $ kubectl get serviceAccounts
+      NAME      SECRETS    AGE
+      default   1          1d   ← Exists for each namespace
+      ...
+    - Additional ServiceAccount's can be created like:
+    - 
+    - $ kubectl apply -f - ˂˂EOF
+    - apiVersion: v1
+    - kind: ServiceAccount
+    - metadata:
+    -   name: build-robot
+    - EOF
+</pre>
+
+<pre xxxsmall zoom>
+<span xsmall>Liveness  Probes</span>
+<span xsmall>Readiness Probes</span>
+@[https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/]
+@[https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.14/#probe-v1-core]
+
+.
+- liveness probes  : used by kubelet to know when to restart a Container.
+- readiness probes : used by kubelet to know whether a Container can accept new requests.
+                     - A Pod is considered ready when all of its Containers are ready. 
+                     - The Pod is not restarted in this case but no new requests are
+                       forwarded.
+                     - Readiness probes continue to execute for the lifetime of the Pod
+                       (not only at startup)
+
+*liveness COMMAND*            │ *liveness HTTP request*         │ *TCP liveness probe*
+                              │                                 │ 
+apiVersion: v1                │ apiVersion: v1                  │ apiVersion: v1
+kind:*Pod*                    │ kind:*Pod*                      │ kind:*Pod*
+metadata:                     │ metadata:                       │ metadata:
+  ...                         │   ...                           │   ...
+spec:                         │ spec:                           │ spec:
+ *containers:*                │  *containers:*                  │  *containers:*
+  - name: ...                 │   - name: ...                   │   - name: ...
+    ...                       │     ...                         │    *readinessProbe:          *
+   *livenessProbe:          * │    *livenessProbe:           *  │    *  tcpSocket:             *
+   *  exec:                 * │    *  httpGet:               *  │    *    port: 8080           *
+   *    command:            * │    *    path: /healthz       *  │    *  initialDelaySeconds: 5 *
+   *    - cat               * │    *    port: 8080           *  │    *  periodSeconds: 10      *
+   *    - /tmp/healthy      * │    *    httpHeaders:         *  │    *livenessProbe:           *
+   *  initialDelaySeconds: 5* │    *    - name: Custom-Header*  │    *  tcpSocket:             *
+   *  periodSeconds: 5      * │    *      value: Awesome     *  │    *    port: 8080           *
+                              │    *  initialDelaySeconds: 3 *  │    *  initialDelaySeconds: 15*
+                              │    *  periodSeconds: 3       *  │    *  periodSeconds: 20      *
+                                HTTP proxy ENV.VARS is ignored 
+                                in liveness probes (k8s v1.13+) 
+
+                                      ↑                                ↑
+                                      │                                │
+*named*ContainerPort can also   ──────┴────────────────────────────────┘ 
+be used for HTTP and TCP probes
+like:
+ │ ports:
+ │ - name: liveness-port
+ │   containerPort: 8080
+ │   hostPort: 8080
+ │ 
+ │ livenessProbe:
+ │   httpGet:
+ │     path: /healthz
+ │     port: liveness-port
+
+*Monitor liveness test result*
+$ kubectl describe pod liveness-exec
+
+Other optional parameters:
+- timeoutSeconds  : secs after which the probe times out. (1 sec by default)
+- successThreshold: Minimum consecutive successes for the probe to be
+                    considered successful after having failed. (1 by default)
+- failureThreshold: number of failures before "giving up": Pod will be marked Unready.(Def 3)
+
+HTTP optional parameters: 
+- host  : for example 127.0.0.1 (defaults to pod IP)
+- port  : Name or number(1-65535)
+- scheme: HTTP or HTTPS(skiping cert.validation)
+- path  : 
+- httpHeaders: Custom headers 
+</pre>
+
+</td>
+<td>
+<pre xxxsmall zoom>
 <span TODO xsmall>Config Pods/Cont.</span>
-<a TODO xsmall href=https://kubernetes.io/docs/tasks/configure-pod-container/assign-memory-resource/">Assign Memory</a>
-<a TODO xsmall href=https://kubernetes.io/docs/tasks/configure-pod-container/assign-cpu-resource/">Assign CPU</a>
-<a TODO xsmall href=https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/">Configure QoS</a>
-<a TODO xsmall href=https://kubernetes.io/docs/tasks/configure-pod-container/extended-resource/">Assign Extended Resources</a>
-<a TODO xsmall href=https://kubernetes.io/docs/tasks/configure-pod-container/configure-volume-storage/">Config.Pods Volumes</a>
-<a TODO xsmall href=https://kubernetes.io/docs/tasks/configure-pod-container/configure-persistent-volume-storage/">Configure PersistentVolume</a>
-<a TODO xsmall href=https://kubernetes.io/docs/tasks/configure-pod-container/configure-projected-volume-storage/">Configure Projected Volume</a>
-<a TODO xsmall href=https://kubernetes.io/docs/tasks/configure-pod-container/security-context/">Configure Sec.Context</a>
-<a TODO xsmall href=https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/">Conf.Service Accounts for Pods</a>
-<a TODO xsmall href=https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/">Pull Image from a Private Registry</a>
-<a TODO xsmall href=https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/">Config.Liveness/Readiness Probes</a>
 <a TODO xsmall href=https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/">Assign Pods to Nodes</a>
 <a TODO xsmall href=https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-initialization/">Config.Pod I12n</a>
 <a TODO xsmall href=https://kubernetes.io/docs/tasks/configure-pod-container/attach-handler-lifecycle-event/">Attach Cont.Lifecycle Handlers</a>
@@ -1131,7 +1475,8 @@ metadata:                                     |metadata:                       |
 <td>
     Storage<br/>
 <pre xxxsmall zoom>
-<a xsmall href="https://kubernetes.io/docs/concepts/storage/volumes/">Volume</a><br/>
+<a xsmall href="https://kubernetes.io/docs/concepts/storage/volumes/">Volume</a>
+TODO: @[https://github.com/kubernetes/community/blob/master/contributors/design-proposals/storage/volume-ownership-management.md]
 <span xsmall>lifetime of pod (vs docker container)</span>
 - many types supported, and a Pod can use any number
    of them simultaneously.
@@ -1607,7 +1952,7 @@ spec:
        The StatefulSet controller will delete and recreate each Pod proceeding
        in the same order as Pod termination (largest to smallest ordinal), updating
        each Pod one at a time waiting until an updated Pod is Running and Ready
-       prior to updating its predecessor.<br/>
+       prior to updating its predecessor.
        Partitions
        {
        - RollingUpdate strategy can be partitioned, by specifying a
@@ -1631,8 +1976,8 @@ spec:
 </pre>
 <pre xxxsmall zoom>
 <span xsmall>DONT'S</span>
-  - The StatefulSet should NOT specify a pod.Spec.TerminationGracePeriodSeconds of 0.<br/>
-      Unsafe and <b>strongly discouraged</b>
+  - The StatefulSet should NOT specify a pod.Spec.TerminationGracePeriodSeconds of 0.
+      Unsafe and *strongly discouraged*
 </pre>
 <pre xxxsmall zoom>
 <a xsmall TODO href=https://kubernetes.io/docs/tasks/debug-application-cluster/debug-stateful-set/">Debug a StatefulSet</a>
@@ -1893,13 +2238,16 @@ pi-aiw0a
 </pre>
 <pre xxxsmall zoom>
 <span xsmall>Parallel Jobs</span>
-  - Parallel Jobs with a fixed completion count (.spec.completions greater than zero). the job is complete when there is one successful pod for each value in the range 1 to .spec.completions.
+  - Parallel Jobs with a fixed completion count 
+    (.spec.completions greater than zero). 
+    the job is complete when there is one successful pod for
+    each value in the range 1 to .spec.completions.
 
-  - Parallel Jobs with a work queue: do not specify .spec.completions:<br/>
+  - Parallel Jobs with a work queue: do not specify .spec.completions:
      pods must coordinate with themselves or external service to determine
-     what each should work on.<br/>
+     what each should work on.
      each pod is independently capable of determining whether or not all its peers
-     are done, thus the entire Job is done.<br/>
+     are done, thus the entire Job is done.
 
   - For Non-parallel job, leave both .spec.completions and
       .spec.parallelism unset.
@@ -1960,7 +2308,7 @@ hello-4111706356   1         1         2s
 <hr/>
 <table>
 <td>
-    Node Monitoring<br/>
+    Node Monitoring
 <pre xxxsmall zoom>
 <span TODO xsmall>Node Health</span>
 @[https://kubernetes.io/docs/tasks/debug-application-cluster/monitor-node-health/]
@@ -1972,7 +2320,7 @@ hello-4111706356   1         1         2s
 </td>
 
 <td title>
-  Monitoring<br/>
+  Monitoring
   the k8s cluster
 </td>
 <td>
@@ -1989,6 +2337,30 @@ hello-4111706356   1         1         2s
 <pre xxxsmall zoom>
 <a TODO xsmall href=https://kubernetes.io/docs/tasks/debug-application-cluster/events-stackdriver/">Events in Stackdriver</a>
 </pre>
+
+<pre xxxsmall zoom>
+<span TODO xsmall>Metrics API+Pipeline</span>
+@[https://kubernetes.io/docs/tasks/debug-application-cluster/resource-metrics-pipeline/]
+@[https://github.com/kubernetes-incubator/metrics-server]
+
+Extracted from @[https://kubernetes.io/docs/tasks/configure-pod-container/assign-memory-resource/]
+"""If you are running Minikube, run the following command to enable the metrics-server:
+   $ minikube addons enable metrics-server
+
+... to see whether the metrics-server is running, or another provider of the resource metrics
+API (metrics.k8s.io), run the following command:
+
+   $ kubectl get apiservices
+
+   output must include a reference to metrics.k8s.io.
+   → ...
+   → v1beta1.metrics.k8s.io
+
+"""
+
+</pre>
+
+
 
 </td>
 <td>
@@ -2058,7 +2430,7 @@ $ kubectl get nodes -o jsonpath=\
 @[https://github.com/kubernetes/kops/blob/master/README.md]
   - What is kops?  """We like to think of it as kubectl for clusters."""
   -  kops helps you create, destroy, upgrade and maintain production-grade,
-    highly available, Kubernetes clusters from the command line.<br/>
+    highly available, Kubernetes clusters from the command line.
     AWS is currently officially supported, with GCE in beta support,
     and VMware vSphere in alpha, and other platforms planned.
 </pre>
@@ -2074,7 +2446,7 @@ The Easiest Way to Deploy Applications in Your Kubernetes Cluster
 </td>
 <td>
 <pre xxxsmall zoom>
-- <a xsmall TODO href="https://github.com/kubernetes/community/blob/master/sig-apps/README.md">SIG-Apps</a><br/>
+- <a xsmall TODO href="https://github.com/kubernetes/community/blob/master/sig-apps/README.md">SIG-Apps</a>
   Special Interest Group for deploying and operating apps in Kubernetes.
   - They meet each week to demo and discuss tools and projects.
   <li cite>Covers deploying and operating applications in Kubernetes. We focus
@@ -2085,13 +2457,13 @@ The Easiest Way to Deploy Applications in Your Kubernetes Cluster
 </prpree>
 <td>
 <pre xxxsmall zoom>
-  <a xsmall TODO href="https://www.infoq.com/news/2018/03/skaffold-kubernetes">Skaffold</a><br/>
+  <a xsmall TODO href="https://www.infoq.com/news/2018/03/skaffold-kubernetes">Skaffold</a>
   Tool to facilitate Continuous Development with Kubernetes
 </pre>
 </td>
 <td>
 <pre xxxsmall zoom>
-<a xsmall TODO href="https://www.infoq.com/articles/tips-running-scalable-workloads-kubernetes">6 Tips for Running Scalable Workloads on K8s</a><br/>
+<a xsmall TODO href="https://www.infoq.com/articles/tips-running-scalable-workloads-kubernetes">6 Tips for Running Scalable Workloads on K8s</a>
 </pre>
 </td>
 <td>
@@ -2110,7 +2482,7 @@ The Easiest Way to Deploy Applications in Your Kubernetes Cluster
 </td>
 <td>
 <pre xxxsmall zoom>
-<a xsmall TODO href="https://www.infoq.com/news/2018/02/dist-system-patterns-burns?utm_source=infoqEmail&utm_medium=SpecialNL_EditorialContent&utm_campaign=04052018_SpecialNL&forceSponsorshipId=1598gtgt">K&A with Kubernetes ...</a><br/>
+<a xsmall TODO href="https://www.infoq.com/news/2018/02/dist-system-patterns-burns?utm_source=infoqEmail&utm_medium=SpecialNL_EditorialContent&utm_campaign=04052018_SpecialNL&forceSponsorshipId=1598gtgt">K&A with Kubernetes ...</a>
 Distributed Systems programming is not for the faint of heart, and despite
 the evolution of platforms and tools from COM, CORBA, RMI, Java EE, Web
 Services, Services Oriented Architecture (SOA) and so on, it's more of an art
@@ -2238,8 +2610,9 @@ driver, and then cleans up.
 <table>
 <tr>
 <td title>
-    Installing <br/>
-    a new k8s<br/> cluster
+    Installing<br/>
+    a new k8s<br/>
+    cluster
 </td>
 <td>
 <pre xxxsmall zoom>
@@ -2312,6 +2685,10 @@ REF @[https://kubernetes.io/docs/tasks/tools/install-kubeadm/]
 @[https://kubernetes.io/docs/concepts/configuration/secret/]
 - method to pass a secret that contains a Docker image registry password 
  to the Kubelet so it can pull a private image on behalf of your Pod.
+
+
+
+<a TODO href=https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/">Pull Image from a Private Registry</a>
 </pre>
 </td>
 <td>
@@ -2331,56 +2708,38 @@ REF @[https://kubernetes.io/docs/tasks/tools/install-kubeadm/]
 <a href=https://kubernetes.io/docs/tasks/service-catalog/install-service-catalog-using-helm/">Install Service Catalog using Helm</a>
 <a href=https://kubernetes.io/docs/tasks/service-catalog/install-service-catalog-using-sc/">Install Service Catalog using SC</a>
 </pre>
-</td>
-<td>
+
 <pre xxxsmall zoom>
-<span TODO xsmall>Network Policy Providers</span>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/network-policy-provider/calico-network-policy/">Use Calico for NetworkPolicy</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/network-policy-provider/cilium-network-policy/">Use Cilium for NetworkPolicy</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/network-policy-provider/kube-router-network-policy/">Use Kube-router for NetworkPolicy</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/network-policy-provider/romana-network-policy/">Romana for NetworkPolicy</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/network-policy-provider/weave-network-policy/">Weave Net for NetworkPolicy</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/access-cluster-api/">Access Clusters Using the Kubernetes API</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/access-cluster-services/">Access Services Running on Clusters</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/extended-resource-node/">Advertise Extended Resources for a Node</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/dns-horizontal-autoscaling/">Autoscale the DNS Service in a Cluster</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy/">Change the Reclaim Policy of a PersistentVolume</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/">Change the default StorageClass</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/cluster-management/">Cluster Management</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/configure-multiple-schedulers/">Configure Multiple Schedulers</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/out-of-resource/">Configure Out Of Resource Handling</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/quota-api-object/">Configure Quotas for API Objects</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/cpu-management-policies/">Control CPU Management Policies on the Node</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/dns-custom-nameservers/">Customizing DNS Service</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/">Debugging DNS Resolution</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/declare-network-policy/">Declare Network Policy</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/developing-cloud-controller-manager/">Developing Cloud Controller Manager</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/">Encrypting Secret Data at Rest</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/">Guaranteed Scheduling For Critical Add-On Pods</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/ip-masq-agent/">IP Masquerade Agent User Guide</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/running-cloud-controller/">Kubernetes Cloud Controller Manager</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/limit-storage-consumption/">Limit Storage Consumption</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/">Operating etcd clusters for Kubernetes</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/reconfigure-kubelet/">Reconfigure a Node's Kubelet in a Live Cluster</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/">Reserve Compute Resources for System Daemons</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/">Safely Drain a Node while Respecting Application SLOs</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/securing-a-cluster/">Securing a Cluster</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/">Set Kubelet parameters via a config file</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/highly-available-master/">Set up High-Availability Kubernetes Masters</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/static-pod/">Static Pods</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/storage-object-in-use-protection/">Storage Object in Use Protection</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/coredns/">Using CoreDNS for Service Discovery</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/">Using a KMS provider for data encryption</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/sysctl-cluster/">Using sysctls in a Kubernetes Cluster</a>
+<span xsmall>Un-ordered</span>
+@[https://stackoverflow.com/questions/46891273/kubernetes-what-is-the-maximum-distance-latency-supported-between-kubernetes-no]
+....There is no latency limitation between nodes in kubernetes cluster. They are configurable parameters.
+- For kubelet on worker node it is:
+   --node-status-update-frequency duration    Specifies how often kubelet posts node status to master. 
+                                              Note: be cautious when changing the constant, it must work
+                                                    with nodeMonitorGracePeriod in nodecontroller. (default 10s)
+- For controller-manager on master node they are:
+  --node-monitor-grace-period duration    Amount of time which we allow running Node to be unresponsive
+                                          before marking it unhealthy. Must be N times more than kubelet's
+                                          nodeStatusUpdateFrequency, where N means number of retries allowed 
+                                          for kubelet to post node status. (default 40s)
+  --node-monitor-period duration          The period for syncing NodeStatus in NodeController. (default 5s)
+  --node-startup-grace-period duration    Amount of time which we allow starting Node to be unresponsive before
+                                          marking it unhealthy. (default 1m0s)
+
+
 </pre>
 
+
 </td>
+
 <td title>
     Cluster<br/>
     Administration
 </td>
 <td>
+
 <pre xxxsmall zoom>
+<a href="https://kubernetes.io/docs/reference/#config-reference">Config Ref()</a>
 <a xsmall href="https://kubernetes.io/docs/concepts/cluster-administration/cluster-administration-overview/">Overview</a>
 <a xsmall href="https://kubernetes.io/docs/concepts/cluster-administration/certificates/">Certificates</a>
 <a xsmall href="https://kubernetes.io/docs/concepts/cluster-administration/cloud-providers/">Cloud Providers</a>
@@ -2416,6 +2775,14 @@ REF @[https://kubernetes.io/docs/tasks/tools/install-kubeadm/]
 <a href="https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/network-plugins/">Network Plugins</a>
 <a href="https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/">Device Plugins</a>
 <a href="https://kubernetes.io/docs/concepts/extend-kubernetes/service-catalog/">Service Catalog</a>
+</pre>
+</td>
+<td title>
+    Helm.sh
+</td>
+<td>
+<pre xxxsmall zoom>
+<span TODO xsmall>Helm</span>
 </pre>
 </td>
 <td title>
@@ -2512,7 +2879,7 @@ REF @[https://kubernetes.io/docs/tasks/tools/install-kubeadm/]
 </pre>
 </td>
 <td title>
-    Understanding <br/>
+    Understanding<br/>
     K8S Code
 </td>
 <td>
@@ -2537,38 +2904,38 @@ awesome, now let’s add the scheduler!"""
 
   Ex 1: Run a container on Machine "X":
    Wrong way: ask kubelet@Machine"X" to run the container.
-   Right way: kubectl*1 ->(API Server)-> etcd: "This pod should run on Machine X"
-              kubelet@Machine"X"      -> etcd: check work to do
-              kubelet@Machine"X"      <- etcd: "This pod should run on Machine X"
-              kubelet@Machine"X"      <- kubelet@Machine"X": Run pod
+   Right way: kubectl*1 →(API Server)→ etcd: "This pod should run on Machine X"
+              kubelet@Machine"X"     → etcd: check work to do
+              kubelet@Machine"X"     ← etcd: "This pod should run on Machine X"
+              kubelet@Machine"X"     ← kubelet@Machine"X": Run pod
 
   Ex 2: Run a container anywhere on the k8s cluster
-    kubectl*1 ->(API Server)-> etcd: "This pod should run somewhere"
-    scheduler               -> etcd: Something to run?
-    scheduler               <- etcd: "This pod should run somewhere"
-    scheduler               -> kuberlet@Machine"Y":  Run pod
+    kubectl*1 → (API Server) → etcd: "This pod should run somewhere"
+    scheduler                → etcd: Something to run?
+    scheduler                ← etcd: "This pod should run somewhere"
+    scheduler                → kuberlet@Machine"Y":  Run pod
 
  *1 The kubectl is used from the command line.
     In the sequence diagram it can be replaced for any
     of the existing controllers (ReplicaSet, Deployment, DaemonSet, Job,...)
 
-<b>API server roles in cluster:</b>
+*API server roles in cluster:*
 API Server is responsible for:
 1.- putting stuff into etcd
 
-    kubectl    -> API Server : put "stuff" in etcd
-    API Server -> API Server : check "stuff"
+    kubectl    → API Server : put "stuff" in etcd
+    API Server → API Server : check "stuff"
     alt 1:
-       kubectl <- API Server : error: "stuff" is wrong
+       kubectl ← API Server : error: "stuff" is wrong
     alt 2:
-       API Server -> etcd    : set/update "stuff"
+       API Server → etcd    : set/update "stuff"
 
 2.- Managing authentication:
     ("who is allowed to put what stuff into etcd")
     The normal way is through X509 client certs.
 
 
-<b>controller manager does a bunch of stuff</b></b>
+*controller manager does a bunch of stuff*
 Responsible for:
 - Inspect etcd for pending to schedule pods.
 - daemon-set-controllers will inspect etcd for
@@ -2580,11 +2947,11 @@ Responsible for:
   the scheduler will then schedule.
 - "deployment controller" ...
 
-<b>Troubleshooting:</b>
+*Troubleshooting:*
 something isn’t working? figure out which controller is
 responsible and look at its logs
 
-<b>Core K8s components run inside of k8s</b>
+*Core K8s components run inside of k8s*
 - Only 5 things needs to be running before k8s starts up:
   - the scheduler
   - the API server
@@ -2609,7 +2976,7 @@ Note: Main k8s are placed in <a href="https://github.com/kubernetes/kubernetes/t
 
 - <a href="https://developer.ibm.com/opentech/2017/06/21/tour-kubernetes-source-code-part-one-kubectl-api-server/">REF: A Tour of the Kubernetes Source Code Part One: From kubectl to API Server</a>
 
-<b>Examining kubectl source</b>
+*Examining kubectl source*
 
 Locating the implementation of kubectl commands in the Kubernetes source code
 
@@ -2618,7 +2985,7 @@ Locating the implementation of kubectl commands in the Kubernetes source code
     Example:
     <a href="https://github.com/kubernetes/kubernetes/tree/master/pkg/kubectl/cmd/create">kubectl create/create.go</a>
 
-<b>K8s loves the Cobra Command Framework</b>
+*K8s loves the Cobra Command Framework*
 - k8s commands are implemented using the Cobra command framework.
 - Cobra provides lot of features for building command line interfaces
   amongst them, Cobra puts the command usage message and command
@@ -2783,22 +3150,137 @@ Tools and techniques that can really help accelerate your ability to learn the k
 </td>
 </tr>
 </table>
+
+<hr/>
+<table>
+<tr>
+<td title>
+    SDNs
+</td>
+<td>
+<pre xxxsmall zoom>
+<span xsmall>getting started</span>
+@[https://www.redhat.com/sysadmin/getting-started-sdn]
+- provide sdns: allows admin teams to control network traffic in
+      complex networking topologies through a centralized panel, 
+      rather than handling each network device, such as routers
+      and switches, manually ("hierarchical" topology)
+
+*container network interface (cni):*
+- library definition and a set of tools to configure network 
+  interfaces in linux containers through many supported plugins.
+- multiple plugins can run at the same time in a container
+  that participates in a network driven by different plugins.
+- networks use json configuration files and instantiated as
+  new namespaces when the cni plugin is invoked.
+
+- common cni plugins include:
+  -*calico*:
+    - high scalability.
+    @[https://docs.projectcalico.org/v3.7/getting-started/kubernetes/]
+    @[https://kubernetes.io/docs/tasks/administer-cluster/network-policy-provider/calico-network-policy/]
+  -*cilium*:
+    - provides network connectivity and load balancing 
+      between application workloads, such as application 
+      containers and processes, and ensures transparent security.
+  -*contiv*:
+    - integrates containers, virtualization, and physical servers
+      based on the container network using a single networking fabric.
+  -*contrail*:
+    - provides overlay networking for multi-cloud and
+      hybrid cloud through network policy enforcement.
+  -*flannel*:
+    - makes it easier for developers to configure a layer 3
+      network fabric for kubernetes.
+  -*multus*:
+    - supports multiple network interfaces in a single pod on
+      kubernetes for sriov, sriov-dpdk, ovs-dpdk, and vpp workloads.
+  -*open vswitch (ovs)*:
+    - production-grade cni platform with a standard management
+      interface on openshift and openstack.
+  -*ovn-kubernetes*:
+    - enables virtual networks for multiple containers on different
+      hosts using an overlay function.
+  -*romana*:
+    - makes cloud network functions less expensive to build, 
+      easier to operate, and better performing than traditional
+      cloud networks.
+
+- in addition to network namespaces, an sdn should increase security by 
+offering isolation between multiple namespaces with the multi-tenant plugin: 
+  packets from one namespace, by default, will not be visible to 
+  other namespaces, so containers from different namespaces cannot 
+  send packets to or receive packets from pods and services of a
+  different namespace.
+</pre>
+
+<pre xxxsmall zoom>
+<span todo xsmall>network policy providers</span>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/network-policy-provider/cilium-network-policy/">use cilium for networkpolicy</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/network-policy-provider/kube-router-network-policy/">use kube-router for networkpolicy</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/network-policy-provider/romana-network-policy/">romana for networkpolicy</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/network-policy-provider/weave-network-policy/">weave net for networkpolicy</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/access-cluster-api/">access clusters using the kubernetes api</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/access-cluster-services/">access services running on clusters</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/extended-resource-node/">advertise extended resources for a node</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/dns-horizontal-autoscaling/">autoscale the dns service in a cluster</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy/">change the reclaim policy of a persistentvolume</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/">change the default storageclass</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/cluster-management/">cluster management</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/configure-multiple-schedulers/">configure multiple schedulers</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/out-of-resource/">configure out of resource handling</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/quota-api-object/">configure quotas for api objects</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/cpu-management-policies/">control cpu management policies on the node</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/dns-custom-nameservers/">customizing dns service</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/">debugging dns resolution</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/declare-network-policy/">declare network policy</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/developing-cloud-controller-manager/">developing cloud controller manager</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/">encrypting secret data at rest</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/">guaranteed scheduling for critical add-on pods</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/ip-masq-agent/">ip masquerade agent user guide</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/running-cloud-controller/">kubernetes cloud controller manager</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/limit-storage-consumption/">limit storage consumption</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/">operating etcd clusters for kubernetes</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/reconfigure-kubelet/">reconfigure a node's kubelet in a live cluster</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/">reserve compute resources for system daemons</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/">safely drain a node while respecting application slos</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/securing-a-cluster/">securing a cluster</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/">set kubelet parameters via a config file</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/highly-available-master/">set up high-availability kubernetes masters</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/static-pod/">static pods</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/storage-object-in-use-protection/">storage object in use protection</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/coredns/">using coredns for service discovery</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/">using a kms provider for data encryption</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/sysctl-cluster/">using sysctls in a kubernetes cluster</a>
+</pre>
+</td>
+<td title>
+    service mesh
+</td>
+<td>
+  istio.io
+</td>
+<td>
+  linkerd
+</td>
+</tr>
+</table>
 </body>
 </html>
 <!--
-TODO_Start
+todo_start
 __________________
-<a href="https://banzaicloud.com/blog/kafka-on-kubernetes/">REF</a>
+<a href="https://banzaicloud.com/blog/kafka-on-kubernetes/">ref</a>
 
-Local Persistent Volume (k8s 1.10+) leverage local disks and it enables to use
-them with Persistent Volume Claims, PVC.
-<b>This type of storage is suitable for applications which handles the data
- replication themself. (Kafka, p2p, HDFS, Cassandra, ...)</b>
+local persistent volume (k8s 1.10+) leverage local disks and it enables to use
+them with persistent volume claims, pvc.
+<b>this type of storage is suitable for applications which handles the data
+ replication themself. (kafka, p2p, hdfs, cassandra, ...)</b>
 """... there are some systems we use or deploy for our customers which are
-already handles replications - like HDFS, Cassandra, etc - and Local Persistent
-Volume is a good fit for that.
+already handles replications - like hdfs, cassandra, etc - and local persistent
+volume is a good fit for that.
 
-To use this as a Persistent Volume, we have some manual steps to do:
+to use this as a persistent volume, we have some manual steps to do:
 
     Pre-partition, format and mount disks to nodes
 
@@ -3024,4 +3506,63 @@ kubectl get pod -o go-template='{{range.status.containerStatuses}}{{"Container N
 Container Name: simmemleak
 LastState: map[terminated:map[exitCode:137 reason:OOM Killed startedAt:2015-07-07T20:58:43Z finishedAt:2015-07-07T20:58:43Z containerID:docker://0e4095bba1feccdfe7ef9fb6ebffe972b4b14285d5acdec6f0d3ae8a22fad8b2]]
 ___________________________
+https://www.youtube.com/channel/UCvqbFHwN-nwalWPjPUKpvTA
+_____________________________
+List all pods and its nodes:
+https://stackoverflow.com/questions/48983354/kubernetes-list-all-pods-and-its-nodes/48983984#48983984
+
+_______________________
+Kubermatic: https://www.loodse.com/
+_________________
+python + kubernetes api
+https://www.redhat.com/sysadmin/create-kubernetes-cron-job-okd
+_____________________
+https://12factor.net/
+
+__________________________
+k8s cli utilities:
+https://developers.redhat.com/blog/2019/05/27/command-line-tools-for-kubernetes-kubectl-stern-kubectx-kubens/
+-*stern*
+ - display the tail end of logs for containers and multiple pods.
+ - the stern project comes from Wercker (acquired by Oracle in 2017).
+ - rather than viewing an entire log to see what happened most
+   recently, you can use stern to watch a log unfurl.
+
+-*kubectx*
+ - helpful for multi-cluster installations, where you need to
+   switch context between one cluster and another. 
+ - Rather than type a series of lengthy kubectl command, kubectx 
+   works it magic in one short command.
+ - It also allows you to alias a lengthy cluster name into an alias.
+ - For example (taken directly from the kubectx website), 
+   kubectx eu=gke_ahmetb-samples-playground_europe-west1-b_dublin allows
+   you to switch to that cluster by running kubectx eu. 
+ - Another slick trick is that kubectx remembers your previous context—
+   much like the “Previous” button on a television remote—and allows
+   you to switch back by running kubectx -.
+
+-*kubens*
+ - easily switch between Kubernetes namespaces.
+   $ kubens foo # activate namespace. 
+   $ kubens -   # back to previous value.
+ - Author: Ahmet Alp Balkan
+_____________________________
+https://portworx.com/
+calable Persistent Storage for Kubernetes
+
+Built from the ground up for containers, PX-Store provides cloud native storage for applications running in the cloud, on-prem and in hybrid/multi-cloud environments.
+____________________________
+https://www.tigera.io/
+(authors of the Calico Zero-Trust Network with Policy-based micro-segmentation)
+https://www.projectcalico.org/, 
+Why add another layer of overhead when you don't need it?
+
+Sometimes, an overlay network (encapsulating packets inside an extra IP header) is necessary. Often, though, it just adds unnecessary overhead, resulting in multiple layers of nested packets, impacting performance and complicating trouble-shooting. Wouldn't it be nice if your virtual networking solution adapted to the underlying infrastructure, using an overlay only when required? That's what Calico does. In most environments, Calico simply routes packets from the workload onto the underlying IP network without any extra headers. Where an overlay is needed – for example when crossing availability zone boundaries in public cloud – it can use lightweight encapsulation including IP-in-IP and VxLAN. Project Calico even supports both IPv4 and IPv6 networks!
+______________________
+https://www.kubeflow.org/
+The Machine Learning Toolkit for Kubernetes
+______________________________
+https://k3s.io/
+Rancher Labs Lightweight Kubernetes:
+- Easy to install. A binary of less than 40 MB, Only 512MB of RAM required
 -->

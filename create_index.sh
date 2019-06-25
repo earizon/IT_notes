@@ -74,16 +74,24 @@ body {
   <br/>
   In practice a SPB book is just a single web page profiting from a thoroughly 
   dessigned CSS and some helper Javascript.<br/>
-  WARN: The CSS It follows the VIM philosophy: <b>"Fast is more important than beauty"</b>:<br/>
+  WARN: The CSS follows the VIM philosophy: <b>"Fast is more important than beauty"</b>:<br/>
   
   The SPB format can also be used for many other purposes that I did not contemplated
   when starting the project.<br/>
    As an example <b>I'm using a SPB formated page as my browser home-page to store all sort of 
   "random" info like contacts, bookmarks, projects, work-in-progress, task-lists,
   pending payments, home accountancy, travel-management, medical data, project-management,
-  resource-planning, english and french vocabulary (I'm spanish actually), etc ...</b> and
-  I'm <b>using just an text-editor</b> (vim, notepad++, ultraedit, ...) to keep the info up-to-date
-  and accesible with one click<br/>
+  resource-planning, english and french vocabulary (I'm spanish actually), etc ...
+  A moderm text-editor is all that needed to keep the info up-to-date
+  and accesible with one click.  vim, notepad++, ultraedit, ... or any other
+  with support for macros is all needed (and of course web browser).<br/>
+  Some other helper tools:
+  <ul>
+    <li><a href="http://asciiflow.com/">asciiflow.com/</a></li>
+    <li><a href="./beautify.sh">./beautify.sh</a></li>
+    <li><a href="./icons.txt">./icons.txt</a></li>
+    <li><a href="https://en.wikipedia.org/wiki/FIGlet">FIGlet</a></li>
+  </ul>
   <br/>
 
   Indirectly SPB promote "best-pattern" approach to documentation by:

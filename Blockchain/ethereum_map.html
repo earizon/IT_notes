@@ -3021,30 +3021,96 @@ TransactionReceipt transactionReceipt =       | Type result =
 <td>
 <pre xxxsmall zoom>
 <span xsmall>Web3J FILTERS</span>
-Subscribe for "new-blocks" events:                  | Subscribe for "new-TXs" events:                  | Subscribe for "new pending-TX" events:
-----------------------------------------------------+--------------------------------------------------+----------------------------------------
-Subscription subscription =                         | Subscription subscription =                      | Subscription subscription =
-  web3j.blockObservable(false).subscribe(block -> { |   web3j.transactionObservable().subscribe(tx -> {|    web3j.pendingTransactionObservable().
-    ...                        ^                    |       ...                                        |      subscribe(tx -> { ...  });
-  });                          |                    |   });
-                               |
-                            Optionally:
-  catchUpToLatestAndSubscribeToNewBlocksObservable(
-        <startBlockNumber>, <fullTxObjects>)
-        .subscribe(block -> {
-            ...
-});
+UUID: 8953db45-cc22-4c14-a104-f8dd688ca096
+@[https://docs.web3j.io/filters.html]
+- Provide notifications of Ethereum-events
+- Based on RXJava
+- NOTE: Standard Ethereum filter-classes:
+        - Block filters
+          - provide only block-hash.
+            a second request(block-hash) needed to fetch the actual block
+        - Pending TX filters
+          - provide only TX-hash.
+            a second request(TX-hash) needed to fetch the actual TX 
+        -*Topic filters* (aka SmartContract event-logs): 
+          - WebSockets
+          - JSON-RPC poll
 
-<b>subscription.unsubscribe(); //when no longer required </b>
+- web3j's managed Filter implementation:
+  - Provides a fully asynchronous event based API
+    for working with filters.
+  - Based on RxJava's Flowables which provides a consistent API
+    for working with events, which facilitates the chaining 
+    together of JSON-RPC calls via functional composition.
+    Subscription subscription = 
+      //o*start listening for new events*
+      web3j*.blockFlowable (false)       *.subscribe(block -˃ { ... }); ← Listening for new blocks
+      web3j*.transactionFlowable()       *.subscribe(   tx -˃ { ... }); ← Listening for new mined TXs
+      web3j*.pendingTransactionFlowable()*.subscribe(   tx -˃ { ... }); ← Listening for new pending-to-mine TXs
+                                                                         (TXs added to local-node queue)
+      web3j*.replayBlocksFlowable(blck0, blck1, ˂fullTxObjects˃)*.subscribe(block -˃ { ...  });
+      //o*Replay history (block/TX) filters  (in a range blck0 to blck1 of blocks):*
+      web3j*.replayBlocksFlowable      (blck0, blck1, ˂fullTxObjects˃)*.subscribe(block -˃ { ... });
+      web3j*.replayTransactionsFlowable(blck0, blck1                 )*.subscribe(tx -˃ { ... });
+      //o*Replay history (block/TX) filters and provide notification (via the submitted Flowable) once you’ve caught up*
+      web3j*.replayPastBlocksFlowable  (blck0,        ˂fullTxObjects˃, ˂onCompleteFlowable˃)*.subscribe(blck -˃ { ... });
+                                                                      ^^^^^^^^^^^^^^^^^^^^                    ^^^^^^^
+                                                                      listen here for                        listen here for
+                                                                      future events                          past events
+      //o*Replay history (block/TX) filters and continue listening for new events*
+      web3j*.replayPastAndFutureBlocksFlowable( block0, ˂fullTxObjects˃).*subscribe(block -˃ { ... });
+          (.replayPastAndFutureTransactionsFlowable)                                        ^^^^^^^
+                                                                                       listen here for
+                                                                                       past and future events
 
-<b>TOPIC FILTERS:</b> <b red>not supported on Infura</b>
+      NOTE:simpler alternatives exits providing onley block/tx hashes
+   ...
+   subscription*.unsubscribe()*; ← end subscription
 
-EthFilter filter = new EthFilter(DefaultBlockParameterName.EARLIEST,
-        DefaultBlockParameterName.LATEST, <contract-address>)
-             .addSingleTopic(...)|.addOptionalTopics(..., ...)|...;
-web3j.ethLogObservable(filter).subscribe(log -> {
-    ...
-});
+*Topic filters*
+ EVM (Smart-Contract) events stored in the TX log of the blockchain.
+ - Since code changing the blockchain status (write TXs) are executed
+   "at will" (maybe one second later, maybe one hour later) EVM code
+   notifies of any return value from calls to smart-contracts functions
+   using those events.
+   - Note that a solidity function can return a value, but this value
+     is just useful to other calling function executed during the TX,
+     not to the external web3 client that send the original signed TX
+     maybe long time ago. This client only have to oportunity to know
+     the TX status by listening for EVM topic log event (filters in web3j)
+
+  STEP 1:
+    EthFilter filter = new EthFilter(block0, block1, ˂optional-contract-address˃)
+                       [.addSingleTopic(...) | .addOptionalTopics(..., ...) | ...];
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^     ;
+                     - specify topics of interest and initial/end block.
+                     - individual topics represent indexed parameters on the smart contract
+                     -*If no topics are added, all EVM events taking place in the network*
+                      *will be captured.*
+  STEP 2:
+      Subscription subscription = 
+        web3j.ethLogFlowable(filter).subscribe(log -> { ... });
+
+
+Java Implementation Note:
+- blockFlowable itself is composed of two of separate JSON-RPC calls:
+
+public Flowable<EthBlock> blockFlowable(
+      boolean fullTransactionObjects, long pollingInterval) {
+  // STEP 1: Create flow of block-hash events
+  return this.ethBlockHashFlowable(pollingInterval)
+    .flatMap(blockHash ->
+      // STEP 2: Map each returned blockHash by using JSON-RPC to query for new block
+      web3j.ethGetBlockByHash(blockHash, fullTransactionObjects).flowable()
+    );
+}
+
+
+REF:
+Integration-Tests
+@[https://github.com/web3j/web3j/blob/master/integration-tests/src/test/java/org/web3j/protocol/core/FlowableIT.java]
+Manual filter API:
+@[https://github.com/web3j/web3j/blob/master/integration-tests/src/test/java/org/web3j/protocol/scenarios/EventFilterIT.java]
 </pre>
 </td>
 <td>

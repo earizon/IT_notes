@@ -201,6 +201,27 @@ function doHelp() {
     doOpenZoom.call(ctx);
 }
 
+var _labelMap = { /* label : dom_list*/ }
+function getDomListForLabel(label) {
+    if (!!!_labelMap[label]) return [];
+}
+function createLabelIndex() {
+  var labeled_dom_l = document.querySelectorAll('*[label]');
+  for (idx1 in labeled_dom_l) {
+    var node = labeled_dom_l[idx1]
+    if (!node.getAttribute    ) continue
+// debugger
+    let csvAttributes = node.getAttribute("label")
+    // TODO:(0) Remove whitespaces
+    csvAttributes.split(",").forEach( label => {
+        let list = getDomListForLabel(label.toLowerCase())
+            list.push(node)
+        _labelMap[label] = list
+    })
+  }
+  console.dir(_labelMap)
+}
+
 function onPageLoaded() {
   var UP = "../"
   // Append search, zoomDiv, zoom Buttons :
@@ -307,12 +328,13 @@ function onPageLoaded() {
       }
   }
 
+  createLabelIndex()
+
   var query = getParameterByName("query");
-  if (query != null) {
-//  document.getElementById("query").value = getParameterByName("query");
-//  highlightSearch(query);
+  if (!!query) {
     highlightSearch(getParameterByName("query"));
   }
+
 }
 
 window.onload = onPageLoaded 
@@ -331,8 +353,6 @@ var searchFound = false;
 function highlightSearch(query) {
   if (!!query) { document.getElementById("query").value = query; }
   var text = document.getElementById("query").value.replace(/ +/g,".*");
-console.log(text)
-
   var removeNodeList = document.querySelectorAll('*[textFound]');
   if (removeNodeList.length > 0) {
       for (idx in removeNodeList) {
@@ -342,19 +362,24 @@ console.log(text)
   }
 
   if (/^\s*$/.test(text) /*empty string -> reset and return */) { return; }
+  if (text.startsWith("label:")) {
+      let label_l=text.substring(6).split(",")
+      label_l.forEach( label => {
+        label = label.toLowerCase()
+        if (!!! _labelMap[label]) return
+        _labelMap[label].forEach( node => {
+          node.setAttribute("textFound", "true")
+        })
+      })
 
-  
+      return;
+  }
   var caseSensitive  = document.getElementById("singleLineOnly").checked;
   var singleLineOnly = document.getElementById("caseSensitive").checked;
   var regexFlags = "g";
   if (!caseSensitive) regexFlags += "i";
   if (!singleLineOnly) regexFlags += "m";
   var query = new RegExp("[^=>;](" + text + ")", regexFlags);
-
-//var matrix = [
-//   document.querySelectorAll('td'),
-//   document.querySelectorAll('*[zoom]') ]
-  var td_matrix = document.querySelectorAll('td')
 
   var numberOfMatches = 0
   var searchAndMark = function(node) {
@@ -368,27 +393,16 @@ console.log(text)
       }
       return searchFound
   }
-  for (td_idx in td_matrix) { 
-    var td = td_matrix[td_idx];
-    if (td.querySelectorAll == undefined) continue;
-    var innerZoom_l = td.querySelectorAll('*[zoom]')
-    var foundElement = false
-    for (idx2 in innerZoom_l) {
-      var node = innerZoom_l[idx2]
-      if (node.innerHTML == null) continue
-      if (!node.setAttribute    ) continue
-      if (searchAndMark(node)) { 
-          numberOfMatches++ 
-          foundElement = true
-      }
+  var innerZoom_l = document.querySelectorAll('*[zoom]')
+  var foundElement = false
+  for (idx2 in innerZoom_l) {
+    var node = innerZoom_l[idx2]
+    if (node.innerHTML == null) continue
+    if (!node.setAttribute    ) continue
+    if (searchAndMark(node)) { 
+        numberOfMatches++ 
+        foundElement = true
     }
-    if (!foundElement) {
-      if (searchAndMark(td)) { 
-          numberOfMatches++ 
-          foundElement = true
-      }
-    }
-
   }
   if (numberOfMatches == 1) {
    // doOpenZoom.call(window.lastElementFound, longPress.element);
@@ -405,4 +419,5 @@ function generate_uuidv4() {
   document.getElementById("id_uuid_display").value=UUID;
 
 }
+
 

@@ -128,11 +128,13 @@ Tag& Parameter         | Usage                               | Applies to       
 (<a href="https://dzone.com/articles/java-memory-management">REF</a>)
 JAVA MEMORY MODEL:
 
-         |    STACK ("SMALL")          |   HEAP  ("HUGE")
-         | private to each Thread      |   Shared by Threads
----------+-----------------------------+--------------------
-Contain  | references ───────────────────→ objects
-         | value types                 |
+         │    STACK ("SMALL")          │ HEAP  ("HUGE")
+         │ private to each Thread      │ Shared by Threads
+─────────┼─────────────────────────────┼──────────────────
+Contain  │ - references to heap objects│ - objects
+         │ - value types               │ - instance fields
+         │ - formal method params      │ - static fields
+         │ - exception handler params  │ - array elements 
 
 * 1: Ref(erence) types on the stack point to real object in HEAP memory.
 
@@ -145,7 +147,8 @@ Reference Types regarding how the object on the heap is eligible for garbage col
 ├─────────┼───────────────────────────────────────────────────────────────────────────
 │ WEAK    │ - most likely to not survive after the next garbage collection process.
 │         │ - Is created like
-│         │    WeakReference&lt;StringBuilder&gt; reference = new WeakReference&lt;&gt;(new StringBuilder());
+│         │    WeakReference˂StringBuilder˃ reference = 
+│         │     = new WeakReference˂˃(new StringBuilder());
 │         │ - *Ex.use case: caching:*
 │         │   We let the GC remove the object pointed to by the weak reference,
 │         │   after which a null will be returned
@@ -168,7 +171,9 @@ Reference Types regarding how the object on the heap is eligible for garbage col
 </pre>
 
 <pre xxxsmall zoom>
-<span xsmall>Force string pool reuse</span>
+<span xsmall>Force</span>
+<span xsmall>string pool</span>
+<span xsmall>reuse</span>
 - Strings are immutable.
 - Stored on the heap
 - Java manages a string pool in memory,
@@ -499,44 +504,35 @@ void myMethod() { ... }
 <span xsmall>META-ANNOTATTONS</span>
 (Annotations applying to other annotations)
 
-<span xsmall>@Retention</span>
-<span xsmall>(Source,class,Runtime)</span>
+*@Retention*
 RetentionPolicy.SOURCE: retained only in source (ignored by the compiler)
 RetentionPolicy.CLASS : retained by compiler    (ignored by the JVM)
 RetentionPolicy.RUNTIME:retained by JVM, can be queried at Runtime
 
-<span xsmall>@Documented</span>
-- indicates that whenever the specified annotation
-  is used those elements should be documented using
-  the Javadoc tool. (By default, annotations
-  are not included in Javadoc.)
+*@Documented*                     *@Repeatable*
+- indicates that whenever the     - (1.8+)
+  specified annotation is used    - targeted annotation can be applied
+  those elements should be          more than once to the same 
+  documented using the Javadoc      declaration or type use.
+  tool. (By default, annotations    Ex:
+  are not included in Javadoc.)     @Author(name = "Jane Doe")
+                                    @Author(name = "John Smith")
+                                    class MyClass { ... }
 
-<span xsmall>@Target</span>
-<span xsmall>(field,type,class..)</span>
-- restrict targeted java-language elements where the annotation can be applied:
-  - ElementType.ANNOTATION_TYPE
-  - ElementType.CONSTRUCTOR
+
+*@Target*                          *@Inherited*
+*(field,type,class..)*             - targeted annotation type can be inherited
+- restrict targeted java-language    from the super class. (false by default.)
+  elements where the annotation      When the user queries the annotation type
+  can be applied:                    and the class has no annotation for this
+  - ElementType.ANNOTATION_TYPE      type, the class'superclass is queried for
+  - ElementType.CONSTRUCTOR          the annotation type.
   - ElementType.FIELD
   - ElementType.LOCAL_VARIABLE
   - ElementType.METHOD
   - ElementType.PACKAGE
   - ElementType.PARAMETER
   - ElementType.TYPE (1.8+)
-
-<span xsmall>@Inherited</span>
-- targeted annotation type can be inherited
-  from the super class. (false by default.)
-  When the user queries the annotation type and the class
-  has no annotation for this type, the class'superclass is
-  queried for the annotation type.
-<span xsmall>@Repeatable</span>
-- (1.8+)
-- targeted annotation can be applied more than
-  once to the same declaration or type use.
-  Ex:
-  @Author(name = "Jane Doe")
-  @Author(name = "John Smith")
-  class MyClass { ... }
 </pre>
 </td>
 <td colsep> </td>
@@ -1594,10 +1590,19 @@ OkHttp is an HTTP client that’s efficient by default:
 <td>
 <pre xxxsmall zoom>
 <span TODO xsmall>JVisualVM (standard on the JDK)</span>
+@[https://visualvm.github.io/]
 - displays memory usage and other useful things:
+- Visual tool integrating commandline JDK tools and
+  lightweight profiling capabilities.
+- r*WARN: Deprecated by Flight Recorder?*
+  @[https://stackoverflow.com/questions/40272599/do-java-mission-control-and-flight-recorder-deliver-same-functionality-as-visual]
+  Flight Recorder works both for development and production 
+  while JVisualVM has performance hits
 
 <span TODO xsmall>Deadlock analysis</span>
 @[https://avaldes.com/java-thread-deadlock-example-and-thread-dump-analysis-using-visualvm/]
+</pre>
+
 </pre>
 <pre xxxsmall zoom>
 <span xsmall>Flight Recorder</span>
@@ -1634,17 +1639,6 @@ It can provide reports and warnings similar to:
 r*The memory is accumulated in one instance* of
   java.util.LinkedList$Entry loaded by 'system class loader'
 </pre>
-
-
-<pre xxxsmall zoom>
-<span xsmall>VisualVM</span>
-@[https://visualvm.github.io/]
-- r*WARN: Deprecated by Flight Recorder?*
-  @[https://stackoverflow.com/questions/40272599/do-java-mission-control-and-flight-recorder-deliver-same-functionality-as-visual]
-- Visual tool integrating commandline JDK tools and
-  lightweight profiling capabilities.
-- Designed for both development and production time use.
-</pre>
 </td>
 </table>
 
@@ -1657,61 +1651,59 @@ r*The memory is accumulated in one instance* of
     <a href="https://cs.nyu.edu/~lerner/spring12/Preso03-JavaPrimitives.pdf">REF</a>
 </td>
 <pre xxxsmall zoom>
-  <span xsmall>Concurrency Basics</span>
-  - Concurrency problems arise from the desire to use CPU resources more efficiently. Non concurrent
-    applications (single threaded/single process) are complete Touring machines that can potentially
-    solve any problem with enough time and memory. In practice having a CPU assigned to single thread
-    will be very inneficient since the CPU will stand-by while the thread is waiting for input/output
-    operations. Also, many algorithms allows to split processed data in isolated regions that can be
-    processed in parallel by different CPU/CPU cores</li>
-  - Concurrent tries to solve the problem of multiple independents CPUs or threads accesing share
-    resources (memory)
-  - Locks is the simples concurrent primite to protect code or data from concurrent
-    access in situations where there are many threads of execution. Locks can be classified like:
-    | According to lock ussage:
-    |    Cooperative   A thread is encouraged (but not forced) to cooperate with other
-    |                  threads by adquiring a lock before accessing the associated data
-    |
-    |    Mandatory     a thread trying to access an already locked resource will throw
-    |                  an exception
-    | _________________________________________________
-    | According to lock rescheduing strategy:
-    |    Blocking      The OS block the thread requesting the lock and rescheduled another thread
-    |
-    |    Spinlock      The thread waits in a loop until the requested lock becomes available.
-    |                  It's more efficient if threads are blocked for very short time (smaller than
-    |                  the time needed by the OS to reschedule another thread into the current CPU)
-    |                  It's inneficient if the lock is held for a long time since a CPU core is
-    |                  waisted on the spinlock loop
-    | _________________________________________________
-    | According to granularity: (measure of the ammount of data the lock is protecting)
-    |    Coarse        Protect large segments of data (few locks). Results in less lock overhead
-    |                  for a single thread, but worse performance for many threads running concurrently
-    |                  (most thread will be lock-contended waiting for share resource access)
-    |
-    |    Fine          Protrect small amounts of data. Require more lock instances reducing lock
-                 contention
+<span xsmall>Concurrency Basics</span>
+- Concurrency problems arise from the desire to use CPU resources more efficiently. Non concurrent
+  applications (single threaded/single process) are complete Touring machines that can potentially
+  solve any problem with enough time and memory. In practice having a CPU assigned to single thread
+  will be very inneficient since the CPU will stand-by while the thread is waiting for input/output
+  operations. Also, many algorithms allows to split processed data in isolated regions that can be
+  processed in parallel by different CPU/CPU cores
+- Concurrent tries to solve the problem of multiple independents CPUs or threads accesing share
+  resources (memory)
+- Locks is the simples concurrent primite to protect code or data from concurrent
+  access in situations where there are many threads of execution. Locks can be classified like:
+  | According to lock ussage:
+  |    Cooperative   A thread is encouraged (but not forced) to cooperate with other
+  |                  threads by adquiring a lock before accessing the associated data
+  |
+  |    Mandatory     a thread trying to access an already locked resource will throw
+  |                  an exception
+  | _________________________________________________
+  | According to lock rescheduing strategy:
+  |    Blocking      The OS block the thread requesting the lock and rescheduled another thread
+  |
+  |    Spinlock      The thread waits in a loop until the requested lock becomes available.
+  |                  It's more efficient if threads are blocked for very short time (smaller than
+  |                  the time needed by the OS to reschedule another thread into the current CPU)
+  |                  It's inneficient if the lock is held for a long time since a CPU core is
+  |                  waisted on the spinlock loop
+  | _________________________________________________
+  | According to granularity: (measure of the ammount of data the lock is protecting)
+  |    Coarse        Protect large segments of data (few locks). Results in less lock overhead
+  |                  for a single thread, but worse performance for many threads running concurrently
+  |                  (most thread will be lock-contended waiting for share resource access)
+  |
+  |    Fine          Protect small amounts of data. Require more lock instances reducing lock
+                     contention
 
-  - Locks require CPU atomic instructions for efficient implementations suchs as
-      "test-and-set", "fetch-and-add", or "compare-and-swap", whether there are blocking
-      (managed by the OS) or spinlocks (managed by the thread)
-  - Uniprocessors can just disable interruptions to implement locks, while multiprocessors
-    using shared-memory will require complex hardware and/or software support
-  -  *Monitors wrap mutex-locks with condition variables (container of threads waiting*
-     *for certain condition)*. They are implemented as thread-safe classes
-
-
+- Locks require CPU atomic instructions for efficient implementations suchs as
+    "test-and-set", "fetch-and-add", or "compare-and-swap", whether there are blocking
+    (managed by the OS) or spinlocks (managed by the thread)
+- Uniprocessors can just disable interruptions to implement locks, while multiprocessors
+  using shared-memory will require complex hardware and/or software support
+-  *Monitors wrap mutex-locks with condition variables (container of threads waiting*
+   *for certain condition)*. They are implemented as thread-safe classes
 </pre>
 </td>
 <td>
 <pre xxxsmall zoom>
 <span xsmall>monitors</span>
-- The simplest form of synchronization in Java is the mutual exclusion of
-  threads to shared resources using monitors
-  Other alternatives include:
+-*Object providing Mutual exclusion of threads to shared resources*
+- simplest form of synchronization:
+  alternatives include:
   - reads and writes of volatile variables
   @[https://avaldes.com/examining-volatile-keyword-with-java-threads-example/]
-    Volatile keyword is typically in applications when one thread will
+    typically used in applications when one thread will
     be making changes to the variables and the others all reading or
     consumers of the data. If you have multiple threads making changes to
     the data it will be best to stick with synchronized block or use
@@ -1741,49 +1733,24 @@ o*synchronized keyword*:
     of deadlock conditions.
 - Instead of explicit condition variables, each monitor(/object) is equipped with
   a single wait queue in addition to its entrance queue.
-- All waiting is done on this single wait queue and allo*notify/notifyAll*
+- All waiting is done on this singleo*wait queue* and allo*notify/notifyAll*
   operations apply to this queue.
-             enter
-               │
- ┌───┬──────── │ ──┐       - Wait sets are manipulated solely and atomically
- │  notified   v   │         through the methods*Object.wait, Object.notify, and Object.notifyAll*
- │ ─────→          │
- │                 │
- │ O │         O   │
- │ O │         O   │
- │ O ├────────   ──┴──┐
- │ O │                │
- │   │                │
- │  ←── wait   O      │
- │   │      (Running  │
- └───┤       thread)  │
-     │                │
-     │     leave      │
-     │        │       │
-     └─────── │ ──────┘
-              v
-Let thread t be the thread executing the wait method on object m, and let n be
-the number of lock actions by t on m that have not been matched by unlock actions.
-  - A notify action being performed on m in which t is selected for removal from the wait set.
-  - A notifyAll action being performed on m.
-  - An interrupt action being performed on t.
-  - If this is a timed wait, an internal action removing t from m's wait set that
-    occurs after at least millisecs milliseconds plus nanosecs nanoseconds elapse
-    since the beginning of this wait action.
-  - An internal action by the implementation. Implementations are permitted, although
-    not encouraged, to perform "spuriou wake-ups",
-    that is, to remove threads from wait sets and thus enable resumption without
-    explicit instructions to do so.
-
-Notification actions occur upon invocation of methods notify and notifyAll.
-
-Memory that can be shared between threads is called shared memory or heap
-memory. All instance fields, static fields, and array elements are stored in
-heap memory. In this chapter, we use the term variable to refer to both
-fields and array elements. Local variables (Â§14.4), formal method parameters
-(Â§8.4.1), and exception handler parameters (Â§14.20) are never shared
-between threads and are unaffected by the memory model.
-
+ 
+*monitor*   enter
+ ┌───┬─────── │ ──┐   - Wait sets are manipulated solely and atomically
+ │  notified  v   │     through the methods
+ │ ─────→         │    *Object.wait*     : move     running thread    → wait-queue
+ │   │        O   │    *Object.notify*   : move     thread  wait-queue → enter-queue
+ │ O │        O   │    *Object.notifyAll*: move all threads wait-queue → enter-queue
+ │ O ├─────── │ ──┴─┐   Interrupt??      : put thread into to monitor enter-queue
+ │ O │        v     │
+ │  ←──wait   O     │  - In timed-waits  : internal action removes thread to enter-queue? 
+ │   │     (Running │                      after at least milliseconds plus nanoseconds 
+ └───┤      thread) │  - Implementations are permitted (but discouraged),  
+     │              │    to perform "spurious wake-ups"
+     │    leave     │
+     └────── │ ─────┘  O = Thread (Instruction Pointer + Stack Pointer + ...?)
+             v
 <!--
 TODO Concurrent
 @ma: https://en.wikipedia.org/wiki/Monitor_(synchronization)
@@ -1795,137 +1762,110 @@ TODO Concurrent
 </td>
 <td>
 <pre xxxsmall zoom { >
-<span xsmall>Concurrent code</span>
- ┌────────────┐ │
- │[[Runnable]]│ │              [[Executor]]
- │────────────│ │                   ↑
- │┼run()      │ │           [[ExecutorService]]
- └────────────┘ │                   ↑
-       ^        │        ┌──────────┴──────────────┐
-       │        │        │                         │
- ┌────────────┐ │ AbstractExecutorService  [[ScheduledExecutorService]]
- │   Thread   │ │        ↑                         ↑
- │────────────│ │ ThreadPoolExecutor               │
- │+run()      │ │        ↑                         │
- │+start()    │ │ ScheduledThreadPoolExecutor ─────┘
- │+sleep()    │ │
- │....        │ │
- │────────────│ │
- └────────────┘ │
+<span xsmall>Scheduling threads</span>
+<span xsmall>Runnables/Callables</span>
+<span xsmall>Executors</span>
+@[https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/ExecutorService.html]
+ ┌────────────┐ │ ┌───────────────┐  │
+ │˂˂Runnable˃˃│ │ │˂˂Callable˂V˃˃˃│  │          ˂˂Executor˃˃
+ │────────────│ │ │───────────────│  │               ↑       
+ │+run()      │ │ │+call()        │  │       ˂˂ExecutorService˃˃  ← managed collection of threads
+ └────────────┘ │ └───────────────┘  │               ↑              available to execute tasks
+       ^        │ (util.concurrent)  │    ┌──────────┴──────────────┐
+       │        │                    │    │                         │
+ ┌────────────┐ │ Allows to return   │ AbstractExecutorService  ˂˂ScheduledExecutorService˃˃
+ │   Thread   │ │ a result/Exception │    ↑                         ↑
+ │────────────│ │ to the thread      │ ThreadPoolExecutor           │
+ │+run()      │ │ triggering the     │    ↑                         │
+ │+start()    │ │ Callable           │ ScheduledThreadPoolExecutor ─┘
+ │+sleep()    │ │                    │
+ │....        │ │                    │
+ │────────────│ │                    │
+ └────────────┘ │                    │
 
--   ExecutorService(Thread Pool): managed collection of threads available to execute tasks.
-    To use a thread pool, you can use an implementation of the interface
-    ExecutorService, such as ThreadPoolExecutor or ScheduledThreadPoolExecutor.
-    However, more convenient factory methods are provided in the Executors class
-    as follows:
-    Using thread pool:
-    - Write worker thread class implementing ˂˂Runnable˃˃ run()
-    - STEP 2: Create ExecutorService using:
-Executors.newSingleThreadExecutor()
-Executors.newFixedThreadPool(int numThreads)
-Executors.newCachedThreadPool(): // ← unbounded pool, with automatic reclamation
-Executors.newSingleThreadScheduledExecutor()
-Executors.newScheduledThreadPool(int size)
+- ˂˂ExecutorService˃˃(Thread Pool) ussage:
+  - Alt 1: use an implementation of the interface,
+           such as ThreadPoolExecutor or ScheduledThreadPoolExecutor.
+           an the ˂˂ExecutorService˃˃Instance.execute(/*Runnable */runnableInstance)
+           to add a Runnable task to thread pool.
+           -  Will execute the task at some time in the
+              future in a new thread, in a thread pool, or
+              in the calling thread, depending on the implementation
+           ˂˂java.util.concurrent.ExecutorService˃˃
+           + public     void      shutdown(); // Initiates orderly shutdown of pool
+           + public ˂T˃ Future˂T˃ submit(Callable˂T˃ task); // schedule callable task for execution
 
+  - Alt 2: Use factory methods in the 'Executors' class:
+          - Write worker thread class implementing ˂˂Runnable˃˃ run()
+          Executors.newSingleThreadExecutor()
+          Executors.newFixedThreadPool(int numThreads)
+          Executors.newCachedThreadPool(): // ← unbounded pool, with automatic reclamation
+          Executors.newSingleThreadScheduledExecutor()
+          Executors.newScheduledThreadPool(int size)
 
-- Use executor(Service)Instance.execute(/*Runnable */workerThreadInstance)
-  to add a Runnable task to thread pool. Executes task at some time in the
-  future in a new thread, in a thread pool, or in the calling thread,
-  depending on the implementation of Executor
-
- [[java.util.concurrent.ExecutorService]]
- + public     void      shutdown(); // Initiates orderly shutdown of pool
- + public <T> Future<T> submit(Callable<T> task); // schedule callable task for execution
+   _______  __    _    __  __ ____  _     _____ ____  
+  | ____\ \/ /   / \  |  \/  |  _ \| |   | ____/ ___| 
+  |  _|  \  /   / _ \ | |\/| | |_) | |   |  _| \___ \ 
+  | |___ /  \  / ___ \| |  | |  __/| |___| |___ ___) |
+  |_____/_/\_\/_/   \_\_|  |_|_|   |_____|_____|____/ 
+                                                    
+*Ex: CallableThreadPoolTest*                                                 *Ex: ThreadPoolTest*
+ import java.util.concurrent.Callable;                                       │import java.util.concurrent.ExecutorService;
+ import java.util.concurrent.*;                                              │import java.util.concurrent.Executors;
+ ...                                    ┌──→public class*MyCallableThread*   │...
+ int numWorkers = 10;                   │  │    implements Callable˂String˃{ │ExecutorService pool =
+ ExecutorService pool =                 │  │  MyCallableThread(int id)       │  Executors.newFixedThreadPool(10);
+     Executors.newCachedThreadPool();   │  │  {                              │MyWorker[] workers =
+*MyCallableThread workers[]* =       ───┘  │    ...                          │  new MyWorker[numWorkers];
+     new MyCallableThread[numWorkers];     │  }                              │for (int i = 0; i ˂ numWorkers; ++i)
+ Future futures[] = new Future[numWorkers];│                                 │  pool.execute(new MyWorker(i+1));
+                                           │  public String call() {         │pool.shutdown();
+ for (int i = 0; i ˂ numWorkers; ++i) {    │    Thread.sleep(1000));
+    workers[i] = new MyCallableThread(i+1);│    return ""+id;
+    futures[i] = pool.submit(workers[i]);  │  }
+ }                                         │}
+ for (int i = 0; i ˂ numWorkers; ++i) {
+   try {
+     System.out.println(
+       futures[i].get() + " ended");
+   } catch (InterruptedException ex) {
+     ex.printStackTrace();
+   } catch (ExecutionException ex) {
+     ex.printStackTrace();
+   }
+ }
 </pre>
 </td>
 <td>
 <pre xxxsmall zoom >
-<a xsmall href='https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/CompletableFuture.html'>Completable Future </a>
+<span xsmall>Completable Future</span>
+@[https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/CompletableFuture.html]
 (Java 8+)
 - A Future that may be explicitly completed (setting its value and status),
-    and may be used as a CompletionStage, supporting dependent functions and
-    actions that trigger upon its completion.
+  and may be used as a CompletionStage, supporting dependent functions and
+  actions that trigger upon its completion.
 - When two or more threads attempt to complete, completeExceptionally, or
-    cancel a CompletableFuture, only one of them succeeds.
-[[ java.util.concurrent.Callable&lt;V&gt; ]]
-   +public V call()  (vs run() in Runnable)
-   similar to a Runnable, but allows to return a result/Exception to the thread triggering the Callable
-   returns a result of type &lt;V&gt;, or throws an exception if unable to do so.
+  cancel a CompletableFuture, only one of them succeeds.
 
-[[ Future&lt;V&gt; ]]
-   +V get()           // blocks waiting for result
-   +V get(long timeout, TimeUnit unit)
-   +boolean cancel(boolean mayInterruptIfRunning)
-   +boolean isCancelled()
-   +boolean isDone()  // return true if this task completed
-
-<b>Barriers (<code orange>allOf</code>):</b>
-
-CompletableFuture&lt;Void&gt;[] future_list = new CompletableFuture[list.size()];
-        int idx=0;
-        log.info("Connecting plugins ...");
-        for (Object el : list) {
-            final CompletableFuture&lt;Void&gt; connectFuture = new CompletableFuture&lt;&gt;();
-            asyncMethod(connectFuture);
-            ...
-        }
-        return CompletableFuture.<b orange>allOf</b>(future_list);
-    }
+*Barriers (o*allOf*):
+  CompletableFuture˂Void˃[] future_list 
+    = new CompletableFuture[list.size()];
+  int idx=0;
+  log.info("Connecting plugins ...");
+  for (Object el : list) {
+    final CompletableFuture˂Void˃ 
+      connectFuture = new CompletableFuture˂˃();
+    asyncMethod(connectFuture);
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    The async Method at some moment must call the
+    complete() 
+    ...
+  }
+  return CompletableFuture. o*allOf*(future_list);
 </pre>
 </td>
 <td>
-<pre xxxsmall zoom { >
-<span xsmall>Ex1 ThreadPoolTest:</span>
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
-public class ThreadPoolTest {
-
-   public static void main(String[] args) {
-      ExecutorService pool = Executors.newFixedThreadPool(10);
-      MyWorker[] workers = new MyWorker[numWorkers];
-      for (int i = 0; i &lt; numWorkers; ++i) pool.execute(new MyWorker(i+1));
-      pool.shutdown();
-   }
-}
-</pre }>
-<pre xxxsmall zoom {>
-<span xsmall>Ex2: CallableThreadPoolTest:</span>
-import java.util.concurrent.Callable;
-import java.util.concurrent.*;
-
-public class CallableThreadPoolTest {
-
-    public class MyCallableWorkerThread implements Callable&lt;String> {
-       MyCallableWorkerThread(int workerNumber) { ... }
-       public String call() {
-          Thread.sleep((int)(Math.random() * 1000));
-          return "worker " + workerNumber;
-       }
-    }
-
-   public static void main(String[] args) {
-      int numWorkers = 10;
-      ExecutorService pool = Executors.newCachedThreadPool();
-      MyCallableWorkerThread workers[] = new MyCallableWorkerThread[numWorkers];
-      Future                 futures[] = new Future                [numWorkers];
-
-      for (int i = 0; i &lt; numWorkers; ++i) {
-         workers[i] = new MyCallableWorkerThread(i + 1);
-         futures[i] = pool.submit(workers[i]);
-      }
-      for (int i = 0; i &lt; numWorkers; ++i) {
-                                 try {
-            System.out.println(futures[i].get() + " ended");
-                                 } catch (InterruptedException ex) {
-            ex.printStackTrace();
-                                 } catch (ExecutionException ex) {
-            ex.printStackTrace();
-                                 }
-      }
-   }
-}
-</pre>
 </td>
 <td>
 <ul xxxsmall zoom >
@@ -1942,10 +1882,9 @@ public class CallableThreadPoolTest {
   - Providers of utility methods won't need to provide Future and ListenableFuture
       variants of their methods.
 </pre>
-</td>
-<td>
 <pre xxxsmall zoom>
-<span xsmall>Listenable vs Completable Futures</span>
+<span xsmall>Listenable vs</span>
+<span xsmall>CompletableFutures</span>
 @[https://stackoverflow.com/questions/38744943/listenablefuture-vs-completablefuture]
           ListenableFuture                           │               CompletableFuture
 ─────────────────────────────────────────────────────┼───────────────────────────────────────────────────
@@ -2034,15 +1973,217 @@ reactive libraries play.
 <pre xxxsmall zoom >
 <span xsmall>RxJava</span>
 @[https://github.com/ReactiveX/RxJava]
-            Java 8 Stream
-+       CompletableFuture
-+ "Back-presure" measures *1
--------------------------
-            rx.Observable
-*1 probably an intermediate buffer for incomming/outgoing messages that acts
-async. when not full, and sync when full.
+<span xsmall>Decision  Tree:</span>
+@[http://reactivex.io/documentation/operators.html#tree]
+Alphabetical List of Observable Operators
+@[http://reactivex.io/documentation/operators.html#alphabetical
+
+Core API:
+- rx.Observable [Java 8 Stream + CompletableFuture + + "Back-presure" measures ]
+              @[http://reactivex.io/documentation/observable.html]
+             *1 probably an intermediate buffer for incomming/outgoing messages that acts
+                async. when not full, and sync when full.
+  -  rx.Single: specialized version emiting a single item
+
+- rx.Operators:
+  - Compose Observables in a chain
+  - gives the real "reactive" power
+  - operators allow to transform, combine, manipulate, and work
+    with the sequences of items emitted by Observables.
+  - declarative programming 
+    -*AVOID THE THE DRAWBACKS OF CALLBACK-NESTING("callback hell")* 
+    - Most operators operate on an Observable and return an Observable.
+      Each operator in the chain modifies the Observable that results 
+      from the operation of the previous operator. Order matters.
+      (the Builder Pattern, also supported, is non-ordered)
+- rx.Subject
+@[http://reactivex.io/documentation/subject.html]
+  sort of "bridge or proxy" is available in some implementations
+  that acts both as an observer and as an Observable. 
+- rx.Scheduler
+@[http://reactivex.io/documentation/scheduler.html]
+  - Needed when using multithreading into the
+    cascade of Observable operators.
+  - By default, the chain of Observables/operators 
+    will notify its observers *on the same thread*
+   *on which its Subscribe method is called*
+  Operator|SubscribeOn         |ObserveOn
+  --------+--------------------+---------
+          |sets an Scheduler on|sets an Scheduler used
+          |which the Observable|by the Observable to
+          |should operate.     |send notifications to
+          |                    |its observers.
+  Scheduler "==" Thread
+
+
+*ReactiveX full Journey:*
+ http://reactivex.io/documentation/observable.html
+ 
+ observer → Observable: .subscribe(˂˂IObserver˃˃); 
+ object                               ^^^^^^^^^^^^
+                                      onNext
+                                      onCompleted: Ended with no error
+                                      onError    : stop event stream due to error
+                                         ⇑       
+                                    ˂˂Subscriber˃˃ 
+                                    unsubscribe  : - Observable can opt to stop
+                                                   event-emission if no more clients
+                                                   are subcribed
+ Loop-of-Observable-emitted-events:                - unsubscription will cascade back
+    Observable → ˂˂IObserver˃˃: onNext(event)      through the chain of operators 
+    observer → observer  : handle event            applying to associated Observable.
+    ^^^^^^^^
+    also called
+    "subscriber"
+    "watcher"
+    "reactor"  ("reactor pattern")
+ end-loop
+ Observable → ˂˂handlerInstance˃˃: onCOmpleted()
+ observer → observer  : handle event
+  
+ r*WARN:* There is no canonical naming standard in RXJava
+
+*"Hot" and "Cold" Observables*
+
+When does an Observable begin emitting its sequence of items?
+- A "hot" Observable may begin emitting items as soon as it is created
+  an observer will loose all events passed before subcribing.
+- A "cold" Observable waits until an observer subscribes to it 
+  an observer is guaranteed to see the whole sequence of events
+
+NOTE: A "Connectable" Observable: does NOT begin emitting items 
+  until its Connect method is called, whether or not any observers 
+  have subscribed to it.
+
+External links:
+Rx Workshop: Introduction
+  https://channel9.msdn.com/Series/Rx-Workshop/Rx-Workshop-Introduction
+Introduction to Rx: IObservable
+  http://introtorx.com/Content/v1.0.10621.0/02_KeyTypes.html#IObservable
+Mastering observables (from the Couchbase Server documentation)
+  https://developer.couchbase.com/documentation/server/3.x/developer/java-2.0/observables.html
+2 minute introduction to Rx by Andre Staltz (“Think of an Observable as an asynchronous immutable array.”)
+  https://medium.com/@andrestaltz/2-minute-introduction-to-rx-24c8ca793877
+Introducing the Observable by Jafar Husain (JavaScript Video Tutorial)
+  https://egghead.io/lessons/rxjs-introducing-the-observable
+Observable object (RxJS) by Dennis Stoyanov
+  http://xgrommx.github.io/rx-book/content/observable/index.html
+Turning a callback into an Rx Observable by @afterecho
+  https://afterecho.uk/blog/turning-a-callback-into-an-rx-observable.html
 </pre>
-  </td>
+<pre xxxsmall zoom>
+REF: 
+Operators creating new Observables
+@[http://reactivex.io/documentation/operators.html#creating]
+    Create — create an Observable from scratch by calling observer methods programmatically
+    Defer — do not create the Observable until the observer subscribes, and create a fresh Observable for each observer
+    Empty/Never/Throw — create Observables that have very precise and limited behavior
+    From — convert some other object or data structure into an Observable
+    Interval — create an Observable that emits a sequence of integers spaced by a particular time interval
+    Just — convert an object or a set of objects into an Observable that emits that or those objects
+    Range — create an Observable that emits a range of sequential integers
+    Repeat — create an Observable that emits a particular item or sequence of items repeatedly
+    Start — create an Observable that emits the return value of a function
+    Timer — create an Observable that emits a single item after a given delay
+Operators Transforming emitted Items:
+@[http://reactivex.io/documentation/operators.html#transforming]
+    Buffer — periodically gather items from an Observable into bundles and emit these bundles rather than emitting the items one at a time
+    FlatMap — transform the items emitted by an Observable into Observables, then flatten the emissions from those into a single Observable
+    GroupBy — divide an Observable into a set of Observables that each emit a different group of items from the original Observable, organized by key
+    Map — transform the items emitted by an Observable by applying a function to each item
+    Scan — apply a function to each item emitted by an Observable, sequentially, and emit each successive value
+    Window — periodically subdivide items from an Observable into Observable windows and emit these windows rather than emitting the items one at a time
+
+Operators selectively filtering emitted events from a source Observable.
+@[phttp://reactivex.io/documentation/operators.html#filtering]
+    Debounce — only emit an item from an Observable if a particular timespan has passed without it emitting another item
+    Distinct — suppress duplicate items emitted by an Observable
+    ElementAt — emit only item n emitted by an Observable
+    Filter — emit only those items from an Observable that pass a predicate test
+    First — emit only the first item, or the first item that meets a condition, from an Observable
+    IgnoreElements — do not emit any items from an Observable but mirror its termination notification
+    Last — emit only the last item emitted by an Observable
+    Sample — emit the most recent item emitted by an Observable within periodic time intervals
+    Skip — suppress the first n items emitted by an Observable
+    SkipLast — suppress the last n items emitted by an Observable
+    Take — emit only the first n items emitted by an Observable
+    TakeLast — emit only the last n items emitted by an Observable
+
+
+Operators Combining multiple source Observables into a new single Observable
+@[http://reactivex.io/documentation/operators.html#combining]
+    And/Then/When — combine sets of items emitted by two or more Observables by means of Pattern and Plan intermediaries
+    CombineLatest — when an item is emitted by either of two Observables, combine the latest item emitted by each Observable via a specified function and emit items based on the results of this function
+    Join — combine items emitted by two Observables whenever an item from one Observable is emitted during a time window defined according to an item emitted by the other Observable
+    Merge — combine multiple Observables into one by merging their emissions
+    StartWith — emit a specified sequence of items before beginning to emit the items from the source Observable
+    Switch — convert an Observable that emits Observables into a single Observable that emits the items emitted by the most-recently-emitted of those Observables
+    Zip — combine the emissions of multiple Observables together via a specified function and emit single items for each combination based on the results of this function
+
+Operators handling Errors and helping to recover from error-notifications
+@[http://reactivex.io/documentation/operators.html#error]
+    Catch — recover from an onError notification by continuing the sequence without error
+    Retry — if a source Observable sends an onError notification, resubscribe to it in the hopes that it will complete without error
+
+
+Utility Operators "toolbox"
+@[http://reactivex.io/documentation/operators.html#utility]
+    Delay — shift the emissions from an Observable forward in time by a particular amount
+    Do — register an action to take upon a variety of Observable lifecycle events
+    Materialize/Dematerialize — represent both the items emitted and the notifications sent as emitted items, or reverse this process
+    ObserveOn — specify the scheduler on which an observer will observe this Observable
+    Serialize — force an Observable to make serialized calls and to be well-behaved
+    Subscribe — operate upon the emissions and notifications from an Observable
+    SubscribeOn — specify the scheduler an Observable should use when it is subscribed to
+    TimeInterval — convert an Observable that emits items into one that emits indications of the amount of time elapsed between those emissions
+    Timeout — mirror the source Observable, but issue an error notification if a particular period of time elapses without any emitted items
+    Timestamp — attach a timestamp to each item emitted by an Observable
+    Using — create a disposable resource that has the same lifespan as the Observable
+
+Conditional and Boolean Operators evaluating one or more
+  Observables or items emitted by Observables
+@[http://reactivex.io/documentation/operators.html#conditional]
+     All — determine whether all items emitted by an Observable meet some criteria                                     Mathematical and Aggregate Operators
+@    Amb — given two or more source Observables, emit all of the items from only the first of these Observables to emit an item[http://reactivex.io/documentation/operators.html#mathematical]
+     Contains — determine whether an Observable emits a particular item or not                                            Average, Concat, Count, Max, Min, Reduce, and Sum
+C    DefaultIfEmpty — emit items from the source Observable, or a default item if the source Observable emits nothing  onverting Observables
+@    SequenceEqual — determine whether two Observables emit the same sequence of items
+     SkipUntil — discard items emitted by an Observable until a second Observable emits an item                           To
+C    SkipWhile — discard items emitted by an Observable until a specified condition becomes false                      onnectable Observable Operators
+@    TakeUntil — discard items emitted by an Observable after a second Observable emits an item or terminates          [http://reactivex.io/documentation/operators.html#connectable]
+     TakeWhile — discard items emitted by an Observable after a specified condition becomes false                         Connect, Publish, RefCount, and Replay
+
+Mathematical and Aggregate Operators
+Operators that operate on the entire sequence of items emitted by an Observable
+
+    Average — calculates the average of numbers emitted by an Observable and emits this average
+    Concat — emit the emissions from two or more Observables without interleaving them
+    Count — count the number of items emitted by the source Observable and emit only this value
+    Max — determine, and emit, the maximum-valued item emitted by an Observable
+    Min — determine, and emit, the minimum-valued item emitted by an Observable
+    Reduce — apply a function to each item emitted by an Observable, sequentially, and emit the final value
+    Sum — calculate the sum of numbers emitted by an Observable and emit this sum
+
+Backpressure Operators
+a variety of operators that enforce particular flow-control policies
+    @[http://reactivex.io/documentation/operators/backpressure.html]
+    backpressure operators — strategies for coping with Observables that produce items more rapidly than their observers consume them
+
+Connectable Observable Operators
+Specialty Observables that have more precisely-controlled subscription dynamics
+    Connect — instruct a connectable Observable to begin emitting items to its subscribers
+    Publish — convert an ordinary Observable into a connectable Observable
+    RefCount — make a Connectable Observable behave like an ordinary Observable
+    Replay — ensure that all observers see the same sequence of emitted items, even if they subscribe after the Observable has begun emitting items
+
+Operators to Convert Observables
+    To — convert an Observable into another object or data structure
+
+
+Implementing new Operators:
+@[http://reactivex.io/documentation/implement-operator.html]
+</pre>
+</td>
 </tr }>
 </table>
 <br/>
@@ -3739,6 +3880,17 @@ excellent scheduler in the form of ForkJoinPool, fibers will be implemented
 by adding continuations to the JVM.
 
 RELATED: http://www.linuxplumbersconf.org/2013/ocw/system/presentations/1653/original/LPC%20-%20User%20Threading.pdf
+
+https://www.infoq.com/presentations/continuations-java/
+Ron Pressler discusses and compares the various techniques of dealing with concurrency 
+and IO in both:
+- pure functional (monads, affine types) 
+- imperative      (threads, continuations, monads, async/await)
+and shows why delimited continuations are a great fit for the imperative style.
+
+Bio
+Ron Pressler is the technical lead for Project Loom, which aims to add delimited
+continuations, fibers and tail-calls to the JVM
 </pre>
 
 <pre xxxsmall zoom>

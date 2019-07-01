@@ -124,7 +124,7 @@ function doOpenZoom(e, isHistoric)      {
    + this.outerHTML; 
   zoomDivDOM.style.display="block";
   window.zoomDivDOM.scrollTop = 0;
-  e.stopPropagation();
+  if (!!e) { e.stopPropagation(); }
   return false;
 }
 
@@ -201,16 +201,52 @@ function doHelp() {
     doOpenZoom.call(ctx);
 }
 
+function doExtraOptions() {
+    ctx = {
+        outerHTML : getSearchOptions()
+    }
+    doOpenZoom.call(ctx);
+}
+
+function onLabelClicked(e) {
+    let label = e.value;
+    debugger;
+    var regex = new RegExp('label:' + label)
+    let currentInputQuery=window.QUERY.value.replace(regex, '')
+    var newInputQuery;
+    if (e.attributes.selected.value == "false") {
+        e.attributes.selected.value = "true"
+        newInputQuery = currentInputQuery+" label:"+label
+    } else {
+        e.attributes.selected.value = "false"
+    }
+    window.QUERY.value = newInputQuery
+}
+
+function getSearchOptions() {
+    var result = "";
+    result += ""
+      + "<hr/>\n"
+      + "Labels\n";
+ // debugger;
+    Object.keys(_labelMap).forEach(label_i => {
+        result += "<input selected=false type='button' onClick='onLabelClicked(this, \""+label_i+"\")' value='"+label_i+"' />" ;
+    })
+
+    return result;
+}
+
 var _labelMap = { /* label : dom_list*/ }
 function getDomListForLabel(label) {
     if (!!!_labelMap[label]) return [];
+    else return _labelMap[label];
 }
 function createLabelIndex() {
   var labeled_dom_l = document.querySelectorAll('*[label]');
+ // debugger
   for (idx1 in labeled_dom_l) {
     var node = labeled_dom_l[idx1]
     if (!node.getAttribute    ) continue
-// debugger
     let csvAttributes = node.getAttribute("label")
     // TODO:(0) Remove whitespaces
     csvAttributes.split(",").forEach( label => {
@@ -219,31 +255,50 @@ function createLabelIndex() {
         _labelMap[label] = list
     })
   }
-  console.dir(_labelMap)
+//console.dir(_labelMap)
 }
 
 function onPageLoaded() {
+    let iconSVG=
+//   '<?xml version="1.0" encoding="UTF-8" standalone="no"?>'
+     ''
+    +'<svg id="idLenseIcon" width="auto" height="1.5em" viewBox="0 141 68 103" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" >'
+    +'  <ellipse style="fill: none; fill-opacity:0; stroke-width: 4; stroke: #0000ff" cx="43.312" cy="165.209" rx="22" ry="22"/>'
+    +'  <ellipse style="fill: none; fill-opacity:0; stroke-width: 4; stroke: #0000ff" cx="43.312" cy="165.209" rx="22" ry="22"/>'
+    +'</g>'
+    +'  <line style="fill: none; fill-opacity:0; stroke-width: 4; stroke: #0000ff" x1="16.138" y1="45.443" x2="410.291" y2="195.409"/>'
+    +'  <line style="fill: none; fill-opacity:0; stroke-width: 12; stroke: #0000ff" x1="8.114" y1="235.317" x2="29.243" y2="190.48"/>'
+    +'  <path style="fill: none; fill-opacity:0; stroke-width: 4; stroke: #0000ff" d="M 54.448,154.894 A 14.5762,14.5762 0 0 0 28.108,160.286"/>'
+    +'</svg>'
   var UP = "../"
   // Append search, zoomDiv, zoom Buttons :
   var searchDiv = document.createElement('spam');
       searchDiv.innerHTML = 
      '<form action="" method="" id="search" name="search">'
-   + '  <input name="query" id="query" type="text" size="30" maxlength="30">'
-   + '  <input name="searchit" type="button" value="Regex Search" onClick="highlightSearch()">'
-   + '  <input id="singleLineOnly" type="checkbox"><code xsmall>single-line</code>'
+   + '  <input name="inputQuery" id="inputQuery" type="text" size="30" maxlength="30">'
+// + '  <input name="searchit" type="button" value="Regex Search" onClick="highlightSearch()">'
+   +  iconSVG
+   + '  <div style="float:left;">'
+   + '  <input id="singleLineOnly" type="checkbox"><code xsmall>single-line</code><br/>'
    + '  <input id="caseSensitive"  type="checkbox"><code xsmall>Case-match</code>'
-   + '  &nbsp;<input type="button" value="Please, HELP MeeEeeeEeeee!" bggreen onClick="doHelp()">'
+   + '  </div>'
+   + '  &nbsp;<input type="button" value="Refine!" onClick="doExtraOptions()">'
+   + '  &nbsp;<input type="button" value="HELP MEEeee!" bggreen onClick="doHelp()">'
    + '</form>'
    + '<a href="'+UP+'">[FOLDER UP]</a>&nbsp;'
    + '<a href="https://github.com/singlepagebookproject/IT_notes/issues">[Github pull requests]</a>&nbsp;'
    + '<div id="zoomDiv"></div>'
+// + '<div style="position:fixed; right:0.3%; top:0; width:auto;">'
    + '<div style="position:fixed; right:0.3%; top:0; width:auto;">'
    + '<b style="font-size:1.5rem" orange><a onclick="onZoomOut()">[-A]</a></b>'
    + '<b style="font-size:1.5rem"       >                                 </b>'
    + '<b style="font-size:2.0rem" orange><a onclick="onZoomIn ()">[A+]</a></b>'
    + '</div>'
    + '<br/>'
-  document.body.insertBefore(searchDiv,document.body.children[0]);
+  document.body.insertBefore(searchDiv,document.body.children[0])
+  document.getElementById("idLenseIcon").onclick = function() {
+      highlightSearch()
+  }
 
   zoomDivDOM = document.getElementById('zoomDiv')
   document.addEventListener('keyup',
@@ -330,6 +385,7 @@ function onPageLoaded() {
 
   createLabelIndex()
 
+  window.QUERY = document.getElementById("inputQuery");
   var query = getParameterByName("query");
   if (!!query) {
     highlightSearch(getParameterByName("query"));
@@ -351,8 +407,8 @@ function getParameterByName(name, url) {
 
 var searchFound = false;
 function highlightSearch(query) {
-  if (!!query) { document.getElementById("query").value = query; }
-  var text = document.getElementById("query").value.replace(/ +/g,".*");
+  if (!!query) { QUERY.value = query; }
+  var text = QUERY.value.replace(/ +/g,".*");
   var removeNodeList = document.querySelectorAll('*[textFound]');
   if (removeNodeList.length > 0) {
       for (idx in removeNodeList) {

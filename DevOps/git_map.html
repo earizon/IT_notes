@@ -272,6 +272,159 @@ Blame tracks lines not tokens, cgregit blames on tokens (inside a line)
 
 </tr>
 </table>
+<pre zoom>
+<span xsmall>Encrypt Git repos</span>
+@[https://www.atareao.es/como/cifrado-de-repositorios-git/]
+</pre>
+
+
+<pre zoom>
+<span xsmall>JGit</span>
+- https://wiki.eclipse.org/JGit/User_Guide
+- Eclipse Distribution License - v 1.0
+- lightweight, pure Java library implementing the Git version control system
+  - repository access routines
+  - network protocols
+  - core version control algorithms
+
+- suitable for embedding in any Java application
+</pre>
+
+<pre zoom>
+<span xsmall>Client Hooks</span>
+@[https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks]
+
+Client-Side Hooks
+- not copied when you clone a repository
+  - to enforce a policy do on the server side
+- committing-workflow hooks:
+  -*pre-commit*hook:
+    - First script to be executed.
+    - used to inspect the snapshot that's about to be committed.
+      - Check you’ve NOT forgotten something
+      - make sure tests run
+      - Exiting non-zero from this hook aborts the commit
+    (can be bypassed with git commit --no-verify flag)
+  -*prepare-commit-msg*hook:
+    - Params:
+      - commit_message_path (template for final commit message)
+      - type of commit
+      - commit SHA-1 (if this is an amended commit)
+    - run before the commit message editor is fired up 
+      but after the default message is created.
+    - It lets you edit the default message before the
+      commit author sees it.
+    - Used for non-normal-commits with auto-generated messages
+      - templated commit messages
+      - merge commits
+      - squashed commits
+      - amended commits
+  -*commit-msg*hook:
+      - commit_message_path (written by the developer)
+  -*post-commit*hook:
+    - (you can easily get the last commit by running git log -1 HEAD)
+    - Generally, this script is used for notification or something similar.
+
+-*email-workflow* hooks:
+  - invoked by *git am*
+                ^^^^^^
+                Apply a series of patches from a mailbox
+                prepared by git format-patch
+
+  -*applypatch-msg*: 
+    - Params:
+      - temp_file_path containing the proposed commit message.
+  -*pre-applypatch*:
+    - confusingly, it is run after the patch is 
+      applied but before a commit is made.
+    - can be used it to inspect the snapshot before making the commit,
+      run tests,  inspect the working tree with this script.
+  -*post-applypatch*:
+    - runs after the commit is made.
+    - Useful to notify a group or the author of the patch
+      you pulled in that you’ve done so. 
+
+- Others:
+  -*pre-rebase*hook:
+    - runs before you rebase anything
+    - Can be used to disallow rebasing any commits
+      that have already been pushed.
+  -*post-rewrite*hook:
+    - Params:
+      - command_that_triggered_the_rewrite: 
+        - It receives a list of rewrites on stdin.
+    - run by commands that replace commits
+      such as 'git commit --amend' and 'git rebase'
+      (though not by git filter-branch).
+    - This hook has many of the same uses as the
+      post-checkout and post-merge hooks.
+  -*post-checkout*hook:
+    - Runs after successful checkout
+    - you can use it to set up your working directory
+      properly for your project environment.
+      This may mean moving in large binary files that 
+      you don't want source controlled, auto-generating
+      documentation, or something along those lines.
+  -*post-merge*hook:
+    - runs after a successful merge command.
+    - You can use it to restore data in the working tree
+      that Git can't track, such as permissions data.
+      It can likewise validate the presence of files 
+      external to Git control that you may want copied 
+      in when the working tree changes.
+  -*pre-push*hook:
+    - runs during git push, after the remote refs
+      have been updated but before any objects have
+      been transferred.
+    - It receives the name and location of the remote
+      as parameters, and a list of to-be-updated refs
+      through stdin.
+    - You can use it to validate a set of ref updates before
+      a push occurs (a non-zero exit code will abort the push).
+</pre>
+
+<pre zoom>
+<span xsmall>Server-Side Hooks</span>
+(system administrator only)
+- Useful to enforce nearly any kind of policy for your project.
+
+- can exit non-zero at any time to reject the push 
+  as well as print an error message back to the client; 
+
+- you can set up a push policy that's as complex as you wish.
+
+*pre-receive* hook:
+ - first script to run 
+ - takes a list of references that are being pushed from stdin;
+   if it exits non-zero, none of them are accepted. 
+ - You can use this hook to do things like make sure none of the updated 
+   references are non-fast-forwards, or to do access control for all the refs 
+   and files they’re modifying with the push.
+
+*update*
+ - very similar to the pre-receive script, except that 
+  *it's run once for each branch the pusher is trying to update*.
+ - If the pusher is trying to push to multiple branches, pre-receive runs only once,
+   whereas update runs once per branch they're pushing to.
+ - Instead of reading from stdin, this script takes three arguments:
+   - the name of the reference (branch),
+   - the SHA-1 that reference pointed to before the push, 
+   - the SHA-1 the user is trying to push.
+ - If the update script exits non-zero, only that reference is rejected; 
+   other references can still be updated.
+
+*post-receive*
+ - runs after the entire process is completed 
+ - can be used to update other services or notify users.
+ - It takes the same stdin data as the pre-receive hook.
+ - Examples include emailing a list, notifying a CI server,
+   or updating a ticket-tracking system 
+   You can even parse the commit messages to see if any
+   tickets need to be opened, modified, or closed.
+ - This script can't stop the push process, but the client 
+   doesn't disconnect until it has completed, so be careful
+   if you try to do anything that may take a long time.
+</pre>
 
 </body>
 <!--
@@ -281,6 +434,10 @@ https://vfsforgit.org/
 Virtual File System for Git: Enable Git at Enterprise Scale 
 
 }
+____________________________
+
+Git occasionally does garbage collection as part of its normal operation, by invoking git gc --auto. The pre-auto-gc hook is invoked just before the garbage collection takes place, and can be used to notify you that this is happening, or to abort the collection if now isn’t a good time.
+
 -->
 
 </html>

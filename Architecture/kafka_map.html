@@ -12,61 +12,57 @@
 <table>
 <tr>
 <td>
-  External Links:
-
-  <ul zoom>
-  <li><a href="http://kafka.apache.org/documentation/">Documentation@apache.org</a></li>
-  <li><a href="https://cwiki.apache.org/confluence/display/KAFKA/Clients">Kafka Clients (Java,C/C--,Python,Go,...)</a></li>
-  <li>Kafka depends on <a href="https://zookeeper.apache.org/">Zookeeper</a> to work</li>
-  <li><a href="https://cwiki.apache.org/confluence/display/KAFKA/Index">Kafka Wiki (Papers, "ppts", ecosystem, system tools, ....)</a></li>
-  <li><a href="https://cwiki.apache.org/confluence/display/KAFKA/Kafka+Improvement+Proposals">Kafka Improvement Proposals (KIP)</a></li>
-  <li><a href="../JAVA/kotlin_map.html?query=data+pipelines+kafka">Data pipelines with Kotlin+Kafka+(async)Akka</a></li>
-
-<!--
-  <li><a href="http...."></a></li>
--->
-  </ul>
-  <hr />
-  Kafka cluster:(one+ server in 1+ datacenters)
-  <ul>
-  <li>stores streams of records in categories called topics</li>
-  <li>Each record consists of:
-<pre xsmall zoom&gt;
-RECORD
-├─key
-├─value
-└─timestamp
-</pre>
-  </li>
-  </ul>
-</td>
-<td colsep> </td>
-<td>
 <pre zoom>
-   <span xsmall>TOPIC and partitions</span> 
+<span xsmall>External Links</span>
+@[http://kafka.apache.org/documentation/]
+@[https://cwiki.apache.org/confluence/display/KAFKA/Clients]
+ (Java,C/C--,Python,Go,...)
+@[https://zookeeper.apache.org/]
+@[https://cwiki.apache.org/confluence/display/KAFKA/Index]
+  (Papers, "ppts", ecosystem, system tools, ....)
+@[https://cwiki.apache.org/confluence/display/KAFKA/Kafka+Improvement+Proposals]
+  Kafka Improvement Proposals (KIP)
+@[../JAVA/kotlin_map.html?query=data+pipelines+kafka]
+  Data pipelines with Kotlin+Kafka+(async)Akka
+
+- Cheatsheets:
+@[https://lzone.de/cheat-sheet/Kafka]
+@[https://ronnieroller.com/kafka/cheat-sheet]
+@[https://abdulhadoop.wordpress.com/2017/11/06/kafka-command-cheat-sheet/]
+@[https://github.com/Landoop/kafka-cheat-sheet]
+
+</pre>
+
+<pre zoom>
+<span xsmall>Global</span>
+<span xsmall>Diagram</span>
+(one+ server in 1+ datacenters)
+
+*A Kafka cluster stores STREAMS OF RECORDS in CATEGORIES CALLED TOPICS*
+
 *TOPIC*: Category or feed name to which records are published
 
-        ☞: By configuring which topics can produce or consume 
+        ☞: By configuring which topics can produce or consume
            data multi-tenancy can be enabled
 
 ┌────────┐             ┌─────┐            ┌───────────┐
 │PRODUCER│ 1 ←──────→1 │TOPIC│ 1 ←→ 0...N │SUBSCRIBERS│
 └────────┘             └─────┘            └───────────┘
-    │                    ↑ 1                
+    │                    ↑ 1
     │                    ↓ 1
-producer chooses     ┌─────────────┐            ┌────────┐
-"at will" which      │(partitioned)│ 1 ←→ 0...N │ replica│
-record is assigned   │    LOG      │            │  node  │
-to which  partition  └─────────────┘            └────────┘
-    │
-    │                                               *Immutable sequence* 
+producer chooses     ┌─────────────┐            ┌────────┐ ┌→*RECORD*
+"at will" which      │(partitioned)│ 1 ←→ 0...N │ replica│ │  ├key
+record is assigned   │    LOG      │            │  node  │ │  ├value
+to which  partition  └─────────────┘            └────────┘ │  └timestamp
+    │                                                      ↓
+    │                                               *Immutable sequence*
     │                                                of records
-    │                     ┌───┬────────────────────┬────↓↓↓↓──────────────┐ 
-    │                     │LOG│                    │      records         │  
-    │                     ├───┘                    │  ─────────────────── │  
+    │                     ┌───┬────────────────────┬────↓↓↓↓──────────────┐
+    │                     │LOG│                    │      records         │
+    │                     ├───┘                    │  ─────────────────── │
     └────────────────────→│ Partition 0 replica  1 │  0 1 2 3 4 5 6 7 ... │
 (optionally) producers can│ Partition 0 replica  2 │  0 1 2 3 4 5 6 7 ... │
-wait on acknowledgement.  │ Partition 1 replica  1 │  0 1 2 3 4 5 ...     │  
+wait on acknowledgement.  │ Partition 1 replica  1 │  0 1 2 3 4 5 ...     │
 A write is not considered │ Partition 1 replica  2 │  0 1 2 3 4 5 ...     │
 complete until it's fully │ Partition 2 replica  1 │  0 1 2 3 4 5 6 ...   │
 replicated and guaranteed │ Partition 2 replica  2 │  0 1 2 3 4 5 6 ...   │
@@ -81,36 +77,41 @@ to persist even on reboots└──↑──────────────
                        (individual partition must fit on the host server)
                      - act as the unit of parallelism
                           *RETENTION POLICY* indicates how much time the records
-                          ill be available for compsumption before being discarded.
+                          will be available for compsumption before being discarded.
+*Partition*
+*replication*
+- Each partition is replicated across a
+  configurable number of servers for
+  fault tolerance
+- Kafka allows producers to wait on acknowledgement
+  so that a write isn't considered complete
+  until it is fully replicated and guaranteed to
+  persist even if the server written to fails
+- Each partition has one server which acts as the
+  "leader" and zero or more servers which act
+  as "followers". The leader handles all read and
+  write requests for the partition while the followers
+  passively replicate the leader. If the leader fails,
+  one of the followers will automatically become
+  the new leader.
+- Each server acts as a leader for some
+  of its partitions and a follower for others
+  so load is well balanced within the cluster.
+- For a topic with replication factor N, we will
+  tolerate up to N-1 server failures without losing any
+  records committed to the log.
 </pre>
-  </ul>
-  Partition replication
-  <ul zoom>
-  <li>Each partition is replicated across a configurable number of servers for fault tolerance</li>
-  <li>Kafka allows producers to wait on acknowledgement so that a write isn't considered complete
-      until it is fully replicated and guaranteed to persist even if the server written to fails</li>
-  <li>Each partition has one server which acts as the "leader" and zero or more servers which act
-    as "followers". The leader handles all read and write requests for the partition while the followers
-    passively replicate the leader. If the leader fails, one of the followers will automatically become 
-    the new leader. Each server acts as a leader for some of its partitions and a follower for others
-    so load is well balanced within the cluster.</li>
-  <li>For a topic with replication factor N, we will tolerate up to N-1 server 
-    failures without losing any records committed to the log. </li>
-  <li><a href="https://cwiki.apache.org/confluence/pages/viewpage.action?pageId=27846330">Kafka MirrorMaker</a>
-    provides geo-replication support for your clusters</li>
-  </ul>
-  Consumer Groups:<br/>
-  (load-balance/scale/broadcast)
 <pre zoom>
+<span xsmall>Consumer Groups</span>
+(load-balance/scale/broadcast)
 Log partitions are (dnyamically) divided over consumer instances so that each instance
 is the exclusive consumer of a "fair share" of partitions at any point in time.
-                      
                       ┌──────────┬────────────────┐
-LOG                   │ CONSUMER │   CONSUMER     │ 
-                      │ GROUP A  │   GROUP B      │ Each consumer group is just a cluster 
-                      │ C-1  C-2 │C-3 C-4 C-5 C-6 │ of consumers instead of a single process 
+LOG                   │ CONSUMER │   CONSUMER     │
+                      │ GROUP A  │   GROUP B      │ Each consumer group is just a cluster
+                      │ C-1  C-2 │C-3 C-4 C-5 C-6 │ of consumers instead of a single process
          ┌────────────┼──────────┼────────────────┤ in the publish-subscribe model
-SERVER1  │Partition-0 │  X       │X               │ 
+SERVER1  │Partition-0 │  X       │X               │
          │Partition-3 │  X       │     X          │ Ussually there is 1 to 1 relation between a
          ├────────────┼──────────┼────────────────┤ consumer group and a "logical subscriber"
 SERVER2  │Partition-1 │      X   │         X      │
@@ -122,73 +123,75 @@ SERVER2  │Partition-1 │      X   │         X      │
 
 The consumer group generalizes the queue and publish-subscribe:
   - As with a queue the consumer group allows you to divide (scale) up
-    processing over a collection of processes (the members of the consumer group). 
+    processing over a collection of processes (the members of the consumer group).
   - As with publish-subscribe, Kafka allows you to broadcast messages to
     multiple consumer groups
 </pre>
-  About Total Ordering
-  <ul zoom>
-  <li>Kafka only provides a total order over records within a partition, not 
-   between different partitions in a topic. Per-partition ordering combined with
-   the ability to partition data by key is sufficient for most applications. 
-   However, if you require a total order over records this can be achieved with
-   a topic that has only one partition, though this will mean only one consumer
-   process per consumer group.</li>
-  <li>Messages sent by a producer to a particular topic partition are guaranteed
-    to be appended in the order they are sent.</li>
-  </ul>
-</td>
-<td>
-  pom.xml dependencies:
-<pre zoom>
-# Producer, consumer, AdminClient APIs             # Streams API:
-&lt;dependency&gt;                                 &lt;dependency&gt;
-    &lt;groupId&gt;org.apache.kafka&lt;/groupId&gt;          &lt;groupId&gt;org.apache.kafka&lt;/groupId&gt;
-    &lt;artifactId&gt;kafka-clients&lt;/artifactId&gt;       &lt;artifactId&gt;kafka-streams&lt;/artifactId&gt;
-    &lt;version&gt;1.1.0&lt;/version&gt;                     &lt;version&gt;1.1.0&lt;/version&gt;
-&lt;/dependency&gt;                                &lt;/dependency&gt;
 
+<pre zoom>
+<span xsmall>About "Total"</span>
+<span xsmall>Ordering</span>
+- Kafka only provides a total order over records within a partition, not
+  between different partitions in a topic. Per-partition ordering combined with
+  the ability to partition data by key is sufficient for most applications.
+  However, if you require a total order over records this can be achieved with
+  a topic that has only one partition, though this will mean only one consumer
+  process per consumer group.
+- Messages sent by a producer to a particular topic partition are guaranteed
+  to be appended in the order they are sent.
 </pre>
 </td>
 <td>
-  <a TODO href="http://kafka.apache.org/11/javadoc/index.html?org/apache/kafka/clients/producer/KafkaProducer.html">Producer API</a><br/>
-  send streams of data to topics in the cluster
+<pre zoom>
+<span TODO xsmall>Producer API</span>
+@[http://kafka.apache.org/11/javadoc/index.html?org/apache/kafka/clients/producer/KafkaProducer.html]
+- send streams of data to topics in the cluster
+</pre>
 </td>
 <td>
-  <a TODO href="http://kafka.apache.org/11/javadoc/index.html?org/apache/kafka/streams/KafkaStreams.html">Consumer API</a>
+<pre zoom>
+<span TODO xsmall>Consumer API</span>
+@[http://kafka.apache.org/11/javadoc/index.html?org/apache/kafka/streams/KafkaStreams.html]
+</pre>
 </td>
 <td>
-  <a TODO href="http://kafka.apache.org/11/javadoc/index.html?org/apache/kafka/streams/KafkaStreams.html">Streams API</a> (<a href="http://kafka.apache.org/11/documentation/streams/">more info</a>)
-  <ul zoom>
-  <li>allows building applications that do non-trivial processing that compute 
-    aggregations off of streams or join streams together. </li>
-  <li> The streams API builds on the core primitives Kafka provides: it uses the
-    producer and consumer APIs for input, uses Kafka for stateful storage, and 
-    uses the same group mechanism for fault tolerance among the stream processor
-    instances. </li>
-  </ul>
+<pre zoom>
+<span TODO xsmall>Streams API</span>
+@[http://kafka.apache.org/11/javadoc/index.html?org/apache/kafka/streams/KafkaStreams.html]
+@[http://kafka.apache.org/11/documentation/streams/]
+- allows building applications that do non-trivial processing that compute
+  aggregations off of streams or join streams together.
+- The streams API builds on the core primitives Kafka provides: it uses the
+  producer and consumer APIs for input, uses Kafka for stateful storage, and
+  uses the same group mechanism for fault tolerance among the stream processor
+  instances.
+- It's a client library targeting real-time applications and microservices
+  Kafka clusters are used as  input/storage/output
+</pre>
+</td>
+<td>
+<pre zoom>
+<span TODO xsmall>Connect API</span>
+@[http://kafka.apache.org/11/javadoc/index.html?overview-summary.html]
+(<a TODO href="http://kafka.apache.org/documentation.html#connect">more info</a>)
+- allows building and running reusable producers or consumers that connect Kafka
+  topics to existing applications or data systems. For example, a connector to a
+  relational database might capture every change to a table</li>
 
+<span xsmall>Connectors List</span>
+<a href="https://docs.confluent.io/current/connect/connectors.html">Bundled Connector List</a>
+(JDBC, HDFS, S3, Elasticsearch, JMS, IBM MQ, ActiveMQ, FileStream)
+<a href="https://github.com/search?q=kafka+connector">Kafka connectors@github</a>
+</pre>
 </td>
 <td>
-  <a TODO href="http://kafka.apache.org/11/javadoc/index.html?overview-summary.html"    >Connect API</a> (<a TODO href="http://kafka.apache.org/documentation.html#connect">more info</a>)<br/>
-  <ul zoom>
-  <li>allows building and running reusable producers or consumers that connect Kafka
-    topics to existing applications or data systems. For example, a connector to a 
-    relational database might capture every change to a table</li>
-  </ul>
-  Kafka Connectors List
-  <ul zoom>
-  <li><a href="https://docs.confluent.io/current/connect/connectors.html">Bundled Connector List</a><br/> (JDBC, HDFS, S3, Elasticsearch, JMS, IBM MQ, ActiveMQ, FileStream)</li>
-  <li><a href="https://github.com/search?q=kafka+connector">Kafka connectors@github</a></li>
-  <li></li>
-  </ul>
-</td>
-<td>
-  <a TODO href="http://kafka.apache.org/11/javadoc/index.html?org/apache/kafka/clients/admin/AdminClient.html">AdminClient API</a>
-  <ul zoom>
-  <li>administrative client for Kafka, which supports managing and inspecting 
-    topics, brokers, configurations and ACLs.</li>
-  </ul>
+<pre zoom>
+<span xsmall>AdminClient API</span>
+@[http://kafka.apache.org/11/javadoc/index.html?org/apache/kafka/clients/admin/AdminClient.html]
+
+- administrative client for Kafka, which supports managing and inspecting
+  topics, brokers, configurations and ACLs.
+</pre>
 </td>
 </tr>
 </table>
@@ -196,9 +199,25 @@ The consumer group generalizes the queue and publish-subscribe:
 
 <table>
 <tr>
+<td title>
+    DevOps
+</td>
 <td>
-  Quick set-up:
 <pre zoom>
+<span xsmall>pom.xml</span>
+
+*Producer, consumer, AdminClient APIs*   *Streams API*
+˂dependency˃                             ˂dependency˃
+  ˂groupId˃org.apache.kafka˂/groupId˃      ˂groupId˃org.apache.kafka˂/groupId˃
+  ˂artifactId˃kafka-clients˂/artifactId˃   ˂artifactId˃kafka-streams˂/artifactId˃
+  ˂version˃1.1.0˂/version˃                 ˂version˃1.1.0˂/version˃
+˂/dependency˃                            ˂/dependency˃
+</pre>
+</td>
+
+<td>
+<pre zoom>
+<span xsmall>Quick set-up</span>
 # STEP 1: Download from <a href="https://www.apache.org/dyn/closer.cgi?path=/kafka/1.1.0/kafka_2.11-1.1.0.tgz">here</a>
 ~ tar -xzf kafka_2.11-1.1.0.tgz ; cd kafka_2.11-1.1.0
 
@@ -231,16 +250,16 @@ This is another message
 
 # STEP 6: expanding our cluster to three brokers/nodes in our local machine:
 # STEP 6.1: Add 2 new broker configs.
-~ cp config/server.properties config/server-1.properties # 
+~ cp config/server.properties config/server-1.properties #
 ~ cp config/server.properties config/server-2.properties #
 
 config/server-1.properties:        config/server-2.properties:
     broker.id=1                        broker.id=2                 ← unique permanent id for each node
     listeners=PLAINTEXT://:9093        listeners=PLAINTEXT://:9094
-    log.dir=/tmp/kafka-logs-1          log.dir=/tmp/kafka-logs-2   ← avoid overwrite 
+    log.dir=/tmp/kafka-logs-1          log.dir=/tmp/kafka-logs-2   ← avoid overwrite
 # STEP 6.2: startup the kafka servers:
-~ bin/kafka-server-start.sh config/server-1.properties ... 
-~ bin/kafka-server-start.sh config/server-2.properties ... 
+~ bin/kafka-server-start.sh config/server-1.properties ...
+~ bin/kafka-server-start.sh config/server-2.properties ...
 
 # STEP 6.3: create a new topic with a replication factor of three:
 ~ bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 3 --partitions 1 --topic <b orange>my-replicated-topic</b>
@@ -253,7 +272,7 @@ Topic:<b orange>my-replicated-topic</b>   PartitionCount:1    ReplicationFactor:
     "leader"  : node responsible for all reads/writes for the given partition
                 If "leader" is killed an slave will take the roll.
     "replicas": node list replicating the log for this partition (regardless of leadership or alive-status)
-    "isr"     : set of "in-sync" replicas. (subset of "replicas" currently alive and in sync with "leader") 
+    "isr"     : set of "in-sync" replicas. (subset of "replicas" currently alive and in sync with "leader")
 
 # STEP 7: Use Kafka Connect to import/export data using simple connectors:
 For many systems, instead of writing custom integration code you can use the "Kafka Connect" standard tool to import or export data.
@@ -263,7 +282,7 @@ For many systems, instead of writing custom integration code you can use the "Ka
 # STEP 7.2: Start two connectors running in standalone mode (single, local, dedicated process).
   configuration files:
   - source/sink configuration, each one specifying:
-      - 
+      -
       - any other configuration required by the connector
 ~ bin/connect-standalone.sh \
    config/connect-standalone.properties   # common Kafka-Connect config (brokers, serialization format ,...)
@@ -278,217 +297,392 @@ For many systems, instead of writing custom integration code you can use the "Ka
 </pre>
 </td>
 <td>
-  <a href="http://kafka.apache.org/documentation/#configuration">Broker config</a>
-  <a href="http://kafka.apache.org/documentation/#topicconfigs">Topic Configs</a>
 <pre zoom>
+<span TODO osmall>Broker Config</span>
+Broker config: @[http://kafka.apache.org/documentation/#configuration]
   Main params:
 broker.id
 log.dirs
 zookeeper.connect
 </pre>
-  <a href="http://kafka.apache.org/documentation/#producerconfigs">Producer Configs</a>
+
+<td title>
+    Configuration
+</td>
 <pre zoom>
+<span xsmall>Topics</span>
+<span xsmall>Conf</span>
+Topics config: @[http://kafka.apache.org/documentation/#topicconfigs"
+</pre>
+
+<pre TODO zoom>
+<span xsmall>Producer</span>
+<span xsmall>Conf</span>
+@[http://kafka.apache.org/documentation/#producerconfigs]
      Name                | Description                                                                                 | Type   | Default           | Valid Values           | Server Default Property           | Importance
 -------------------------+---------------------------------------------------------------------------------------------+--------+-------------------+------------------------+-----------------------------------+-----------
-cleanup.policy           |A string that is either "delete" or "compact". This string designates the retention policy to|        |                   |                        |                                   |           
-                         |use on old log segments. The default policy ("delete") will discard old segments             |        |                   |                        |                                   |           
-                         |when their retention time or size limit has been reached. The "compact" setting              |        |                   |                        |                                   |           
-                         |will enable <a href="#compaction">log compaction</a> on the topic.                           |list    |delete             |[compact, delete]       |log.cleanup.policy                 |medium     
+cleanup.policy           |A string that is either "delete" or "compact". This string designates the retention policy to|        |                   |                        |                                   |
+                         |use on old log segments. The default policy ("delete") will discard old segments             |        |                   |                        |                                   |
+                         |when their retention time or size limit has been reached. The "compact" setting              |        |                   |                        |                                   |
+                         |will enable <a href="#compaction">log compaction</a> on the topic.                           |list    |delete             |[compact, delete]       |log.cleanup.policy                 |medium
 -------------------------+---------------------------------------------------------------------------------------------+--------+-------------------+------------------------+-----------------------------------+-----------
-compression.type         |Specify the final compression type for a given topic. This configuration accepts the standard|        |                   |                        |                                   |           
-                         | compression codecs ('gzip', 'snappy', lz4). It additionally accepts                         |        |                   |                        |                                   |           
-                         |'uncompressed' which is equivalent to no compression; and 'producer' which                   |        |                   |[uncompressed, snappy   |compression.type                   |medium     
-                         |means retain the original compression codec set by the producer.                             |string  |producer           |, lz4, gzip, producer]  |                                   |           
+compression.type         |Specify the final compression type for a given topic. This configuration accepts the standard|        |                   |                        |                                   |
+                         | compression codecs ('gzip', 'snappy', lz4). It additionally accepts                         |        |                   |                        |                                   |
+                         |'uncompressed' which is equivalent to no compression; and 'producer' which                   |        |                   |[uncompressed, snappy   |compression.type                   |medium
+                         |means retain the original compression codec set by the producer.                             |string  |producer           |, lz4, gzip, producer]  |                                   |
 -------------------------+---------------------------------------------------------------------------------------------+--------+-------------------+------------------------+-----------------------------------+-----------
-delete.retention.ms      |The amount of time to retain delete tombstone markers for                                    |        |                   |                        |                                   |           
-                         |<a href="#compaction">log compacted</a> topics. This setting also gives a bound              |        |                   |                        |                                   |           
-                         |on the time in which a consumer must complete a read if they begin from offset               |        |                   |                        |                                   |           
-                         |0 to ensure that they get a valid snapshot of the final stage (otherwise delete              |        |                   |                        |                                   |           
-                         |tombstones may be collected before they complete their scan).                                |long    |86400000           |[0,...]                 |log.cleaner.delete.retention.ms    |medium     
+delete.retention.ms      |The amount of time to retain delete tombstone markers for                                    |        |                   |                        |                                   |
+                         |<a href="#compaction">log compacted</a> topics. This setting also gives a bound              |        |                   |                        |                                   |
+                         |on the time in which a consumer must complete a read if they begin from offset               |        |                   |                        |                                   |
+                         |0 to ensure that they get a valid snapshot of the final stage (otherwise delete              |        |                   |                        |                                   |
+                         |tombstones may be collected before they complete their scan).                                |long    |86400000           |[0,...]                 |log.cleaner.delete.retention.ms    |medium
 -------------------------+---------------------------------------------------------------------------------------------+--------+-------------------+------------------------+-----------------------------------+-----------
-file.delete.delay.ms     |The time to wait before deleting a file from the filesystem                                  |long    |60000              |[0,...]                 |log.segment.delete.delay.ms        |medium     
-flush.messages           |This setting allows specifying an interval at which we will force an fsync of data written to|        |                   |                        |                                   |           
-                         |the log. For example if this was set to 1 we would fsync after every message;                |        |                   |                        |                                   |           
-                         |if it were 5 we would fsync after every five messages. In general we recommend               |        |                   |                        |                                   |           
-                         |you not set this and use replication for durability and allow the operating                  |        |                   |                        |                                   |           
-                         |system's background flush capabilities as it is more efficient. This setting can             |        |                   |                        |                                   |           
-                         |be overridden on a per-topic basis (see <a href="#topicconfigs">the per-topic configuration  |        |                   |                        |                                   |           
-                         |section</a>).                                                                                |long    |9223372036854775807|[0,...]                 |log.flush.interval.messages        |medium     
+file.delete.delay.ms     |The time to wait before deleting a file from the filesystem                                  |long    |60000              |[0,...]                 |log.segment.delete.delay.ms        |medium
+flush.messages           |This setting allows specifying an interval at which we will force an fsync of data written to|        |                   |                        |                                   |
+                         |the log. For example if this was set to 1 we would fsync after every message;                |        |                   |                        |                                   |
+                         |if it were 5 we would fsync after every five messages. In general we recommend               |        |                   |                        |                                   |
+                         |you not set this and use replication for durability and allow the operating                  |        |                   |                        |                                   |
+                         |system's background flush capabilities as it is more efficient. This setting can             |        |                   |                        |                                   |
+                         |be overridden on a per-topic basis (see <a href="#topicconfigs">the per-topic configuration  |        |                   |                        |                                   |
+                         |section</a>).                                                                                |long    |9223372036854775807|[0,...]                 |log.flush.interval.messages        |medium
 -------------------------+---------------------------------------------------------------------------------------------+--------+-------------------+------------------------+-----------------------------------+-----------
-flush.ms                 |This setting allows specifying a time interval at which we will force an fsync of data       |        |                   |                        |                                   |           
-                         |written to the log. For example if this was set to 1000 we would fsync after                 |        |                   |                        |                                   |           
-                         |1000 ms had passed. In general we recommend you not set this and use replication             |        |                   |                        |                                   |           
-                         |for durability and allow the operating system's background flush capabilities as             |        |                   |                        |                                   |           
-                         |it is more efficient.                                                                        |long    |9223372036854775807|[0,...]                 |log.flush.interval.ms              |medium     
+flush.ms                 |This setting allows specifying a time interval at which we will force an fsync of data       |        |                   |                        |                                   |
+                         |written to the log. For example if this was set to 1000 we would fsync after                 |        |                   |                        |                                   |
+                         |1000 ms had passed. In general we recommend you not set this and use replication             |        |                   |                        |                                   |
+                         |for durability and allow the operating system's background flush capabilities as             |        |                   |                        |                                   |
+                         |it is more efficient.                                                                        |long    |9223372036854775807|[0,...]                 |log.flush.interval.ms              |medium
 -------------------------+---------------------------------------------------------------------------------------------+--------+-------------------+------------------------+-----------------------------------+-----------
-follower.replication.    |                                                                                             |        |                   |                        |               
- throttled.replicas      |A list of replicas for which log replication should be throttled on the follower side. The   |        |                   |                        |                                   |           
-                         |list should describe a set of replicas in the form                                           |        |                   |[partitionId],          |                                   |           
-                         |[PartitionId]:[BrokerId],[PartitionId]:[BrokerId]:... or alternatively the                   |        |                   |[brokerId]:[partitionId]|follower.replication.              |           
-                         |wildcard '*' can be used to throttle all replicas for this topic.                            |list    |""                 |[brokerId]:...          | throttled.replicas                |medium     
+follower.replication.    |                                                                                             |        |                   |                        |
+ throttled.replicas      |A list of replicas for which log replication should be throttled on the follower side. The   |        |                   |                        |                                   |
+                         |list should describe a set of replicas in the form                                           |        |                   |[partitionId],          |                                   |
+                         |[PartitionId]:[BrokerId],[PartitionId]:[BrokerId]:... or alternatively the                   |        |                   |[brokerId]:[partitionId]|follower.replication.              |
+                         |wildcard '*' can be used to throttle all replicas for this topic.                            |list    |""                 |[brokerId]:...          | throttled.replicas                |medium
 -------------------------+---------------------------------------------------------------------------------------------+--------+-------------------+------------------------+-----------------------------------+-----------
-index.interval.bytes     |This setting controls how frequently Kafka adds an index entry to it's offset index. The     |        |                   |                        |                                   |           
-                         |default setting ensures that we index a message roughly every 4096 bytes. More               |        |                   |                        |                                   |           
-                         |indexing allows reads to jump closer to the exact position in the log but makes              |        |                   |                        |                                   |           
-                         |the index larger. You probably don't need to change this.                                    |int     |4096               |[0,...]                 |log.index.interval.bytes           |medium     
+index.interval.bytes     |This setting controls how frequently Kafka adds an index entry to it's offset index. The     |        |                   |                        |                                   |
+                         |default setting ensures that we index a message roughly every 4096 bytes. More               |        |                   |                        |                                   |
+                         |indexing allows reads to jump closer to the exact position in the log but makes              |        |                   |                        |                                   |
+                         |the index larger. You probably don't need to change this.                                    |int     |4096               |[0,...]                 |log.index.interval.bytes           |medium
 -------------------------+---------------------------------------------------------------------------------------------+--------+-------------------+------------------------+-----------------------------------+-----------
- leader.replication      |A list of replicas for which log replication should be throttled on the leader side. The     |        |                   |                        |                                   |           
-  .throttled.replicas    |list should describe a set of replicas in the form                                           |        |                   |[partitionId],[brokerId]|                                   |           
-                         |[PartitionId]:[BrokerId],[PartitionId]:[BrokerId]:... or alternatively the                   |        |                   |:[partitionId],[brokerId|leader.replication                 |           
-                         |wildcard '*' can be used to throttle all replicas for this topic.                            |list    |""                 |:...                    |.throttled.replicas                |medium     
+ leader.replication      |A list of replicas for which log replication should be throttled on the leader side. The     |        |                   |                        |                                   |
+  .throttled.replicas    |list should describe a set of replicas in the form                                           |        |                   |[partitionId],[brokerId]|                                   |
+                         |[PartitionId]:[BrokerId],[PartitionId]:[BrokerId]:... or alternatively the                   |        |                   |:[partitionId],[brokerId|leader.replication                 |
+                         |wildcard '*' can be used to throttle all replicas for this topic.                            |list    |""                 |:...                    |.throttled.replicas                |medium
 -------------------------+---------------------------------------------------------------------------------------------+--------+-------------------+------------------------+-----------------------------------+-----------
-max.message.bytes        |   The largest record batch size allowed by Kafka. If this is increased and there are        |        |                   |                        |                                   |           
-                         |consumers older than 0.10.2, the consumers' fetch size must also be increased                |        |                   |                        |                                   |           
-                         |so that the they can fetch record batches this large.       In the latest                    |        |                   |                        |                                   |           
-                         |message format version, records are always grouped into batches for efficiency.              |        |                   |                        |                                   |           
-                         |In previous message format versions, uncompressed records are not grouped into               |        |                   |                        |                                   |           
-                         |batches and this limit only applies to a single record in that case.                         |int     |1000012            |[0,...]                 |message.max.bytes                  |medium     
+max.message.bytes        |   The largest record batch size allowed by Kafka. If this is increased and there are        |        |                   |                        |                                   |
+                         |consumers older than 0.10.2, the consumers' fetch size must also be increased                |        |                   |                        |                                   |
+                         |so that the they can fetch record batches this large.       In the latest                    |        |                   |                        |                                   |
+                         |message format version, records are always grouped into batches for efficiency.              |        |                   |                        |                                   |
+                         |In previous message format versions, uncompressed records are not grouped into               |        |                   |                        |                                   |
+                         |batches and this limit only applies to a single record in that case.                         |int     |1000012            |[0,...]                 |message.max.bytes                  |medium
 -------------------------+---------------------------------------------------------------------------------------------+--------+-------------------+------------------------+-----------------------------------+-----------
-message.format.version   |Specify the message format version the broker will use to append messages to the logs. The   |        |                   |                        |                                   |           
-                         |value should be a valid ApiVersion. Some examples are: 0.8.2, 0.9.0.0, 0.10.0,               |        |                   |                        |                                   |           
-                         |check ApiVersion for more details. By setting a particular message format version,           |        |                   |                        |                                   |           
-                         |the user is certifying that all the existing messages on disk are smaller or                 |        |                   |                        |                                   |           
-                         |equal than the specified version. Setting this value incorrectly will cause                  |        |                   |                        |                                   |           
-                         |consumers with older versions to break as they will receive messages with a                  |        |                   |                        |                                   |           
-                         |format that they don't understand.                                                           |string  |1.1-IV0            |                        |log.message.format.version         |medium      
+message.format.version   |Specify the message format version the broker will use to append messages to the logs. The   |        |                   |                        |                                   |
+                         |value should be a valid ApiVersion. Some examples are: 0.8.2, 0.9.0.0, 0.10.0,               |        |                   |                        |                                   |
+                         |check ApiVersion for more details. By setting a particular message format version,           |        |                   |                        |                                   |
+                         |the user is certifying that all the existing messages on disk are smaller or                 |        |                   |                        |                                   |
+                         |equal than the specified version. Setting this value incorrectly will cause                  |        |                   |                        |                                   |
+                         |consumers with older versions to break as they will receive messages with a                  |        |                   |                        |                                   |
+                         |format that they don't understand.                                                           |string  |1.1-IV0            |                        |log.message.format.version         |medium
 -------------------------+---------------------------------------------------------------------------------------------+--------+-------------------+------------------------+-----------------------------------+-----------
-message.timestamp        |The maximum difference allowed between the timestamp when a broker receives a message and    |        |                   |                        |                                   |            
-.difference.max.ms       |the timestamp specified in the message. If message.timestamp.type=CreateTime, a              |        |                   |                        |                                   |            
-                         |message will be rejected if the difference in timestamp exceeds this threshold.              |        |                   |                        |log.message.timestamp.             |            
-                         |This configuration is ignored if message.timestamp.type=LogAppendTime.                       |long    |9223372036854775807|[0,...]                 |  difference.max.ms                |medium      
+message.timestamp        |The maximum difference allowed between the timestamp when a broker receives a message and    |        |                   |                        |                                   |
+.difference.max.ms       |the timestamp specified in the message. If message.timestamp.type=CreateTime, a              |        |                   |                        |                                   |
+                         |message will be rejected if the difference in timestamp exceeds this threshold.              |        |                   |                        |log.message.timestamp.             |
+                         |This configuration is ignored if message.timestamp.type=LogAppendTime.                       |long    |9223372036854775807|[0,...]                 |  difference.max.ms                |medium
 -------------------------+---------------------------------------------------------------------------------------------+--------+-------------------+------------------------+-----------------------------------+-----------
-message.timestamp.type   |Define whether the timestamp in the message is message create time or log append time. The   |        |                   |                        |                                   |            
-                         |value should be either `CreateTime` or `LogAppendTime`                                       |string  |CreateTime         |                        |log.message.timestamp.type         |medium      
+message.timestamp.type   |Define whether the timestamp in the message is message create time or log append time. The   |        |                   |                        |                                   |
+                         |value should be either `CreateTime` or `LogAppendTime`                                       |string  |CreateTime         |                        |log.message.timestamp.type         |medium
 -------------------------+---------------------------------------------------------------------------------------------+--------+-------------------+------------------------+-----------------------------------+-----------
-min.cleanable.dirty.ratio|This configuration controls how frequently the log compactor will attempt to clean the log   |        |                   |                        |                                   |            
-                         |(assuming <a href="#compaction">log compaction</a> is enabled). By default we                |        |                   |                        |                                   |            
-                         |will avoid cleaning a log where more than 50% of the log has been compacted.                 |        |                   |                        |                                   |            
-                         |This ratio bounds the maximum space wasted in the log by duplicates (at 50% at               |        |                   |                        |                                   |            
-                         |most 50% of the log could be duplicates). A higher ratio will mean fewer, more               |        |                   |                        |                                   |            
-                         |efficient cleanings but will mean more wasted space in the log.                              |double  |0.5                |[0,...,1]               |log.cleaner.min.cleanable.ratio    |medium      
+min.cleanable.dirty.ratio|This configuration controls how frequently the log compactor will attempt to clean the log   |        |                   |                        |                                   |
+                         |(assuming <a href="#compaction">log compaction</a> is enabled). By default we                |        |                   |                        |                                   |
+                         |will avoid cleaning a log where more than 50% of the log has been compacted.                 |        |                   |                        |                                   |
+                         |This ratio bounds the maximum space wasted in the log by duplicates (at 50% at               |        |                   |                        |                                   |
+                         |most 50% of the log could be duplicates). A higher ratio will mean fewer, more               |        |                   |                        |                                   |
+                         |efficient cleanings but will mean more wasted space in the log.                              |double  |0.5                |[0,...,1]               |log.cleaner.min.cleanable.ratio    |medium
 -------------------------+---------------------------------------------------------------------------------------------+--------+-------------------+------------------------+-----------------------------------+-----------
-min.compaction.lag.ms    |The minimum time a message will remain uncompacted in the log. Only applicable for logs      |        |                   |                        |                                   |            
-                         |that are being compacted.                                                                    |long    |0                  |[0,...]                 |log.cleaner.min.compaction.lag.ms  |medium      
+min.compaction.lag.ms    |The minimum time a message will remain uncompacted in the log. Only applicable for logs      |        |                   |                        |                                   |
+                         |that are being compacted.                                                                    |long    |0                  |[0,...]                 |log.cleaner.min.compaction.lag.ms  |medium
 -------------------------+---------------------------------------------------------------------------------------------+--------+-------------------+------------------------+-----------------------------------+-----------
-min.insync.replicas      |When a producer sets acks to "all" (or "-1"), this configuration specifies the minimum       |        |                   |                        |                                   |            
-                         |number of replicas that must acknowledge a write for the write to be considered              |        |                   |                        |                                   |            
-                         |successful. If this minimum cannot be met, then the producer will raise an                   |        |                   |                        |                                   |            
-                         |exception (either NotEnoughReplicas or NotEnoughReplicasAfterAppend).<br>                    |        |                   |                        |                                   |            
-                         |When used together, min.insync.replicas and acks allow you to enforce greater                |        |                   |                        |                                   |            
-                         |durability guarantees. A typical scenario would be to create a topic with a                  |        |                   |                        |                                   |            
-                         |replication factor of 3, set min.insync.replicas to 2, and produce with acks of              |        |                   |                        |                                   |            
-                         |"all". This will ensure that the producer raises an exception if a majority of               |        |                   |                        |                                   |            
-                         |replicas do not receive a write.                                                             |int     |1                  |[1,...]                 |min.insync.replicas                |medium      
+min.insync.replicas      |When a producer sets acks to "all" (or "-1"), this configuration specifies the minimum       |        |                   |                        |                                   |
+                         |number of replicas that must acknowledge a write for the write to be considered              |        |                   |                        |                                   |
+                         |successful. If this minimum cannot be met, then the producer will raise an                   |        |                   |                        |                                   |
+                         |exception (either NotEnoughReplicas or NotEnoughReplicasAfterAppend).<br>                    |        |                   |                        |                                   |
+                         |When used together, min.insync.replicas and acks allow you to enforce greater                |        |                   |                        |                                   |
+                         |durability guarantees. A typical scenario would be to create a topic with a                  |        |                   |                        |                                   |
+                         |replication factor of 3, set min.insync.replicas to 2, and produce with acks of              |        |                   |                        |                                   |
+                         |"all". This will ensure that the producer raises an exception if a majority of               |        |                   |                        |                                   |
+                         |replicas do not receive a write.                                                             |int     |1                  |[1,...]                 |min.insync.replicas                |medium
 -------------------------+---------------------------------------------------------------------------------------------+--------+-------------------+------------------------+-----------------------------------+-----------
-preallocate.retention    |True if we should preallocate the file on disk when creating a new log segment.              |boolean |false              |                        |log.preallocate                    |medium      
- .bytes                  |This configuration controls the maximum size a partition (which consists of log segments)    |        |                   |                        |                                   |            
-                         |can grow to before we will discard old log segments to free up space if we are               |        |                   |                        |                                   |            
-                         |using the "delete" retention policy. By default there is no size limit only a                |        |                   |                        |                                   |            
-                         |time limit. Since this limit is enforced at the partition level, multiply it by              |        |                   |                        |                                   |            
-                         |the number of partitions to compute the topic retention in bytes.                            |long    |-1                 |                        |log.retention.bytes                |medium      
+preallocate.retention    |True if we should preallocate the file on disk when creating a new log segment.              |boolean |false              |                        |log.preallocate                    |medium
+ .bytes                  |This configuration controls the maximum size a partition (which consists of log segments)    |        |                   |                        |                                   |
+                         |can grow to before we will discard old log segments to free up space if we are               |        |                   |                        |                                   |
+                         |using the "delete" retention policy. By default there is no size limit only a                |        |                   |                        |                                   |
+                         |time limit. Since this limit is enforced at the partition level, multiply it by              |        |                   |                        |                                   |
+                         |the number of partitions to compute the topic retention in bytes.                            |long    |-1                 |                        |log.retention.bytes                |medium
 -------------------------+---------------------------------------------------------------------------------------------+--------+-------------------+------------------------+-----------------------------------+-----------
-retention.ms             |This configuration controls the maximum time we will retain a log before we will discard     |        |                   |                        |                                   |            
-                         |old log segments to free up space if we are using the "delete" retention policy.             |        |                   |                        |                                   |            
-                         |This represents an SLA on how soon consumers must read their data.                           |long    |604800000          |                        |log.retention.ms                   |medium      
+retention.ms             |This configuration controls the maximum time we will retain a log before we will discard     |        |                   |                        |                                   |
+                         |old log segments to free up space if we are using the "delete" retention policy.             |        |                   |                        |                                   |
+                         |This represents an SLA on how soon consumers must read their data.                           |long    |604800000          |                        |log.retention.ms                   |medium
 -------------------------+---------------------------------------------------------------------------------------------+--------+-------------------+------------------------+-----------------------------------+-----------
-segment.bytes            |This configuration controls the segment file size for the log. Retention and cleaning is     |        |                   |                        |                                   |            
-                         |always done a file at a time so a larger segment size means fewer files but                  |        |                   |                        |                                   |            
-                         |less granular control over retention.                                                        |int     |1073741824         |[14,...]                |log.segment.bytes                  |medium      
+segment.bytes            |This configuration controls the segment file size for the log. Retention and cleaning is     |        |                   |                        |                                   |
+                         |always done a file at a time so a larger segment size means fewer files but                  |        |                   |                        |                                   |
+                         |less granular control over retention.                                                        |int     |1073741824         |[14,...]                |log.segment.bytes                  |medium
 -------------------------+---------------------------------------------------------------------------------------------+--------+-------------------+------------------------+-----------------------------------+-----------
-segment.index.bytes      |This configuration controls the size of the index that maps offsets to file positions. We    |        |                   |                        |                                   |            
-                         |preallocate this index file and shrink it only after log rolls. You generally                |        |                   |                        |                                   |            
-                         |should not need to change this setting.                                                      |int     |10485760           |[0,...]                 |log.index.size.max.bytes           |medium      
+segment.index.bytes      |This configuration controls the size of the index that maps offsets to file positions. We    |        |                   |                        |                                   |
+                         |preallocate this index file and shrink it only after log rolls. You generally                |        |                   |                        |                                   |
+                         |should not need to change this setting.                                                      |int     |10485760           |[0,...]                 |log.index.size.max.bytes           |medium
 -------------------------+---------------------------------------------------------------------------------------------+--------+-------------------+------------------------+-----------------------------------+-----------
-segment.jitter.ms        |The maximum random jitter subtracted from the scheduled segment roll time to avoid           |        |                   |                        |                                   |            
-                         |thundering herds of segment rolling                                                          |long    |0                  |[0,...]                 |log.roll.jitter.ms                 |medium      
+segment.jitter.ms        |The maximum random jitter subtracted from the scheduled segment roll time to avoid           |        |                   |                        |                                   |
+                         |thundering herds of segment rolling                                                          |long    |0                  |[0,...]                 |log.roll.jitter.ms                 |medium
 -------------------------+---------------------------------------------------------------------------------------------+--------+-------------------+------------------------+-----------------------------------+-----------
-segment.ms               |This configuration controls the period of time after which Kafka will force the log to roll  |        |                   |                        |                                   |            
-                         |even if the segment file isn't full to ensure that retention can delete or                   |        |                   |                        |                                   |            
-                         |compact old data.                                                                            |long    |604800000          |[0,...]                 |log.roll.ms                        |medium      
+segment.ms               |This configuration controls the period of time after which Kafka will force the log to roll  |        |                   |                        |                                   |
+                         |even if the segment file isn't full to ensure that retention can delete or                   |        |                   |                        |                                   |
+                         |compact old data.                                                                            |long    |604800000          |[0,...]                 |log.roll.ms                        |medium
 -------------------------+---------------------------------------------------------------------------------------------+--------+-------------------+------------------------+-----------------------------------+-----------
-unclean.leader           |Indicates whether to enable replicas not in the ISR set to be elected as leader as a last    |        |                   |                        |                                   |            
-  .election.enable       |resort, even though doing so may result in data loss.                                        |boolean |false              |                        |unclean.leader.election.enable     |medium      
+unclean.leader           |Indicates whether to enable replicas not in the ISR set to be elected as leader as a last    |        |                   |                        |                                   |
+  .election.enable       |resort, even though doing so may result in data loss.                                        |boolean |false              |                        |unclean.leader.election.enable     |medium
 -------------------------+---------------------------------------------------------------------------------------------+--------+-------------------+------------------------+-----------------------------------+-----------
+</pre>
+<pre TODO zoom>
+<span xsmall>Consumer</span>
+<span xsmall>Conf</span>
+@[http://kafka.apache.org/documentation/#consumerconfigs]
+@[http://kafka.apache.org/documentation/#newconsumerconfigs]
+@[http://kafka.apache.org/documentation/#oldconsumerconfigs]
+</pre>
+
+<pre TODO zoom>
+<span xsmall>Connect</span>
+<span xsmall>Conf</span>
+@[http://kafka.apache.org/documentation/#connectconfigs]
+</pre>
+<pre TODO zoom>
+<span xsmall>Streams</span>
+<span xsmall>Conf</span>
+@[http://kafka.apache.org/documentation/#streamsconfigs]
+</pre>
+<pre TODO zoom>
+<span xsmall>AdminClient</span>
+<span xsmall>Conf</span>
+@[http://kafka.apache.org/documentation/#adminclientconfigs]
 </pre>
 </td>
 <td>
-  <a href="http://kafka.apache.org/documentation/#consumerconfigs">Consumer Configs</a>
-<pre zoom>
+<pre TODO zoom>
+<span xsmall>Compaction</span>
+http://kafka.apache.org/documentation.html#compaction
 </pre>
-  <a href="http://kafka.apache.org/documentation/#newconsumerconfigs">New Consumer Configs</a>
-<pre zoom>
-</pre>
-  <a href="http://kafka.apache.org/documentation/#oldconsumerconfigs">Old Consumer Configs</a>
-<pre zoom>
-</pre>
-  <a href="http://kafka.apache.org/documentation/#connectconfigs">Kafka Connect Configs</a>
-<pre zoom>
-</pre>
-  <a href="http://kafka.apache.org/documentation/#streamsconfigs">Kafka Streams Configs</a>
-<pre zoom>
-</pre>
-  <a href="http://kafka.apache.org/documentation/#adminclientconfigs">AdminClient Configs</a>
-<pre zoom>
-</pre>
+
 </td>
 </tr>
 </table>
 
 </body>
-<!--
-- - TODO_START:
-<td>
+<pre zoom>
+<span xsmall>Kafka Design</span>
+For details about the Kafka's commit log storage and replication design:
+https://kafka.apache.org/documentation/#design
+</pre>
+
+<pre TODO zoom>
+<span xsmall>Security</span>
   <a href="https://kafka.apache.org/documentation/#security">Security Docs</a>
-</td>
-_________________________
-For details about the Kafka's commit log storage and replication design, please read this page. 
-    https://kafka.apache.org/documentation/#design
-_______________________
-Apart from Kafka Streams, alternative open source stream processing tools include Apache Storm and Apache Samza.
-___________________________
-http://kafka.apache.org/documentation.html#compaction
-_________________________
-Kafka Streams is a client library for building mission-critical real-time 
-applications and microservices, where the input and/or output data is stored in
- Kafka clusters. Kafka Streams combines the simplicity of writing and deploying
- standard Java and Scala applications on the client side with the benefits of 
-Kafka's server-side cluster technology to make these applications highly 
-scalable, elastic, fault-tolerant, distributed, and much more. This quickstart 
-(http://kafka.apache.org/10/documentation/streams/quickstart)
-example will demonstrate how to run a streaming application coded in this library.
-____________________________________
+</pre>
+
+<pre TODO zoom>
+<span bgorange xsmall>Confluent.io</span>
 https://www.confluent.io/
-Know and respond to every single event in your organization in real time. Like 
-a central nervous system, Confluent creates an Apache Kafka-based streaming 
-platform to unite your organization around a single source of truth.
-_________________________________
-Kafka Monitoring With Burrow
-
-   https://dzone.com/articles/kafka-monitoring-with-burrow
-_________________________________
 https://www.confluent.io/blog/ksql-open-source-streaming-sql-for-apache-kafka/
-______________________
-Confluent creates an Apache Kafka-based streaming platform to unite your organization 
+
+Know and respond to every single event in your organization in real time. Like
+a central nervous system, Confluent creates an Apache Kafka-based streaming
+platform to unite your organization around a single source of truth.
+
+Confluent creates an Apache Kafka-based streaming platform to unite your organization
 around a single source of truth.
-"""Confluent evolved to a streaming platform with additional component around 
-Kafka's core messaging features, including Connect, Streams, the REST Proxy, 
+"""Confluent evolved to a streaming platform with additional component around
+Kafka's core messaging features, including Connect, Streams, the REST Proxy,
 Schema Registry, KSQL, Control Center, and others. """
-_______________________
-https://www.infoq.com/articles/apache-kafka-best-practices-to-optimize-your-deployment
+</pre>
+
+<pre zoom>
+<span xsmall>Burrow</span>
+<span xsmall>Monit</span>
+@[https://dzone.com/articles/kafka-monitoring-with-burrow]
+</pre>
+
+<pre TODO zoom>
+<span xsmall>Best Pracites</span>
+@[https://www.infoq.com/articles/apache-kafka-best-practices-to-optimize-your-deployment]
+</pre>
+
+<pre TODO zoom>
+<span xsmall>MirrorMaker</span>
+<span xsmall>geo-replication</span>
+@[https://cwiki.apache.org/confluence/pages/viewpage.action?pageId=27846330]
+</pre>
+
+<pre zoom>
+<span xsmall>Data Pipelines</span>
+<span xsmall>with Akka+Kotlin</span>
+@[https://www.kotlindevelopment.com/data-pipelines-kotlin-akka-kafka/]
+- Objective: 
+  Create a "GitHub monitor" that build an analytics component that
+  polls one of your services (GitHub), writes data into a message queue
+  for later analysis, then, after post-processing, updates statistics in
+  a SQL database.
+
+- Tooling: Akka Streams + Alpakka connector collection
+
+- "Architecture":
+  1) polls GitHub Event API for kotlin activity
+  2) writes all events into a Kafka topic for later use
+  3) reads events from Kafka and filters out PushEvents
+  4) updates a Postgres database with:
+     - who pushed changes
+     - when
+     - into which repository.
+
+- Akka summary: data is moving from Sources to Sinks.
+  (Observable and Sink in RxJava)
+
+*ENTRY POINT*
+(standard main function)
+  fun main(vararg args: String) {
+    val system = ActorSystem.create()                          // "boilerplate" for using Akka and Akka Streams
+    val materializer = ActorMaterializer.create(system)
+    val gitHubClient = GitHubClient(system, materializer)      // instance used to poll the GitHub events API
+    val eventsProducer = EventsProducer(system, materializer)  // instance used to write events into Kafka
+    val eventsConsumer = EventsConsumer(system)                // instance used to read events from Kafka
+    val pushEventProcessor = PushEventProcessor(materializer)  // instance used to filter PushEvents and update the database
+                                                               
+    eventsProducer.write(gitHubClient.events())                // put things in motion.
+    pushEventProcessor.run(eventsConsumer.read())
+  }
+
+  Each time we receive a response from GitHub, we parse it and send individual events downstream.
+  fun events(): Source˂JsonNode, NotUsed˃ =
+    poll().flatMapConcat { response -˃
+      response.nodesOpt
+        .map { nodes -˃ Source.from(nodes) }
+        .orElse(Source.empty())
+    }
+
+*EventsProducer and EventsConsumer*
+(the "power" of Akka Streams and Alpakka)
+
+- Akka-Streams-Kafka greatly reduces the amount of code
+  that we have to write for integrating with Kafka.
+  Publishing events into a Kafka topic look like:
+
+  fun write(events: Source˂JsonNode, NotUsed˃)
+      : CompletionStage˂Done˃
+        =  events.map {                                        // ← maps GitHub event to(Kafka)ProducerRecord 
+             node -˃ ProducerRecord˂ByteArray, String˃
+                        ("kotlin-events",
+                         objectMapper.writeValueAsString(node) // ← serialize JsonNode as a String
+                        ) 
+      }.runWith(                        // ← connects Source Sink  
+          Producer.plainSink(settings), materializer)                                         
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        - defined@Akka Streams Kafka
+        - takes care of communicating with Kafka
+
+- The other way around, reading from Kafka, is also super simple.
+
+  fun read(): Source˂JsonNode, NotUsed˃ =
+    Consumer.plainSource(
+        settings,
+        Subscriptions.assignmentWithOffset(
+            TopicPartition("kotlin-events", 0), 0L))
+       .map { record -˃ objectMapper.readTree(record.value()) }
+       .mapMaterializedValue { NotUsed.getInstance() }
+
+  At this point, we have a copy of GitHub's events feed for github.com/Kotlin stored in Kafka,
+so we can time travel and run different analytics jobs on our local dataset.
+
+*PushEventProcessor*
+ we want to filter out PushEvents from the stream
+ and update a Postgres database with the results.
+ - Alpakka Slick (JDBC) Connector is used to connect to PostgreSQL.
+   fun createTableIfNotExists(): Source˂Int, NotUsed˃ {
+     val ddl =
+       """
+         |CREATE TABLE IF NOT EXISTS kotlin_push_events(
+         |  id         BIGINT    NOT NULL,
+         |  name       VARCHAR   NOT NULL,
+         |  timestamp  TIMESTAMP NOT NULL,
+         |  repository VARCHAR   NOT NULL,
+         |  branch     VARCHAR   NOT NULL,
+         |  commits    INTEGER   NOT NULL
+         |);
+         |CREATE UNIQUE INDEX IF NOT EXISTS id_index ON kotlin_push_events (id);
+       """.trimMargin()
+     return Slick.source(session, ddl, { _ -˃ 0 })
+   }
+
+ - Similarly, the function to update the database looks like this.
+
+   fun Source˂PushEvent, NotUsed˃.updateDatabase() :
+       CompletionStage˂Done˃ =
+           createTableIfNotExists().flatMapConcat { this }
+       .runWith(Slick.sink˂PushEvent˃(session, 20, { event -˃
+         """
+           |INSERT INTO kotlin_push_events
+           |(id, name, timestamp, repository, branch, commits)
+           |VALUES (
+           |  ${event.id},
+           |  '${event.actor.login}',
+           |  '${Timestamp.valueOf(event.created_at)}',
+           |  '${event.repo.name}',
+           |  '${event.payload.ref}',
+           |  ${event.payload.distinct_size}
+           |)
+           |ON CONFLICT DO NOTHING
+         """.trimMargin()
+       }), materializer)
+ 
+   We are almost done, what's left is filtering and mapping from JsonNode to
+   PushEvent and composing the methods together.
+
+   fun Source˂JsonNode, NotUsed˃.filterPushEvents(): Source˂PushEvent, NotUsed˃ =
+     filter { node -˃ node["type"].asText() == "PushEvent" }
+       .map { node -˃ objectMapper.convertValue(node, PushEvent::class.java) }
+
+   And finally, all the functions composed together look like this.
+   fun run(events: Source˂JsonNode, NotUsed˃): CompletionStage˂Done˃ =
+     events
+       .filterPushEvents()
+       .updateDatabase()
+
+  This is why we've used the extension methods above, so we can describe 
+  transformations like this, simply chained together. 
+  That's it, after running the app for a while (gradle app:run) we can see 
+  the activities around different Kotlin repositories. 
+
+
+You can find the complete source code on GitHub.
+
+    A very nice property of using Akka Streams and Alpakka is that it makes 
+  really easy to migrate/reuse your code, e.g. in case you want to store data 
+  in Cassandra later on instead of Postgres. All you would have to do is define 
+  a different Sink with CassandraSink.create. Or if GitHub events would be 
+  dumped in a file located in AWS S3 instead of published to Kafka, all you 
+  would have to do is create a Source with S3Client.download(bucket, key). The 
+  current list of available connectors is located here, and the list is growing.
+</pre>
+
+</html>
+
+<!--
+Apart from Kafka Streams, alternative open source stream processing tools
+include Apache Storm and Apache Samza.
 _______________
-REF Cheatsheets:
-https://lzone.de/cheat-sheet/Kafka
-https://ronnieroller.com/kafka/cheat-sheet
-https://abdulhadoop.wordpress.com/2017/11/06/kafka-command-cheat-sheet/
-https://github.com/Landoop/kafka-cheat-sheet
-
-
 _________________________________
 https://developers.redhat.com/blog/2019/06/06/accessing-apache-kafka-in-strimzi-part-1-introduction/
 https://developers.redhat.com/blog/2019/06/07/accessing-apache-kafka-in-strimzi-part-2-node-ports/
 https://developers.redhat.com/blog/2019/06/10/accessing-apache-kafka-in-strimzi-part-3-red-hat-openshift-routes/
 https://developers.redhat.com/blog/2019/06/11/accessing-apache-kafka-in-strimzi-part-4-load-balancers/
 https://developers.redhat.com/blog/2019/06/12/accessing-apache-kafka-in-strimzi-part-5-ingress/
--->
+_____________________________
 
-</html>
+_____________________________
+-->

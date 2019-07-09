@@ -10,7 +10,6 @@ var zoomDivLft = true;
 
 var idxZoomDivRule=-1;
 var idxXXXsmallRule=-1;
-var idxXXsmallRule =-1;
 var idxXsmallRule  =-1;
 
 var longPress = {
@@ -207,20 +206,17 @@ function doExtraOptions() {
     }
     doOpenZoom.call(ctx);
 }
-
 function onLabelClicked(e) {
     let label = e.value;
-    debugger;
-    var regex = new RegExp('label:' + label)
-    let currentInputQuery=window.QUERY.value.replace(regex, '')
+//  debugger;
     var newInputQuery;
     if (e.attributes.selected.value == "false") {
         e.attributes.selected.value = "true"
-        newInputQuery = currentInputQuery+" label:"+label
+        _labelMapSelected[label] = true
     } else {
         e.attributes.selected.value = "false"
+        delete _labelMapSelected[label]
     }
-    window.QUERY.value = newInputQuery
 }
 
 function getSearchOptions() {
@@ -237,6 +233,7 @@ function getSearchOptions() {
 }
 
 var _labelMap = { /* label : dom_list*/ }
+var _labelMapSelected = { /* label : isSelected true|false */ }
 function getDomListForLabel(label) {
     if (!!!_labelMap[label]) return [];
     else return _labelMap[label];
@@ -255,7 +252,7 @@ function createLabelIndex() {
         _labelMap[label] = list
     })
   }
-//console.dir(_labelMap)
+  console.dir(_labelMap)
 }
 
 function onPageLoaded() {
@@ -274,7 +271,7 @@ function onPageLoaded() {
   // Append search, zoomDiv, zoom Buttons :
   var searchDiv = document.createElement('spam');
       searchDiv.innerHTML = 
-     '<form action="" method="" id="search" name="search">'
+     '<form action="#" method="" id="search" name="search">'
    + '  <input name="inputQuery" id="inputQuery" type="text" size="30" maxlength="30">'
 // + '  <input name="searchit" type="button" value="Regex Search" onClick="highlightSearch()">'
    +  iconSVG
@@ -282,23 +279,23 @@ function onPageLoaded() {
    + '  <input id="singleLineOnly" type="checkbox"><code xsmall>single-line</code><br/>'
    + '  <input id="caseSensitive"  type="checkbox"><code xsmall>Case-match</code>'
    + '  </div>'
-   + '  &nbsp;<input type="button" value="Refine!" onClick="doExtraOptions()">'
+   + '  &nbsp;<input id="buttonRefineSeach" type="button" value="Refine!"  onClick="doExtraOptions()">'
    + '  &nbsp;<input type="button" value="HELP MEEeee!" bggreen onClick="doHelp()">'
    + '</form>'
    + '<a href="'+UP+'">[FOLDER UP]</a>&nbsp;'
    + '<a href="https://github.com/singlepagebookproject/IT_notes/issues">[Github pull requests]</a>&nbsp;'
    + '<div id="zoomDiv"></div>'
-// + '<div style="position:fixed; right:0.3%; top:0; width:auto;">'
-   + '<div style="position:fixed; right:0.3%; top:0; width:auto;">'
+   + '<div style="position:fixed; right:0.3%; top:0;">'
    + '<b style="font-size:1.5rem" orange><a onclick="onZoomOut()">[-A]</a></b>'
    + '<b style="font-size:1.5rem"       >                                 </b>'
    + '<b style="font-size:2.0rem" orange><a onclick="onZoomIn ()">[A+]</a></b>'
    + '</div>'
    + '<br/>'
   document.body.insertBefore(searchDiv,document.body.children[0])
-  document.getElementById("idLenseIcon").onclick = function() {
-      highlightSearch()
-  }
+//document.getElementById("idLenseIcon").onclick              = highlightSearch
+  document.getElementById("idLenseIcon").addEventListener("click" ,  function() { highlightSearch() })
+  document.getElementById("search"     ).addEventListener("submit",  function(e) {e.preventDefault(); highlightSearch(); return false })
+  
 
   zoomDivDOM = document.getElementById('zoomDiv')
   document.addEventListener('keyup',
@@ -372,11 +369,8 @@ function onPageLoaded() {
       if( document.styleSheets[0]['cssRules'][idx].selectorText == "#zoomDiv") {
           idxZoomDivRule=idx;
       }
-      if( document.styleSheets[0]['cssRules'][idx].selectorText == "[xxxsmall]") {
+      if( document.styleSheets[0]['cssRules'][idx].selectorText == "[zoom]") {
           idxXXXsmallRule=idx;
-      }
-      if( document.styleSheets[0]['cssRules'][idx].selectorText == "[xxsmall]") {
-          idxXXsmallRule=idx;
       }
       if( document.styleSheets[0]['cssRules'][idx].selectorText == "[xsmall]"  ) {
           idxXsmallRule=idx;
@@ -407,6 +401,7 @@ function getParameterByName(name, url) {
 
 var searchFound = false;
 function highlightSearch(query) {
+  if (typeof query != "string") query = "";
   if (!!query) { QUERY.value = query; }
   var text = QUERY.value.replace(/ +/g,".*");
   var removeNodeList = document.querySelectorAll('*[textFound]');
@@ -416,26 +411,35 @@ function highlightSearch(query) {
        removeNodeList[idx].setAttribute("textFound", "false"); 
     }
   }
+  let isAnyLabelSelected = (Object.keys(_labelMapSelected).length > 0)
+  let isEmptyQuery = /^\s*$/.test(text)
 
-  if (/^\s*$/.test(text) /*empty string -> reset and return */) { return; }
-  if (text.startsWith("label:")) {
-      let label_l=text.substring(6).split(",")
+  if ((!isAnyLabelSelected) && isEmptyQuery) {
+      return false; // Nothing to do
+  }
+
+  // If some label has been selected then choose only those with matching labels
+  // debugger
+  if (isAnyLabelSelected) {
+      var innerZoom_l = []
+      let label_l=Object.keys(_labelMapSelected)
       label_l.forEach( label => {
-        label = label.toLowerCase()
-        if (!!! _labelMap[label]) return
-        _labelMap[label].forEach( node => {
-          node.setAttribute("textFound", "true")
-        })
+        if (_labelMap[label]!=undefined) {
+          innerZoom_l = innerZoom_l.concat(_labelMap[label])
+        }
       })
-
-      return;
+  } else {
+      // By default search inside all zoomable elements
+      var innerZoom_l = document.querySelectorAll('*[zoom]')
   }
   var caseSensitive  = document.getElementById("singleLineOnly").checked;
   var singleLineOnly = document.getElementById("caseSensitive").checked;
   var regexFlags = "g";
   if (!caseSensitive) regexFlags += "i";
   if (!singleLineOnly) regexFlags += "m";
-  var query = new RegExp("[^=>;](" + text + ")", regexFlags);
+  var query = (isEmptyQuery) 
+        ? new RegExp(".*")
+        : new RegExp("[^=>;](" + text + ")", regexFlags)
 
   var numberOfMatches = 0
   var searchAndMark = function(node) {
@@ -449,7 +453,6 @@ function highlightSearch(query) {
       }
       return searchFound
   }
-  var innerZoom_l = document.querySelectorAll('*[zoom]')
   var foundElement = false
   for (idx2 in innerZoom_l) {
     var node = innerZoom_l[idx2]
@@ -464,6 +467,7 @@ function highlightSearch(query) {
    // doOpenZoom.call(window.lastElementFound, longPress.element);
       doOpenZoom.call(window.lastElementFound, window.lastElementFound);
   }
+  return false // avoid event propagation
 }
 
 

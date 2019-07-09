@@ -10,7 +10,6 @@ var zoomDivLft = true;
 
 var idxZoomDivRule=-1;
 var idxXXXsmallRule=-1;
-var idxXXsmallRule =-1;
 var idxXsmallRule  =-1;
 
 var longPress = {
@@ -124,7 +123,7 @@ function doOpenZoom(e, isHistoric)      {
    + this.outerHTML; 
   zoomDivDOM.style.display="block";
   window.zoomDivDOM.scrollTop = 0;
-  e.stopPropagation();
+  if (!!e) { e.stopPropagation(); }
   return false;
 }
 
@@ -201,16 +200,50 @@ function doHelp() {
     doOpenZoom.call(ctx);
 }
 
+function doExtraOptions() {
+    ctx = {
+        outerHTML : getSearchOptions()
+    }
+    doOpenZoom.call(ctx);
+}
+function onLabelClicked(e) {
+    let label = e.value;
+//  debugger;
+    var newInputQuery;
+    if (e.attributes.selected.value == "false") {
+        e.attributes.selected.value = "true"
+        _labelMapSelected[label] = true
+    } else {
+        e.attributes.selected.value = "false"
+        delete _labelMapSelected[label]
+    }
+}
+
+function getSearchOptions() {
+    var result = "";
+    result += ""
+      + "<hr/>\n"
+      + "Labels\n";
+ // debugger;
+    Object.keys(_labelMap).forEach(label_i => {
+        result += "<input selected=false type='button' onClick='onLabelClicked(this, \""+label_i+"\")' value='"+label_i+"' />" ;
+    })
+
+    return result;
+}
+
 var _labelMap = { /* label : dom_list*/ }
+var _labelMapSelected = { /* label : isSelected true|false */ }
 function getDomListForLabel(label) {
     if (!!!_labelMap[label]) return [];
+    else return _labelMap[label];
 }
 function createLabelIndex() {
   var labeled_dom_l = document.querySelectorAll('*[label]');
+ // debugger
   for (idx1 in labeled_dom_l) {
     var node = labeled_dom_l[idx1]
     if (!node.getAttribute    ) continue
-// debugger
     let csvAttributes = node.getAttribute("label")
     // TODO:(0) Remove whitespaces
     csvAttributes.split(",").forEach( label => {
@@ -223,27 +256,46 @@ function createLabelIndex() {
 }
 
 function onPageLoaded() {
+    let iconSVG=
+//   '<?xml version="1.0" encoding="UTF-8" standalone="no"?>'
+     ''
+    +'<svg id="idLenseIcon" width="auto" height="1.5em" viewBox="0 141 68 103" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" >'
+    +'  <ellipse style="fill: none; fill-opacity:0; stroke-width: 4; stroke: #0000ff" cx="43.312" cy="165.209" rx="22" ry="22"/>'
+    +'  <ellipse style="fill: none; fill-opacity:0; stroke-width: 4; stroke: #0000ff" cx="43.312" cy="165.209" rx="22" ry="22"/>'
+    +'</g>'
+    +'  <line style="fill: none; fill-opacity:0; stroke-width: 4; stroke: #0000ff" x1="16.138" y1="45.443" x2="410.291" y2="195.409"/>'
+    +'  <line style="fill: none; fill-opacity:0; stroke-width: 12; stroke: #0000ff" x1="8.114" y1="235.317" x2="29.243" y2="190.48"/>'
+    +'  <path style="fill: none; fill-opacity:0; stroke-width: 4; stroke: #0000ff" d="M 54.448,154.894 A 14.5762,14.5762 0 0 0 28.108,160.286"/>'
+    +'</svg>'
   var UP = "../"
   // Append search, zoomDiv, zoom Buttons :
   var searchDiv = document.createElement('spam');
       searchDiv.innerHTML = 
-     '<form action="" method="" id="search" name="search">'
-   + '  <input name="query" id="query" type="text" size="30" maxlength="30">'
-   + '  <input name="searchit" type="button" value="Regex Search" onClick="highlightSearch()">'
-   + '  <input id="singleLineOnly" type="checkbox"><code xsmall>single-line</code>'
+     '<form action="#" method="" id="search" name="search">'
+   + '  <input name="inputQuery" id="inputQuery" type="text" size="30" maxlength="30">'
+// + '  <input name="searchit" type="button" value="Regex Search" onClick="highlightSearch()">'
+   +  iconSVG
+   + '  <div style="float:left;">'
+   + '  <input id="singleLineOnly" type="checkbox"><code xsmall>single-line</code><br/>'
    + '  <input id="caseSensitive"  type="checkbox"><code xsmall>Case-match</code>'
-   + '  &nbsp;<input type="button" value="Please, HELP MeeEeeeEeeee!" bggreen onClick="doHelp()">'
+   + '  </div>'
+   + '  &nbsp;<input id="buttonRefineSeach" type="button" value="Refine!"  onClick="doExtraOptions()">'
+   + '  &nbsp;<input type="button" value="HELP MEEeee!" bggreen onClick="doHelp()">'
    + '</form>'
    + '<a href="'+UP+'">[FOLDER UP]</a>&nbsp;'
    + '<a href="https://github.com/singlepagebookproject/IT_notes/issues">[Github pull requests]</a>&nbsp;'
    + '<div id="zoomDiv"></div>'
-   + '<div style="position:fixed; right:0.3%; top:0; width:auto;">'
+   + '<div style="position:fixed; right:0.3%; top:0;">'
    + '<b style="font-size:1.5rem" orange><a onclick="onZoomOut()">[-A]</a></b>'
    + '<b style="font-size:1.5rem"       >                                 </b>'
    + '<b style="font-size:2.0rem" orange><a onclick="onZoomIn ()">[A+]</a></b>'
    + '</div>'
    + '<br/>'
-  document.body.insertBefore(searchDiv,document.body.children[0]);
+  document.body.insertBefore(searchDiv,document.body.children[0])
+//document.getElementById("idLenseIcon").onclick              = highlightSearch
+  document.getElementById("idLenseIcon").addEventListener("click" ,  function() { highlightSearch() })
+  document.getElementById("search"     ).addEventListener("submit",  function(e) {e.preventDefault(); highlightSearch(); return false })
+  
 
   zoomDivDOM = document.getElementById('zoomDiv')
   document.addEventListener('keyup',
@@ -317,11 +369,8 @@ function onPageLoaded() {
       if( document.styleSheets[0]['cssRules'][idx].selectorText == "#zoomDiv") {
           idxZoomDivRule=idx;
       }
-      if( document.styleSheets[0]['cssRules'][idx].selectorText == "[xxxsmall]") {
+      if( document.styleSheets[0]['cssRules'][idx].selectorText == "[zoom]") {
           idxXXXsmallRule=idx;
-      }
-      if( document.styleSheets[0]['cssRules'][idx].selectorText == "[xxsmall]") {
-          idxXXsmallRule=idx;
       }
       if( document.styleSheets[0]['cssRules'][idx].selectorText == "[xsmall]"  ) {
           idxXsmallRule=idx;
@@ -330,6 +379,7 @@ function onPageLoaded() {
 
   createLabelIndex()
 
+  window.QUERY = document.getElementById("inputQuery");
   var query = getParameterByName("query");
   if (!!query) {
     highlightSearch(getParameterByName("query"));
@@ -351,8 +401,9 @@ function getParameterByName(name, url) {
 
 var searchFound = false;
 function highlightSearch(query) {
-  if (!!query) { document.getElementById("query").value = query; }
-  var text = document.getElementById("query").value.replace(/ +/g,".*");
+  if (typeof query != "string") query = "";
+  if (!!query) { QUERY.value = query; }
+  var text = QUERY.value.replace(/ +/g,".*");
   var removeNodeList = document.querySelectorAll('*[textFound]');
   if (removeNodeList.length > 0) {
       for (idx in removeNodeList) {
@@ -360,26 +411,35 @@ function highlightSearch(query) {
        removeNodeList[idx].setAttribute("textFound", "false"); 
     }
   }
+  let isAnyLabelSelected = (Object.keys(_labelMapSelected).length > 0)
+  let isEmptyQuery = /^\s*$/.test(text)
 
-  if (/^\s*$/.test(text) /*empty string -> reset and return */) { return; }
-  if (text.startsWith("label:")) {
-      let label_l=text.substring(6).split(",")
+  if ((!isAnyLabelSelected) && isEmptyQuery) {
+      return false; // Nothing to do
+  }
+
+  // If some label has been selected then choose only those with matching labels
+  // debugger
+  if (isAnyLabelSelected) {
+      var innerZoom_l = []
+      let label_l=Object.keys(_labelMapSelected)
       label_l.forEach( label => {
-        label = label.toLowerCase()
-        if (!!! _labelMap[label]) return
-        _labelMap[label].forEach( node => {
-          node.setAttribute("textFound", "true")
-        })
+        if (_labelMap[label]!=undefined) {
+          innerZoom_l = innerZoom_l.concat(_labelMap[label])
+        }
       })
-
-      return;
+  } else {
+      // By default search inside all zoomable elements
+      var innerZoom_l = document.querySelectorAll('*[zoom]')
   }
   var caseSensitive  = document.getElementById("singleLineOnly").checked;
   var singleLineOnly = document.getElementById("caseSensitive").checked;
   var regexFlags = "g";
   if (!caseSensitive) regexFlags += "i";
   if (!singleLineOnly) regexFlags += "m";
-  var query = new RegExp("[^=>;](" + text + ")", regexFlags);
+  var query = (isEmptyQuery) 
+        ? new RegExp(".*")
+        : new RegExp("[^=>;](" + text + ")", regexFlags)
 
   var numberOfMatches = 0
   var searchAndMark = function(node) {
@@ -393,7 +453,6 @@ function highlightSearch(query) {
       }
       return searchFound
   }
-  var innerZoom_l = document.querySelectorAll('*[zoom]')
   var foundElement = false
   for (idx2 in innerZoom_l) {
     var node = innerZoom_l[idx2]
@@ -408,6 +467,7 @@ function highlightSearch(query) {
    // doOpenZoom.call(window.lastElementFound, longPress.element);
       doOpenZoom.call(window.lastElementFound, window.lastElementFound);
   }
+  return false // avoid event propagation
 }
 
 

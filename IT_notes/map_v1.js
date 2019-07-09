@@ -204,7 +204,7 @@ function doExtraOptions() {
     ctx = {
         outerHTML : getSearchOptions()
     }
-    doOpenZoom.call(ctx);
+    doOpenZoom.call(ctx, false);
 }
 function onLabelClicked(e) {
     let label = e.value;
@@ -220,13 +220,15 @@ function onLabelClicked(e) {
 }
 
 function getSearchOptions() {
+    if (Object.keys(_labelMap).length == 0) {
+        return "No labels found"
+    }
     var result = "";
     result += ""
       + "<hr/>\n"
-      + "Labels\n";
- // debugger;
+      + "Labels<br/>\n";
     Object.keys(_labelMap).forEach(label_i => {
-        result += "<input selected=false type='button' onClick='onLabelClicked(this, \""+label_i+"\")' value='"+label_i+"' />" ;
+        result += "<input selected="+(!!_labelMapSelected[label_i])+" type='button' onClick='onLabelClicked(this, \""+label_i+"\")' value='"+label_i+"' />" ;
     })
 
     return result;
@@ -256,8 +258,7 @@ function createLabelIndex() {
 }
 
 function onPageLoaded() {
-    let iconSVG=
-//   '<?xml version="1.0" encoding="UTF-8" standalone="no"?>'
+    let lenseIconSVG=
      ''
     +'<svg id="idLenseIcon" width="auto" height="1.5em" viewBox="0 141 68 103" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" >'
     +'  <ellipse style="fill: none; fill-opacity:0; stroke-width: 4; stroke: #0000ff" cx="43.312" cy="165.209" rx="22" ry="22"/>'
@@ -267,6 +268,40 @@ function onPageLoaded() {
     +'  <line style="fill: none; fill-opacity:0; stroke-width: 12; stroke: #0000ff" x1="8.114" y1="235.317" x2="29.243" y2="190.48"/>'
     +'  <path style="fill: none; fill-opacity:0; stroke-width: 4; stroke: #0000ff" d="M 54.448,154.894 A 14.5762,14.5762 0 0 0 28.108,160.286"/>'
     +'</svg>'
+
+    let labelFilterIconSVG=
+     ''
+    +'<svg id="idLabelsFilter" width="auto" height="1.5em" viewBox="162 -68 134 44" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">'
+    +'  <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #0000ff" x1="224" y1="-50" x2="212" y2="-50"/>'
+    +'  <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #0000ff" x1="214" y1="-40" x2="202" y2="-40"/>'
+    +'  <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="210" y1="-44" x2="198" y2="-44"/>'
+    +'  <g>'
+    +'    <polygon style="fill: #0000ff" points="218,-40 228,-50 238,-50 238,-40 228,-30 "/>'
+    +'    <polygon style="fill: none; fill-opacity:0; stroke-width: 2.35099e-37; stroke: #00ff00" points="218,-40 228,-50 238,-50 238,-40 228,-30 "/>'
+    +'  </g>'
+    +'  <g>'
+    +'    <polygon style="fill: #000000" points="204,-54 214,-64 224,-64 224,-54 214,-44 "/>'
+    +'    <polygon style="fill: none; fill-opacity:0; stroke-width: 2.35099e-37; stroke: #00ff00" points="204,-54 214,-64 224,-64 224,-54 214,-44 "/>'
+    +'  </g>'
+    +'  <g>'
+    +'    <polygon style="fill: #ff0000" points="188,-36 198,-46 208,-46 208,-36 198,-26 "/>'
+    +'    <polygon style="fill: none; fill-opacity:0; stroke-width: 2.35099e-37; stroke: #ff0000" points="188,-36 198,-46 208,-46 208,-36 198,-26 "/>'
+    +'  </g>'
+    +'  <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #ff0000" x1="184" y1="-36" x2="164" y2="-36"/>'
+    +'  <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #ff0000" x1="194" y1="-26" x2="182" y2="-26"/>'
+    +'  <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #ff0000" x1="194" y1="-46" x2="182" y2="-46"/>'
+    +'  <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="200" y1="-54" x2="188" y2="-54"/>'
+    +'  <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="210" y1="-64" x2="198" y2="-64"/>'
+    +'  <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #0000ff" x1="224" y1="-30" x2="212" y2="-30"/>'
+    +'  <g>'
+    +'    <polygon style="fill: #008000" points="240,-68 244,-68 260,-48 276,-48 272,-44 260,-44 244,-24 240,-24 "/>'
+    +'    <polygon style="fill: none; fill-opacity:0; stroke-width: 2.35099e-37; stroke: #000000" points="240,-68 244,-68 260,-48 276,-48 272,-44 260,-44 244,-24 240,-24 "/>'
+    +'  </g>'
+    +'  <g>'
+    +'    <polygon style="fill: #0000ff" points="276,-44 286,-54 296,-54 296,-44 286,-34 "/>'
+    +'    <polygon style="fill: none; fill-opacity:0; stroke-width: 2.35099e-37; stroke: #00ff00" points="276,-44 286,-54 296,-54 296,-44 286,-34 "/>'
+    +'  </g>'
+    +'</svg>'
   var UP = "../"
   // Append search, zoomDiv, zoom Buttons :
   var searchDiv = document.createElement('spam');
@@ -274,13 +309,14 @@ function onPageLoaded() {
      '<form action="#" method="" id="search" name="search">'
    + '  <input name="inputQuery" id="inputQuery" type="text" size="30" maxlength="30">'
 // + '  <input name="searchit" type="button" value="Regex Search" onClick="highlightSearch()">'
-   +  iconSVG
+   +  lenseIconSVG
+   +  '&nbsp;'
+   +  labelFilterIconSVG
    + '  <div style="float:left;">'
    + '  <input id="singleLineOnly" type="checkbox"><code xsmall>single-line</code><br/>'
    + '  <input id="caseSensitive"  type="checkbox"><code xsmall>Case-match</code>'
    + '  </div>'
-   + '  &nbsp;<input id="buttonRefineSeach" type="button" value="Refine!"  onClick="doExtraOptions()">'
-   + '  &nbsp;<input type="button" value="HELP MEEeee!" bggreen onClick="doHelp()">'
+   + '  &nbsp;<input id="idButtonHelp" type="button" value="?" onClick="doHelp()">'
    + '</form>'
    + '<a href="'+UP+'">[FOLDER UP]</a>&nbsp;'
    + '<a href="https://github.com/singlepagebookproject/IT_notes/issues">[Github pull requests]</a>&nbsp;'
@@ -292,8 +328,8 @@ function onPageLoaded() {
    + '</div>'
    + '<br/>'
   document.body.insertBefore(searchDiv,document.body.children[0])
-//document.getElementById("idLenseIcon").onclick              = highlightSearch
-  document.getElementById("idLenseIcon").addEventListener("click" ,  function() { highlightSearch() })
+  document.getElementById("idLenseIcon"   ).addEventListener("click",  function() { highlightSearch() })
+  document.getElementById("idLabelsFilter").addEventListener("click",  function() {  doExtraOptions() })
   document.getElementById("search"     ).addEventListener("submit",  function(e) {e.preventDefault(); highlightSearch(); return false })
   
 
@@ -479,5 +515,3 @@ function generate_uuidv4() {
   document.getElementById("id_uuid_display").value=UUID;
 
 }
-
-

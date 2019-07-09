@@ -228,7 +228,7 @@ function getSearchOptions() {
       + "<hr/>\n"
       + "Labels<br/>\n";
     Object.keys(_labelMap).forEach(label_i => {
-        result += "<input selected="+(!!_labelMapSelected[label_i])+" type='button' onClick='onLabelClicked(this, \""+label_i+"\")' value='"+label_i+"' />" ;
+        result += "<input class='labelButton' selected="+(!!_labelMapSelected[label_i])+" type='button' onClick='onLabelClicked(this, \""+label_i+"\")' value='"+label_i+"' />" ;
     })
 
     return result;
@@ -260,7 +260,7 @@ function createLabelIndex() {
 function onPageLoaded() {
     let lenseIconSVG=
      ''
-    +'<svg id="idLenseIcon" width="auto" height="1.5em" viewBox="0 141 68 103" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" >'
+    +'<svg id="idLenseIcon" viewBox="0 141 68 103" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" >'
     +'  <ellipse style="fill: none; fill-opacity:0; stroke-width: 4; stroke: #0000ff" cx="43.312" cy="165.209" rx="22" ry="22"/>'
     +'  <ellipse style="fill: none; fill-opacity:0; stroke-width: 4; stroke: #0000ff" cx="43.312" cy="165.209" rx="22" ry="22"/>'
     +'</g>'
@@ -270,47 +270,42 @@ function onPageLoaded() {
     +'</svg>'
 
     let labelFilterIconSVG=
-     ''
-    +'<svg id="idLabelsFilter" width="auto" height="1.5em" viewBox="162 -68 134 44" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">'
-    +'  <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #0000ff" x1="224" y1="-50" x2="212" y2="-50"/>'
-    +'  <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #0000ff" x1="214" y1="-40" x2="202" y2="-40"/>'
-    +'  <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="210" y1="-44" x2="198" y2="-44"/>'
+      ''
+    +'<svg id="idLabelsFilter" viewBox="172 -25 81 43" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">'
     +'  <g>'
-    +'    <polygon style="fill: #0000ff" points="218,-40 228,-50 238,-50 238,-40 228,-30 "/>'
-    +'    <polygon style="fill: none; fill-opacity:0; stroke-width: 2.35099e-37; stroke: #00ff00" points="218,-40 228,-50 238,-50 238,-40 228,-30 "/>'
+    +'    <polygon style="fill: #800080" points="172,-4 182,-14 192,-14 192,-4 182,6 "/>'
+    +'    <polygon style="fill: none; fill-opacity:0; stroke-width: 2.35099e-37; stroke: #00ff00" points="172,-4 182,-14 192,-14 192,-4 182,6 "/>'
     +'  </g>'
     +'  <g>'
-    +'    <polygon style="fill: #000000" points="204,-54 214,-64 224,-64 224,-54 214,-44 "/>'
-    +'    <polygon style="fill: none; fill-opacity:0; stroke-width: 2.35099e-37; stroke: #00ff00" points="204,-54 214,-64 224,-64 224,-54 214,-44 "/>'
+    +'    <polygon style="fill: #00ff00" points="232,-4 242,-14 252,-14 252,-4 242,6 "/>'
+    +'    <polygon style="fill: none; fill-opacity:0; stroke-width: 2.35099e-37; stroke: #00ff00" points="232,-4 242,-14 252,-14 252,-4 242,6 "/>'
     +'  </g>'
     +'  <g>'
-    +'    <polygon style="fill: #ff0000" points="188,-36 198,-46 208,-46 208,-36 198,-26 "/>'
-    +'    <polygon style="fill: none; fill-opacity:0; stroke-width: 2.35099e-37; stroke: #ff0000" points="188,-36 198,-46 208,-46 208,-36 198,-26 "/>'
-    +'  </g>'
-    +'  <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #ff0000" x1="184" y1="-36" x2="164" y2="-36"/>'
-    +'  <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #ff0000" x1="194" y1="-26" x2="182" y2="-26"/>'
-    +'  <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #ff0000" x1="194" y1="-46" x2="182" y2="-46"/>'
-    +'  <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="200" y1="-54" x2="188" y2="-54"/>'
-    +'  <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="210" y1="-64" x2="198" y2="-64"/>'
-    +'  <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #0000ff" x1="224" y1="-30" x2="212" y2="-30"/>'
-    +'  <g>'
-    +'    <polygon style="fill: #008000" points="240,-68 244,-68 260,-48 276,-48 272,-44 260,-44 244,-24 240,-24 "/>'
-    +'    <polygon style="fill: none; fill-opacity:0; stroke-width: 2.35099e-37; stroke: #000000" points="240,-68 244,-68 260,-48 276,-48 272,-44 260,-44 244,-24 240,-24 "/>'
+    +'    <polygon style="fill: #ff0000" points="200,-4 210,-14 220,-14 220,-4 210,6 "/>'
+    +'    <polygon style="fill: none; fill-opacity:0; stroke-width: 2.35099e-37; stroke: #ff0000" points="200,-4 210,-14 220,-14 220,-4 210,6 "/>'
     +'  </g>'
     +'  <g>'
-    +'    <polygon style="fill: #0000ff" points="276,-44 286,-54 296,-54 296,-44 286,-34 "/>'
-    +'    <polygon style="fill: none; fill-opacity:0; stroke-width: 2.35099e-37; stroke: #00ff00" points="276,-44 286,-54 296,-54 296,-44 286,-34 "/>'
+    +'    <g>'
+    +'      <ellipse style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" cx="213" cy="-3" rx="17" ry="17"/>'
+    +'      <ellipse style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" cx="213" cy="-3" rx="17" ry="17"/>'
+    +'    </g>'
+    +'    <g>'
+    +'      <ellipse style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" cx="213" cy="-3" rx="10" ry="10"/>'
+    +'      <ellipse style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" cx="213" cy="-3" rx="10" ry="10"/>'
+    +'    </g>'
+    +'    <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="192" y1="-3" x2="207" y2="-3"/>'
+    +'    <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="219" y1="-3" x2="233" y2="-3"/>'
+    +'    <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="213" y1="-10" x2="213" y2="-24"/>'
+    +'    <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="213" y1="17" x2="213" y2="4"/>'
     +'  </g>'
     +'</svg>'
   var UP = "../"
-  // Append search, zoomDiv, zoom Buttons :
   var searchDiv = document.createElement('spam');
       searchDiv.innerHTML = 
      '<form action="#" method="" id="search" name="search">'
    + '  <input name="inputQuery" id="inputQuery" type="text" size="30" maxlength="30">'
-// + '  <input name="searchit" type="button" value="Regex Search" onClick="highlightSearch()">'
    +  lenseIconSVG
-   +  '&nbsp;'
+   + '&nbsp;'
    +  labelFilterIconSVG
    + '  <div style="float:left;">'
    + '  <input id="singleLineOnly" type="checkbox"><code xsmall>single-line</code><br/>'

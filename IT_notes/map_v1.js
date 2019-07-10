@@ -59,7 +59,9 @@ var longPress = {
    enableDblClick : function (node) {
        let self = node
        node.addEventListener('dblclick', function() { 
-           doOpenZoom.call(self, self, false, true) } , false)
+           doOpenZoom.call(self, self, false, true) 
+           if (!!this.stopPropagation) { this.stopPropagation(); }
+       } , true)
    },
    enableLongTouch : function (node) { 
        node.addEventListener("mousedown", longPress.start);
@@ -108,7 +110,9 @@ function goForward() {
 }
 function doOpenZoom(e, isHistoric, showTimeControl) {
   showTimeControl = !!showTimeControl
-  if(_visited[_visited.length-1] == e) { isHistoric = true; }
+  if(_visited[_visited.length-1] == e) { 
+      isHistoric = true; 
+  }
   if (!!!isHistoric) { // Apend new visits only
     _visited.push(e)
     _visited_idx =_visited.length-1
@@ -365,12 +369,7 @@ function onPageLoaded() {
       if ( nodeHref.startsWith(thisDoc)) continue;
       nodeList[idx].target='_blank'; 
   }
-  nodeList = document.querySelectorAll('td')
-  for (idx in nodeList) { 
-     if (!!! nodeList[idx].addEventListener) continue;
-     longPress.enableDblClick(nodeList[idx]);
-     longPress.enableLongTouch(nodeList[idx]);
-  }
+
   nodeList = document.querySelectorAll('*[zoom]')
   for (idx in nodeList) { 
      if (!!! nodeList[idx].addEventListener) continue;
@@ -454,7 +453,6 @@ function resetTextFoundAttr() {
   if (removeNodeList.length > 0) {
       for (idx in removeNodeList) {
        if (!removeNodeList[idx].setAttribute) continue; // < TODO: Check why it works fine when loading, but fails when doing a second search
-console.log("deleteme")
        removeNodeList[idx].removeAttribute("textFound"); 
     }
   }
@@ -477,6 +475,9 @@ function highlightSearch(query) {
 
   // If some label has been selected then choose only those with matching labels
   // debugger
+  document.querySelectorAll('*[zoom]').forEach(node => { 
+      node.setAttribute("textFound", "false")
+  })
   if (isAnyLabelSelected()) {
       var innerZoom_l = []
       let label_l=Object.keys(_labelMapSelected)

@@ -228,7 +228,6 @@ function onLabelClicked(e) {
     } else {
       document.getElementById("idLabelsFilter").removeAttribute("active"); 
     }
-
 }
 
 function getSearchOptions() {
@@ -315,10 +314,10 @@ function onPageLoaded() {
   var searchDiv = document.createElement('spam');
       searchDiv.innerHTML = 
      '<form action="#" method="" id="search" name="search">'
-   + '  <input name="inputQuery" id="inputQuery" type="text" size="30" maxlength="30">'
-   +  lenseIconSVG
-   + '&nbsp;'
    +  labelFilterIconSVG
+   + '  <input name="inputQuery" id="inputQuery" type="text" size="30" maxlength="30">'
+   + '&nbsp;'
+   +  lenseIconSVG
    + '  <div style="float:left;">'
    + '  <input id="singleLineOnly" type="checkbox"><code xsmall>single-line</code><br/>'
    + '  <input id="caseSensitive"  type="checkbox"><code xsmall>Case-match</code>'

@@ -41,7 +41,7 @@ var longPress = {
    
        if (longPress.presstimer === null) {
            longPress.presstimer = setTimeout(function() {
-               doOpenZoom.call(self, longPress.element);
+               doOpenZoom.call(self, longPress.element, false, true);
                longPress.longpress = true;
            }, 1000);
        }
@@ -56,8 +56,10 @@ var longPress = {
    
        this.classList.remove("longpress");
    },
-   enableDblClick : function (node) { 
-       node.addEventListener('dblclick',doOpenZoom, false)
+   enableDblClick : function (node) {
+       let self = node
+       node.addEventListener('dblclick', function() { 
+           doOpenZoom.call(self, self, false, true) } , false)
    },
    enableLongTouch : function (node) { 
        node.addEventListener("mousedown", longPress.start);
@@ -96,17 +98,19 @@ function goBack() {
     if(_visited_idx == 0) return
     _visited_idx--
     let e = _visited[_visited_idx]
-    doOpenZoom.call(e, e, true);
+    doOpenZoom.call(e, e, true, true);
 }
 function goForward() {
     if(_visited_idx == _visited.length-1) return
     _visited_idx++
     let e = _visited[_visited_idx]
-    doOpenZoom.call(e, e, true);
+    doOpenZoom.call(e, e, true, true);
 }
-function doOpenZoom(e, isHistoric)      { 
-  if (!!!isHistoric) { // Apend new history
-    _visited.push(this)
+function doOpenZoom(e, isHistoric, showTimeControl) {
+  showTimeControl = !!showTimeControl
+  if(_visited[_visited.length-1] == e) { isHistoric = true; }
+  if (!!!isHistoric) { // Apend new visits only
+    _visited.push(e)
     _visited_idx =_visited.length-1
   }
   let backNumber = _visited_idx;
@@ -114,16 +118,18 @@ function doOpenZoom(e, isHistoric)      {
   let backControl = (backNumber>0) ? "<span onClick='goBack   ()' style='color:blue; font-size:2.0rem'>"+backNumber+"⇦</span>" : ""
   let forwControl = (forwNumber>0) ? "<span onClick='goForward()' style='color:blue; font-size:2.0rem'>⇨"+forwNumber+"</span>" : "" 
   zoomDivDOM.innerHTML = 
-     "<div style='float:left; font-size:2.0rem; color:blue;' onClick='doCloseZoom()'><span style='border:4px solid blue; background-color:#DDD'>✕</span>(or press 'Esc' to close)<br/></div>" 
-   + "<div style='float:left; '>"
-   + backControl
-   + forwControl
-   + "</div><br/>" 
+     "<div style='margin-bottom:0.5rem'>" 
+   + " <div id='divCloseZoom' onClick='doCloseZoom()'>✕ (close)</div>" 
+   + ((showTimeControl) 
+       ? "<div id='historyBackFor' style='display:inline; '>" + backControl + forwControl + "</div>" 
+       : ""
+     )
+   + "</div>" 
 
-   + this.outerHTML; 
+   + e.outerHTML; 
   zoomDivDOM.style.display="block";
   window.zoomDivDOM.scrollTop = 0;
-  if (!!e) { e.stopPropagation(); }
+  if (!!this.stopPropagation) { this.stopPropagation(); }
   return false;
 }
 
@@ -197,14 +203,14 @@ function doHelp() {
     ctx = {
         outerHTML : help
     }
-    doOpenZoom.call(ctx);
+    doOpenZoom.call(ctx, ctx, true, false);
 }
 
 function doExtraOptions() {
     ctx = {
         outerHTML : getSearchOptions()
     }
-    doOpenZoom.call(ctx, false);
+    doOpenZoom.call(ctx, ctx, true, false);
 }
 function onLabelClicked(e) {
     let label = e.value;
@@ -217,6 +223,12 @@ function onLabelClicked(e) {
         e.attributes.selected.value = "false"
         delete _labelMapSelected[label]
     }
+    if (isAnyLabelSelected()){
+      document.getElementById("idLabelsFilter").setAttribute("active","true"); 
+    } else {
+      document.getElementById("idLabelsFilter").removeAttribute("active"); 
+    }
+
 }
 
 function getSearchOptions() {
@@ -254,7 +266,7 @@ function createLabelIndex() {
         _labelMap[label] = list
     })
   }
-  console.dir(_labelMap)
+  // console.dir(_labelMap)
 }
 
 function onPageLoaded() {
@@ -331,7 +343,13 @@ function onPageLoaded() {
   zoomDivDOM = document.getElementById('zoomDiv')
   document.addEventListener('keyup',
       function(e) {
-          if (e.code === "Escape") doCloseZoom(); 
+          if (e.code === "Escape") {
+              if (zoomDivDOM.innerHTML == '') {
+                 resetTextFoundAttr();
+              } else {
+                 doCloseZoom();
+              }
+          }
           if (e.code === "F1")     doHelp(); 
 
       }
@@ -431,27 +449,36 @@ function getParameterByName(name, url) {
 }
 
 var searchFound = false;
-function highlightSearch(query) {
-  if (typeof query != "string") query = "";
-  if (!!query) { QUERY.value = query; }
-  var text = QUERY.value.replace(/ +/g,".*");
+
+function resetTextFoundAttr() {
   var removeNodeList = document.querySelectorAll('*[textFound]');
   if (removeNodeList.length > 0) {
       for (idx in removeNodeList) {
        if (!removeNodeList[idx].setAttribute) continue; // < TODO: Check why it works fine when loading, but fails when doing a second search
-       removeNodeList[idx].setAttribute("textFound", "false"); 
+console.log("deleteme")
+       removeNodeList[idx].removeAttribute("textFound"); 
     }
   }
-  let isAnyLabelSelected = (Object.keys(_labelMapSelected).length > 0)
+}
+
+function isAnyLabelSelected() {
+  return Object.keys(_labelMapSelected).length > 0
+}
+function highlightSearch(query) {
+  if (typeof query != "string") query = "";
+  if (!!query) { QUERY.value = query; }
+  var text = QUERY.value.replace(/ +/g,".*");
+  resetTextFoundAttr();
   let isEmptyQuery = /^\s*$/.test(text)
 
-  if ((!isAnyLabelSelected) && isEmptyQuery) {
+  if ((!isAnyLabelSelected()) && isEmptyQuery) {
+      resetTextFoundAttr();
       return false; // Nothing to do
   }
 
   // If some label has been selected then choose only those with matching labels
   // debugger
-  if (isAnyLabelSelected) {
+  if (isAnyLabelSelected()) {
       var innerZoom_l = []
       let label_l=Object.keys(_labelMapSelected)
       label_l.forEach( label => {
@@ -470,7 +497,7 @@ function highlightSearch(query) {
   if (!singleLineOnly) regexFlags += "m";
   var query = (isEmptyQuery) 
         ? new RegExp(".*")
-        : new RegExp("[^=>;](" + text + ")", regexFlags)
+        : new RegExp("[^=>;]*(" + text + ")", regexFlags)
 
   var numberOfMatches = 0
   var searchAndMark = function(node) {
@@ -495,8 +522,7 @@ function highlightSearch(query) {
     }
   }
   if (numberOfMatches == 1) {
-   // doOpenZoom.call(window.lastElementFound, longPress.element);
-      doOpenZoom.call(window.lastElementFound, window.lastElementFound);
+      doOpenZoom.call(lastElementFound, lastElementFound, false, true);
   }
   return false // avoid event propagation
 }

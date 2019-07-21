@@ -256,15 +256,15 @@ function getDomListForLabel(label) {
     else return _labelMap[label];
 }
 function createLabelIndex() {
-  var labeled_dom_l = document.querySelectorAll('*[label]');
+  var labeled_dom_l = document.querySelectorAll('*[labels]');
  // debugger
   for (idx1 in labeled_dom_l) {
     var node = labeled_dom_l[idx1]
     if (!node.getAttribute    ) continue
-    let csvAttributes = node.getAttribute("label")
-    // TODO:(0) Remove whitespaces
+    let csvAttributes = node.getAttribute("labels")
     csvAttributes.split(",").forEach( label => {
-        let list = getDomListForLabel(label.toLowerCase())
+        label = label.toLowerCase()
+        let list = getDomListForLabel(label)
             list.push(node)
         _labelMap[label] = list
     })
@@ -348,7 +348,7 @@ function onPageLoaded() {
       function(e) {
           if (e.code === "Escape") {
               if (zoomDivDOM.innerHTML == '') {
-                 resetTextFoundAttr();
+                 resetTextFoundAttr(true);
               } else {
                  doCloseZoom();
               }
@@ -448,14 +448,29 @@ function getParameterByName(name, url) {
 
 var searchFound = false;
 
-function resetTextFoundAttr() {
+function resetTextFoundAttr(bOnlyFalse) {
+  bOnlyFalse = !!bOnlyFalse // bOnf
+  /* if bOnlyFalse == true => remove textFound attribute only when it's false.
+   * This will still keep  highlighted content in the context of the full page
+   */
+
   var removeNodeList = document.querySelectorAll('*[textFound]');
   if (removeNodeList.length > 0) {
       for (idx in removeNodeList) {
-       if (!removeNodeList[idx].setAttribute) continue; // < TODO: Check why it works fine when loading, but fails when doing a second search
-       removeNodeList[idx].removeAttribute("textFound"); 
+        if (!removeNodeList[idx].setAttribute) continue; // < TODO: Check why it works fine when loading, but fails when doing a second search
+        if (bOnlyFalse && removeNodeList[idx].getAttribute("textFound") == "true") continue;
+        removeNodeList[idx].removeAttribute("textFound"); 
     }
   }
+}
+
+function generate_uuidv4() {
+  let UUID = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+  document.getElementById("id_uuid_display").value=UUID;
+
 }
 
 function isAnyLabelSelected() {
@@ -527,12 +542,3 @@ function highlightSearch(query) {
   return false // avoid event propagation
 }
 
-
-function generate_uuidv4() {
-  let UUID = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
-  document.getElementById("id_uuid_display").value=UUID;
-
-}

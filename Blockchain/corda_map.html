@@ -8,12 +8,9 @@
 </head>
 
 <body>
-    <table>
-<tr>
-<td>
+<div group>
 <pre zoom>
-<span small>External Refs:</span>
-&lt;&lt;aa&gt;&gt;
+<span xsmall>External Refs:</span>
 -*Key Concepts*
 @[https://docs.corda.net/key-concepts.html]
  (network, ledger, Identity,
@@ -35,7 +32,7 @@
 
 - JAVA   TEMPLATE    :@[https://github.com/corda/cordapp-template-java]
 - KOTLIN TEMPLATE    :@[https://github.com/corda/cordapp-template-kotlin]
-- Hello World!       :@[tutorial https://docs.corda.net/tutorial-cordapp.html]
+- Hello World!       :@[https://docs.corda.net/tutorial-cordapp.html]
 - Building a CorDapp :@[https://docs.corda.net/cordapp-build-systems.html]
 - API Docs           :@[https://docs.corda.net/api-index.html]
 - Official Cheatsheet:@[https://docs.corda.net/cheat-sheet.html]
@@ -43,10 +40,9 @@
                       @[how to perform common flow tasks]
 - Sample CorDapps    :@[https://www.corda.net/samples/]
 </pre>
-</td>
-<td>
+
 <pre zoom>
-<span small>Who is Who</span>
+<span xsmall>Who is Who</span>
 Richard Gendal Brown, current CTO @[https://gendal.me/"]
 Mike Hearn,                       @[https://github.com/mikehearn]
 Clinton Alexander
@@ -69,53 +65,560 @@ Konstantinos Chalkias
 szymonsztuka
 ...
 </pre>
-</td>
-<td>
-<pre zoom>
-<span small>Release Notes:</span>
-  @[https://docs.corda.net/release-notes.html] Release notes
-  @[https://docs.corda.net/changelog.html]     Changelog
-  @[https://docs.corda.net/codestyle.html]     Code style guide
-  @[https://docs.corda.net/testing.html]       Testing Corda
+</div>
+
+<div group>
+<pre title>
+    BUILDING
+    BLOCKS
 </pre>
-</td>
-<td>
-<pre zoom>
-<span small>Project Code layout:</span>
-                            SHOULD BE SPLIT INTO TWO MODULES:
-───────────────────────────────────────────┬──────────────────────────────────────────────
-1*cordapp─contracts─states*module/CorDapp: │  2*cordapp module/CorDapp: remaining classes*
-contracts and states sent over the wire    │  main ─ java ─ com.template
-main ─ java ─ com.template                 │  │             TemplateFlow.java (inherits FlowLogic)
-              ├── TemplateContract.java    │  │             TemplateSerializationWhitelist.java
-              └── TemplateState.java       │  │             (testing env)TemplateApi.java
-                                           │  │             (testing env)TemplateClient.java
-                                           │  │             (testing env)TemplateWebPlugin.java
-                                           │  └─ resources
-                                           │     ├─ META─INF ─ services
-                                           │     │             net.corda.core.serialization.SerializationWhitelist
-                                           │     │             net.corda.webserver.services.WebServerPluginRegistry
-                                           │     ├─ certificates
-                                           │     └─ templateWeb
-                                           │  test ─ java ─ com.template
-                                           │                 ContractTests.java
-                                           │                 FlowTests.java
-                                           │                 NodeDriver.java
-                                           │  integrationTest
-                                           │  └─ java ─ com.template
-                                           │                DriverBasedTest.java
-───────────────────────────────────────────┴──────────────────────────────────────────────
+
+
+<pre zoom labels="summary,consensus" >
+
+<span xsmall bgorange>NODE</span>
+<span xsmall bgorange>LAYOUT</span>
+- A Corda network is a peer-to-peer network of nodes.
+- node-to-node communication uses encrypted TLS + AMQP/1.0
+  in a point-to-point approach (vs broadcasts or gossip)
+                                                 ┌───────────────────────────────┬──┐
+                                                 │*permissioning doorman service*│  │
+               Net interface with         RPC    ├───────────────────────────────┘  │
+               other nodes in a           with   │- Signs/rejects CSRs for nodeTLS  │
+               running flow            node owner└─────────────────────────────↓────┘
+                    ↕                      ↕                                 once a Node has received a valid
+┌────────┬──────────╨──────────────────────╨────┐                            X.509 (the CSR has been signed),
+│CORDA   │─ TLS                                 │   ┌─────────────────────┬┐ it will be able to register itself
+│SOFTWARE│  certificate                         │   │*Network map service*│← to the Network Map Service
+├────────┘  @"workspace"/certificates/*node─TLS*←── ├─────────────────────┘│ [[0ba845f3-579d-491c-b580-9f9803808117?]]
+│         - IP                                  │   │ maps each well-known │
+│         - Current time as tracked by node     │   │ node-TLS identity to │
+│         - Information on other nodes on the   │   │ its IP address       │
+│           network                             │   └──────────────────────┘
+│    @2 ┌───────────────────────────────────────┤   ┌─────────────────────────────┬─────────────────┐
+│       │*STORAGE SRV*                          │   │*Notary Pool Network Service*│                 │
+│       │─ stores [TXs, attachements,           │   ├─────────────────────────────┘                 │
+│       │  flow─checkpoints]                    │   │- similar to the Hyperledger Fabric "orderer"  │
+│       ├───────────────────────────────────────┤   │  or a Bitcoin miner, get in charge of         │
+│       │*VAULT*                                │   │  ordering/validating proposed TXs/state change│
+│       │─stores relevant current/histor        │   │                                               │
+│       │ state sequences                       │   │- Keeps a list of un-spent output states.      │
+│       │                                       │   │  to assure that no double-spents are commited │
+│       ├───────────────────────────────────────┤   │  (aka provides the *point of finality*)       │
+│       │*PLUGIN REGISTRY*                      │   │                                               │
+│       │ of installed o*CorDapps*              │   │- issuance/genesis transactions are the only   │
+│       │- Preinstaled plugins exists for:      │   │  not-notarized TX since they do NOT consume   │
+│       │  - Retrieving TXs/attachments from    │   │  any previous input state.                    │
+│       │    counterparties.                    │   │                                               │
+│       │  - Upgrading contracts                │   │-*A network can have several notary pools,*each│
+│       │  - Boradcasting agreed ledger updates │   │  running a different consensus algorithm      │
+│       │    for recording counterparties       │   │  (high-speed vs bizantine-fault-tolerant,...) │
+│       ├───────────────────────────────────────┤   │                                               │
+│       ┊XXX Service                            ┊   │- The TX proporser will choose which notary    │
+│       ┊                                       ┊   │  to use.                                      │
+│       ┊                                       ┊   └───────────────────────────────────────────────┘
+│       ├───────────────────────────────────────┤
+│       │*SERVICE HUB*                          ←─ @[https://github.com/corda/corda/blob/master/core/src/main/kotlin/net/corda/core/node/ServiceHub.kt]
+│       │ of installed o*CorDapps*              │  - allows the node's flows  to call upon  the node's other services
+└───────┴───────────────────────────────────────┘  - provided next services:
+                                                     - Information on other nodes on the network and the services they offer
+                                                     - Access to the contents of the vault and the storage service
+                                                     - Access to, and generation of, the node's public-private keypairs
+                                                     - Information about the node itself
+                                                     - The current time, as tracked by the node
+
+                                   ┌──────────────────┬───────────────────────────────────┐
+ VAULT SCHEMA:              ┌──────┤*(CONTRACT) STATE*│                                   │
+ ┌──────────────────────┐   │      ├──────────────────┘                                   │
+ │  CONSUMED │  *NON*   │   │      │@[https://docs.corda.net/key-concepts-states.html]    │
+ │ HISTORICAL│ CONSUMED │   │      │─ *1: ContractState.kt@Github                         │
+ │  STATES   │ STATES   │   │      │─ inmutable fact known by one or more Corda nodes     │
+ │───────────┼──────────│   │      │  at a specific point in time                         │
+ │      B0→B1│→ B_head  ←───┘      │─ Can contain arbitrary data, allowing them to        │
+ │A0→A1→A2→A3│→ A_head  │          │  represent facts of any kind (stocks, bonds,         │
+ │      C0→C1│→ C_head  │          │  KYC data, identity information, loans,...).         │
+ └──────────────────────┘          │                                                      │
+- Vault-queries are used to        │Example  o*I owe you*state:                           │
+  query current/historical         │ ┌────────────────────────────────────┐               │
+  states (state "life-cicle")      │ │─ IOU.contract.ref                  │               │
+- Complex sign.schemas can be      │ │─ participants=[Alice,Bob]          │               │
+  used to change the state         │ │─ IOU.state.props                   │               │
+- States are inmutable. The        │ │    (From,To)    : (Alice     ,Bob) │               │
+  notary (vs consensus) warrants   │ │    (Amount,Paid): (10$       , 5$) │               │
+  no double-spent of states.       │ │    (Due,Penalty): (2017─03─01,20%) │               │
+- State change (A0→A1,...) occurs  │ └────────────────────────────────────┘               │
+  after valid TXs:                 │                                                      │
+  - signature-tree fulfilled       │A transaction will take N input states, "pass" them   │
+  - contract of every              │through their corresponding contract(.refs) and create│
+    input/output state is valid.   │new output/unspent  states.                           │
+  - do*NOT*contains double-spends. │        ┌─→  Bond  ←─┐                                │
+  - The vault is a subset of facts │        │  Contract  │                                │
+    on the ledger, and no peer node│        │     │g*OK* │                                │
+    is aware of the full ledger    │   ┌────│─────↓──────│────┐                           │
+                                   │   │Bond1 ────────→  Bond2│ ← Bond1,Cash1 will become │
+                                   │   │     (afterg*OK*)     │   historic/spent states   │
+                                   │   │Cash1 ────────→  Cash2│                           │
+                                   │   └────│─────↑──────│────┘                           │
+                                   │        │     │g*OK* │                                │
+                                   │        │    Cash    │                                │
+                                   │        └─→Contract←─┘                                │
+                                   └──────────────────────────────────────────────────────┘
+
+@1:@[https://github.com/corda/corda/blob/master/core/src/main/kotlin/net/corda/core/contracts/ContractState.kt]
+
+@2:*FULL LIST OF NODE SERVICES*
+@[https://github.com/corda/corda/tree/master/node/src/main/kotlin/net/corda/node/services]
+corda.git/node/src/main/kotlin/
+https://docs.corda.net/releases/release-V4.0/api/kotlin/corda/net.corda.node.services.statemachine/-state-machine-manager/
+└─ net/corda/node/services
+   ├─ /network
+   ├─ /schema
+   ├─ /identity
+   ├─ /logging
+   ├─ /rpc
+   ├─ /api
+   ├─ /upgrade
+   ├─ /vault
+   ├─ /transactions
+   ├─ /persistence
+   ├─ /messaging
+   ├─ /keys
+   ├─ /config
+   ├─ /events
+   └─ /statemachine
+
+<span xsmall>THE LEDGER</span>
+@[https://docs.corda.net/key-concepts-ledger.html]
+- The ledger is subjective from each peer's perspective:
+  Each peer only sees a subset of facts on the ledger
+- Two peers are always guaranteed to see the exact same version
+  of any on-ledger facts they share
+- We can think of the ledger from each node's point of view
+  as the set of all the current (i.e. non-historic) states
+  that it is aware of.
 </pre>
-</td>
-</tr>
-</table>
-<br/>
-<span bgorange>BUILDING BLOCKS</span>
-<table>
-<tr>
-<td>
+
+
+<pre zoom>
+<span xsmall>STATE</span>
+<span xsmall>STATE API</span>
+@[https://docs.corda.net/api-states.html]
+- interface ContractState { //  or (optimal) sub-interfaces
+      val contract: Contract
+      val participants: List˂AbstractParty˃
+  }
+
+- @[https://github.com/corda/corda/blob/master/core/src/main/kotlin/net/corda/core/contracts/Structures.kt]
+ *interface NamedByHash*
+ *interface OwnableState*: ContractState
+ *interface Scheduled*
+ *interface LinearState*: ContractState      ← object with constant identity over time (facts evolving over time)
+ *interface SchedulableState*: ContractState ← allows to schedule future actions for the state (payment on date) (see Event scheduling)
+ *interface CommandData*
+ *interface MoveCommand*: CommandData
+ *interface Contract*
+ *interface UpgradedContract*˂in OldState : ContractState, out NewState : ContractState˃ : Contract
+ *interface UpgradedContractWithLegacyConstraint˂in OldState... , out NewState˃: UpgradedContract˂OldState, NewState˃
+
+-*interface FungibleAsset*
+@[https://github.com/corda/corda/blob/master/core/src/main/kotlin/net/corda/core/contracts/FungibleAsset.kt]
+- represent assets that are fungible, countable and issued by a
+  specific party (eg. Cash.State and CommodityContract.State in
+  the Corda finance module)
+
+
+-*interface QueryableState*
+  - allows to query the state in the node's database using custom attributes (see Persistence)
+</pre>
+
+<pre zoom>
+<span xsmall>TRANSACTIONS</span>
+- TX == *proposal* to update the ledger
+- The ledger evolves over time by applying TXs
+  which update the ledger (vaults in different
+  nodes) by marking zero or more existing states
+  as historic (the inputs) and producing zero
+  or more new ledger states (the outputs)
+
+- A TX can contain any number of input states,
+  output states and references of any type.
+  (cash,bonds,...)
+
+- TX classification 1:
+  -*issuances*(zero inputs)
+  -*exits    *(have zero outputs)
+  - For fungible assets/states they
+    can also merge/split inputs.
+
+- TX classification 2:
+  - Notary-change: used to change a state's notary
+  - General      : any other.
+
+TX components:
+- TX.output_states are set by the proposer(s) of the TX.
+- TX. input_states are included by reference
+   (link to existing to-be-consumed output) like:
+
+                   hash of TX that created the input
+   + input's index in the outputs of the previous TX
+     ───────────────────────────────────────────────
+                                     INPUT_REFERENCE
+- TX.reference_states are similar to input states but
+   are *NOT* consumed and its contracts are not
+   executed for the transaction containing them.
+- TX.Notary: Will check that inputs have not be spent
+
+- TX.Time-Window (optional): Validated by Notary (pool=
+  - TimeWindows
+    - start time (optional)
+    - end   time (optional)
+    - Can model also:
+      - some point after a given time
+      - any time before  a given time
+      - some point roughly around a given time
+
+- TX.Attachements: 0...N links to jar files hashes
+  *The attachements can be used as TX.validity input*
+- TX.Command list:
+  Indicates the operation executed on the initial
+  ledger state (purchase, sale, ...)
+┌─→ Each command indicates the list of required signer.
+│   The union of all required signer (pub.keys) in all
+│   Command List it the TX total required signers.
+│
+│
+│<span xsmall bgorange>CONSENSUS</span>
+│- A transaction proposal will only be committed if:
+│  - It doesn't contain double─spends
+│    (checked by the Notary that contains the
+│     full list of unspent ouputs)
+│  - It is contractually valid
+└── It is signed by the required parties
+ Note: Corda design separates correctness consensus
+       from uniqueness consensus.
+
+ATTACHMENTS:
+- can be reused across many different TXs.
+  (calendars, legal docs,...)
+Time-window
+
+Note, extracted from:
+@[https://docs.corda.net/api-contract-constraints.html]
+The app version used by a transaction is defined by its attachments. The JAR 
+containing the state and contract classes, and optionally its dependencies, 
+are all attached to the transaction. Nodes will download this JAR from other 
+nodes if they haven’t seen it before, so it can be used for verification.
+
+The TransactionBuilder will manage the details of constraints for you, by 
+selecting both constraints and attachments to ensure they line up correctly. 
+Therefore you only need to have a basic understanding of this topic unless 
+you are doing something sophisticated.
+
+
+</pre>
+
 <pre zoom >
-<span small>API Core Types</span>
+<span xsmall>CONTRACTS</span>
+- @[https://docs.corda.net/api-contracts.html]
+- A valid transaction must be accepted by the contract of each of its
+  input and output states.
+- Written in a JVM programming language (Kotlin,...).
+-*Execution is deterministic:*
+  - TX acceptance is based on the transaction's contents alone.
+  - A contract should either always accept or always reject
+    a given transaction. Can not depend on the validation date
+    or other contextual info.
+
+-*All Corda contracts implement the next interface*:
+ │ *package net.corda.core.contracts.Contract*
+ │ @CordaSerializable
+ │*interface Contract*{
+ │     @Throws(IllegalArgumentException::class)
+ │     fun verify(tx: LedgerTransaction )
+ │                    ^^^^^^^^^^^^^^^^^
+ │                    TX with all signatures
+ │                  @[https://docs.corda.net/api─transactions.html]
+ │     val legalContractReference: SecureHash
+ │ }
+
+*Example: used requireSingleCommand() API helper method to extract commands*
+class XContract : Contract {
+  interface Commands : CommandData {
+    class Issue : TypeOnlyCommandData(), Commands
+    class Transfer : TypeOnlyCommandData(), Commands
+  }
+
+  override fun verify(tx: LedgerTransaction) {
+    val command = txg*.commands*.*requireSingleCommand*˂Commands˃()
+
+    when (command.value) {
+      is Commands.Issue -˃ {
+        // Issuance verification logic.
+      }
+      is Commands.Transfer -˃ {
+        // Transfer verification logic.
+      }
+    }
+  }
+  override val legalContractReference: SecureHash =
+    SecureHash.sha256("X contract hash")
+}
+
+<span xsmall>Contract catalogue</span>
+@[https://docs.corda.net/contract-catalogue.html]
+It provides a number of contracts supplied with Corda, covering:
+  -*core functionality*
+  - examples modeling complex contracts like:
+    - Cash
+    - Commodity
+    - Commercial paper
+    - Interest rate swap
+    - Obligation
+- Can contain legal prose text
+</pre>
+
+<pre zoom>
+<span xsmall>FLOWS</span>
+-@[https://docs.corda.net/key-concepts-flows.html]
+-*Flows automate the process of agreeing ledger updates*
+- Communication between nodes only occurs in the context
+  of these flows, and is point-to-point
+- Built-in flows are provided to automate common tasks
+- Represents a sequence of steps that tells a node how to
+  achieve a specific ledger update, such as issuing an asset
+  or settling a trade
+- Unlike contracts, flows do not execute in a sandbox
+  (access to net, disk, time, ...)
+- Once a given business process has been encapsulated in a flow
+  and installed on the node as part of a CorDapp, the node's
+  owner can instruct the node to kick off this business process
+  at any time using an RPC call. The flow abstracts all the
+  networking, I/O and concurrency issues away from the node owner.
+-*Flows may last days, across node restarts and even upgrades.*
+- Flow Initiator: Builds new TX (choose notary), signs,
+  verify (run its contract), gather counterparty's signature, finalize TX:
+
+<span xsmall>FLOW FINALIZATION</span>
+  *SENDER SIDE*                          *RESPONDER SIDE*
+   01 → Send TX to notary                 01 → Verify signatures and contract
+   02 → Wait for notarised TX             02 → Signs
+   03 → Record locally                    03 → send signature back
+   04 → Store states in the vault         04 → wait for notarised TX
+   05 → Send TX to counterparty           05 → record locally
+        for recording                     06 → store states in vault
+
+<pre zoom TODO >
+<span xsmall>override Flow</span>
+@[https://docs.corda.net/flow-overriding.html]
+</pre>
+
+  
+</pre>
+<pre zoom>
+<span xsmall>BUILT-IN</span>
+<span xsmall>SUBFLOWS</span>
+@[https://docs.corda.net/flow-library.html]
+("BUILDING BLOCKS")
+- provides a number of built-int flows supplied with Corda,
+  covering some*core functionality*:
+┌──────────────────────────┬──────────────────────────────┐
+│ SubFlow                  │ should be used to            │
+├──────────────────────────┼──────────────────────────────┤
+│ CollectSignaturesFlow    │ collect TXs required signs.  │
+│ SignTransactionFlow      │                              │
+│ SendTransactionFlow      │                              │
+│ ReceiveTransactionFlow   │                              │
+│ FinalityFlow             │ verify/notarise/record a TX  │
+│ ResolveTransactionsFlow  │ verify inputs chain to TX    │
+│ ContractUpgradeFlow      │ change a state's contract    │
+│ NotaryChangeFlow         │ change a state's notary      │
+└──────────────────────────┴──────────────────────────────┘
+
+*Example ussage:*
+┌───────────────────────────────────────┬───────────────────────────────────────────────────────────┐
+│(Initiator)Party starts                │ Counterparty                                              │
+│'CollectSignatures'─Subflow            │                                                           │
+├───────────────────────────────────────┼───────────────────────────────────────────────────────────┤
+│val fullySignedTx: SignedTransaction = │val counterParty_SignTransactionFlow:*SignTransactionFlow*=│
+│    subFlow(                           │    object : SignTransactionFlow(counterparty) {           │
+│     *CollectSignaturesFlow*(          │      override                                             │
+│        twiceSignedTx,                 │      fun checkTransaction(stx: SignedTransaction) =       │
+│        SIGS_GATHERING.                │        requireThat {                                      │
+│          .childProgressTracker()      │          //  ... checking ...                             │
+│      )                                │          if (stx_has_dependencies)                        │
+│    )                                  │            subFlow(                                       │
+│                                       │              ResolveTransactionsFlow(                     │
+│                                       │                twiceSignedTx, counterparty))              │
+│                                       │                                                           │
+│                                       │            subFlow(                                       │
+│                                       │              ResolveTransactionsFlow(                     │
+│                                       │                setOf(ourStateRef.txhash), counterparty))  │
+│                                       │                                                           │
+│                                       │        val outputState =                                  │
+│                                       │          stx.tx.outputsOfType˂DummyState˃().single()      │
+│                                       │        assert(outputState.magicNumber == 777)             │
+│                                       │      }                                                    │
+│                                       │    }                                                      │
+│                                       │subFlow(counterParty_SignTransactionFlow)                  │
+└───────────────────────────────────────┴───────────────────────────────────────────────────────────┘
+
+/---------------------------------------------------\
+|val additionalParties: Set˂Party˃ = setOf(regulator|
+|val notarisedTx1: SignedTransaction =              |
+|    subFlow(                                       |
+|     *FinalityFlow*(        // ← Finalizing Flow   |
+|        listOf(fullySignedTx),                     |
+|        additionalParties /*optional*/,            |
+|        FINALISATION.childProgressTracker())       |
+|    ).single()                                     |
+\_-------------------------------------------------_/
+</pre>
+
+<pre zoom>
+<span xsmall>ProgressTracker</span>
+- allows to see the flow's progress visually
+  in our node's CRaSH shell.
+  ID_OTHER_NODES → SENDING_AND_RECEIVING_DATA → EXTRACTING_VAULT_STATES → OTHER_TX_COMPONENTS
+  →TX_BUILDING→TX_SIGNING→TX_VERIFICATION→SIGS_GATHERING→VERIFYING_SIGS→FINALISATION
+  progressTracker.currentStep = ...
+</pre>
+
+<pre zoom labels="consensus">
+<span xsmall>ORACLES</span>
+<span xsmall>SERVICES</span>
+- A fact can be included in a TX as part of a command
+- An oracle is a (network) service that will only sign the TX if the included
+  fact is true
+- Upon request, an oracle provide commands that encapsulate a specific fact
+  (e.g, the exchange rate at time x) and list the oracle as a required signer.
+- To sign a transaction, the only information the oracle needs to see is their
+  embedded command. Providing any additional transaction data to the oracle would
+  constitute a privacy leak. Similarly, a non-validating notary only needs to see
+  a transaction's input states.
+   To combat this, the transaction proposer(s) uses a Merkle tree to "tear off"
+  any parts of the transaction that the oracle/notary doesn't need to see before
+  presenting it to them for signing. A Merkle tree is a well-known cryptographic
+  scheme that is commonly used to provide proofs of inclusion and data integrity.
+   The advantage of a Merkle tree is that the parts of the transaction that were
+  torn off when presenting the transaction to the oracle cannot later be changed
+  without also invalidating the oracle's digital signature.
+</pre>
+
+<pre zoom>
+<span xsmall>reference</span>
+<span xsmall>input</span>
+<span xsmall>states</span>
+- Corda 4.0+
+- allow smart contracts to reference data from the ledger
+  in a transaction without simultaneously updating it.
+- useful for any kind of reference data such as rates,
+  healthcare codes, geographical information etc, or
+  anywhere you might have used a SELECT JOIN in a SQL based app.
+- It is a ContractState which can be referred to in a TX
+  by the contracts of input and output states but, significantly,
+  whose contract is not executed as part of the TX verification
+  process and is not consumed when the transaction is committed
+  to the ledger.
+- It is checked for "current-ness".
+- Since they're normal states, if they do occur in the input or
+  output positions, they can evolve on the ledger, modeling reference
+  data in the real world.
+</pre>
+
+</div>
+<div group>
+<pre title>
+    Programming
+    API
+</pre>
+<pre zoom>
+<span xsmall>Corda dApp</span>
+┌────────────────────────────────────────────────────────────────┐  ┌────────────────────────────────────────────────────────────┐
+│o*CorDapp*                                                      │  │─ Ao*CorDapp*may also need to define two types of plugins:  │
+│─ installed at the level of the individual node                 │  │  ─*CordaPluginRegistry*subclasses overwriting:             │
+│  (rather than on the network itself)                           │  │    ─ customizeSerialization: set of the classes            │
+│─ provide the node with new business processes                  │  │                              to be whitelisted for         │
+│  by defining new flows on the node                             │  │                              object serialisation          │
+│  (started by the node owner).                                  │  │    ─ requiredSchemas @1    : set of the MappedSchemas      │
+│─ Drives the process of negotiating a specific                  │  │                              to use for persistence and    │
+│                                                                │  │                              vault queries                 │
+│- CorDapp JARs (see What is a CorDapp?) that contain classes    │  │  ─*WebServerPluginRegistry*subclasses, that can overwrite: │
+│  implementing the Contract interface are automatically loaded  │  │      ─ webApis          :JAX─RS annotated REST             │
+│  into the AttachmentStorage of a node, and made available as   │  │                          access classes list.              │
+│  contractAttachments.                                          │  │      ─ staticServeDirs*2: map of static web content to     │
+│  They are retrievable by hash using                            │  │                           virtual paths                    │
+│  AttachmentStorage.openAttachment. These JARs can either be    │  │                        (static web content itself should   │
+│  installed on the node or will be automatically fetched over   │  │                        be placed inside src/main/resources)│
+│  the network when receiving a transaction.                     │  │                                                            │
+│  REF:@[https://docs.corda.net/api-contract-constraints.html]   │  │☞  must be added also to (resources/META─INF/services/)     │
+│                                                                │  │   net.corda.core.node.CordaPluginRegistry                  │
+│┌──────────────────────────────────────────────────────────────┐│  │☞  must be added also to (resources/META─INF/services/)     │
+││developers will usually define:                               ││  │   net.corda.webserver.services.WebServerPluginRegistry     │
+││─*Flows*    subclassing*FlowLogic*                            ││  └────────────────────────────────────────────────────────────┘
+││          @[https://docs.corda.net/api─flows.html]            ││
+││                                                              ││
+││─*States*   implementing*ContractState*                       ││
+││            States can change through aprobed                 ││
+││            signature trees                                   ││
+││                                                              ││
+││─*Contracts*implementing*Contract* logic                      ││
+││          @[https://docs.corda.net/api─contracts.html]        ││
+││                                                              ││
+││─*Services* subclassing*SingletonSerializationToken*          ││
+││                                                              ││
+││─*Serialisation*implementing*SerializationWhitelist*          ││
+││ *whitelist    *                                              ││
+│└──────────────────────────────────────────────────────────────┘│
+└────────────────────────────────────────────────────────────────┘
+
+r*WARN:* The obvious way to write a CorDapp is to put all you 
+  states, contracts, flows and support code into a single Java module. 
+  This will work but it will effectively publish your entire app onto 
+  the ledger. That has two problems:
+  - (1) it is inefficient, 
+  - (2) it means changes to your flows or other parts of the
+        app will be seen by the ledger as a "new app", which may
+         end up requiring essentially unnecessary upgrade procedures. 
+  - It’s better to split your app into multiple modules:
+    - one which contains just states, contracts and core data types.
+    - another which contains the rest of the app. See Modules.
+
+
+<span xsmall>Project layout</span>
+SHOULD BE SPLIT INTO TWO MODULES:
+──────────────────────────────────────────
+1*cordapp─contracts─states*module/CorDapp
+contracts and states sent over the wire
+main ─ java ─ com.template
+              ├── TemplateContract.java
+              └── TemplateState.java
+────────────────────────────────────────────
+2*cordapp module/CorDapp: remaining classes*
+main ─ java
+│      └─ com.template
+│         ├ TemplateFlow.java (inherits FlowLogic)
+│         ├ TemplateSerializationWhitelist.java
+│         ├ (testing env)TemplateApi.java
+│         ├ (testing env)TemplateClient.java
+│         └ (testing env)TemplateWebPlugin.java
+│
+└─ resources
+   ├─META─INF
+   │ └─services
+   │   ├net.corda.core.serialization.SerializationWhitelist
+   │   └net.corda.webserver.services.WebServerPluginRegistry
+   ├─ certificates
+   └─ templateWeb
+test ─ java ─ com.template
+               ContractTests.java
+               FlowTests.java
+               NodeDriver.java
+integrationTest
+└─ java ─ com.template
+              DriverBasedTest.java
+</pre>
+<pre zoom >
+<span xsmall>API Core Types</span>
 -@[https://docs.corda.net/api-core-types.html]
 *SecureHash*:
  - Any object that needs to be identified by its hash
@@ -125,6 +628,7 @@ main ─ java ─ com.template                 │  │             TemplateFlow
  }                          (and utility methods to instantiate/parse it)
 
 *CompositeKey*:
+@[https://github.com/corda/corda/blob/master/core/src/main/kotlin/net/corda/core/crypto/CompositeKey.kt]
  - Allows for complex signature scenarios.
  - Uses public-key composition to organise
    the various public keys into a tree data
@@ -151,154 +655,8 @@ main ─ java ─ com.template                 │  │             TemplateFlow
 │- If all thresholds are satisfied, the composite key requirement is considered
 │  to be met.
 </pre>
-</td>
-
-<td>
-<pre zoom >
-A Corda network is a peer-to-peer network of nodes.
-
-<span small bgorange>NODE SCHEMA:</span>
-               Net interface with         RPC        ┌──────────────┬────────────┐  ┌───────────────────────┬───┐
-               other nodes in a           with       │*Service hub *│            │  │*permissioning service*│   │
-               running flow            node owner    ├──────────────┘            │  ├───────────────────────┘   │
-                    ↕                      ↕         │─ allows the node's flows  │  │                           │
-┌────────┬──────────╨──────────────────────╨────┐    │  to call upon             │  │                           │
-│CORDA   │─ TLS                                 │    │  the node's other services│  │                           │
-│SOFTWARE│  certificate                         │    └───────────────────────────┘  └───────────────────────────┘
-├────────┘  @"workspace"/certificates/node─TLS ←── represents the node in TXs. The network map service
-│         - IP                                  │  maps each well-known node-TLS identity to its IP address
-│         - Current time as tracked by node     │
-│         - Information on other nodes on the   │
-│           network                             │
-│       ┌───────────────────────────────────────┤   VAULT SCHEMA:              ┌─ *(Contract) State:*
-│       │*STORAGE SRV*                          │   ┌──────────────────────┐   │   @[https://docs.corda.net/key-concepts-states.html]
-│       │─ stores [TXs, attachements,           │   │  CONSUMED │  *NON*   │   │   ─ *1: ContractState.kt@Github
-│       │  flow─checkpoints]                    │   │ HISTORICAL│ CONSUMED │   │   ─ fact known by one or more Corda nodes at
-│       ├───────────────────────────────────────┤   │  STATES   │          │   │     a specific point in time
-│       │*VAULT*                                │   │───────────┼──────────│   │   ─ Can contain arbitrary data, allowing them to
-│       │─stores relevant current/histor        │  ←│      B0→B1│→ B_head  ←───┘     represent facts of any kind (stocks, bonds,
-│       │ state sequences                       │   │A0→A1→A2→A3│→ A_head  │         KYC data, identity information, loans,...).
-│       │                                       │   │      C0→C1│→ C_head  │         Ex.o*I owe you*state:
-│       ├───────────────────────────────────────┤   └──────────────────────┘         - IOU.contract.ref
-│       │*PLUGIN REGISTRY*                      │  - Vault-queries are used to       - participants=[Alice,Bob]
-│       │ of installed o*CorDapps*              │    query current/historical        - IOU.state.props
-│       │- Preinstaled plugins exists for:      │    states (state "life-cicle")         (From,To)    : (Alice     ,Bob)
-│       │  - Retrieving TXs/attachments from    │  - Complex sign.schemas can be         (Amount,Paid): (10$       , 5$)
-│       │    counterparties.                    │    used to change the state            (Due,Penalty): (2017-03-01,20%)
-│       │  - Upgrading contracts                │  - States are inmutable. The
-│       │  - Boradcasting agreed ledger updates │    notary (vs consensus) warrants        ┌─→  Bond  ←─┐
-│       │    for recording counterparties       │    no double-spent of states.            │  Contract  │
-└───────┴────────↑──────────────────────────────┘  - State change (A0→A1,...) occurs       │     │g*OK* │
-                 │                                   after valid TXs:                 ┌────│─────↓──────│────┐
-                 │                                   - signature-tree fulfilled       │Bond1 ────────→  Bond2│
-                 │                                   - contract of every              │     (afterg*OK*)     │
-                 │                                     input/output state is valid.   │Cash1 ────────→  Cash2│
-                 │                                   - do*NOT*contains double-spends. └────│─────↑──────│────┘
-                 │                                                                         │     │g*OK* │
-                 │                                                                         │    Cash    │
-                 │                                                                         └─→Contract←─┘
-┌────────────────┴───────────────────────────────────────┐┌────────────────────────────────────────────────────────────┐
-│o*CorDapp*                                              ││─ Ao*CorDapp*may also need to define two types of plugins:  │
-│─ installed at the level of the individual node         ││  ─*CordaPluginRegistry*subclasses overwriting:             │
-│  (rather than on the network itself)                   ││    ─ customizeSerialization: set of the classes            │
-│─ provide the node with new business processes          ││                              to be whitelisted for         │
-│  by defining new flows on the node                     ││                              object serialisation          │
-│  (started by the node owner).                          ││    ─ requiredSchemas *1    : set of the MappedSchemas      │
-│─ Drives the process of negotiating a specific          ││                              to use for persistence and    │
-│┌──────────────────────────────────────────────────────┐││                              vault queries                 │
-││developers will usually define:                       │││  ─*WebServerPluginRegistry*subclasses, that can overwrite: │
-││─*Flows*    subclassing*FlowLogic*                    │││      ─ webApis          :JAX─RS annotated REST             │
-││          @[https://docs.corda.net/api─flows.html]    │││                          access classes list.              │
-││                                                      │││      ─ staticServeDirs*2: map of static web content to     │
-││─*States*   implementing*ContractState*               │││                           virtual paths                    │
-││            States can change through aprobed         │││                        (static web content itself should   │
-││            signature trees                           │││                        be placed inside src/main/resources)│
-││                                                      │││                                                            │
-││─*Contracts*implementing*Contract* logic              │││*1 must be added also to (resources/META─INF/services/)     │
-││          @[https://docs.corda.net/api─contracts.html]│││   net.corda.core.node.CordaPluginRegistry                  │
-││                                                      │││*2 must be added also to (resources/META─INF/services/)     │
-││─*Services* subclassing*SingletonSerializationToken*  │││   net.corda.webserver.services.WebServerPluginRegistry     │
-││                                                      ││└────────────────────────────────────────────────────────────┘
-││─*Serialisation*implementing*SerializationWhitelist*  ││
-││ *whitelist    *                                      ││
-│└──────────────────────────────────────────────────────┘│
-└────────────────────────────────────────────────────────┘
-*1: @[https://github.com/corda/corda/blob/master/core/src/main/kotlin/net/corda/core/contracts/ContractState.kt]
-</pre>
-</td>
-<td>
-<pre zoom >
-<span small>THE NETWORK</span>
-- node-to-node communication uses encrypted TLS + AMQP/1.0
-  in a point-to-point approach (vs broadcasts or gossip)
-</pre>
-</td>
-<td>
-<pre zoom >
-<span small>IDENTITIES</span>
-- Well known identities are published in the network map
--*Confidential identities* are only shared on a need to know basis:
-  Although there are several elements to the Corda transaction
-  privacy model, including ensuring that transactions are only
-  shared with those who need to see them, and planned use of
-  Intel SGX TEE, it is important to provide defense in depth
-  against privacy breaches.
-  Confidential identities are used to ensure that even if a
-  third party gets access to an unencrypted transaction, they
-  cannot identify the participants without additional information.
-- Identities in Corda can represent:
-  - Legal identity of an organisation
-  - Service identity of a network service
-</pre>
-</td>
-<td>
-<pre zoom >
-<span small>THE LEDGER</span>
-@[https://docs.corda.net/key-concepts-ledger.html]
-- The ledger is subjective from each peer's perspective:
-  Each peer only sees a subset of facts on the ledger
-- Two peers are always guaranteed to see the exact same version
-  of any on-ledger facts they share
-- We can think of the ledger from each node's point of view
-  as the set of all the current (i.e. non-historic) states
-  that it is aware of.
-</pre>
-</td>
-<td>
 <pre zoom>
-<span small>(CONTRACT) STATE API</span>AAa
-@[https://docs.corda.net/api-states.html]
-- interface ContractState { //  or (optimal) sub-interfaces
-      val contract: Contract
-      val participants: List<AbstractParty>
-  }
-
-- @[https://github.com/corda/corda/blob/master/core/src/main/kotlin/net/corda/core/contracts/Structures.kt]
- *interface NamedByHash*
- *interface OwnableState*: ContractState
- *interface Scheduled*
- *interface LinearState*: ContractState      ← object with constant identity over time (facts evolving over time)
- *interface SchedulableState*: ContractState ← allows to schedule future actions for the state (payment on date) (see Event scheduling)
- *interface CommandData*
- *interface MoveCommand*: CommandData
- *interface Contract*
- *interface UpgradedContract*˂in OldState : ContractState, out NewState : ContractState˃ : Contract
- *interface UpgradedContractWithLegacyConstraint˂in OldState... , out NewState˃: UpgradedContract˂OldState, NewState˃
-
--*interface FungibleAsset*
-@[https://github.com/corda/corda/blob/master/core/src/main/kotlin/net/corda/core/contracts/FungibleAsset.kt]
-- represent assets that are fungible, countable and issued by a
-  specific party (eg. Cash.State and CommodityContract.State in
-  the Corda finance module)
-
-
--*interface QueryableState*
-  - allows to query the state in the node's database using custom attributes (see Persistence)
-</pre>
-</td>
-<td>
-<pre zoom>
-<span small>VAULTS QUERIES API</span>
+<span xsmall>VAULTS QUERIES API</span>
 - @[https://docs.corda.net/api-vault-query.html]
   The majority of query requirements can be satisfied by using the Vault Query API,
   which is exposed via the VaultQueryService for use directly by flows.
@@ -310,7 +668,7 @@ A Corda network is a peer-to-peer network of nodes.
   - status types used in this query: UNCONSUMED, CONSUMED, ALL
   - other results (aggregate functions with/without using value groups)
 
-- «QueryCriteria» provides mechanisms for specifying filtering,
+- ˂˂QueryCriteria˃˃ provides mechanisms for specifying filtering,
   including (AND, OR), (LESS|GREATER)_(THAN|THAN_OR_EQUAL), (NOT_)EQUAL,
   (NOT_)LIKE, (IS_|NOT_)NULL,  (NOT_)IN,  Standard SQL-92 aggregate functs
   (SUM, AVG, MIN, MAX, COUNT)
@@ -328,33 +686,43 @@ A Corda network is a peer-to-peer network of nodes.
 │                                        │  │          Vault.Page˂T ˃ /*"snapshot"*/,   │
 │                                        │  │           Vault.Update /* Observable */ ˃ │
 └────────────────────────────────────────┘  └───────────────────────────────────────────┘
+                                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                             Streaming updates are only filtered
+                                             based on contract-type and state-status
+                                             (UNCONSUMED, CONSUMED, ALL). They will not
+                                             respect any other criteria that the
+                                             initial query has been filtered by.
 
-4 implementations of QueryCriteria exists which CAN BE CHAINED TOGETHER to define advanced filters
-VaultQueryCriteria: filter on attributes within the Vault states table:
-   - status (UNCONSUMED, CONSUMED)
-   - state reference(s)
-   - contract state type(s)
-   - notaries
-   - soft locked states
-   - timestamps (RECORDED, CONSUMED)
+˂˂QueryCriteria˃˃ existing implmentations *which CAN BE CHAINED TOGETHER* to define advanced filters
 
-FungibleAssetQueryCriteria: filter on    |  LinearStateQueryCriteria: filter on attributes
-attributes defined in FungibleAsset      |  defined in «LinearState» and «DealState»
-contract state:                          |  contract state
-   - participants(s)                     |     - participant(s)
-   - owner(s)                            |     - linearId(s)
-   - quantity                            |     - dealRef(s)
-   - issuer party(s) and/or reference(s) |
+-*VaultQueryCriteria:*filter on attributes within the Vault states table:
+  - status (UNCONSUMED, CONSUMED)
+  - state reference(s)
+  - contract state type(s)
+  - notaries
+  - soft locked states
+  - timestamps (RECORDED, CONSUMED)
 
-VaultCustomQueryCriteria:
-   provides the means to specify one or many arbitrary expressions on attributes
-   defined by a custom contract state that implements its own schema.
-   See the Builder object in QueryCriteriaUtils for a complete specification of the DSL.
+-*FungibleAssetQueryCriteria:*filter on attributes defined in FungibleAsset contract state:
+  - participants(s)
+  - owner(s)
+  - quantity
+  - issuer party(s) and/or reference(s)
+
+-*LinearStateQueryCriteria:* filter on attributes defined in «LinearState» and «DealState» contract state
+  - participant(s)
+  - linearId(s)
+  - dealRef(s)
+
+-*VaultCustomQueryCriteria:*
+  - provides the means to specify one or many arbitrary expressions on attributes
+  - defined by a custom contract state that implements its own schema.
+  - See the Builder object in QueryCriteriaUtils for a complete specification of the DSL.
 </pre>
-</td>
-<td>
+
 <pre zoom>
-<span small>STATE PERSISTENCE (VAULTS) Examples:</span>
+<span xsmall>STATE PERSISTENCE</span>
+<span xsmall>(VAULTS) Examples:</span>
 Ex.1:*custom query*
   val generalCriteria = VaultQueryCriteria(Vault.StateStatus.ALL)
 
@@ -447,165 +815,13 @@ AGGREGATE FUNCTION
   val avg = builder { CashSchemaV1.PersistentCashState::pennies.avg() }     | val avg = builder { CashSchemaV1.PersistentCashState::
   val avgCriteria = VaultCustomQueryCriteria(avg)                           |     pennies.avg(groupByColumns = listOf(CashSchemaV1.PersistentCashState::currency)) }
                                                                             | val avgCriteria = VaultCustomQueryCriteria(avg)
-  val results = vaultQuerySvc.queryBy<FungibleAsset<*>>(
+  val results = vaultQuerySvc.queryBy˂FungibleAsset˂*˃˃(
                              sumCriteria .and(countCriteria) .and(maxCriteria) .and(minCriteria) .and(avgCriteria) )
-  val (snapshot, updates)  = vaultQuerySvc.trackBy/* stream/observable queries */<FungibleAsset>(...)
+  val (snapshot, updates)  = vaultQuerySvc.trackBy/* stream/observable queries */˂FungibleAsset˃(...)
 </pre>
-</td>
-</tr>
-</table>
-<br/>
-<table>
-<tr>
-<td>
+
 <pre zoom>
-<span small TODO>PERSISTENCE</span>
-- @[https://docs.corda.net/api-persistence.html]
-- Corda offers developers the option to expose all or some part of a
-  contract state to an Object Relational Mapping (ORM) tool to be persisted
-  in a RDBMS. The purpose of this is to assist vault development by effectively
-  indexing persisted contract states held in the vault for the purpose of running
-  queries over them and to allow relational joins between Corda data and private
-  data local to the organisation owning a node.
-
-- Nodes have an internal*«SchemaService»*which decides what to persist and
-  what not by selecting the MappedSchema to use.
-
-interface SchemaService {
-    data class SchemaOptions(
-                 val databaseSchema: String? = null,
-                 val tablePrefix   : String? = null)
-    val schemaOptions: Map˂MappedSchema, SchemaOptions˃
-    fun selectSchemas(state: ContractState): Iterable˂MappedSchema˃
-    fun generateMappedObject(state: ContractState, schema: MappedSchema): PersistentState
-}
-
-open class MappedSchema(schemaFamily: Class˂*˃,
-                        val version: Int,
-                        val mappedTypes: Iterable˂Class˂*˃˃) {
-    val name: String = schemaFamily.name
-    override fun toString(): String = "${this.javaClass.simpleName}(name=$name, version=$version)"
-}
-</pre>
-</td>
-<td>
-<pre zoom >
-  <span small>CONTRACTS</span>
-- @[https://docs.corda.net/api-contracts.html]
-- A valid transaction must be accepted by the contract of each of its
-  input and output states.
-- Written in a JVM programming language (Kotlin,...).
--*Execution is deterministic:*
-  - TX acceptance is based on the transaction's contents alone.
-  - A contract should either always accept or always reject
-    a given transaction. Can not depend on the validation date
-    or other contextual info.
--*Contract catalogue* @[https://docs.corda.net/contract-catalogue.html]
-  provides a number of contracts supplied with Corda, covering:
-  - core functionality
-  - examples modeling complex contracts like:
-    - Cash
-    - Commodity
-    - Commercial paper
-    - Interest rate swap
-    - Obligation
-- Can contain legral prose text
--*All Corda contracts implement the next interface*:
- │ *package net.corda.core.contracts.Contract*
- │ @CordaSerializable
- │*interface Contract*{
- │     @Throws(IllegalArgumentException::class)
- │     fun verify(tx: LedgerTransaction )
- │                    ^^^^^^^^^^^^^^^^^
- │                    TX with all signatures
- │                  @[https://docs.corda.net/api─transactions.html]
- │     val legalContractReference: SecureHash
- │ }
-
-*Ex.1: contract using requireSingleCommand() helper method to extract commands*
-class XContract : Contract {
-  interface Commands : CommandData {
-    class Issue : TypeOnlyCommandData(), Commands
-    class Transfer : TypeOnlyCommandData(), Commands
-  }
-
-  override fun verify(tx: LedgerTransaction) {
-    val command = tx.commands.<b>requireSingleCommand</b><Commands>()
-
-    when (command.value) {
-      is Commands.Issue -> {
-        // Issuance verification logic.
-      }
-      is Commands.Transfer -> {
-        // Transfer verification logic.
-      }
-    }
-  }
-  override val legalContractReference: SecureHash =
-    SecureHash.sha256("X contract hash")
-}
-</pre>
-<pre zoom>
-<span small>requireThat-DSL Example</span>
-<span small>(replacing throw IllegalArgumentException...)</span>
-requireThat {
-    "No inputs should be consumed @ Issue" using (tx.inputs.isEmpty())
-    "Only one output state permitted"      using (tx.outputs.size == 1)
-    val out = tx.outputs.single() as XState
-    "sender == recipient not allowed"      using (out.sender != out.recipient)
-    "All participants must be signers"     using (command.signers.containsAll(out.participants))
-    "X's value must be ˃0 "                using (out.x.value ˃ 0)
-}
-</pre>
-</td>
-<td>
-<pre zoom >
-<span small>TRANSACTIONS</span>
-<span small>(proposals to update ledgers)</span>
-- @[https://docs.corda.net/api-transactions.html]
-- When creating a new transaction, the output states that the transaction will propose
-  do NOT exist yet, and must therefore be created by the proposer(s) of the transaction.
-  A transaction proposal will only be committed if:
-  - It doesn't contain double-spends
-  - It is contractually valid:
-    - Each state points to a contract
-    - every input state and every output state considers it to be valid
-        Notice that peers can still reject a TX even when it's contractually valid by
-        NOT signing it.
-  - It is signed by the required parties
-  - A transaction can contain any number of inputs and outputs of any type:
-  - They can include many different state types (e.g. both cash and bonds)
-  - They can be issuances (have zero inputs) or exits (have zero outputs)
-  - They can merge or split fungible assets
-    (e.g. combining a $2 state and a $5 state into a $7 cash state)
-  - There are*two basic types of transactions*:
-    - Notary-change transactions (used to change a state’s notary - see Notaries)
-    - General transactions (used for everything else)
-  - TX input states references are a combination of:
-    - The hash of the transaction that created the input
-    - The input’s index in the outputs of the previous transaction
-  - Once all the required signatures are gathered, the transaction
-    becomes committed meaning:
-    - TX’s inputs are marked as historic, and cannot be used anymore
-    - TX’s outputs become part of the current state of the ledger
-  - TX commands: Including a command in a transaction allows us to
-    indicate the transaction’s intent, affecting how we check the
-    validity of the transaction.
-  - Each command is also associated with a list of one or more signers.
-    By taking the union of all the public keys listed in the commands,
-    we get the list of the transaction’s required signers.
-  - ATTACHMENTS: Each TX can refer to zero or more attachments by hash.
-    These attachments are ZIP/JAR files containing arbitrary content.
-  - TIME-WINDOWS: specify the time window during which the transaction
-    can be committed
-  - There are*four states*the transaction can occupy:
-      - TransactionBuilder, a builder for a transaction in construction
-      - WireTransaction, an immutable transaction
-      - SignedTransaction, an immutable transaction with 1+ associated signatures
-      - LedgerTransaction, a transaction that can be checked for validity
-</pre>
-<pre zoom>
-<span small>Transaction API</span>
+<span xsmall>Transaction API</span>
 - @[https://docs.corda.net/api-transactions.html]
   //*BUILD NEW TRANSACTION:*
   val*00txBuilder*: TransactionBuilder =                  // ← Instantiate TX Builder
@@ -674,47 +890,9 @@ class LedgerTransaction(
 }
 </pre>
 
-</td>
-<td>
+
 <pre zoom>
-  <span small>FLOWS</span>
--@[https://docs.corda.net/key-concepts-flows.html]
--*Flows automate the process of agreeing ledger updates*
-- Communication between nodes only occurs in the context
-  of these flows, and is point-to-point
-- Built-in flows are provided to automate common tasks
-- Represents a sequence of steps that tells a node how to
-  achieve a specific ledger update, such as issuing an asset
-  or settling a trade
-- Unlike contracts, flows do not execute in a sandbox
-  (access to net, disk, time, ...)
-- Once a given business process has been encapsulated in a flow
-  and installed on the node as part of a CorDapp, the node's
-  owner can instruct the node to kick off this business process
-  at any time using an RPC call. The flow abstracts all the
-  networking, I/O and concurrency issues away from the node owner.
-- Flows may last days, across node restarts and even upgrades.
-- Flow Initiator: Builds new TX (choose notary), signs,
-  verify (run its contract), gather counterparty's signature, finalize TX:
-
-                              *FINALIZE:*
-  *SENDER SIDE*                          *RESPONDER SIDE*
-   01 → Send TX to notary                 01 → Verify signatures and contract
-   02 → Wait for notarised TX             02 → Signs
-   03 → Record locally                    03 → send signature back
-   04 → Store states in the vault         04 → wait for notarised TX
-   05 → Send TX to counterparty           05 → record locally
-        for recording                     06 → store states in vault
-
-*FLOW LIBRARY*
-- @[https://docs.corda.net/flow-library.html]
-- provides a number of built-int flows supplied with Corda,
-  covering some*core functionality*:
-  - FinalityFlow to verify TXs
-  - CollectSignaturesFlow
-  - SendTransactionFlow/ReceiveTransactionFlow
-
-*FLOWS API*
+<span xsmall>FLOWS API</span>
 - @[https://docs.corda.net/api-flows.html]
   -*Service Hub API*
   @[https://docs.corda.net/api-service-hub.html]
@@ -741,8 +919,8 @@ class LedgerTransaction(
       - @InitiatingFlow    :Indicates that can be started "manually"
       - @StartableByRPC    : Add RPC control
 
-class Initiator(val arg1: Boolean,                                      │ class Responder(val otherParty: Party):
-                val arg2: Int,                                          │     FlowLogic<Unit>() { ... }
+class Initiator(val arg1: Boolean,                                 │ class Responder(val otherParty: Party):
+                val arg2: Int,                                     │     FlowLogic˂Unit˃() { ... }
                 val counterparty: Party):
   FlowLogic˂SignedTransaction˃() {
     @Suspendable // ← serializable+restart.
@@ -771,203 +949,783 @@ class Initiator(val arg1: Boolean,                                      │ clas
     }
 }
 </pre>
+
 <pre zoom>
-<span small>BUILT-IN SUBFLOWS</span>
-<span small>("BUILDING BLOCKS")</span>
-┌──────────────────────────┼──────────────────────────────┐
-│ SubFlow                  │ should be used to            │
-├──────────────────────────┼──────────────────────────────┤
-│ CollectSignaturesFlow    │ collect TXs required signs.  │
-│ SignTransactionFlow      │                              │
-│ FinalityFlow             │ notarise and record a TX     │
-│ ResolveTransactionsFlow  │ verify inputs chain to TX    │
-│ ContractUpgradeFlow      │ change a state's contract    │
-│ NotaryChangeFlow         │ change a state's notary      │
-└──────────────────────────┼──────────────────────────────┘
+<span xsmall>Hello World!</span>
+@[https://docs.corda.net/tutorial-cordapp.html]
 
-*Example ussage:*
-┌───────────────────────────────────────┬───────────────────────────────────────────────────────────┐
-│(Initiator)Party starts                │ Counterparty                                              │
-│'CollectSignatures'─Subflow            │                                                           │
-├───────────────────────────────────────┼───────────────────────────────────────────────────────────┤
-│val fullySignedTx: SignedTransaction = │val counterParty_SignTransactionFlow: SignTransactionFlow =│
-│    subFlow(                           │    object : SignTransactionFlow(counterparty) {           │
-│      CollectSignaturesFlow(           │      override                                             │
-│        twiceSignedTx,                 │      fun checkTransaction(stx: SignedTransaction) =       │
-│        SIGS_GATHERING.                │        requireThat {                                      │
-│          .childProgressTracker()      │          //  ... checking ...                             │
-│      )                                │          if (stx_has_dependencies)                        │
-│    )                                  │            subFlow(                                       │
-│                                       │              ResolveTransactionsFlow(                     │
-│                                       │                twiceSignedTx, counterparty))              │
-│                                       │                                                           │
-│                                       │            subFlow(                                       │
-│                                       │              ResolveTransactionsFlow(                     │
-│                                       │                setOf(ourStateRef.txhash), counterparty))  │
-│                                       │                                                           │
-│                                       │        val outputState =                                  │
-│                                       │          stx.tx.outputsOfType˂DummyState˃().single()      │
-│                                       │        assert(outputState.magicNumber == 777)             │
-│                                       │      }                                                    │
-│                                       │    }                                                      │
-│                                       │subFlow(counterParty_SignTransactionFlow)                  │
-└───────────────────────────────────────┴───────────────────────────────────────────────────────────┘
+IOUs contract between nodes.
+Rules:
+- The IOU’s value is strictly positive
+- A node is not trying to issue an IOU to itself
 
+Nodes: Notary + PartyA + PartyB + PartyC
 
+$ git clone https://github.com/corda/samples
+$ cd samples/cordapp-example
 
+r*WARN*: Use JDK 1.8
 
+/
+├─ LICENCE
+├─ README.md
+├─ TRADEMARK
+├─ build.gradle
+├─ clients
+│  ├─ build.gradle
+│  └─ src
+│     └─ main
+│        ├─ kotlin
+│        │  └─ com
+│        │     └─ example
+│        │        └─ server
+│        │           ├─ MainController.kt
+│        │           ├─ NodeRPCConnection.kt
+│        │           └─ Server.kt
+│        └─ resources
+│           ├─ application.properties
+│           └─ public
+│              ├─ index.html
+│              └─ js
+│                 └─ angular-module.js
+├─ config
+│  ├── dev
+│  │   └── log4j2.xml
+│  └── test
+│      └── log4j2.xml
+├─ contracts-java
+│  ├ build.gradle
+│  └ src
+│    └ main
+│      └ java
+│        └ com
+│          └ example
+│            ├ contract
+│            │ └ IOUContract.java
+│            ├ schema
+│            │ ├ IOUSchema.java
+│            │ └ IOUSchemaV1.java
+│            └ state
+│              └ IOUState.java
+├─ contracts-kotlin
+│  ├ build.gradle
+│  └ src
+│    └ main
+│      └ kotlin
+│        └ com
+│          └ example
+│            ├ contract
+│            │ └ IOUContract.kt
+│            ├ schema
+│            │ └ IOUSchema.kt
+│            └ state
+│              └ IOUState.kt
+├─ cordapp-example.iml
+├─ gradle
+│  └ wrapper
+│    ├ gradle-wrapper.jar
+│    └ gradle-wrapper.properties
+├─ gradle.properties
+├─ gradlew
+├─ gradlew.bat
+├─ lib
+│  ├ README.txt
+│  └ quasar.jar  ← rewrites flows to be checkpointable
+├─ settings.gradle
+├─ workflows-java
+│  ├ build.gradle
+│  └ src
+│    ├ integrationTest
+│    │ └ java
+│    │   └ com
+│    │     └ example
+│    │       └ DriverBasedTests.java
+│    ├ main
+│    │ └ java
+│    │   └ com
+│    │     └ example
+│    │       └ flow
+│    │         └ ExampleFlow.java
+│    └ test
+│      └ java
+│        └ com
+│          └ example
+│            ├ NodeDriver.java
+│            ├ contract
+│            │ └─IOUContractTests.java
+│            └ flow
+│              └─IOUFlowTests.java
+└─ workflows-kotlin
+   ├── build.gradle
+   └── src
+       ├ integrationTest
+       │ └ kotlin
+       │   └ com
+       │     └ example
+       │       └ DriverBasedTests.kt
+       ├ main
+       │ └ kotlin
+       │   └ com
+       │     └ example
+       │       └── flow
+       │           └── ExampleFlow.kt
+       └ test
+         └── kotlin
+             └── com
+                 └── example
+                     ├── NodeDriver.kt
+                     ├── contract
+                     │   └── IOUContractTests.kt
+                     └── flow
+                         └── IOUFlowTests.kt
 
-val additionalParties: Set<Party> = setOf(regulator)
-val notarisedTx1: SignedTransaction =
-    subFlow(
-      FinalityFlow(               // &lt;- Finalizing Flow
-        listOf(fullySignedTx),
-        additionalParties /*optional*/,
-        FINALISATION.childProgressTracker())
-    ).single()
+$*./gradlew deployNodes*
+  Will create
+  $ workflows-kotlin/build/nodes/node"I"
+  $ "runnodes" shell script for running all the nodes simultaneously
+
+    . node"I"
+    ├── additional-node-infos  //
+    ├── certificates
+    ├── corda.jar              // The Corda node runtime
+    ├── cordapps               // The node's CorDapps
+    │   ├── corda-finance-contracts-4.1.jar
+    │   ├── corda-finance-workflows-4.1.jar
+    │   └── cordapp-example-0.1.jar
+    ├── drivers
+    ├── logs
+    ├── network-parameters
+    ├── node.conf              // The node's configuration file
+    ├── nodeInfo-<HASH>        // The hash will be different each time you generate a node
+    └── persistence.mv.db      // The node's database
+
+Running the CorDapp:
+ $ workflows-kotlin/build/nodes/runnodes
+
+For each party A/B/C, start the Spring Boot server in its own terminal like:
+
+ $ ./gradlew runParty"X"Server
+ → ...
+ →    ______               __
+ →   / ____/     _________/ /___ _
+ →  / /     __  / ___/ __  / __ `/  Top tip: never say "oops", instead
+ → / /___  /_/ / /  / /_/ / /_/ /   always say "Ah, Interesting!"
+ → \____/     /_/   \__,_/\__,_/
+ →
+ → --- Corda Open Source corda-4.1 (4157c25) ------------
+ →
+ → Logs can be found in                    : .../cordapp-example/workflows-kotlin/build/nodes/PartyA/logs
+ → Database connection url is              : jdbc:h2:tcp://localhost:59472/node
+ → Incoming connection address             : localhost:10005
+ → Listening on port                       : 10005
+ → Loaded CorDapps                         : corda-finance-corda-4.1, cordapp-example-0.1, corda-core-corda-4.1
+ → Node for "PartyA" started up and registered in 38.59 sec
+ →
+ →
+ → Welcome to the Corda interactive shell.
+ → Useful commands include 'help' to see what is available, and 'bye' to shut down the node.
+ →
+ → Fri Mar 02 17:34:02 GMT 2018>>>
+ →
+ →
+
+ Check status like http://localhost:[?????]/api/status
+                                     50005
+                                     50006
+                                     50007
+
+Spring Boot server exposed API endpoints:
+      /api/example/me
+      /api/example/peers
+      /api/example/create-iou
+
+    - create an IOU between PartyA and PartyB like:
+      curl -X PUT \
+        'http://localhost:50005/api/example/create-iou?iouValue=1&partyName=O=PartyB,L=New%20York,C=US'
+                                ^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^^   ^^^^^^^^^
+
+     *Once the process is complete, both nodes will have a signed, notarised copy of the IOU. PartyC will not.*
+
+    - Check correct creation in both peers like:
+      PartyA's vault → http://localhost:50005/api/example/ious
+      PartyB's vault → http://localhost:50006/api/example/ious
+
+    - Check that C is not affected:
+      PartyC's vault → http://localhost:50007/api/example/ious
+
+Via the interactive shell:
+
+PartyA shell >>> flow list
+→ com.example.flow.ExampleFlow$Initiator
+→ net.corda.core.flows.ContractUpgradeFlow$Authorise
+→ net.corda.core.flows.ContractUpgradeFlow$Deauthorise
+→ net.corda.core.flows.ContractUpgradeFlow$Initiate
+→ net.corda.finance.flows.CashExitFlow
+→ net.corda.finance.flows.CashIssueAndPaymentFlow
+→ net.corda.finance.flows.CashIssueFlow
+→ net.corda.finance.flows.CashPaymentFlow
+→ net.corda.finance.internal.CashConfigDataFlow
+
+create a new IOU like:
+PartyA shell >> flow start ExampleFlow$Initiator iouValue: 50, otherParty: "O=PartyB,L=New York,C=US"
+→ OK   Generating transaction based on new IOU.
+→ OK   Verifying contract constraints.
+→ OK   Signing transaction with our private key.
+→ OK   Gathering the counterparty's signature.
+→     OK   Collecting signatures from counterparties.
+→     OK   Verifying collected signatures.
+→ OK   Obtaining notary signature and recording transaction.
+→     OK   Requesting signature by notary service
+→             Requesting signature by Notary service
+→             Validating response from Notary service
+→     OK   Broadcasting transaction to participants
+→ OK   Done
+
+Display full list of available operations:
+PartyA shell >> run vaultQuery contractStateType: com.example.state.IOUState
+
+Change node location:
+(Automatic in Corda 4 with Corda_Service_Map?)
+STEP 1) Deploy
+$ ./gradlew deployNodes  # (No changes here)
+
+$ cd .../workflows-kotlin/build/nodes
+$ vim node.conf # update its p2pAddress  matching that of the node
+
+Distribute new node-info files amongst nodes:
+$ java -jar network-bootstrapper.jar workflows-kotlin/build/nodes
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+            network bootstrapper tool
+            network bootstrapper tool
+            distribute files locally
+"Copy/move" folders to their corresponding machines
+
+- After starting each node, they will "see" one another
 </pre>
 
 <pre zoom>
-<span small>ProgressTracker</span>
-- allows to see the flow's progress visually
-  in our node's CRaSH shell.
-  ID_OTHER_NODES → SENDING_AND_RECEIVING_DATA → EXTRACTING_VAULT_STATES → OTHER_TX_COMPONENTS
-  →TX_BUILDING→TX_SIGNING→TX_VERIFICATION→SIGS_GATHERING→VERIFYING_SIGS→FINALISATION
-  progressTracker.currentStep = ...
-</pre>
-</td>
-<td>
-<ul zoom >
-<span small>Node service hub provided services:</span>
-- Information on other nodes on the network and the services they offer
-- Access to the contents of the vault and the storage service
-- Access to, and generation of, the node's public-private keypairs
-- Information about the node itself
-- The current time, as tracked by the node
-</pre>
-<pre zoom>
-<span small>TX TIME-WINDOWS</span>
-- Restrict TX commit to a given time-window
-- The notary is the timestamping authority.
-  - It will refuse transactions outside of the window
-- Time-windows can have a start and end time,
-  or be open at either end allowing all of the following
-  situations to be modelled:
-  -A TX occurring at some point after the given time (e.g. after a maturity event)
-  -A TX occurring at any time before the given time (e.g. before a bankruptcy event)
-  -A TX occurring at some point roughly around the given time (e.g. on a specific day)
-</pre>
-<pre zoom>
-<span small>CONSENSUS</span>
-- To be committed, transactions must achieve both validity and uniqueness consensus
-- Validity consensus requires contractual validity of the
-  transaction and all its dependencies
-- Uniqueness consensus prevents double-spends.
-  This consensus is provided by notaries.
-</ul>
-  (NODE) ORACLES SERVICES
-  <ul zoom>
-  <li>A fact can be included in a TX as part of a command</li>
-  <li>An oracle is a (network) service that will only sign the TX if the included fact is true</li>
-  <li> Upon request, an oracle provide commands that encapsulate a specific fact
-      (e.g, the exchange rate at time x) and list the oracle as a required signer.</li>
-  <li> To sign a transaction, the only information the oracle needs to see is their
-      embedded command. Providing any additional transaction data to the oracle would
-      constitute a privacy leak. Similarly, a non-validating notary only needs to see
-      a transaction's input states.  <br/>
-       To combat this, the transaction proposer(s) uses a Merkle tree to "tear off"
-      any parts of the transaction that the oracle/notary doesn't need to see before
-      presenting it to them for signing. A Merkle tree is a well-known cryptographic
-      scheme that is commonly used to provide proofs of inclusion and data integrity.<br/>
-       The advantage of a Merkle tree is that the parts of the transaction that were
-      torn off when presenting the transaction to the oracle cannot later be changed
-      without also invalidating the oracle's digital signature.
-  </li>
-  </ul>
-  NOTARY SERVICE
-  <ul zoom>
-  <li>("orderer" in hyperledger or "miner" in bitcoin)</li>
-  <li>Notaries prevent "double-spends"</li>
-  <li>Notaries may optionally also validate transactions</li>
-  <li>A network can have several notaries, each running a different
-    consensus algorithm</li>
-  <li>notaries may differ in terms of <br/>
-    - Structure: a notary may be a single network node,
-      a cluster of mutually-trusting nodes, or a cluster of mutually-distrusting nodes<br/>
-    - Consensus algorithm: a notary service may choose to run a high-speed, high-trust
-      algorithm such as RAFT, a low-speed, low-trust algorithm such as BFT, or any other
-      consensus algorithm it chooses
-  </li>
-  <li>A notary also act as the timestamping authority,</li>
-  </ul>
-</pre>
-</td>
-</tr>
-</table>
-<br/>
+˂span xsmall TODO˃PERSISTENCE API˂/span˃
+@[https://docs.corda.net/api-persistence.html]
+- Allows to sync vault contractStates (or just parts) to an
+  external DDBB to allow complex SQL queries not possible with
+   the vault-query-API.
 
-<span bgorange>Corda Source Code</span>
-<table>
-<tr>
+- ORM makes use of standard JPA-annotations mapping to table rows
+  The node will take charge of automatically sync the state when
+  updated in the local vault as part of a TX.
 
-<td>
-<pre zoom>
-<span small href="https://github.com/corda/corda/tree/master/core/src/main/kotlin/net/corda/core">net.corda.core</span>
-concurrent/
-context/
-contracts/
-cordapp/
-crypto/
-flows/
-identity/
-internal/
-messaging/
-node/
-schemas/
-serialization/
-transactions/
-utilities/
-ClientRelevantError.kt
-CordaException.kt
-CordaInternal.kt
-CordaOID.kt
-DeleteForDJVM.kt
-DoNotImplement.kt
-KeepForDJVM.kt
-StubOutForDJVM.kt
-Utils.kt
+- By default an H2 database is used using JDBC.
+
+
+STEPS:
+1) ContractState will implement g*˂˂QueryableState˃˃*
+
+interface g*QueryableState*: ContractState {
+  fun supportedSchemas(): Iterable˂o*MappedSchema*˃
+      ^^^^^^^^^^^^^^^^^^           ^^^^^^^^^^^^          Nodes have an internal
+      schemas can evolve           represents a given ←b*˂˂SchemaService˃˃* config/customization
+      in the DDBB                  relational schema     point for ORM which decides what data
+                                   with a list of        persist for a given o*MappedSchema*
+                                   classes that can
+                                   be used in the generated
+                                   object graph to config.
+                                   the ORM tool. The constructor
+                                   will accepts a list of all
+                                   JPA entity classes for the
+                                   provided schema in MappedTypes
+
+
+  fun generateMappedObject(schema:o*MappedSchema*): PersistentState
+      ^^^^^^^^^^^^^^^^^^^^
+      Once the schema is selected the b*SchemaService*
+      will delegate here to generate a corresponding
+      representation (mapped object). The mapped object
+      should be an instance of a PersistentState subclass,
+      to facilitate ORM,  and marked as a JPA 2.1 Entity
+      with a defined table name and having Kotlin-properties
+      (getters/setters) annotated to SQL columns and types.
+      Additional entities can be included to model complex
+      collections, ...
+}
+
+interface b*SchemaService* {
+    data class SchemaOptions(val databaseSchema: String? = null, val tablePrefix: String? = null)
+
+    val schemaOptions: Map˂o*MappedSchema*, SchemaOptions˃
+
+    fun selectSchemas(state: ContractState): Iterable˂o*MappedSchema*˃
+
+    fun generateMappedObject(state: ContractState, schema: MappedSchema): PersistentState
+}
+
+- o*MappedSchema* implementation at:
+@[https://github.com/corda/corda/blob/master/core/src/main/kotlin/net/corda/core/schemas/PersistentTypes.kt]
+open class o*MappedSchema*(
+     schemaFamily: Class˂*˃,
+     val version: Int,
+     val mappedTypes: Iterable˂Class˂*˃˃) {
+
+    val*name*: String = schemaFamily.name
+
+    open val migrationResource: String? = null ← Opt classpath containing ddbb changes for [mappedTypes]
+
+    ...
+
+}
+
+*Custom schema registration*
+- The node bootstrap process will scan for states that
+ implement the Queryable state interface.
+ Tables are then created as specified by the MappedSchema
+ identified by each state’s supportedSchemas method.
+
+*For testing purposes* it is necessary to manually register
+ the packages containing custom schemas as follows:
+ - Tests using MockNetwork and MockNode must explicitly
+   register packages using the cordappPackages parameter of MockNetwork
+ - Tests using MockServices must explicitly
+   register packages using the cordappPackages parameter of the MockServices
+   makeTestDatabaseAndMockServices() helper method.
+
+
+(Kotlin) Example:
+package net.corda.finance.schemas
+import net.corda.core.identity.AbstractParty
+import net.corda.core.schemas.MappedSchema
+import net.corda.core.schemas.PersistentState
+import net.corda.core.serialization.CordaSerializable
+import net.corda.core.utilities.MAX_HASH_HEX_SIZE
+import net.corda.core.contracts.MAX_ISSUER_REF_SIZE
+import org.hibernate.annotations.Type
+import javax.persistence.*
+
+object CashSchema
+
+@CordaSerializable
+object CashSchemaV1 : MappedSchema(schemaFamily = CashSchema.javaClass, version = 1, mappedTypes = listOf(PersistentCashState::class.java))
+{
+  override val migrationResource = "cash.changelog-master"
+
+  @Entity
+  @Table(name = "contract_cash_states", indexes = [Index(name = "ccy_code_idx", columnList = "ccy_code"), Index(name = "pennies_idx", columnList = "pennies")])
+  class PersistentCashState(
+    @Column(name = "owner_name", nullable = true)
+    var owner: AbstractParty?,
+
+    @Column(name = "pennies", nullable = false)
+    var pennies: Long,
+
+    @Column(name = "ccy_code", length = 3, nullable = false)
+    var currency: String,
+
+    @Column(name = "issuer_key_hash", length = MAX_HASH_HEX_SIZE, nullable = false)
+    var issuerPartyHash: String,
+
+    @Column(name = "issuer_ref", length = MAX_ISSUER_REF_SIZE, nullable = false)
+    @Type(type = "corda-wrapper-binary")
+    var issuerRef: ByteArray
+  ) : PersistentState()
+}
+
+
+*Persisting Hierarchical (relationships) Data*
+- Discouraged. See official doc for more info
+
+*Identity mapping*
+Schema entity attributes defined by identity types
+(AbstractParty, Party, AnonymousParty) are automatically processed.
+- only the X500Name is persisted (for non well-known id.) or null.
+- identity keys are never persisted:
+  - Developers should use the IdentityService to resolve:
+    X500-identity-names →  keys
+
+*JDBC session*
+- direct JDBC connection(==session) is also allowed:
+
+  val nativeQuery = "SELECT v.transaction_id, v.output_index FROM vault_states v WHERE v.state_status = 0"
+
+  database.transaction {
+      val jdbcSession = services.jdbcSession() // ← Use ServiceHub to get the JDBC connection
+      val prepStatement = jdbcSession.prepareStatement(nativeQuery)
+      val rs = prepStatement.executeQuery()
+
+JDBC sessions can be used in flows and services (see “Writing flows”).
+
+
+*JPA Support
+- Direct JPA is also available to flows through the withEntityManager method.
+  which can used to persist and query entities which inherit from MappedSchema.
+- particularly useful if off-ledger data must be maintained in conjunction
+  with on-ledger state data.
+- See oficial docs for examples.
 </pre>
-</td>
-<td>
-<pre zoom>
-<span small href="https://github.com/corda/corda/tree/master/core/src/main/kotlin/net/corda/core/contracts">net.corda.core.contracts</span>
-Amount.kt
-Attachment.kt
-AttachmentConstraint.kt
-BelongsToContract.kt
-ComponentGroupEnum.kt
-ContractAttachment.kt
-ContractState.kt
-ContractsDSL.kt
-FungibleAsset.kt
-FungibleState.kt
-StatePointer.kt
-Structures.kt
-TimeWindow.kt
-TransactionState.kt
-TransactionVerificationException.kt
-UniqueIdentifier.kt
+
+<pre zoom labels="qa,error-handling">
+<span xsmall bgorange>Error Ctrl</span>
+<span xsmall>requireThat</span>
+DSL Example
+(illegal arg error)</span>
+replacing IllegalArgumentException
+requireThat {
+    "No inputs should be consumed @ Issue" using (tx.inputs.isEmpty())
+    "Only one output state permitted"      using (tx.outputs.size == 1)
+    val out = tx.outputs.single() as XState
+    "sender == recipient not allowed"      using (out.sender != out.recipient)
+    "All participants must be signers"     using (command.signers.containsAll(out.participants))
+    "X's value must be ˃0 "                using (out.x.value ˃ 0)
+}
 </pre>
-</td>
-</tr>
-</table>
-<br/>
-<span bgorange>DevOps</span>
-<table>
-<tr>
-<td>
+
 <pre zoom>
-<span small>PERMISSIONING</span>
+<a  bgorange xsmall href="https://github.com/corda/corda/tree/master/core/src/main/kotlin/net/corda/core">net.corda.core</a>
+┌────────────────────────   ┌──────────────────────────────────
+│./ClientRelevantError.kt   │./utilities/ByteArrays.kt
+│./CordaException.kt        │./utilities/EncodingUtils.kt
+│./CordaInternal.kt         │./utilities/Id.kt
+│./CordaOID.kt              │./utilities/KotlinUtils.kt
+│./DeleteForDJVM.kt         │./utilities/NetworkHostAndPort.kt
+│./DoNotImplement.kt        │./utilities/NonEmptySet.kt
+│./KeepForDJVM.kt           │./utilities/ProgressTracker.kt
+│./StubOutForDJVM.kt        │./utilities/Try.kt
+│./Utils.kt                 │./utilities/UntrustworthyData.kt
+└─────────────────────────  │./utilities/UuidGenerator.kt
+                            └──────────────────────────────────
+
+ ┌─────────────────────────────────┌─────────────────────────────────────────
+ │*IDENTITY*                       │*CRYPTOGRAPHY*
+ │./identity/AbstractParty.kt      │./crypto/CompositeKeyFactory.kt
+ │./identity/AnonymousParty.kt     │./crypto/CompositeKey.kt        ← Require Signature "Circuit"
+ │./identity/CordaX500Name.kt      │./crypto/CompositeSignature.kt  ← Set of signatures (input to CompositeKey "circuit"
+ │./identity/IdentityUtils.kt      │./crypto/CompositeSignaturesWithKeys.kt
+ │./identity/PartyAndCertificate.kt│./crypto/CordaSecurityProvider.kt
+ │./identity/Party.kt              │./crypto/Crypto.kt
+ └─────────────────────────────────│./crypto/CryptoUtils.kt
+ ┌─────────────────────────────────│./crypto/DigitalSignature.kt
+ │./schemas/CommonSchema.kt        │./crypto/MerkleTree.kt
+ │./schemas/PersistentTypes.kt     │./crypto/NullKeys.kt
+ └─────────────────────────────────│./crypto/PartialMerkleTree.kt
+ ┌─────────────────────────────────│./crypto/SecureHash.kt
+ │./concurrent/ConcurrencyUtils.kt │./crypto/SignableData.kt
+ │./concurrent/CordaFuture.kt      │./crypto/SignatureMetadata.kt
+ └─────────────────────────────────│./crypto/SignatureScheme.kt
+ ┌─────────────────────────────────│./crypto/SignedData.kt
+ │./context/InvocationContext.kt   │./crypto/TransactionSignature.kt
+ │./context/Trace.kt               │
+ └─────────────────────────────────│./crypto/internal/AliasPrivateKey.kt
+                                   │./crypto/internal/Instances.kt
+                                   │./crypto/internal/PlatformSecureRandom.kt
+                                   │./crypto/internal/ProviderMap.kt
+                                   └─────────────────────────────────────────
+
+
+
+┌──────────────────────────────────────────────  ┌─────────────────────────────────
+│NODE Components                                 │./messaging/ClientRpcSslOptions.kt
+│./node/AppServiceHub.kt                         │./messaging/CordaRPCOps.kt
+│./node/AutoAcceptable.kt                        │./messaging/FlowHandle.kt
+│./node/NetworkParameters.kt                     │./messaging/Messaging.kt
+│./node/NodeDiagnosticInfo.kt                    │./messaging/RPCOps.kt
+│./node/NodeInfo.kt                              │./messaging/RPCReturnsObservables.kt
+│./node/ServiceHub.kt                            └───────────────────────────────────
+│
+│./node/services/AttachmentStorage.kt
+│./node/services/ContractUpgradeService.kt       ┌───────────────────────────
+│./node/services/CordaService.kt                 │*CORDAPP INSTALLED IN NODE*
+│./node/services/IdentityService.kt              │
+│./node/services/KeyManagementService.kt         │./cordapp/ConfigException.kt
+│./node/services/NetworkMapCache.kt              │./cordapp/CordappConfig.kt
+│./node/services/NetworkParametersService.kt     │./cordapp/CordappContext.kt
+│./node/services/PartyInfo.kt                    │./cordapp/CordappInfo.kt
+│./node/services/TimeWindowChecker.kt            │./cordapp/Cordapp.kt
+│./node/services/TransactionStorage.kt           │./cordapp/CordappProvider.kt
+│./node/services/TransactionVerifierService.kt   └────────────────────────────
+│./node/services/vault/QueryCriteria.kt
+│./node/services/vault/QueryCriteriaUtils.kt
+│./node/services/VaultService.kt
+└──────────────────────────────────────────────
+
+
+┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+│ *CORDAPP COMPONENTS*
+│  ┌─────────────────────────────────────── ┌────────────────────────────────────────────  ┌──────────────────────────────────────────────
+│  │./flows/AbstractStateReplacementFlow.kt │./contracts/Amount.kt                         │ ./transactions/BaseTransaction.kt
+│  │./flows/CollectSignaturesFlow.kt        │./contracts/AttachmentConstraint.kt           │ ./transactions/BaseTransactions.kt
+│  │./flows/ContractUpgradeFlow.kt          │./contracts/Attachment.kt                     │ ./transactions/ContractUpgradeTransactions.kt
+│  │./flows/FinalityFlow.kt                 │./contracts/BelongsToContract.kt              │ ./transactions/LedgerTransaction.kt
+│  │./flows/FlowException.kt                │./contracts/ComponentGroupEnum.kt             │ ./transactions/MerkleTransaction.kt
+│  │./flows/FlowInitiator.kt                │./contracts/ContractAttachment.kt             │ ./transactions/MissingContractAttachments.kt
+│  │./flows/FlowLogic.kt                    │./contracts/ContractsDSL.kt                   │ ./transactions/NotaryChangeTransactions.kt
+│  │./flows/FlowLogicRef.kt                 │./contracts/ContractState.kt                  │ ./transactions/SignedTransaction.kt
+│  │./flows/FlowSession.kt                  │./contracts/FungibleAsset.kt                  │ ./transactions/TransactionBuilder.kt
+│  │./flows/FlowStackSnapshot.kt            │./contracts/FungibleState.kt                  │ ./transactions/TransactionWithSignatures.kt
+│  │./flows/InitiatedBy.kt                  │./contracts/StatePointer.kt                   │ ./transactions/WireTransaction.kt
+│  │./flows/InitiatingFlow.kt               │./contracts/Structures.kt                     └──────────────────────────────────────────────
+│  │./flows/NotaryChangeFlow.kt             │./contracts/TimeWindow.kt
+│  │./flows/NotaryError.kt                  │./contracts/TransactionState.kt
+│  │./flows/NotaryFlow.kt                   │./contracts/TransactionVerificationException.kt
+│  │./flows/NotaryWireFormat.kt             │./contracts/UniqueIdentifier.kt
+│  │./flows/ReceiveTransactionFlow.kt       └───────────────────────────────────────────────
+│  │./flows/SchedulableFlow.kt
+│  │./flows/SendTransactionFlow.kt
+│  │./flows/StartableByRPC.kt
+│  │./flows/StartableByService.kt
+│  │./flows/StateMachineRunId.kt
+│  │./flows/WithReferencedStatesFlow.kt
+│  └───────────────────────────────────────
+└─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+
+
+
+┌──────────────────────────────────────────────────────────
+│./serialization/ConstructorForDeserialization.kt
+│./serialization/CordaSerializationTransformEnumDefault.kt
+│./serialization/CordaSerializationTransformRename.kt
+│./serialization/DeprecatedConstructorForDeserialization.kt
+│./serialization/MissingAttachmentsException.kt
+│./serialization/SerializationAnnotations.kt
+│./serialization/SerializationAPI.kt
+│./serialization/SerializationCustomSerializer.kt
+│./serialization/SerializationToken.kt
+│./serialization/SerializationWhitelist.kt
+│
+│./serialization/internal/AttachmentsClassLoader.kt
+│./serialization/internal/CheckpointSerializationAPI.kt
+│./serialization/internal/SerializationEnvironment.kt
+└──────────────────────────────────────────────────────────
+┌────────────────────────────────────────────────
+│*INTERNALS PACKAGE*
+│./internal/AbstractAttachment.kt
+│./internal/AttachmentWithContext.kt
+│./internal/BackpressureAwareTimedFlow.kt
+│./internal/CertRole.kt
+│./internal/ClassGraphUtils.kt
+│./internal/ClassLoadingUtils.kt
+│./internal/concurrent/CordaFutureImpl.kt
+│./internal/ConstraintsUtils.kt
+│./internal/ContractUpgradeUtils.kt
+│./internal/CordaUtils.kt
+│./internal/DigitalSignatureWithCert.kt
+│./internal/DjvmUtils.kt
+│./internal/Emoji.kt
+│./internal/FetchDataFlow.kt
+│./internal/FlowAsyncOperation.kt
+│./internal/FlowIORequest.kt
+│./internal/FlowStateMachine.kt
+│./internal/IdempotentFlow.kt
+│./internal/InternalUtils.kt
+│./internal/JarSignatureCollector.kt
+│./internal/LazyPool.kt
+│./internal/LazyStickyPool.kt
+│./internal/LegalNameValidator.kt
+│./internal/LifeCycle.kt
+│./internal/PathUtils.kt
+│./internal/ProgressTracker.kt
+│./internal/ResolveTransactionsFlow.kt
+│./internal/NamedCache.kt
+│./internal/NetworkParametersServiceInternal.kt
+│./internal/NodeInfoConstants.kt
+│./internal/StatePointerSearch.kt
+│./internal/ThreadBox.kt
+│./internal/ToggleField.kt
+│./internal/TopologicalSort.kt
+│./internal/TransactionUtils.kt
+│./internal/TransactionVerifierServiceInternal.kt
+│./internal/WaitForStateConsumption.kt
+│./internal/X500Utils.kt
+│./internal/X509EdDSAEngine.kt
+│
+│./internal/notary/NotaryServiceFlow.kt
+│./internal/notary/NotaryService.kt
+│./internal/notary/NotaryUtils.kt
+│./internal/notary/SinglePartyNotaryService.kt
+│./internal/notary/UniquenessProvider.kt
+│
+│./internal/cordapp/CordappImpl.kt
+│./internal/cordapp/CordappResolver.kt
+│./internal/cordapp/ManifestUtils.kt
+│
+│./internal/errors/AddressBindingException.kt
+│
+│./internal/messaging/InternalCordaRPCOps.kt
+│
+│./internal/rules/TargetVersionDependentRules.kt
+└────────────────────────────────────────────────
+</pre>
+
+<div groupv>
+<pre zoom>
+<a xsmall href="https://github.com/corda/corda/tree/master/node/src/main/kotlin/net/corda/node">net.corda.node</a>
+┌────────────────────────  ┌────────────────────────────────────────────
+│./CordaClock.kt           │./migration/VaultStateMigration.kt
+│./Corda.kt                │./migration/MigrationNamedCacheFactory.kt
+│./SerialFilter.kt         │./migration/MigrationServicesForResolution.kt
+│./VersionInfo.kt          │./migration/CordaMigration.kt
+│./NodeCmdLineOptions.kt   └────────────────────────────────────────────
+│./JolokiaSlf4jAdapter.kt
+└────────────────────────
+┌────────────────────────────────────────────                     ┌────────────────────────────────────────────
+│./internal/DataSourceFactory.kt                                  │./utilities/CertificatesUtils.kt
+│./internal/CordaRPCOpsImpl.kt                                    │./utilities/PersistentMap.kt
+│./internal/Node.kt                                               │./utilities/NamedThreadFactory.kt
+│./internal/FlowManager.kt                                        │./utilities/InfrequentlyMutatedCache.kt
+│./internal/AbstractNode.kt                                       │./utilities/logging/AsyncLoggerContext....kt
+│./internal/InitiatedFlowFactory.kt                               │./utilities/AppendOnlyPersistentMap.kt
+│./internal/SwapIdentitiesHandler.kt                              │./utilities/NotaryLoader.kt
+│./internal/rpc/proxies/ThreadContextAdjustingRpcOpsProxy.kt      │./utilities/errorAndTerminate.kt
+│./internal/rpc/proxies/ExceptionMaskingRpcOpsProxy.kt            │./utilities/DemoClock.kt
+│./internal/rpc/proxies/AuthenticatedRpcOpsProxy.kt               │./utilities/AffinityExecutor.kt
+│./internal/rpc/proxies/ExceptionSerialisingRpcOpsProxy.kt        │./utilities/JVMAgentRegistry.kt
+│./internal/InvocationHandlerTemplate.kt                          │./utilities/NonInvalidatingUnboundCache.kt
+│./internal/NetworkParametersReader.kt                            │./utilities/NodeBuildProperties.kt
+│./internal/NodeStartup.kt                                        │./utilities/ObjectDiffer.kt
+│./internal/schemas/NodeInfoSchema.kt                             │./utilities/NonInvalidatingCache.kt
+│./internal/ServicesForResolutionImpl.kt                          │./utilities/registration/HTTPNetworkRegi..Service.kt
+│./internal/NodeUniqueIdProvider.kt                               │./utilities/registration/NetworkRegistrationService.kt
+│./internal/artemis/SecureArtemisConfiguration.kt                 │./utilities/registration/NetworkRegistrationHelper.kt
+│./internal/artemis/BrokerJaasLoginModule.kt                      │./utilities/NodeNamedCache.kt
+│./internal/artemis/CertificateChainCheckPolicy.kt                │./utilities/AddressUtils.kt
+│./internal/artemis/ArtemisBroker.kt                              │./utilities/StateMachineManagerUtils.kt
+│./internal/artemis/ReactiveArtemisConsumer.kt                    │./utilities/TimedFlowUtils.kt
+│./internal/LifecycleSupport.kt                                   └────────────────────────────────────────────
+│./internal/cordapp/CordappProviderImpl.kt
+│./internal/cordapp/JarScanningCordappLoader.kt
+│./internal/cordapp/CordappConfigProvider.kt                      ┌────────────────────────────────────────────
+│./internal/cordapp/CordappConfigFileProvider.kt                  │./serialization/amqp/RpcServerObservableSerializer.kt
+│./internal/cordapp/TypesafeCordappConfig.kt                      │./serialization/amqp/AMQPServerSerializationScheme.kt
+│./internal/cordapp/CordappProviderInternal.kt                    │./serialization/amqp/RpcServerCordaFutureSerialiser.kt
+│./internal/cordapp/VirtualCordapps.kt                            │./serialization/kryo/KryoCheckpointSerializer.kt
+│./internal/subcommands/GenerateRpcSslCertsCli.kt                 │./serialization/kryo/DefaultKryoCustomizer.kt
+│./internal/subcommands/ValidateConfigurationCli.kt               │./serialization/kryo/CordaClosureSerializer.kt
+│./internal/subcommands/InitialRegistrationCli.kt                 │./serialization/kryo/Kryo.kt
+│./internal/subcommands/ClearNetworkCacheCli.kt                   │./serialization/kryo/CordaClassResolver.kt
+│./internal/subcommands/GenerateNodeInfoCli.kt                    │./serialization/kryo/SerializeAsTokenSerializer.kt
+│./internal/DBNetworkParametersStorage.kt                         │./serialization/kryo/KryoStreams.kt
+│./internal/CheckpointVerifier.kt                                 └────────────────────────────────────────────
+│./internal/classloading/Utils.kt
+│./internal/DbExceptionHandler.kt
+│./internal/security/RPCSecurityManager.kt
+│./internal/security/RPCSecurityManagerWithAdditionalUser.kt
+│./internal/security/AuthorizingSubject.kt
+│./internal/security/Password.kt
+│./internal/security/RPCSecurityManagerImpl.kt
+└────────────────────────────────────────────
+</pre>
+
+<pre zoom>
+<a xsmall href="https://github.com/corda/corda/tree/master/node/src/main/kotlin/net/corda/node/services">net.corda.node.services</a>
+┌───────────────────────────────────────────────  ┌───────────────────────────────────────────────
+│./services/Permissions.kt                        │./services/rpc/RPCServer.kt
+│./services/CoreFlowHandlers.kt                   │./services/rpc/CheckpointDumper.kt
+└───────────────────────────────────────────────  │./services/rpc/RpcBrokerConfiguration.kt
+┌───────────────────────────────────────────────  │./services/rpc/RpcAuthContext.kt
+│./services/network/NetworkMapClient.kt           │./services/rpc/InternalRPCMessagingClient.kt
+│./services/network/NodeInfoWatcher.kt            │./services/rpc/RolesAdderOnLogin.kt
+│./services/network/PersistentNetworkMapCache.kt  │./services/rpc/ObservableContextInterface.kt
+│./services/network/NetworkMapUpdater.kt          │./services/rpc/ArtemisRpcBroker.kt
+└───────────────────────────────────────────────  └───────────────────────────────────────────────
+┌───────────────────────────────────────────────  ┌───────────────────────────────────────────────
+│./services/schema/NodeSchemaService.kt           │./services/api/NodePropertiesStore.kt
+│./services/schema/PersistentStateService.kt      │./services/api/CheckpointStorage.kt
+└───────────────────────────────────────────────  │./services/api/IdentityServiceInternal.kt
+┌───────────────────────────────────────────────  │./services/api/SchedulerService.kt
+│./services/identity/PersistentIdentityService.kt │./services/api/ServiceHubInternal.kt
+│./services/identity/InMemoryIdentityService.kt   │./services/api/MonitoringService.kt
+└───────────────────────────────────────────────  │./services/api/AuditService.kt
+┌───────────────────────────────────────────────  │./services/api/SchemaService.kt
+│./services/logging/ContextualLoggingUtils.kt     │./services/api/VaultServiceInternal.kt
+└───────────────────────────────────────────────  └───────────────────────────────────────────────
+┌───────────────────────────────────────────────     ┌───────────────────────────────────────────────
+│./services/upgrade/ContractUpgradeServiceImpl.kt    │./services/persistence/NodeAttachmentService.kt
+└───────────────────────────────────────────────     │./services/persistence/NodePropertiesPersistentStore.kt
+┌───────────────────────────────────────────────     │./services/persistence/DBCheckpointStorage.kt
+│./services/vault/HibernateQueryCriteriaParser.kt    │./services/persistence/DBTransactionMappingStorage.kt
+│./services/vault/NodeVaultService.kt                │./services/persistence/AbstractPartyDescriptor.kt
+│./services/vault/VaultSchema.kt                     │./services/persistence/AbstractPartyToX500NameAsStringConverter.kt
+└───────────────────────────────────────────────     │./services/persistence/AttachmentStorageInternal.kt
+┌───────────────────────────────────────────────     │./services/persistence/PublicKeyToTextConverter.kt
+│./services/transactions/ValidatingNotaryService.kt  │./services/persistence/DBTransactionStorage.kt
+│./services/transactions/PathManager.kt              └───────────────────────────────────────────────
+│./services/transactions/ValidatingNotaryFlow.kt
+│./services/transactions/InMemoryTransactionVerifierService.kt ┌───────────────────────────────────────────────
+│./services/transactions/PersistentUniquenessProvider.kt       │./services/events/PersistentScheduledFlowRepository.kt
+│./services/transactions/SimpleNotaryService.kt                │./services/events/ScheduledActivityObserver.kt
+│./services/transactions/NonValidatingNotaryFlow.kt            │./services/events/NodeSchedulerService.kt
+└───────────────────────────────────────────────               └───────────────────────────────────────────────
+
+┌───────────────────────────────────────────────    ┌───────────────────────────────────────────────
+│./services/messaging/P2PMessagingClient.kt         │./services/config/schema/parsers/StandardConfigValueParsers.kt
+│./services/messaging/Messaging.kt                  │./services/config/schema/v1/ConfigSections.kt
+│./services/messaging/MessagingExecutor.kt          │./services/config/schema/v1/V1NodeConfigurationSpec.kt
+│./services/messaging/P2PMessageDeduplicator.kt     │./services/config/shell/ShellConfig.kt
+│./services/messaging/ArtemisMessagingServer.kt     │./services/config/rpc/NodeRpcOptions.kt
+└───────────────────────────────────────────────    │./services/config/ConfigUtilities.kt
+┌───────────────────────────────────────────────    │./services/config/NodeConfigurationImpl.kt
+│./services/keys/KeyManagementServiceInternal.kt    │./services/config/NodeConfiguration.kt
+│./services/keys/E2ETestKeyManagementService.kt     └───────────────────────────────────────────────
+│./services/keys/PersistentKeyManagementService.kt
+│./services/keys/KMSUtils.kt
+│./services/keys/BasicHSMKeyManagementService.kt
+└───────────────────────────────────────────────
+</pre>
+
+<pre zoom>
+<a xsmall href="https://github.com/corda/corda/tree/master/node/src/main/kotlin/net/corda/node/services.statemachine">net.corda.node.services.statemachine</a>
+┌─────────────────────────────────────────────────────────────   ┌───────────────────────────────────────────────────────────────────────────────
+│./services/statemachine/FlowMessaging.kt                        │./services/statemachine/interceptors/TransitionDiagnosticRecord.kt
+│./services/statemachine/FlowSessionImpl.kt                      │./services/statemachine/interceptors/MetricInterceptor.kt
+│./services/statemachine/FlowStateMachineImpl.kt                 │./services/statemachine/interceptors/DumpHistoryOnErrorInterceptor.kt
+│./services/statemachine/DeduplicationId.kt                      │./services/statemachine/interceptors/FiberDeserializationCheckingInterceptor.kt
+│./services/statemachine/StateMachineState.kt                    │./services/statemachine/interceptors/HospitalisingInterceptor.kt
+│./services/statemachine/FlowStackSnapshotFactory.kt             │./services/statemachine/interceptors/PrintingInterceptor.kt
+│./services/statemachine/TransitionExecutorImpl.kt               └───────────────────────────────────────────────────────────────────────────────
+│./services/statemachine/FlowFiber.kt
+│./services/statemachine/SingleThreadedStateMachineManager.kt    ┌──────────────────────────────────────────────────────────────────────
+│./services/statemachine/TransitionExecutor.kt                   │./services/statemachine/transitions/Transition.kt
+│./services/statemachine/Event.kt                                │./services/statemachine/transitions/DeliverSessionMessageTransition.kt
+│./services/statemachine/FiberUtils.kt                           │./services/statemachine/transitions/DoRemainingWorkTransition.kt
+│./services/statemachine/SessionRejectException.kt               │./services/statemachine/transitions/ErrorFlowTransition.kt
+│./services/statemachine/FlowTimeoutException.kt                 │./services/statemachine/transitions/TransitionResult.kt
+│./services/statemachine/ActionExecutor.kt                       │./services/statemachine/transitions/TopLevelTransition.kt
+│./services/statemachine/FlowMonitor.kt                          │./services/statemachine/transitions/StartedFlowTransition.kt
+│./services/statemachine/FlowLogicRefFactoryImpl.kt              │./services/statemachine/transitions/StateMachine.kt
+│./services/statemachine/CountUpDownLatch.kt                     │./services/statemachine/transitions/TransitionBuilder.kt
+│./services/statemachine/ActionExecutorImpl.kt                   │./services/statemachine/transitions/UnstartedFlowTransition.kt
+│./services/statemachine/StateMachineManager.kt                  └──────────────────────────────────────────────────────────────────────
+│./services/statemachine/SubFlow.kt
+│./services/statemachine/Action.kt
+│./services/statemachine/SessionMessage.kt
+│./services/statemachine/StaffedFlowHospital.kt
+└─────────────────────────────────────────────────────────────
+</pre>
+</div>
+</div>
+<div group>
+<pre title>
+   DevOps
+</pre>
+<div group>
+<pre zoom labels="permissioning,identity">
+UUID: 0ba845f3-579d-491c-b580-9f9803808117
+<span xsmall>(X.509)IDENTITIES</span>
+https://docs.corda.net/key-concepts-identity.html
+- Identities can represent node/legal/service identities
+- Signed by the Doorman or a well known identity
+- Well known identities are published in the network map
+- Confidential identities are only shared on a need to know basis
+
+-*Confidential identities* are only *shared on a need to know basis*:
+  Although there are several elements to the Corda transaction
+  privacy model, including ensuring that transactions are only
+  shared with those who need to see them, and planned use of
+  Intel SGX TEE, it is important to provide defense in depth
+  against privacy breaches.
+  Confidential identities are used to ensure that even if a
+  third party gets access to an unencrypted transaction, they
+  cannot identify the participants without additional information.
+
+
+<span xsmall>PERMISSIONING</span>
 -@[https://docs.corda.net/permissioning.html]
 This certificate maps a well-known node identity to:
 A real-world legal identity
@@ -1029,10 +1787,64 @@ The network operator enforces rules regarding the information that nodes must pr
 │ aware of these, only if PKI is managed by external tools        │
 └─────────────────────────────────────────────────────────────────┘
 </pre>
-</td>
-<td>
+
+<pre zoom labels="devops" >
+<span xsmall>Network map</span>
+<span xsmall>Service</span>
+@[https://docs.corda.net/network-map.html]
+- network map == *collection of signed-by-node NodeInfo (hashed?) objects (reachable nodes)*
+                + parameters file with settings that all nodes need to agree on to remain in sync
+
+- A node can receive NodeInfo objects from:
+  - A network map server (HTTP protocol - Corda 4.0+)
+  - .../additional-node-infos directory @ local noe
+
+ _   _ _____ _______        _____  ____  _  __
+| \ | | ____|_   _\ \      / / _ \|  _ \| |/ /
+|  \| |  _|   | |  \ \ /\ / / | | | |_) | ' /
+| |\  | |___  | |   \ V  V /| |_| |  _ <| . \
+|_| \_|_____| |_|    \_/\_/  \___/|_| \_\_|\_\
+
+ ____   _    ____      _    __  __ _____ _____ _____ ____  ____
+|  _ \ / \  |  _ \    / \  |  \/  | ____|_   _| ____|  _ \/ ___|
+| |_) / _ \ | |_) |  / _ \ | |\/| |  _|   | | |  _| | |_) \___ \
+|  __/ ___ \|  _ |  / ___ \| |  | | |___  | | | |___|  _ | ___) |
+|_| /_/   \_\_| \_\/_/   \_\_|  |_|_____| |_| |_____|_| \_\____/
+
+notaries              :
+maxMessageSize        : (in bytes) of an individual message sent over the wire.
+                        - attachments may be fragmented for streaming transfer,
+                        - however, an individual transaction or flow message may
+                          not be larger than this value.
+maxTransactionSize    :(in bytes) for the TX object and its attachments.
+modifiedTime          :   time when network parameters were last modified
+                          by the compatibility zone operator.
+epoch                 : Version number of the network parameters.
+                        Starting from 1, increment whenever any parameter change.
+minimumPlatformVersion:
+whitelistedContractImplementations:
+                        whitelisted versions of contract code.
+                        For each contract-class there is a list of SHA-256-hashes
+                        of the approved CorDapp jar versions containing that contract.
+                        Read more about Zone constraints here API: Contract Constraints
+eventHorizon          :- Time after which nodes are considered to be unresponsive
+                         and removed from network map.
+                       - Nodes republish their NodeInfo on a regular interval.
+                         Network map treats that as a heartbeat from the node.
+packageOwnership      :-  network-wide java package list that were
+                          successfully claimed (signed) by their owners.
+                       -  An owned contract in a JAR that is not
+                          signed by the rightful owner is most likely
+                          a sign of malicious behaviour:
+                          - The transaction verification logic will throw
+                            an exception when this happens.
+
+Read more about Package ownership here
+Package namespace ownership.
+</pre>
+</div>
 <pre zoom >
-<span small>Setting Up</span>
+<span xsmall>Setting Up</span>
 Getting Set Up:@[https://docs.corda.net/getting-set-up.html]
 
 *CordApp Example*
@@ -1046,32 +1858,26 @@ $ ./kotlin-source/build/nodes/runnodes.sh
   started up and registered in XX.XX sec")
 - Test front end at @[http://localhost:10007/web/example/]
 </pre>
-</td>
-<td>
+
 <pre zoom>
-<span small>Docker Image</span>
+<span xsmall>Docker Image</span>
 - @[https://github.com/corda/corda/tree/master/docker]
 *Summary*
 docker run -d --name corda-test-${SALT} --network=host --hostname=127.0.0.1 \
-        -e MY_LEGAL_NAME="O=Test-${SALT},L=Berlin,C=DE"     \
-        -e MY_PUBLIC_ADDRESS="localhost"       \
-        -e NETWORKMAP_URL="http://localhost:8080"    \
-        -e DOORMAN_URL="http://localhost:8080"      \
-        -e NETWORK_TRUST_PASSWORD="trustpass"       \
-        -e MY_EMAIL_ADDRESS="cordauser@r3.com"      \
-        -v $(pwd)/network-root-truststore.jks:/opt/corda/certificates/network-root-truststore.jks \
-        -e CORDA_ARGS="--log-to-console --no-local-shell" \
-        corda/corda-corretto-4.0 config-generator --generic
-
-
+  -e MY_LEGAL_NAME="O=Test-${SALT},L=Berlin,C=DE" \
+  -e MY_PUBLIC_ADDRESS="localhost"                \
+  -e NETWORKMAP_URL="http://localhost:8080"       \
+  -e DOORMAN_URL="http://localhost:8080"          \
+  -e NETWORK_TRUST_PASSWORD="trustpass"           \
+  -e MY_EMAIL_ADDRESS="cordauser@r3.com"          \
+  -v $(pwd)/network-root-truststore.jks:/opt/corda/certificates/network-root-truststore.jks \
+  -e CORDA_ARGS="--log-to-console --no-local-shell" \
+  corda/corda-corretto-4.0 config-generator --generic
 </pre>
 
-
-</td>
-<td>
 <pre zoom>
-<span small>NODE PRE-SETUP</span>
-<span small>(TLS Setup)</span>
+<span xsmall>NODE PRE-SETUP</span>
+<span xsmall>(TLS Setup)</span>
 node    → node   :   generates key pair
                    + certificate signing request
 node    → doorman: Certificate signing request
@@ -1094,28 +1900,214 @@ node    → ??? : establish TLS session using certificate
        Signing-certificate to create both
        well-known and confidential identities.
 </pre>
-</td>
+</div>
 
-</tr>
-</table>
-</body>
-<!--
-TODO: Identity Services
+<div groupv>
+<pre title>
+    Releases
+</pre>
+<pre zoom>
+<span xsmall>Ext.Links</span>
+  @[https://docs.corda.net/release-notes.html] Release notes
+  @[https://docs.corda.net/changelog.html]     Changelog
+  @[https://docs.corda.net/codestyle.html]     Code style guide
+  @[https://docs.corda.net/testing.html]       Testing Corda
+Training:
+  @[https://github.com/corda/corda-training-materials]
+</pre>
+<pre zoom>
+<span xsmall>4.0/4.1</span>
+@[https://docs.corda.r3.com/releases/4.0/release-notes.html]
+@[https://docs.corda.net/release-notes.html#corda-4-1]
+- 150 Issues Fixed
 
-TODO: RPC HowTo {
-   Example VaultQueryBy by RPC: (https://docs.corda.net/api-vault-query.html)
+- minimum JDK: 8u171 (fixes certain ZIP compression bugs)
+- Kotlin: 1.2.71
+- Gradle: 4.10.1
 
-   @RPCReturnsObservables
-   fun <T : ContractState> vaultQueryBy(
-       criteria: QueryCriteria, paging: PageSpecification, sorting: Sort, contractType: Class<out T>): Vault.Page<T>
+- Work on wire and API stability
+- Corda 3 States/apps transparently usable
+UPDATE:
+  - Upgrading Apps:@[https://docs.corda.net/app-upgrade-notes.html]
+  - Upgrading node:@[https://docs.corda.net/node-upgrade-notes.html]
+    - WARN:*data model improvements are changes to the consensus rules*
+      To use apps that benefit from them, all nodes in a compatibility zone
+      must be upgraded and the zone must be enforcing that upgrade.
 
-   @RPCReturnsObservables
-   fun <T : ContractState> vaultTrackBy(
-       criteria: QueryCriteria, paging: PageSpecification, sorting: Sort,
-       contractType: Class<out T>): DataFeed<Vault.Page<T>, Vault.Update>
-}
+Changes for developers in Corda 4
+_ reference input states
+- CorDapps-Signature-constraints
+- State pointers
+- New GUI network builder tool
+  - build Docker images for local deployment
+  - remotely control Microsoft Azure to
+    create a test network in the cloud.
+- JPA access in flows and services
+  - Previously only jdbcConnection API was offered
+    on FlowLogic.
+- Security upgrades
+  - Sealed JARs ensures JARs cannot define classes
+    in each other's packages, thus ensuring Java's
+     package-private visibility feature works.
+  - The Gradle plugins now seal your JARs by default.
+- BelongsToContract annotation:
+  CorDapps are currently expected to verify that
+  the right contract is named in each state object.
+ *This manual step is easy to miss*, which would make
+  the app less secure in a network where you trade
+  with potentially malicious counterparties.
+  The platform now handles this for you by allowing
+  you to annotate states with which contract governs them.
+  - If states are inner classes of a contract class,
+    this association is automatic.
+- Two-sided FinalityFlow and SwapIdentitiesFlow.
+  - FinalityFlow SwapIdentitiesFlow in API Corda ˂4.0
+    was insecure because nodes
+    would accept any finalised TX,
+    outside of the context of a containing flow.
+    - This would allow TXs to be sent to a
+      node bypassing things like business network
+      membership checks.
+- Package namespace ownership:
+  - Corda 4 allows app developers to register their
+    keys and Java package namespaces with the zone operator.
+  - Any JAR that defines classes in these namespaces will
+    have to be signed by those keys.
+  - opt-in feature: designed to eliminate potential confusion
+    that could arise if a malicious developer created classes
+    in other people's package namespaces
+- Network parameters in TXs
+  - TX now have the *currently valid signed NetworkParameters file*
+    attached to each TX.
+    - allows future introspection of states to ascertain
+      what was the accepted global state of the network
+      at the time they were notarised.
+    - new signatures must be working with the current globally
+      accepted parameters. The notary signing a TX will check
+      that it does indeed reference the current in-force network
+      parameters, meaning that old (and superseded) network
+      parameters can not be used to create new TXs.
+- RPC upgrades:
+  - AMQP/1.0 is now default serialization framework across all of Corda
+    (checkpointing aside) replacing older Kryo implementation.
+  - Class synthesis:
+    - RPC framework supports the "class carpenter" feature.
+      Clients can now freely download and deserialise objects,
+      (contract states,...) without having the class files
+      in the local CLASSPATH. They will be synthesised on the fly.
+      (Used, for example, by the Blob Inspector tool)
+  - SSL.
+
+- Preview of deterministic Deterministic JVM
+  - Out of the box a standard JVM is not fully deterministic
+- Configurable flow responders
+  - It is possible for flows in one app to subclass and
+    take over flows from another allowing to *create shared flow logic*
+    Ex:
+    - a site-specific app could be developed that causes TX
+      details to be converted to a PDF and sent to a particular printer.
+      inappropriate to put into shared business logic, but suitable to
+      put into a user-specific app developed themselves.
+- Target/minimum platform versions in dApp spec
+  - added to JAR manifest.
+  - target version: which version of the platform the app was tested against.
+    "" We recommend that maintained applications always try and target
+       the latest version of the platform"""
+    - *Setting a target version does not imply your app requires a node  *
+      *of that version, merely that it's been tested against that version*
+      *and can handle any opt-in changes.                                *
+  - minimum version: if running node is too old, the app won't be loaded.
+    - Developers can set it when  starting to use new features and APIs.
+
+DevOps
+ - Official Docker images based on Ubuntu and*uses the Azul Zulu spin of Java 8*
+   (Other tools will follow)
+ - Auto-acceptance for network parameters updates
+ - Automatic error codes
+  *Errors generated in Corda are now hashed to produce a *
+  *unique error code that can be used to perform a lookup into a knowledge base.*
+   Ex:
+   [ERROR] 2018-12-19T17:18:39,199Z ... [errorCode=*wuxa6f*, moreInformationAt=https://errors.corda.net/OS/4.0/*wuxa6f*]
+ - new command line handling framework.
+   - Improved, coloured help output.
+   -*Common options have been standardised*
+   - bash/zsh auto completion files.
+
+ - Liquibase for database schema upgrades on node bootstrap.
+
+ - Ability to pre-validate configuration files
+   No need to start the rest of the node.
+   $ java -jar corda-4.0.jar validate-configuration
+ - backpressure flow-control for notaries
+   - Nodes will be ordered to back off if a notary is getting too busy
+     and app flows will pause to give time for the load spike to pass.
+ - Retirement of non-elliptic Diffie-Hellman for TLS
+   TLS_DHE_RSA_WITH_AES_128_GCM_SHA256 family of ciphers is retired
 
 
+See also:
+- What's new with Corda Enterprise 4:
+ https://www.r3.com/wp-content/uploads/2019/05/CordaEnterprise4_Enhancements_FS.pdf
+
+  https://docs.corda.net/app-upgrade-notes.html
+
+</pre>
+<pre zoom>
+<span xsmall>3.0</span>
+</pre>
+</div>
+
+<div group>
+<pre title>
+  TODO
+</pre>
+
+
+
+
+<pre zoom>
+<span xsmall>State pointers</span>
+- Corda 4.0+
+- formalize a recommended design pattern in which
+ *states may refer to other states on the ledger by StateRef*
+  (a pair of TX hash and output index that is sufficient to
+   locate any information on the global ledger).
+- They work together with the reference states feature to
+  make it easy for data to point to the latest version of
+  any other piece of data, with the right version being
+  automatically incorporated into transactions for you.
+</pre>
+
+
+<pre zoom labels="cloud,gui,tool">
+<span xsmall>Network</span>
+<span xsmall>Builder</span>
+- 4.0+
+- GUI network builder tool
+  - build Docker images for local deployment
+  - remotely control Microsoft Azure to
+    create a test network in the cloud.
+</pre>
+
+<pre zoom>
+<span xsmall>DDBB table nomenclature</span>
+- node_ prefixed tables are private to Corda
+  and should not be directly accessed at all.
+- contract_ prefixed tables are generated by apps
+  and designed to be queried by end users, GUIs, tools etc.
+</pre>
+
+<pre zoom>
+<span xsmall>Deterministic JVM</span>
+@[https://docs.corda.net/key-concepts-djvm.html]
+- Preview in 4.0
+</pre>
+</div>
+
+<div group>
+<pre zoom>
+<span xsmall>Financial</span>
+<span xsmall>Models</span>
 - https://docs.corda.net/financial-model.html
   Corda provides a large standard library of data types used in
   financial applications and contract state objects.
@@ -1125,53 +2117,235 @@ TODO: RPC HowTo {
 
 - Interest rate swaps contract: https://docs.corda.net/contract-irs.html
 
-- Node detailed
-  NODE
-┌──────────────────┐
-│TLS       Corda ┬─┼── Net iface interacting
-│cert      RPCOps│ │   with "other nodes" in
-│                │ │   a running flow
-│                │ │
-│                └─┼── RPC node owner
-│ ┌────────────┐   │                 User-defined CordApp
-│ │ServiceHub  ┼───┼──────────┬──────────────────────────────────────────┐
-│ └────────────┘   │          │┌─────────┬──────────┬─────────┐ ┌───────┐│
-│ ┌────────────────┤          ││Services │ Contracts│  States │ │Default││
-│ │Messaging   ────┼─── Other │├─────────┼──────────┼─────────┤ │Flows  ││
-│ ├────────────────┤    Nodes ││Web APIs │ Whitelist│  Flows  │ └───────┘│
-│ │Notary?         │          │└─────────┴──────────┴─────────┘          │
-│ ├────────────────┤          └──────────────────────────────────────────┘
-│ │Network Map?    │
-│ ├────────────────┤
-│ │Key Management  │
-│ ├────────────────┤
-│ │Flow SMM        │
-│ ├────────────────┤
-│ │PLUGIN REGISTRY │←CorDapps extending node functionality
-│ ├────────────────┤
-│ │    VAULT       │←stores relevant current/historic states sequences
-│ ├────────────────┤
-│ │ STORAGE SRV    │←stores [TXs, attachments, flow checkpoints]
-└─┴────────────────┘
-_______________________________________________
-<a href="https://towardsdatascience.com/the-difference-between-blockchains-distributed-ledger-technology-42715a0fa92">
-  The Difference Between Blockchains &amp; Distributed Ledger Technology</a>
+</pre>
 
-<a href="https://media.consensys.net/blockchain-vs-distributed-ledger-technologies-1e0289a87b16">
-  Blockchain vs. Distributed Ledger Technologies</a>
+<pre zoom>
+<span xsmall>API Contract</span>
+<span xsmall>constraints</span>
+@[https://docs.corda.net/api-contract-constraints.html]
+Reasons for Contract Constraints
 
-<a href="http://www.r3cev.com/blog/2017/2/24/when-is-a-blockchain-not-a-blockchain">When is a Blockchain not a Blockchain</a>
+Contract constraints solve two problems faced by any decentralised ledger that supports evolution of data and code:
+- Controlling and agreeing upon upgrades
+- Preventing attacks
 
-<a href="https://www.linkedin.com/pulse/thoughts-taxonomy-blockchains-distributed-ledger-colin-platt/">Thoughts on the taxonomy of blockchains &amp; distributed ledger technologies</a>
+ Upgrades and security are intimately related because if an attacker can “
+upgrade” your data to a version of an app that gives them a back door, they 
+would be able to do things like print money or edit states in any way they 
+want. That’s why it’s important for participants of a state to agree on what 
+kind of upgrades will be allowed.
 
-<a href="https://www.cointelligence.com/content/when-do-you-need-blockchain/">When do you need Blockchain</a>
+Every state on the ledger contains the fully qualified class name of a 
+Contract implementation, and also a constraint. This constraint specifies 
+which versions of an application can be used to provide the named class, when 
+the transaction is built. New versions released after a transaction is signed 
+and finalised won’t affect prior transactions because the old code is attached to it.
 
-<a href="https://hackernoon.com/blockchains-versus-traditional-databases-c1a728159f79">Blockchain versus Traditional Databases</a>
+*Implicit vs Explicit Contract upgrades*
+Constraints are not the only way to manage upgrades to transactions.
+There are two ways of handling upgrades to a smart contract in Corda:
+- Implicit: By pre-authorising multiple implementations of the contract ahead 
+            of time, using constraints.
+- Explicit: By creating a special contract upgrade transaction and getting 
+            all participants of a state to sign it using the contract upgrade flows.
 
-<a href="https://www.coindesk.com/information/what-is-the-difference-blockchain-and-database/">What is the Difference Between a Blockchain and a Database?</a>
+Corda supports several types of constraints to cover a wide set of client requirements:
+- Hash constraint: 
+- Compatibility zone whitelisted (or CZ whitelisted) constraint: 
+- Signature constraint: allows app issuers to express the complex social
+                        and business relationships that arise around code ownership.
+- Always accept constraint: insecure but convenient for testing.
+(See official doc for more info)
+</pre>
 
-<a href="https://hbr.org/2017/01/the-truth-about-blockchain">The Truth About Blockchain</a>
--->
+<pre zoom>
+<span xsmall>CorDapps</span>
+<span xsmall>Signature</span>
+<span xsmall>constraints</span>
+- Corda 4.0+
+- CorDapps built by the corda-gradle-plugins are now signed
+  and sealed JAR files by default.
+- signing can be configured or disabled with the default
+  Corda-development-certificate.
+- When an app is signed, that automatically activates the use
+  of signature constraints:
+  - allow states to express what contract logic governs
+    them socially, as in
+   *"any contract JAR signed by a threshold of these N keys is suitable"*,
+    rather than just by hash or via zone whitelist rules (Corda ˂4.0)
+</pre>
 
+<pre zoom TODO >
+<span xsmall>ClientRPC-API</span>
+@[https://docs.corda.net/tutorial-clientrpc-api.html]
+</pre>
+
+
+</div>
+
+<div group>
+<pre zoom TODO>
+<span xsmall>Corda Network</span>
+@[https://corda.network/]
+- Live Version 2018-12
+- publicly-available internet of Corda nodes
+  operated by network participants.
+- Corda Network enables interoperability
+  not possible with separate, isolated Corda networks,
+  allowing participants to move cash, digital assets,
+  and identity data from one application or business-line
+  to another.
+
+- Business network operators also benefit by being able
+  to access network-wide services, and reuse the
+  trust root and network services, instead of building and
+  managing their own.
+
+-*A common trust root surrounds all TXs,*
+  and*a consistent set of network parameters*
+  ensures all participants may transact with each other.
+- Governed by an independent, not-for-profit foundation.
+- Spring 2019: transitional board of participants elected
+- until democratic elections are held a year later.
+- supports many sub-groups of participants running
+  particular CorDapps (knowns as "business networks"),
+  - Each sub-groups will often have a co-ordinating party
+    (the 'business network operator') who manages the
+    distribution of the app and rules, including membership,
+    for its use.
+
+*Key services*
+- Identity Service
+  - Controls admissions of participants into Corda Network.
+  - The service receives certificate signing requests (CSRs)
+    from prospective network participants, reviews and
+    validates/rejects the CSRs.
+  - Once a valid X509 node cert. is received the node will
+    be able to register itself with the Network Map Service.
+
+*Network Map Service*
+- accepts:
+  - digitally signed documents describing
+    - network routing
+    - information from nodes
+- makes its info. available to all Corda Network nodes.
+
+*Notary Service*
+-  and the latter is provided by*one or more*Notary Services.
+
+- Business network operators and network participants may choose to enter
+  into legal agreements which rely on the presence of such digital signatures
+  when determining whether a transaction to which they are party, or upon the
+  details of which they otherwise rely, is to be treated as 'confirmed' in
+  accordance with the terms of the underlying agreement.
+
+*Support Service is also provided*
+</pre>
+
+
+</div>
+
+<pre zoom TODO>
+<span xsmall>Package</span>
+<span xsmall>namespace</span>
+<span xsmall>Ownership (4.0+)</span>
+https://docs.corda.net/design/data-model-upgrades/package-namespace-ownership.html
+</pre>
+
+
+<pre zoom TODO >
+<span xsmall>Node Services</span>
+@[https://docs.corda.net/node-services.html]
+
+
+Extracted from @[https://docs.corda.net/api-persistence.html]
+The following example illustrates the creation of a custom Corda service using a jdbcSession:
+object CustomVaultQuery {
+    @CordaService
+    class Service(val services: AppServiceHub) : SingletonSerializeAsToken() {
+        private companion object {
+            private val log = contextLogger()
+        }
+
+        fun rebalanceCurrencyReserves(): List˂Amount˂Currency˃˃ {
+            val nativeQuery = """
+                select
+                    cashschema.ccy_code,
+                    sum(cashschema.pennies)
+                from
+                    vault_states vaultschema
+                join
+                    contract_cash_states cashschema
+                where
+                    vaultschema.output_index=cashschema.output_index
+                    and vaultschema.transaction_id=cashschema.transaction_id
+                    and vaultschema.state_status=0
+                group by
+                    cashschema.ccy_code
+                order by
+                    sum(cashschema.pennies) desc
+            """
+            log.info("SQL to execute: $nativeQuery")
+            val session = services.jdbcSession()
+            return session.prepareStatement(nativeQuery).use { prepStatement -˃
+                prepStatement.executeQuery().use { rs -˃
+                    val topUpLimits: MutableList˂Amount˂Currency˃˃ = mutableListOf()
+                    while (rs.next()) {
+                        val currencyStr = rs.getString(1)
+                        val amount = rs.getLong(2)
+                        log.info("$currencyStr : $amount")
+                        topUpLimits.add(Amount(amount, Currency.getInstance(currencyStr)))
+                    }
+                    topUpLimits
+                }
+            }
+        }
+    }
+}
+
+which is then referenced within a custom flow:
+
+        @Suspendable
+        @Throws(CashException::class)
+        override fun call(): List˂SignedTransaction˃ {
+            progressTracker.currentStep = AWAITING_REQUEST
+            val topupRequest = otherPartySession.receive˂TopupRequest˃().unwrap {
+                it
+            }
+
+            val customVaultQueryService = serviceHub.cordaService(CustomVaultQuery.Service::class.java)
+            val reserveLimits = customVaultQueryService.rebalanceCurrencyReserves()
+
+            val txns: List˂SignedTransaction˃ = reserveLimits.map { amount -˃
+                // request asset issue
+                logger.info("Requesting currency issue $amount")
+                val txn = issueCashTo(amount, topupRequest.issueToParty, topupRequest.issuerPartyRef, topupRequest.notaryParty)
+                progressTracker.currentStep = SENDING_TOP_UP_ISSUE_REQUEST
+                return@map txn.stx
+            }
+
+            otherPartySession.send(txns)
+            return txns
+        }
+
+For examples on testing @CordaService implementations,
+see the oracle example @[https://docs.corda.net/oracles.html]
+</pre>
+
+<pre zoom TODO >
+<span xsmall>Monitoring</span>
+<span xsmall>Nodes</span>
+@[https://medium.com/corda/monitoring-corda-nodes-part-1-3316d26d8fda]
+</pre>
+
+</body>
 </html>
+<!--
+<a href="https://www.linkedin.com/pulse/thoughts-taxonomy-blockchains-distributed-ledger-colin-platt/">Thoughts on the taxonomy of blockchains &amp; distributed ledger technologies</a>
+<a href="https://hackernoon.com/blockchains-versus-traditional-databases-c1a728159f79">Blockchain versus Traditional Databases</a>
+<a href="https://www.coindesk.com/information/what-is-the-difference-blockchain-and-database/">What is the Difference Between a Blockchain and a Database?</a>
+<a href="https://hbr.org/2017/01/the-truth-about-blockchain">The Truth About Blockchain</a>
+
+https://docs.corda.net/debugging-a-cordapp.html?highlight=debug
+-->
 

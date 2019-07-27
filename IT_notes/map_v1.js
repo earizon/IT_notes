@@ -242,7 +242,7 @@ function getSearchOptions() {
     result += ""
       + "<hr/>\n"
       + "Labels<br/>\n";
-    Object.keys(_labelMap).forEach(label_i => {
+    Object.keys(_labelMap).sort().forEach(label_i => {
         result += "<input class='labelButton' selected="+(!!_labelMapSelected[label_i])+" type='button' onClick='onLabelClicked(this, \""+label_i+"\")' value='"+label_i+"' />" ;
     })
 

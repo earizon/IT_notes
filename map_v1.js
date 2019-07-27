@@ -262,6 +262,7 @@ function createLabelIndex() {
     var node = labeled_dom_l[idx1]
     if (!node.getAttribute    ) continue
     let csvAttributes = node.getAttribute("labels")
+    if (!csv || !csv.trim()) return;
     csvAttributes.split(",").forEach( label => {
         label = label.toLowerCase()
         let list = getDomListForLabel(label)

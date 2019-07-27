@@ -218,8 +218,10 @@ function doExtraOptions() {
 }
 function onLabelClicked(e) {
     let label = e.value;
-//  debugger;
     var newInputQuery;
+    if (!e.attributes) {
+         e.attributes = { selected : { value : "false" } }
+    }
     if (e.attributes.selected.value == "false") {
         e.attributes.selected.value = "true"
         _labelMapSelected[label] = true
@@ -243,7 +245,7 @@ function getSearchOptions() {
       + "<hr/>\n"
       + "Labels<br/>\n";
     Object.keys(_labelMap).sort().forEach(label_i => {
-        result += "<input class='labelButton' selected="+(!!_labelMapSelected[label_i])+" type='button' onClick='onLabelClicked(this, \""+label_i+"\")' value='"+label_i+"' />" ;
+        result += "<input class='labelButton' selected="+(!!_labelMapSelected[label_i])+" type='button' onClick='onLabelClicked(this)' value='"+label_i+"' />" ;
     })
 
     return result;
@@ -255,9 +257,12 @@ function getDomListForLabel(label) {
     if (!!!_labelMap[label]) return [];
     else return _labelMap[label];
 }
+
+function labelMapSelectedToCSV() {
+  return Object.keys(_labelMapSelected).sort().join(",")
+}
 function createLabelIndex() {
   var labeled_dom_l = document.querySelectorAll('*[labels]');
- // debugger
   for (idx1 in labeled_dom_l) {
     var node = labeled_dom_l[idx1]
     if (!node.getAttribute    ) continue
@@ -386,9 +391,9 @@ function onPageLoaded() {
       // Open new window with pre-recoded search:[[Troubleshooting+restorecon?]]
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(
           /\[\[([^\?]*)\?\]\]/g,
-//        "<a href='"+window.location.href.split('?')[0]+"?query=$1'>$1</a>"
           "<a href='#' onClick='highlightSearch(\"$1\",true)'>$1</a>"
-        + "<a target='_blank' href='"+window.location.href.split('?')[0]+"?query=$1'>( ⏏ )</a>"
+        + "<a target='_blank' href='"+window.location.href.split('?')[0]+"?query=$1&labels="+labelMapSelectedToCSV()+"'>( ⏏ )</a>"
+//        "<a href='"+window.location.href.split('?')[0]+"?query=$1'>$1</a>"
       )
                                                               // @[   http.....  ]
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/@\[(http[^\]]*)\]/g,"<a target='_new' href='$1'> [$1]</a>")   
@@ -415,22 +420,28 @@ function onPageLoaded() {
 
   for (idx=0; idx<document.styleSheets[0]['cssRules'].length; idx++){
       if( document.styleSheets[0]['cssRules'][idx].selectorText == "#zoomDiv") {
-          idxZoomDivRule=idx;
+          idxZoomDivRule=idx
       }
       if( document.styleSheets[0]['cssRules'][idx].selectorText == "[zoom]") {
-          idxXXXsmallRule=idx;
+          idxXXXsmallRule=idx
       }
       if( document.styleSheets[0]['cssRules'][idx].selectorText == "[xsmall]"  ) {
-          idxXsmallRule=idx;
+          idxXsmallRule=idx
       }
   }
 
   createLabelIndex()
 
-  window.QUERY = document.getElementById("inputQuery");
-  var query = getParameterByName("query");
-  if (!!query) {
-    highlightSearch(getParameterByName("query"));
+  window.QUERY = document.getElementById("inputQuery")
+  let csvLabels = getParameterByName("labels")
+  label_l = (!!csvLabels) ? csvLabels.split(",") : []
+  label_l.forEach(label => {
+      onLabelClicked({value : label});
+  })
+  let query = getParameterByName("query")
+debugger
+  if (!!query || !!label_l) {
+    highlightSearch(query)
   }
 
 }
@@ -490,7 +501,6 @@ function highlightSearch(query) {
   }
 
   // If some label has been selected then choose only those with matching labels
-  // debugger
   document.querySelectorAll('*[zoom]').forEach(node => { 
       node.setAttribute("textFound", "false")
   })

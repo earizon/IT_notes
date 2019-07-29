@@ -126,9 +126,17 @@ function doOpenZoom(e, isHistoric, showTimeControl, callbackOnClose) {
   let forwNumber = (_visited.length-1)-_visited_idx;
   let backControl = (backNumber>0) ? "<span onClick='goBack   ()' style='color:blue; font-size:2.0rem'>"+backNumber+"⇦</span>" : ""
   let forwControl = (forwNumber>0) ? "<span onClick='goForward()' style='color:blue; font-size:2.0rem'>⇨"+forwNumber+"</span>" : "" 
+  let sLabels="";
+  if (e.attributes && e.attributes.labels) {
+    e.attributes.labels.value.split(",").forEach(label_i => {
+        sLabels += renderLabel(label_i)
+    })
+  }
+
   zoomDivDOM.innerHTML = 
      "<div style='margin-bottom:0.5rem'>" 
    + " <div id='divCloseZoom' onClick='doCloseZoom()'>✕ (close)</div>" 
+   + " <div id='divElementLabels'>"+sLabels+"</div>" 
    + ((showTimeControl) 
        ? "<div id='historyBackFor' style='display:inline; '>" + backControl + forwControl + "</div>" 
        : ""
@@ -242,6 +250,11 @@ function onLabelClicked(e) {
 }
 
 labelAndMode = true
+function renderLabel(sLabel,selected) {
+  return "<input class='labelButton' selected="+(!!_labelMapSelected[sLabel])+
+         " type='button' onClick='onLabelClicked(this)' value='"+sLabel+"' />" ;
+}
+
 function getSearchOptions() {
     if (Object.keys(_labelMap).length == 0) {
         return "No labels found"
@@ -253,7 +266,7 @@ function getSearchOptions() {
       + "Labels: <input id='idLabelSearchAndMode' type='checkbox' checked onClick='labelAndMode=!labelAndMode' >AND-search(uncheck for OR)<br/>\n"
       + "<div>\n"
     Object.keys(_labelMap).sort().forEach(label_i => {
-        result += "<input class='labelButton' selected="+(!!_labelMapSelected[label_i])+" type='button' onClick='onLabelClicked(this)' value='"+label_i+"' />" ;
+        result += renderLabel(label_i)
     })
       + "</div>\n"
 

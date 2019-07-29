@@ -2,6 +2,9 @@ var zoomDivDOM
 function doCloseZoom() {
   zoomDivDOM.innerHTML = ''; 
   zoomDivDOM.style.display="none";
+  if (CallbackOnClose) {
+    CallbackOnClose.call(window);
+  }
 }
 var zoomDivFW = true; // FW Full Width
 var zoomDivFH = true; // FW Full Height 
@@ -108,7 +111,9 @@ function goForward() {
     let e = _visited[_visited_idx]
     doOpenZoom.call(e, e, true, true);
 }
-function doOpenZoom(e, isHistoric, showTimeControl) {
+CallbackOnClose = false;
+function doOpenZoom(e, isHistoric, showTimeControl, callbackOnClose) {
+  CallbackOnClose = callbackOnClose;
   showTimeControl = !!showTimeControl
   if(_visited[_visited.length-1] == e) { 
       isHistoric = true; 
@@ -214,7 +219,7 @@ function doExtraOptions() {
     ctx = {
         outerHTML : getSearchOptions()
     }
-    doOpenZoom.call(ctx, ctx, true, false);
+    doOpenZoom.call(ctx, ctx, true, false, highlightSearch);
 }
 function onLabelClicked(e) {
     let label = e.value;
@@ -236,17 +241,21 @@ function onLabelClicked(e) {
     }
 }
 
+labelAndMode = true
 function getSearchOptions() {
     if (Object.keys(_labelMap).length == 0) {
         return "No labels found"
     }
     var result = "";
+    labelAndMode = true 
     result += ""
       + "<hr/>\n"
-      + "Labels<br/>\n";
+      + "Labels: <input id='idLabelSearchAndMode' type='checkbox' checked onClick='labelAndMode=!labelAndMode' >AND-search(uncheck for OR)<br/>\n"
+      + "<div>\n"
     Object.keys(_labelMap).sort().forEach(label_i => {
         result += "<input class='labelButton' selected="+(!!_labelMapSelected[label_i])+" type='button' onClick='onLabelClicked(this)' value='"+label_i+"' />" ;
     })
+      + "</div>\n"
 
     return result;
 }
@@ -325,7 +334,7 @@ function onPageLoaded() {
       searchDiv.innerHTML = 
      '<form action="#" method="" id="search" name="search">'
    +  labelFilterIconSVG
-   + '  <input name="inputQuery" id="inputQuery" type="text" size="30" maxlength="30">'
+   + '  <input name="inputQuery" id="inputQuery" type="text" size="20" placeholder="(regex) text search" maxlength="30">'
    + '&nbsp;'
    +  lenseIconSVG
    + '  <div style="float:left;">'
@@ -439,7 +448,6 @@ function onPageLoaded() {
       onLabelClicked({value : label});
   })
   let query = getParameterByName("query")
-debugger
   if (!!query || !!label_l) {
     highlightSearch(query)
   }
@@ -488,6 +496,21 @@ function generate_uuidv4() {
 function isAnyLabelSelected() {
   return Object.keys(_labelMapSelected).length > 0
 }
+
+Array.prototype.union = function(a) 
+{
+  var r = this.slice(0);
+  a.forEach(function(i) { if (r.indexOf(i) < 0) r.push(i); });
+  return r;
+};
+Array.prototype.intersection = function(a) 
+{
+  var r = [];
+  var ref = this.slice(0);
+  a.forEach(function(i) { if (ref.indexOf(i) >= 0) r.push(i); });
+  return r;
+};
+
 function highlightSearch(query) {
   if (typeof query != "string") query = "";
   if (!!query) { QUERY.value = query; }
@@ -507,11 +530,12 @@ function highlightSearch(query) {
   if (isAnyLabelSelected()) {
       var innerZoom_l = []
       let label_l=Object.keys(_labelMapSelected)
-      label_l.forEach( label => {
-        if (_labelMap[label]!=undefined) {
-          innerZoom_l = innerZoom_l.concat(_labelMap[label])
-        }
-      })
+      innerZoom_l = getDomListForLabel(label_l[0]);
+      for (idx=0; idx<label_l.length; idx++) {
+        innerZoom_l = labelAndMode 
+              ? innerZoom_l.intersection( getDomListForLabel(label_l[idx]) )
+              : innerZoom_l.union       ( getDomListForLabel(label_l[idx]) )
+      }
   } else {
       // By default search inside all zoomable elements
       var innerZoom_l = document.querySelectorAll('*[zoom]')

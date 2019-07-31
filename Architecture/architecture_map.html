@@ -114,7 +114,17 @@
 - Amazon DynamoDB                     
 - Memcached                           
 - Microsoft Azure Cosmos DB           
-- Hazelcast                           
+- Hazelcast
+  - Designed for caching.
+  - Hazelcast clients, by default, will
+    connect to all cache cluster nodes
+    an know about the cluster partition
+    table to route request to the correct
+    node.
+  - Java JCache compliant
+  - Advanced cache eviction algorithms
+    based on heuristics with sanitized O(1)
+    runtime behavior.
 - LabelDB ("Ethereum State")          
 - TiKV                                
   - dev lang:*Rust*                   
@@ -1364,6 +1374,110 @@ Features:
 <pre zoom labels="iac,comparision">
 <span xsmall>Pulumi IaC</span>
 https://www.pulumi.com/docs/reference/vs/terraform/
+</pre>
+
+<pre zoom labels="cache,comparative">
+(Extracted from whitepaper by Christoph Engelbert, Soft.Arch.at Hazelcast)
+cache hit: data is already available in the cache when requested
+           (otherwise it's said cache miss)
+
+- Caches are implemented as simple key-value stores for performance.
+- Caching-First: term to describe the situation where you start thinking
+       about Caching itself as one of the main domains of your application.
+
+*Ussage*
+-*Reference Data*
+  - normally small and used to speed up the dereferencing
+    of previously known, fixed number of elements (e.g.
+    states of the USA, abbreviations of elements,...).
+-*Active DataSet*
+- Grow to their maximum size and evict the oldest or not
+  frequently used entries to keep in memory bounds. 
+
+<span xsmall>Caching Strategies</span>
+*Cooperative (Distributed) caching*
+  different  cluster-nodes work together to build a huge, shared cache 
+  Ussually an "intelligent" partitioning algorithm is used to balance
+  load about cluster nodes.
+  - common approach when system requires large amounts of data to be cached
+
+*Partial Caching*
+- not all data is stored in the cache. 
+
+*Geographical Caching*
+- located in chosen locations to optimize latency 
+- CDN (Content Delivery Network) is the best known example of this type of cache
+- Works well when  content changes less often.
+
+*Preemptive Caching*
+- mostly used in conjunction with a Geographical Cache
+- Using a warm-up engine a Preemptive Cache is populated on startup
+  and tries to update itself based on rules or events.
+- The idea behind this cache addition is to reload data from any 
+  backend service or central cluster even before a requestor wants
+  to retrieve the element. This keeps access time to the cached
+  elements constant and prevents accesses to single elements from 
+  becoming unexpectedly long.
+- Can be difficult to implement properly and requires a lot of
+  knowledge of the cached domain and the update workflows
+
+*Latency SLA Caching*
+- It's able to maintain latency SLAs even if the cache is slow
+  or overloaded. This type of cache can be build in two different ways.
+  - Having a timeout to exceed before the system either requests
+    the potentially cached element from the original source 
+    (in parallel to the already running cache request) or simple 
+    default answer, using whatever returns first.
+  - Always fire both requests in parallel and take whatever returns first.
+    (discouraged since it mostly dimiss the value of caching). Can make
+    sense if multiple caching layers are available. 
+
+<span xsmall>Caching Topologies</span>
+-*In-process:*
+ - cache share application's memory space.
+ - most oftenly used in non-distributed systems. 
+ - fastest possible access speed.
+ - Easy to build, but complex to grow.
+
+-*Embedded Node Caches*
+- the application itself will be part of the cluster. 
+- kind of combination between an In-Process Cache and the 
+  Cooperative Caching
+- it can either use partitioning or full dataset replication.
+
+- CONST: Application and cache cannot be scaled independently
+
+-*Client-Server Caches*
+- these systems tend to be Cooperative Caches by having a
+  multi-server architecture to scale out and have the 
+  same feature set as the Embedded Node Caches
+  but with the client layer on top.
+- This architecture keeps separate clusters of the applications 
+  using the cached data and the data itself, offering 
+  the possibility to scale the application cluster and the
+  caching cluster independently. 
+
+<span xsmall>Evict Strategies</span>
+-*Least Frequently used*
+ - values that are accessed the least amount of times are 
+   remove on memory preasure.
+ - each cache record must keep track of its accesses using
+   a counter which is increment only.
+
+-*Least Recently Used*
+ - values that were last used most far back in terms of time
+   are removed on memory preasure.
+ - each record keeps must track of its last access timestamp
+Other evict strategies can be found at
+@[https://en.wikipedia.org/wiki/Cache_replacement_policies]
+
+</pre>
+
+
+<pre zoom labels="comparative">
+<span xsmall>Apache vs Nginx</span>
+@[https://www.digitalocean.com/community/tutorials/apache-vs-nginx-practical-considerations]
+
 </pre>
 </body>
 </html>

@@ -439,6 +439,84 @@ with Bison or Yacc, or other clones, you’re almost ready to roll.
    $(‘css-selector’) will return the first match of CSS selector. 
   $$(‘css-selector’) will return all of them. 
   }
+<span xsmall>Dump "stack-trace" of async function chain</span>
+@[https://stackoverflow.com/questions/40300996/nodejs-is-is-possible-to-show-the-stack-trace-of-a-calling-async-function]
+@[https://gist.github.com/lll000111/3d6a53da4d53beb909189793c7631ba6]
+// @flow
+'use strict';
+
+// Note: Promise.reject() can be used to trigger the stack-trace creation
+const wait = delay => new Promise(resolve => setTimeout(() => resolve(), delay));
+
+const fnError = async () => {
+    await wait(1);
+   *throw new Error('Ooohhhh my god, this went wrong!');*
+   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   Some deeply nested (in the actual call hierarchy) 
+   asynchronous function that throws an error.
+};
+
+HOW-TO:
+Alternative 1:
+  STEP 1: *Always catch errors*, never return the promise directly 
+          (because then you cannot add the local stack trace)
+  
+  STEP 2: Add a locally generated stack trace to the one already 
+          existing on the error object
+
+  const fn2 = async () => {
+      let result;
+      try {
+          result = await fnError();
+      } catch(err) {                         // ← STEP 1
+          err.stack +=*(new Error()).stack*; // ← STEP 2
+          throw err;
+      }
+  
+      // Do stuff with result
+  
+      return result;
+  };
+
+Alternative 2: (Syntax alternative)
+  STEP 1: Instead of try/catch use a promise-method based version,
+          which has the advantage to allow assignment to "const":
+       const result = fnError()
+                      *.catch*(                // ← STEP 1
+           err => {
+             err.stack += (new Error()).stack; // ← STEP 2 doesn't change
+             throw err;
+           }
+       );
+
+Callning fn2 asyncrhonously from fn1 and dumping "async" stack-trace
+
+// stack "Level 1"
+const fn1 = async () => {
+    try {
+        return await fn2();
+        ^^^^^^^^^^^^^^^^^^^
+r*WARN*:if something more complex than just retuning is executed the
+        err can be different to the fn1 async err and the async stack trace
+        will be "false"
+    } catch(err) {
+        err.stack += (new Error()).stack;
+        throw err;
+    }
+};
+
+// stack "Level 0"
+const fn0 = async () => {
+    try {
+        return await fn1();
+    } catch(err) {
+        err.stack += (new Error()).stack;
+        throw err;
+    }
+};
+
+fn0().catch(console.error);
+
 </pre>
 <pre zoom>
 <span xsmall>Web Console, Advanced tricks:</span>
@@ -594,6 +672,7 @@ https://stackoverflow.com/questions/44206782/do-i-commit-the-package-lock-json-f
 </pre>
 </div>
 
+<div groupv>
 <pre zoom>
 <span xsmall>Emscripten:</span>
 
@@ -733,13 +812,11 @@ img:hover {
 <pre zoom labels="">
 <span xsmall>Art Gallery</span>
 Icon Gallery:
-http://mokaproject.com/
-https://numixproject.org/
-https://github.com/NitruxSA/nitrux-icons
-http://tiheum.deviantart.com/art/Faience-icon-theme-255099649
-http://tiheum.deviantart.com/art/Faenza-Icons-173323228
-http://0rax0.deviantart.com/art/Uniform-Icon-Theme-453054609
-http://gnome-look.org/content/show.php/Dalisha?content=166286
+@[https://github.com/NitruxSA/nitrux-icons]
+@[http://tiheum.deviantart.com/art/Faience-icon-theme-255099649]
+@[http://tiheum.deviantart.com/art/Faenza-Icons-173323228]
+@[http://0rax0.deviantart.com/art/Uniform-Icon-Theme-453054609]
+@[http://gnome-look.org/content/show.php/Dalisha?content=166286]
 </pre>
 
 <pre zoom labels="">
@@ -895,7 +972,7 @@ svg #bp_svg * {
 }
 </pre>
 
-˂pre zoom labels=""˃
+<pre zoom labels="">
 ˂span xsmall˃CSS Selectors˂/span˃
 By Coordinate           
     lector                    Example                  Example description
@@ -959,7 +1036,7 @@ Links
 Others                                                 
     :hover                    a:hover                  Selects links on mouse over
     :lang(language)           p:lang(it)               Selects every ˂p˃ element with a lang attribute equal to "it" (Italian)
-˂/pre˃
+</pre>
 
 <pre zoom labels="">
 <span xsmall>CSS Background</span>
@@ -1424,7 +1501,9 @@ information is duplicated in every Media Segment.
   ˂/body˃
 ˂/html˃
 </pre>
+</div>
 
+<div groupv>
 <pre zoom labels="AAA">
 <span TODO xsmall>W3C OpenSocial</span>
 @[http://www.w3.org/blog/2014/12/opensocial-foundation-moves-standards-work-to-w3c-social-web-activity/]
@@ -1508,7 +1587,9 @@ browser environment. By using modern HTML5 specifications, we enable you to do r
 Tensorflow using JS + WebGL
 @[https://js.tensorflow.org/]
 </pre>
+</div>
 
+<div groupv>
 <pre zoom labels="">
 <span xsmall>Dojo Toolkit</span>
 @[https://dojotoolkit.org]
@@ -1648,10 +1729,8 @@ follows this approach to support CSS properties and CSS modules, and
 deprecates support for the previous usage of SASS, providing better CSS 
 encapsulation."""
 </pre>
+</div>
 </body>
 </html>
 
-
-
-____________________________________________________
 

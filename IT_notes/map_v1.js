@@ -113,10 +113,16 @@ function goForward() {
 }
 CallbackOnClose = false;
 function doOpenZoom(e, isHistoric, showTimeControl, callbackOnClose) {
+  // TODO:(0) Recheck _visited_idx 
   CallbackOnClose = callbackOnClose;
   showTimeControl = !!showTimeControl
   if(_visited[_visited.length-1] == e) { 
-      isHistoric = true; 
+      isHistoric = true 
+      // _visited_idx == ???
+  }
+  if(_visited.indexOf(e)>=0) { 
+      isHistoric = true
+      // _visited_idx == ???
   }
   if (!!!isHistoric) { // Apend new visits only
     _visited.push(e)
@@ -136,11 +142,11 @@ function doOpenZoom(e, isHistoric, showTimeControl, callbackOnClose) {
   zoomDivDOM.innerHTML = 
      "<div style='margin-bottom:0.5rem'>" 
    + " <div id='divCloseZoom' onClick='doCloseZoom()'>✕ (close)</div>" 
-   + " <div id='divElementLabels'>"+sLabels+"</div>" 
    + ((showTimeControl) 
        ? "<div id='historyBackFor' style='display:inline; '>" + backControl + forwControl + "</div>" 
        : ""
      )
+   + " <div id='divElementLabels'>"+sLabels+"</div>" 
    + "</div>" 
 
    + e.outerHTML; 
@@ -563,6 +569,8 @@ function highlightSearch(query) {
         : new RegExp("[^=>;]*(" + text + ")", regexFlags)
 
   var numberOfMatches = 0
+
+  _visited=[]
   var searchAndMark = function(node) {
       var htmlContent = (singleLineOnly) 
            ? node.innerHTML 
@@ -570,6 +578,7 @@ function highlightSearch(query) {
       var searchFound = htmlContent.match(query)
       node.setAttribute("textFound", searchFound?"true":"false")
       if (searchFound) {
+          _visited.push(node)
           window.lastElementFound = node
       }
       return searchFound

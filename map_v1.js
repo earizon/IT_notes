@@ -1,19 +1,23 @@
-var zoomDivDOM
+var spb = {
+  zoomDivDOM : window,
+  idxZoomDivRule :-1,
+  idxZoomRule:-1,
+  cellFontSize:0.05,
+  zoomFontSize:1.00,
+  visited:[],
+  visited_idx:-1,
+  CallbackOnClose:false,
+  labelAndMode : true,
+  labelMap : { /* label : dom_list*/ },
+  labelMapSelected : { /* label : isSelected true|false */ }
+}
 function doCloseZoom() {
-  zoomDivDOM.innerHTML = ''; 
-  zoomDivDOM.style.display="none";
-  if (CallbackOnClose) {
-    CallbackOnClose.call(window);
+  spb.zoomDivDOM.innerHTML = ''; 
+  spb.zoomDivDOM.style.display="none";
+  if (spb.CallbackOnClose) {
+    spb.CallbackOnClose.call(window);
   }
 }
-var zoomDivFW = true; // FW Full Width
-var zoomDivFH = true; // FW Full Height 
-var zoomDivTop = true; 
-var zoomDivLft = true; 
-
-var idxZoomDivRule=-1;
-var idxXXXsmallRule=-1;
-var idxXsmallRule  =-1;
 
 var longPress = {
    longpress : false,
@@ -77,59 +81,57 @@ var longPress = {
    }
 }
 
-var cellFontSize=0.05
-var zoomFontSize=1.00
 function onZoomOut(){
-  if (zoomDivDOM.innerHTML != '') {
-    zoomFontSize = zoomFontSize - 0.05
-    document.styleSheets[0]['cssRules'][idxZoomDivRule].style['font-size']=zoomFontSize+'rem';
+  if (spb.zoomDivDOM.innerHTML != '') {
+    spb.zoomFontSize = spb.zoomFontSize - 0.05
+    document.styleSheets[0]['cssRules'][spb.idxZoomDivRule].style['font-size']=spb.zoomFontSize+'rem';
     return;
   }
-  cellFontSize=cellFontSize - 0.05
-  document.styleSheets[0]['cssRules'][idxXXXsmallRule].style['font-size']=cellFontSize+'rem';
+  spb.cellFontSize=spb.cellFontSize - 0.05
+  document.styleSheets[0]['cssRules'][spb.idxZoomRule].style['font-size']=spb.cellFontSize+'rem';
 }
 function onZoomIn(){
-  if (zoomDivDOM.innerHTML != '') {
-    zoomFontSize = zoomFontSize + 0.05
-    document.styleSheets[0]['cssRules'][idxZoomDivRule].style['font-size']=zoomFontSize+'rem';
+  if (spb.zoomDivDOM.innerHTML != '') {
+    spb.zoomFontSize = spb.zoomFontSize + 0.05
+    document.styleSheets[0]['cssRules'][spb.idxZoomDivRule].style['font-size']=spb.zoomFontSize+'rem';
     return;
   }
-  cellFontSize=cellFontSize + 0.05
-  document.styleSheets[0]['cssRules'][idxXXXsmallRule].style['font-size']=cellFontSize+'rem';
+  spb.cellFontSize=spb.cellFontSize + 0.05
+  document.styleSheets[0]['cssRules'][spb.idxZoomRule].style['font-size']=spb.cellFontSize+'rem';
 }
-var _visited=[]
-var _visited_idx=-1
+
 function goBack() {
-    if(_visited_idx == 0) return
-    _visited_idx--
-    let e = _visited[_visited_idx]
+    if(spb.visited_idx == 0) return
+    spb.visited_idx--
+    let e = spb.visited[spb.visited_idx]
     doOpenZoom.call(e, e, true, true);
 }
 function goForward() {
-    if(_visited_idx == _visited.length-1) return
-    _visited_idx++
-    let e = _visited[_visited_idx]
+    if(spb.visited_idx == spb.visited.length-1) return
+    spb.visited_idx++
+    let e = spb.visited[spb.visited_idx]
     doOpenZoom.call(e, e, true, true);
 }
-CallbackOnClose = false;
-function doOpenZoom(e, isHistoric, showTimeControl, callbackOnClose) {
-  // TODO:(0) Recheck _visited_idx 
-  CallbackOnClose = callbackOnClose;
+
+
+function doOpenZoom(e, isHistoric, showTimeControl, CallbackOnClose) {
+  // TODO:(0) Recheck spb.visited_idx 
+  spb.CallbackOnClose = CallbackOnClose;
   showTimeControl = !!showTimeControl
-  if(_visited[_visited.length-1] == e) { 
+  if(spb.visited[spb.visited.length-1] == e) { 
       isHistoric = true 
-      // _visited_idx == ???
+      // spb.visited_idx == ???
   }
-  if(_visited.indexOf(e)>=0) { 
+  if(spb.visited.indexOf(e)>=0) { 
       isHistoric = true
-      // _visited_idx == ???
+      // spb.visited_idx == ???
   }
   if (!!!isHistoric) { // Apend new visits only
-    _visited.push(e)
-    _visited_idx =_visited.length-1
+    spb.visited.push(e)
+    spb.visited_idx =spb.visited.length-1
   }
-  let backNumber = _visited_idx;
-  let forwNumber = (_visited.length-1)-_visited_idx;
+  let backNumber = spb.visited_idx;
+  let forwNumber = (spb.visited.length-1)-spb.visited_idx;
   let backControl = (backNumber>0) ? "<span onClick='goBack   ()' style='color:blue; font-size:2.0rem'>"+backNumber+"⇦</span>" : ""
   let forwControl = (forwNumber>0) ? "<span onClick='goForward()' style='color:blue; font-size:2.0rem'>⇨"+forwNumber+"</span>" : "" 
   let sLabels="";
@@ -139,7 +141,7 @@ function doOpenZoom(e, isHistoric, showTimeControl, callbackOnClose) {
     })
   }
 
-  zoomDivDOM.innerHTML = 
+  spb.zoomDivDOM.innerHTML = 
      "<div style='margin-bottom:0.5rem'>" 
    + " <div id='divCloseZoom' onClick='doCloseZoom()'>✕ (close)</div>" 
    + ((showTimeControl) 
@@ -150,8 +152,8 @@ function doOpenZoom(e, isHistoric, showTimeControl, callbackOnClose) {
    + "</div>" 
 
    + e.outerHTML; 
-  zoomDivDOM.style.display="block";
-  window.zoomDivDOM.scrollTop = 0;
+  spb.zoomDivDOM.style.display="block";
+  window.spb.zoomDivDOM.scrollTop = 0;
   if (!!this.stopPropagation) { this.stopPropagation(); }
   return false;
 }
@@ -221,7 +223,6 @@ var help = '<h1>HELPMan to the rescue!!!</h1>'
          + '<li>HINT: Vim is the best text editor. Love him and it will love you for the rest of your life!</li>'
          + '</ul>'
 
-   
 function doHelp() {
     ctx = {
         outerHTML : help
@@ -243,10 +244,10 @@ function onLabelClicked(e) {
     }
     if (e.attributes.selected.value == "false") {
         e.attributes.selected.value = "true"
-        _labelMapSelected[label] = true
+        spb.labelMapSelected[label] = true
     } else {
         e.attributes.selected.value = "false"
-        delete _labelMapSelected[label]
+        delete spb.labelMapSelected[label]
     }
     if (isAnyLabelSelected()){
       document.getElementById("idLabelsFilter").setAttribute("active","true"); 
@@ -255,23 +256,21 @@ function onLabelClicked(e) {
     }
 }
 
-labelAndMode = true
 function renderLabel(sLabel,selected) {
-  return "<input class='labelButton' selected="+(!!_labelMapSelected[sLabel])+
+  return "<input class='labelButton' selected="+(!!spb.labelMapSelected[sLabel])+
          " type='button' onClick='onLabelClicked(this)' value='"+sLabel+"' />" ;
 }
 
 function getSearchOptions() {
-    if (Object.keys(_labelMap).length == 0) {
+    if (Object.keys(spb.labelMap).length == 0) {
         return "No labels found"
     }
     var result = "";
-    labelAndMode = true 
     result += ""
       + "<hr/>\n"
-      + "Labels: <input id='idLabelSearchAndMode' type='checkbox' checked onClick='labelAndMode=!labelAndMode' >AND-search(uncheck for OR)<br/>\n"
+      + "Labels: <input id='idLabelSearchAndMode' type='checkbox' "+(spb.labelAndMode?"checked":"")+" onClick='spb.labelAndMode=!spb.labelAndMode' >AND-search(uncheck for OR)<br/>\n"
       + "<div>\n"
-    Object.keys(_labelMap).sort().forEach(label_i => {
+    Object.keys(spb.labelMap).sort().forEach(label_i => {
         result += renderLabel(label_i)
     })
       + "</div>\n"
@@ -279,15 +278,13 @@ function getSearchOptions() {
     return result;
 }
 
-var _labelMap = { /* label : dom_list*/ }
-var _labelMapSelected = { /* label : isSelected true|false */ }
 function getDomListForLabel(label) {
-    if (!!!_labelMap[label]) return [];
-    else return _labelMap[label];
+    if (!!!spb.labelMap[label]) return [];
+    else return spb.labelMap[label];
 }
 
 function labelMapSelectedToCSV() {
-  return Object.keys(_labelMapSelected).sort().join(",")
+  return Object.keys(spb.labelMapSelected).sort().join(",")
 }
 function createLabelIndex() {
   var labeled_dom_l = document.querySelectorAll('*[labels]');
@@ -300,10 +297,10 @@ function createLabelIndex() {
         label = label.toLowerCase()
         let list = getDomListForLabel(label)
             list.push(node)
-        _labelMap[label] = list
+        spb.labelMap[label] = list
     })
   }
-  // console.dir(_labelMap)
+  // console.dir(spb.labelMap)
 }
 
 function onPageLoaded() {
@@ -377,11 +374,11 @@ function onPageLoaded() {
   document.getElementById("search"     ).addEventListener("submit",  function(e) {e.preventDefault(); highlightSearch(); return false })
   
 
-  zoomDivDOM = document.getElementById('zoomDiv')
+  spb.zoomDivDOM = document.getElementById('zoomDiv')
   document.addEventListener('keyup',
       function(e) {
           if (e.code === "Escape") {
-              if (zoomDivDOM.innerHTML == '') {
+              if (spb.zoomDivDOM.innerHTML == '') {
                  resetTextFoundAttr(true);
               } else {
                  doCloseZoom();
@@ -448,13 +445,10 @@ function onPageLoaded() {
 
   for (idx=0; idx<document.styleSheets[0]['cssRules'].length; idx++){
       if( document.styleSheets[0]['cssRules'][idx].selectorText == "#zoomDiv") {
-          idxZoomDivRule=idx
+          spb.idxZoomDivRule=idx
       }
       if( document.styleSheets[0]['cssRules'][idx].selectorText == "[zoom]") {
-          idxXXXsmallRule=idx
-      }
-      if( document.styleSheets[0]['cssRules'][idx].selectorText == "[xsmall]"  ) {
-          idxXsmallRule=idx
+          spb.idxZoomRule=idx
       }
   }
 
@@ -513,7 +507,7 @@ function generate_uuidv4() {
 }
 
 function isAnyLabelSelected() {
-  return Object.keys(_labelMapSelected).length > 0
+  return Object.keys(spb.labelMapSelected).length > 0
 }
 
 Array.prototype.union = function(a) 
@@ -548,10 +542,10 @@ function highlightSearch(query) {
   })
   if (isAnyLabelSelected()) {
       var innerZoom_l = []
-      let label_l=Object.keys(_labelMapSelected)
+      let label_l=Object.keys(spb.labelMapSelected)
       innerZoom_l = getDomListForLabel(label_l[0]);
       for (idx=0; idx<label_l.length; idx++) {
-        innerZoom_l = labelAndMode 
+        innerZoom_l = spb.labelAndMode 
               ? innerZoom_l.intersection( getDomListForLabel(label_l[idx]) )
               : innerZoom_l.union       ( getDomListForLabel(label_l[idx]) )
       }
@@ -570,7 +564,7 @@ function highlightSearch(query) {
 
   var numberOfMatches = 0
 
-  _visited=[]
+  spb.visited=[]
   var searchAndMark = function(node) {
       var htmlContent = (singleLineOnly) 
            ? node.innerHTML 
@@ -578,7 +572,7 @@ function highlightSearch(query) {
       var searchFound = htmlContent.match(query)
       node.setAttribute("textFound", searchFound?"true":"false")
       if (searchFound) {
-          _visited.push(node)
+          spb.visited.push(node)
           window.lastElementFound = node
       }
       return searchFound
@@ -598,4 +592,3 @@ function highlightSearch(query) {
   }
   return false // avoid event propagation
 }
-

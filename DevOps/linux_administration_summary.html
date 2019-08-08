@@ -13,6 +13,7 @@
 <div groupv>
 <pre zoom labels="">
 <span xsmall>External Links</span>
+<a href="http://www.linuxfromscratch.org/">Linux From Scratch</a>
 <a href="https://linux.die.net/man/">[Man Pages]</a>,
 <a href="https://linux.die.net/Linux-CLI/">[Command-line Tools  Summary]</a>,
 <a href="https://en.wikipedia.org/wiki/Linux_Standard_Base">[Linux Standard Base]</a>,
@@ -472,7 +473,158 @@ cgroups
 
 
 <div groupv>
-<span title>Network</span>
+<span title>Network</span><br/>
+<pre zoom labels="">
+<span xsmall>NetworkManager</span>
+@[https://www.redhat.com/sysadmin/becoming-friends-networkmanager]
+@[https://linux.die.net/man/8/networkmanager]
+@[https://linux.die.net/man/5/networkmanager.conf]
+@[https://linux.die.net/man/1/nmcli]
+@[https://linux.die.net/man/8/networkmanager_selinux]
+
+
+- widespread network configuration daemon
+- Managed through cli (nmcli), text-GUI (nmtui) GUI (GNOME,...)
+  files, web-console (Cockpit) or D-Bus interface.
+  APIs and a library (libnm) is also provided.
+-*NetworkManager allows users and applications to retrieve *
+ *and modify the network's configuration at the same time, *
+ *ensuring a consistent and up-to-date view of the network.*
+
+- NetworkManager philosophy:
+  "...attempts to make networking configuration and operation as 
+    painless and automatic as possible..."
+  When there is partial or no configuration, NetworkManager checks
+  the available devices and tries its best to provide connectivity
+  to the host.
+
+- NetworkManager allows advanced network administrators to
+  provide their own configuration.
+
+*NetworkManager Entities*
+-*device*    : represents a network interface ("ip link") 
+               A NetworkManager devices tracks:
+             - If it is managed by NetworkManager
+             - The available connections for the device
+             - The connection active on the device (if any)
+-*connection*: represents the full configuration to 
+               be applied on a device and is just a list of
+               properties.
+               Properties belonging to the same configuration
+               area are grouped into settings:
+               Example:
+             - ipv4 setting group:
+               - addresses
+               - gateway
+               - routes
+
+^^^^^^^^^^^^^^ 
+b*NETWORK SETUP == activate a connection with a device*
+
+$ nmcli device   # ← list the devices detected by NetworkManager
+(output will be similar to)
+→ DEVICE   TYPE      STATE           CONNECTION
+→ enp1s0   ethernet  connected       ether-enp1s0
+→ enp7s0   ethernet  disconnected    --
+→ lo       loopback  unmanaged  --         
+
+$ nmcli device \        # ← turn off management
+  set enp1s0 managed no     for enp1s0 device 
+                            (change is not persisted
+                             and ignored on reboot)
+                        
+$ nmcli   # List detailed connections for devices
+enp1s0: connected to enp1s0
+      "Red Hat Virtio"
+      ethernet (virtio_net), 52:54:00:XX:XX:XX, hw, mtu 1500
+      ip4 default
+      inet4 192.168.122.225/24
+      route4 0.0.0.0/0
+      route4 192.168.122.0/24
+      inet6 fe80::4923:6a4f:da44:6a1c/64
+      route6 fe80::/64
+      route6 ff00::/8
+...
+
+
+$ nmcli connection # ← list the available connections
+→ NAME         UUID          TYPE       DEVICE
+→ ether-enp1s0 23e0d89e-...  ethernet   enp1s0
+→ ...
+
+
+, i.e., to deconfigure the associated device, just instruct NetworkManager to put the connection down. For instance, to deactivate the ether-enp1s0 connection:
+
+$ nmcli connection \  # ← deactivate connection
+    down ether-enp1s0     (deconfigure associated
+                          device)
+
+$ nmcli connection \  # ← Reactivate
+    up ether-enp1s0
+
+$ nmcli connection \  # ← Show connection details
+  show ether-enp1s0
+*(man nm-settigs for full info about available parameters)*
+
+connection.id:                 b*ether-enp1s0*   ← human readable name
+connection.uuid:                 23e0d89e-...
+connection.stable-id:            --
+connection.type:                 802-3-ethernet ← ethernet, wifi, bond!!, vpn, ... 
+connection.interface-name:       enp1s0         ← binds(restrict) to specific device
+connection.autoconnect:          yes
+...
+ipv4.method                      auto           ← one of:
+                                                  auto(DHCP)
+                                                  manual(static IP in ipv4.addresses),
+                                                  disabled, link local, shared
+ipv4.addresses                   192.168.1.201/24 
+ipv4....
+dhcp4.option[1]                  broadcast_address = 192.168.1.255
+dhcp4....
+[...]
+
+$ nmcli connection \               ← Permanently change the connection 
+    modify b*ether-enp1s0* \
+    ipv4.method manual 
+    ipv4.addresses 10.10.10.1/24 \
+    ipv4.gateway 10.10.10.254 \
+    ipv4.dns 10.10.10.254
+$ nmcli connection up ether-enp1s0 ← New settings will only be applied
+                                     on connection (re)activation
+
+$ nmcli connection \            # ← avoid activation by NetworkManager
+    modify ether-ens1s0 \           (you would have to activate manually)
+    connection.autoconnect no
+
+$ nmcli con add \            ← Create new connection
+  type ethernet \              - DHCP will be used if no IPv4 config
+  ifname enp0s1 \                is provided.
+  con-name o*enp0s1_dhcp* \      (ipv4.method defaults to auto)
+  autoconnect no               - Run interactively with '--ask' option
+$ nmcli con                  ← Verify new connection
+→  NAME         UUID         TYPE     DEVICE
+→  ...
+→o*enp0s1_dhcp* 64b499cb-... ethernet --
+→  ...
+
+$ nmcli con edit   ← Interactive editor-mode with inline help will open
+
+
+TODO:
+- "Many features deserve separate blog posts"
+  - dispatcher scripts
+  - connectivity checkers
+  - split DNS
+  - MAC address randomization
+  - hotspot configuration
+  - automatic configuration.
+
+*Check Network status* @[https://linux.die.net/man/1/nm-online]
+~:$ nm-online -q   ←     --timeout=10       (Defaults to 30secs) 
+~:$ echo $?              --exit             Exit immediately if nm is not running or connecting
+→ 0                      --quiet            Don't print anything
+                         --wait-for-startup Wait for nm startup instead of a connection
+</pre>
 <pre zoom labels="network,monitoring">
 <span xsmall>basic network audit/control</span>
 <b>Socket Statistics (ss)</b>
@@ -699,6 +851,9 @@ See <a href="https://linux.die.net/man/1/ssh">man 1 ssh</a> and
 for full list options. SSH, being the core security method to access
 Linux server has a lot of simple and advanced options and different
 configurations use different (paranoid) security options.
+
+See also:
+@[https://www.reddit.com/r/linuxadmin/comments/b9c7lw/using_a_yubikey_as_smartcard_for_ssh_public_key/]
 </pre>
 
   
@@ -1843,6 +1998,9 @@ Working with multiple files                                             Tabs</b>
 | Ctrl + wl - move cursor to the right window (vertical split)
 | Ctrl + wj - move cursor to the window below (horizontal split)
 | Ctrl + wk - move cursor to the window above (horizontal split)
+
+<span xsmall>History of vim</span>
+@[https://begriffs.com/posts/2019-07-19-history-use-vim.html]
 </pre>
 </div>
 
@@ -1978,6 +2136,8 @@ Important extensions include:
 - support for buffered operation modes:
   messages are buffered locally if the receiver is not ready
 - complete input/output support for systemd journal
+- "Infinite" logs. Can store years of logs from
+                   hundreds of machines. 
 
 <span xsmall>Journald</span>
 @[https://www.loggly.com/blog/why-journald/]
@@ -4681,19 +4841,24 @@ Overhead  Shared Object              Symbol
 <span xsmall  TODO>dtrace (BSD/Linux/Win/...)</span>
 </pre>
 
-<pre zoom labels="profiling,kernel,expert" TODO>
+<pre zoom labels="profiling,kernel,expert,instrumentation" TODO>
 <span xsmall TODO>stap</span>
 @[https://en.wikipedia.org/wiki/SystemTap]
 
-In computing, SystemTap (stap) is a scripting language and tool for 
-dynamically instrumenting running production Linux kernel-based operating 
-systems. System administrators can use SystemTap to extract, filter and 
-summarize data in order to enable diagnosis of complex performance or 
-functional problems.
+SystemTap is a tool that can be used to perform live analysis of a
+running program (dynamic instrumentation).  It is able to interrupt
+normal control flow and execute code specified by a SystemTap script,
+which can allow users to temporarily modify a running program without
+having to change the source and recompile.  System administrators can 
+use SystemTap to extract, filter and summarize data in order to enable
+diagnosis of complex performance or functional problems.
 
 SystemTap consists of free and open-source software and includes 
 contributions from Red Hat, IBM, Intel, Hitachi, Oracle, and other community 
 members.
+
+See real example:
+@[https://developers.redhat.com/blog/2019/07/24/probing-golang-runtime-using-systemtap/]
 </pre>
 
 <pre zoom labels="profiling">
@@ -5062,6 +5227,15 @@ ZeroConf Linux impl.
 </pre>
 </div>
 
+<pre zoom labels="">
+<span xsmall>Install OpenLDAP</span>
+@[https://www.tecmint.com/install-openldap-server-for-centralized-authentication/]
+@[https://www.tecmint.com/configure-ldap-client-to-connect-external-authentication/]
+
+
+@[https://www.tecmint.com/configure-ldap-client-to-connect-external-authentication/
+</pre>
+
 </body>
 </html>
 <!--
@@ -5260,12 +5434,10 @@ https://www.linux.com/learn/overview-linux-kernel-security-features !!!
 
 https://www.linuxjournal.com/content/securing-kernel-stack
 ___________________________
-https://www.reddit.com/r/linuxadmin/comments/bxmmba/resizing_linux_lvm_with_luks/?utm_medium=android_app&utm_source=share
+https://www.reddit.com/r/linuxadmin/comments/bxmmba/resizing_linux_lvm_with_luks/
 ________________________
 Setting up a highly available homelab with KVM, Katello and Puppet. 
 https://www.lisenet.com/2018/homelab-project-with-kvm-katello-and-puppet/
-____________________________
-https://www.reddit.com/r/linuxadmin/comments/bp0f3g/how_do_i_force_centos7_to_recognize_new_ad_users/?utm_medium=android_app&utm_source=share
 _______________________
 """We are looking for a Linux and Storage Administrator with the following skills and experience:
 
@@ -5325,7 +5497,7 @@ https://wiki.kernel.org/
 ______________________________
 https://www.linuxtoday.com/storage/how-to-mount-bitlocker-encrypted-windows-partitions-on-linux-190426052029.html
 _________________
-https://www.reddit.com/r/linuxadmin/comments/bg84ot/trim_over_iscsinfs_my_findings_may_help_you_xpost/?utm_medium=android_app&utm_source=share
+https://www.reddit.com/r/linuxadmin/comments/bg84ot/trim_over_iscsinfs_my_findings_may_help_you_xpost/
 ________________________
 https://www.tecmint.com/nmcli-connect-wi-fi-from-linux-terminal/
 __________________
@@ -5335,13 +5507,13 @@ _______________________
 https://serversuit.com/community/technical-tips/view/emptying-cache-and-buffers-in-linux.html
  Emptying Cache and Buffers in Linux 
 ___________________
-https://www.reddit.com/r/linuxadmin/comments/bef2yw/san_disk_and_lvm/?utm_medium=android_app&utm_source=share
+https://www.reddit.com/r/linuxadmin/comments/bef2yw/san_disk_and_lvm/
 SAN disk and LVM
 At work we have two scenarios and I’m trying to best understand how/why if one 
 method is better than the other. I walked into the organization with the 
 following configurations between similar servers.
 ______________________
-https://www.reddit.com/r/linuxadmin/comments/c28sdl/heres_another_one_how_do_you_control_traffic_by/?utm_medium=android_app&utm_source=share
+https://www.reddit.com/r/linuxadmin/comments/c28sdl/heres_another_one_how_do_you_control_traffic_by/
 Here’s another one! How do you control traffic by port number?
 
 In a nutshell, I’d like to control the number of random IPs that can hit a port at given time interval.
@@ -5354,7 +5526,7 @@ There has to be an easy way to accomplish this. I know it. Curious if anyone her
 
 Cheers!
 ___________________________
-https://www.reddit.com/r/linuxadmin/comments/bff43j/nfs_high_available_service_based_on_drbdlvmxfs/?utm_medium=android_app&utm_source=share
+https://www.reddit.com/r/linuxadmin/comments/bff43j/nfs_high_available_service_based_on_drbdlvmxfs/
 nfs high available service based on drbd/lvm/xfs
 
 Hey,
@@ -5371,7 +5543,7 @@ can i configure lvs to get synced by drbd or not ?
 
 btw does it work when i run 2 nfs servers on the same drbd disk one on server A and one on server B. server A exports 2 of 10 nfs shares and the other 8 nfs shares would get offered by server B ? would like to add a VIP for each nfs share as well so i can easily evacuate the nfs shares from one nfs server to the other.
 ________________________
-https://www.reddit.com/r/linuxadmin/comments/bffpot/linux_resources_for_deep_diving/?utm_medium=android_app&utm_source=share
+https://www.reddit.com/r/linuxadmin/comments/bffpot/linux_resources_for_deep_diving/
 
 Linux - Resources for deep diving
 
@@ -5401,7 +5573,6 @@ https://linux.die.net/sag/ The Linux System Administrator's Guide
 http://swift.siphos.be/linux_sea/
 https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/7/html/Networking_Guide/
 https://docs.fedoraproject.org/en-US/Fedora/24/html/Networking_Guide/index.html
-https://wiki.debian.org/NetworkManager
 ___________________________
   6.5 Creating and Managing Groups       
   6.7 Managing Password Properties       
@@ -5414,7 +5585,6 @@ ___________________________
 _______________________________
    <a TODO href="https://www.kernel.org/doc/html/v4.12/admin-guide/sysfs-rules.html">SysFS</a>
 ______________________
-_____________
 https://www.networkworld.com/article/3409781/mastering-user-groups-on-linux.html
 _____________________
 learnXinYmin : The terminal
@@ -5425,3 +5595,24 @@ https://www.linuxuprising.com/2019/07/179-color-schemes-for-your-gtk-based.html
 McFly: Intelligent history navigation:
 https://www.linuxlinks.com/excellent-utilities-mcfly-navigate-shell-history/
 ________________
+- Linux Oauth 2factor authentication from CLI:
+@[https://www.cyberciti.biz/faq/use-oathtool-linux-command-line-for-2-step-verification-2fa/]
+_____________________
+Psacct or Acct – Monitor User Activity
+
+ psacct or acct tools are very useful for monitoring each users activity on the system. Both daemons runs in the background and keeps a close watch on the overall activity of each user on the system and also what resources are being consumed by them.
+
+ These tools are very useful for system administrators to track each users activity like what they are doing, what commands they issued, how much resources are used by them, how long they are active on the system etc.
+_________________________
+Collectl: All-in-One Performance Monitoring Tool
+
+Collectl is a yet another powerful and feature rich command line based utility, that can be used to gather information about Linux system resources such as CPU usage, memory, network, inodes, processes, nfs, tcp, sockets and much more.
+_______________________
+https://ubunlog.com/flatpak-un-tipo-de-paquete-que-decepciona-tanto-o-mas-que-los-snap/
+_______________________
+https://www.redhat.com/sysadmin/becoming-friends-networkmanager
+https://wiki.debian.org/NetworkManager
+_________________________
+https://www.reddit.com/r/linuxadmin/comments/bp0f3g/how_do_i_force_centos7_to_recognize_new_ad_users/
+____________________
+Samba vs FreeIPA vs AD

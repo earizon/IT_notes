@@ -430,6 +430,7 @@ function onPageLoaded() {
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /\*([^\*\n]*)\*/g, "<b       > $1 </b>")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[˂]/g, "&lt;")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[˃]/g, "&gt;")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[⅋]/g, "&amp;")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/g\|([^\*\n]*)\|/g, "<span green >  $1 </span>")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/r\|([^\*\n]*)\|/g, "<span red   >  $1 </span>")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/b\|([^\*\n]*)\|/g, "<span blue  >  $1 </span>")   

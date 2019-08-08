@@ -44,6 +44,12 @@ https://hg.openjdk.java.net/jdk/jdk
     Java Collections Framework, the java.math package,
     and the assert mechanism.
 
+- Julien Viet:
+ @[http://www.julienviet.com/]
+  Core developer of VertX, crash (http://www.crashub.org/), 
+  and many other interesting Java software.
+  @[https://github.com/vietj?utf8=%E2%9C%93&tab=repositories&q=&type=source]
+
 - Ben Evans:
   - jClarity Co-founder.
   - Java Champion, author, speaker, consultant
@@ -2035,7 +2041,7 @@ ListenableFuture listenable = service.submit(...);   │ CompletableFuture compl
 </pre>
 
 <div groupv>
-<pre zoom label="performance">
+<pre zoom labels="performance">
 <span TODO xsmall>Loom Prj</span>
 <span TODO xsmall>Ligthweight</span>
 <span TODO xsmall>threads</span>
@@ -3007,7 +3013,8 @@ void printFloatAndInt(@Format({FLOAT, INT}) String fs) {
 
 <div group>
 <div groupv>
-<span title>Maven</span>
+<span title><a href="https://mvnrepository.com/">mvnrepository.com</a> Maven</span>
+
 <pre zoom labels="tool,devops,learn_x_in_y_min">
 <b xsmall>GOAL</b>
 - unit of work.
@@ -3229,7 +3236,7 @@ $ mvn fr.jcgay.maven.plugins:buildplan-maven-plugin:list \
 ˂/dependency˃
 </pre>
 
-<pre zoom label="learn_x_in_y_min" >
+<pre zoom labels="learn_x_in_y_min" >
 <a xsmall href="https://maven.apache.org/pom.html">pom.xml</a>
 *Reuse constants:*
 ${project.groupId}         ← Reuse project groupId in POM
@@ -3845,12 +3852,16 @@ distributionSha256Sum=371cb9fbebbe9880d147f59bab36d61eee122854ef8c9ee1ecf12b8236
 <span xsmall>(Dagger, Data Binding, Lombok, ...)</span>
 </pre>
 
-
-
-<pre zoom label="sql,qa">
+<pre zoom labels="sql,qa">
 <span TODO xsmall>Jooq</span>
 <span xsmall> SQL made simple</span>
 @[https://www.jooq.org/]
+
+
+- vertx-jooq
+  jOOQ-CodeGenerator to create vertxified DAOs and POJOs. 
+  Now with JDBC, async and reactive support!
+@[https://github.com/jklingsporn/vertx-jooq]
 </pre>
 
 <div groupv>
@@ -4217,6 +4228,59 @@ module:
   - No async operations.
 - Implemented by Hazelcast and others
 </pre>
+
+
+<pre zoom labels="dynamic_instrumentation,profiling">
+<span xsmall TODO>SystemTap+Java</span>
+@[https://laurent-leturgez.com/2017/12/22/profiling-java-application-with-systemtap/]
+[root@spark ~]# yum install systemtap systemtap-runtime-java
+
+JAVA                                              SystemTap Profiling script
+package com.premiseo;                             #!/usr/bin/env stap
+                                                  
+import java.lang.*;                               global counter,timespent,t
+import java.io.BufferedReader;                    
+import java.io.InputStreamReader;                 probe begin {
+import java.io.IOException;                         printf("Press Ctrl+C to stop profiling\n")
+                                                    counter=0
+class Example {                                     timespent=0
+   public static void                             }
+     loop_and_wait(int n)                         
+         throws InterruptedException{             probe java("com.premiseo.Example").class("Example").method("loop_and_wait")
+         System.out.println(                      {
+            "Waiting "+n+"ms... Tick");             counter++
+         Thread.sleep(n);                           t=gettimeofday_ms()
+     }                                            }
+                                                  
+   public static void main(String[] args) {       probe java("com.premiseo.Example").class("Example").method("loop_and_wait").return
+      System.out.println("PID = "+                {
+          java.lang.management.                     timespent+=gettimeofday_ms()-t
+              ManagementFactory.                  }
+                  getRuntimeMXBean().             
+                     getName().split("@")[0]);    probe end {
+      System.out.println(                            printf("Number of calls for loop_and_wait method: %ld \n",    counter)
+              "Press key when ready ...");           printf("Time Spent in method loop_and_wait: %ld msecs \n", timespent)
+                                                  }
+      try {                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        BufferedReader in =                       profiling loop_and_wait:
+           new BufferedReader(                    counts number of times the
+              new InputStreamReader(System.in));  loop_and_wait method has been called,
+        String next = in.readLine();              and the time spent in this method execution.
+      } catch (IOException ioe) {
+        ioe.printStackTrace();
+      }
+ 
+      try {
+        for (int i=0;i˂10;i++) {
+           loop_and_wait(1000);
+        }
+      } catch (InterruptedException ie) {
+        ie.printStackTrace();
+      }
+   }
+}
+</pre>
+
 </body>
 </html>
 <!--
@@ -4406,4 +4470,16 @@ ________________
 <span xsmall>Running *java</span>
 @[https://www.infoq.com/articles/single-file-execution-java11/?itm_source=infoq&itm_medium=popular_widget&itm_campaign=popular_content_list&itm_content=]
 </pre>
+_____________________
+Java PKCS#11 Ref.guide
+https://docs.oracle.com/javase/7/docs/technotes/guides/security/p11guide.html
+
+_______________________
+https://linuxconfig.org/executing-commands-on-a-remote-machine-from-java-with-jsch
+
+________________________
+https://aboullaite.me/docker-java-10/
+ava & Docker: Java 10 improvements strengthen the friendship!
+
+Till JDK 10, running java applications in linux containers was a bit tricky and requires additional setup to avoid surprises. These issues does not affect only older versions of Java (prior to 10), but also some tools that collect information from the execution environment like top, free and ps. That's because this tools and even the JVM have been implemented before the existence of cgroups, hence not optimized for executing inside a container.
 -->

@@ -8,7 +8,7 @@
 </head>
 
 <body>
-<div group>
+<div groupv>
 <pre zoom>
 <span xsmall>External Refs:</span>
 -*Key Concepts*
@@ -65,16 +65,291 @@ Konstantinos Chalkias
 szymonsztuka
 ...
 </pre>
+
+<pre zoom>
+<span xsmall>Hello World!</span>
+@[https://docs.corda.net/tutorial-cordapp.html]
+@[https://github.com/corda/samples]
+
+IOUs contract between nodes.
+Rules:
+- The IOU’s value is strictly positive
+- A node is not trying to issue an IOU to itself
+
+Nodes: Notary + PartyA + PartyB + PartyC
+
+$ git clone https://github.com/corda/samples
+$ cd samples/cordapp-example
+
+r*WARN*: Use JDK 1.8
+
+/
+├─ LICENCE
+├─ README.md
+├─ TRADEMARK
+├─ build.gradle
+├─ clients
+│  ├─ build.gradle
+│  └─ src
+│     └─ main
+│        ├─ kotlin
+│        │  └─ com
+│        │     └─ example
+│        │        └─ server
+│        │           ├─ MainController.kt
+│        │           ├─ NodeRPCConnection.kt
+│        │           └─ Server.kt
+│        └─ resources
+│           ├─ application.properties
+│           └─ public
+│              ├─ index.html
+│              └─ js
+│                 └─ angular-module.js
+├─ config
+│  ├── dev
+│  │   └── log4j2.xml
+│  └── test
+│      └── log4j2.xml
+├─ contracts-java
+│  ├ build.gradle
+│  └ src
+│    └ main
+│      └ java
+│        └ com
+│          └ example
+│            ├ contract
+│            │ └ IOUContract.java
+│            ├ schema
+│            │ ├ IOUSchema.java
+│            │ └ IOUSchemaV1.java
+│            └ state
+│              └ IOUState.java
+├─ contracts-kotlin
+│  ├ build.gradle
+│  └ src
+│    └ main
+│      └ kotlin
+│        └ com
+│          └ example
+│            ├ contract
+│            │ └ IOUContract.kt
+│            ├ schema
+│            │ └ IOUSchema.kt
+│            └ state
+│              └ IOUState.kt
+├─ cordapp-example.iml
+├─ gradle
+│  └ wrapper
+│    ├ gradle-wrapper.jar
+│    └ gradle-wrapper.properties
+├─ gradle.properties
+├─ gradlew
+├─ gradlew.bat
+├─ lib
+│  ├ README.txt
+│  └ quasar.jar  ← rewrites flows to be checkpointable
+├─ settings.gradle
+├─ workflows-java
+│  ├ build.gradle
+│  └ src
+│    ├ integrationTest
+│    │ └ java
+│    │   └ com
+│    │     └ example
+│    │       └ DriverBasedTests.java
+│    ├ main
+│    │ └ java
+│    │   └ com
+│    │     └ example
+│    │       └ flow
+│    │         └ ExampleFlow.java
+│    └ test
+│      └ java
+│        └ com
+│          └ example
+│            ├ NodeDriver.java
+│            ├ contract
+│            │ └─IOUContractTests.java
+│            └ flow
+│              └─IOUFlowTests.java
+└─ workflows-kotlin
+   ├── build.gradle
+   └── src
+       ├ integrationTest
+       │ └ kotlin
+       │   └ com
+       │     └ example
+       │       └ DriverBasedTests.kt
+       ├ main
+       │ └ kotlin
+       │   └ com
+       │     └ example
+       │       └── flow
+       │           └── ExampleFlow.kt
+       └ test
+         └── kotlin
+             └── com
+                 └── example
+                     ├── NodeDriver.kt
+                     ├── contract
+                     │   └── IOUContractTests.kt
+                     └── flow
+                         └── IOUFlowTests.kt
+
+$*./gradlew deployNodes*
+  Will create
+  $ workflows-kotlin/build/nodes/node"I"
+  $ "runnodes" shell script for running all the nodes simultaneously
+
+    . node"I"
+    ├── additional-node-infos  //
+    ├── certificates
+    ├── corda.jar              // The Corda node runtime
+    ├── cordapps               // The node's CorDapps
+    │   ├── corda-finance-contracts-4.1.jar
+    │   ├── corda-finance-workflows-4.1.jar
+    │   └── cordapp-example-0.1.jar
+    ├── drivers
+    ├── logs
+    ├── network-parameters
+    ├── node.conf              // The node's configuration file
+    ├── nodeInfo-<HASH>        // The hash will be different each time you generate a node
+    └── persistence.mv.db      // The node's database
+
+Running the CorDapp:
+ $ workflows-kotlin/build/nodes/runnodes
+
+For each party A/B/C, start the Spring Boot server in its own terminal like:
+
+ $ ./gradlew runParty"X"Server
+ → ...
+ →    ______               __
+ →   / ____/     _________/ /___ _
+ →  / /     __  / ___/ __  / __ `/  Top tip: never say "oops", instead
+ → / /___  /_/ / /  / /_/ / /_/ /   always say "Ah, Interesting!"
+ → \____/     /_/   \__,_/\__,_/
+ →
+ → --- Corda Open Source corda-4.1 (4157c25) ------------
+ →
+ → Logs can be found in                    : .../cordapp-example/workflows-kotlin/build/nodes/PartyA/logs
+ → Database connection url is              : jdbc:h2:tcp://localhost:59472/node
+ → Incoming connection address             : localhost:10005
+ → Listening on port                       : 10005
+ → Loaded CorDapps                         : corda-finance-corda-4.1, cordapp-example-0.1, corda-core-corda-4.1
+ → Node for "PartyA" started up and registered in 38.59 sec
+ →
+ →
+ → Welcome to the Corda interactive shell.
+ → Useful commands include 'help' to see what is available, and 'bye' to shut down the node.
+ →
+ → Fri Mar 02 17:34:02 GMT 2018>>>
+ →
+ →
+
+ Check status like http://localhost:[?????]/api/status
+                                     50005
+                                     50006
+                                     50007
+
+Spring Boot server exposed API endpoints:
+      /api/example/me
+      /api/example/peers
+      /api/example/create-iou
+
+    - create an IOU between PartyA and PartyB like:
+      curl -X PUT \
+        'http://localhost:50005/api/example/create-iou?iouValue=1&partyName=O=PartyB,L=New%20York,C=US'
+                                ^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^^   ^^^^^^^^^
+
+     *Once the process is complete, both nodes will have a signed, notarised copy of the IOU. PartyC will not.*
+
+    - Check correct creation in both peers like:
+      PartyA's vault → http://localhost:50005/api/example/ious
+      PartyB's vault → http://localhost:50006/api/example/ious
+
+    - Check that C is not affected:
+      PartyC's vault → http://localhost:50007/api/example/ious
+
+Via the interactive shell:
+
+PartyA shell >>> flow list
+→ com.example.flow.ExampleFlow$Initiator
+→ net.corda.core.flows.ContractUpgradeFlow$Authorise
+→ net.corda.core.flows.ContractUpgradeFlow$Deauthorise
+→ net.corda.core.flows.ContractUpgradeFlow$Initiate
+→ net.corda.finance.flows.CashExitFlow
+→ net.corda.finance.flows.CashIssueAndPaymentFlow
+→ net.corda.finance.flows.CashIssueFlow
+→ net.corda.finance.flows.CashPaymentFlow
+→ net.corda.finance.internal.CashConfigDataFlow
+
+create a new IOU like:
+PartyA shell >> flow start ExampleFlow$Initiator iouValue: 50, otherParty: "O=PartyB,L=New York,C=US"
+→ OK   Generating transaction based on new IOU.
+→ OK   Verifying contract constraints.
+→ OK   Signing transaction with our private key.
+→ OK   Gathering the counterparty's signature.
+→     OK   Collecting signatures from counterparties.
+→     OK   Verifying collected signatures.
+→ OK   Obtaining notary signature and recording transaction.
+→     OK   Requesting signature by notary service
+→             Requesting signature by Notary service
+→             Validating response from Notary service
+→     OK   Broadcasting transaction to participants
+→ OK   Done
+
+Display full list of available operations:
+PartyA shell >> run vaultQuery contractStateType: com.example.state.IOUState
+
+Change node location:
+(Automatic in Corda 4 with Corda_Service_Map?)
+STEP 1) Deploy
+$ ./gradlew deployNodes  # (No changes here)
+
+$ cd .../workflows-kotlin/build/nodes
+$ vim node.conf # update its p2pAddress  matching that of the node
+
+Distribute new node-info files amongst nodes:
+$ java -jar network-bootstrapper.jar workflows-kotlin/build/nodes
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+            network bootstrapper tool
+            network bootstrapper tool
+            distribute files locally
+"Copy/move" folders to their corresponding machines
+
+- After starting each node, they will "see" one another
+</pre>
 </div>
 
-<div group>
-<pre title>
-    BUILDING
-    BLOCKS
-</pre>
+<div groupv>
+<span title>Building Blocks</span>
 
 
 <pre zoom labels="summary,consensus" >
+<span xsmall>NODE CERTs</span>
+<span xsmall>PRE-SETUP</span>
+<span xsmall></span>
+node    → node   :   generates key pair
+                   + certificate signing request
+node    → doorman: Certificate signing request
+doorman → doorman: signs cert *1
+doorman → node   : (root-authority-signed) certificate CERT1
+node    → node   : creates and signs (using CERT1) two more certs:
+                    - TLS certificate
+                    - Signing-certificate *2
+                    (node’s well-known-identity)
+node    → node   : builds node-info-record
+                   address well-known-identity
+node    → network: register node-info-record
+          map srv
+...
+node    → ??? : establish TLS session using certificate
+
+  * CERT: X.509 certificate
+  * 1: or forwards to well known signing authority
+  * 2: an organisation can further use the
+       Signing-certificate to create both
+       well-known and confidential identities.
 
 <span xsmall bgorange>NODE</span>
 <span xsmall bgorange>LAYOUT</span>
@@ -168,8 +443,6 @@ szymonsztuka
 
 @2:*FULL LIST OF NODE SERVICES*
 @[https://github.com/corda/corda/tree/master/node/src/main/kotlin/net/corda/node/services]
-corda.git/node/src/main/kotlin/
-https://docs.corda.net/releases/release-V4.0/api/kotlin/corda/net.corda.node.services.statemachine/-state-machine-manager/
 └─ net/corda/node/services
    ├─ /network
    ├─ /schema
@@ -526,11 +799,8 @@ It provides a number of contracts supplied with Corda, covering:
 </pre>
 
 </div>
-<div group>
-<pre title>
-    Programming
-    API
-</pre>
+<div groupv>
+<span title>Programming API</span>
 <pre zoom>
 <span xsmall>Corda dApp</span>
 ┌────────────────────────────────────────────────────────────────┐  ┌────────────────────────────────────────────────────────────┐
@@ -950,262 +1220,12 @@ class Initiator(val arg1: Boolean,                                 │ class Res
 }
 </pre>
 
-<pre zoom>
-<span xsmall>Hello World!</span>
-@[https://docs.corda.net/tutorial-cordapp.html]
 
-IOUs contract between nodes.
-Rules:
-- The IOU’s value is strictly positive
-- A node is not trying to issue an IOU to itself
-
-Nodes: Notary + PartyA + PartyB + PartyC
-
-$ git clone https://github.com/corda/samples
-$ cd samples/cordapp-example
-
-r*WARN*: Use JDK 1.8
-
-/
-├─ LICENCE
-├─ README.md
-├─ TRADEMARK
-├─ build.gradle
-├─ clients
-│  ├─ build.gradle
-│  └─ src
-│     └─ main
-│        ├─ kotlin
-│        │  └─ com
-│        │     └─ example
-│        │        └─ server
-│        │           ├─ MainController.kt
-│        │           ├─ NodeRPCConnection.kt
-│        │           └─ Server.kt
-│        └─ resources
-│           ├─ application.properties
-│           └─ public
-│              ├─ index.html
-│              └─ js
-│                 └─ angular-module.js
-├─ config
-│  ├── dev
-│  │   └── log4j2.xml
-│  └── test
-│      └── log4j2.xml
-├─ contracts-java
-│  ├ build.gradle
-│  └ src
-│    └ main
-│      └ java
-│        └ com
-│          └ example
-│            ├ contract
-│            │ └ IOUContract.java
-│            ├ schema
-│            │ ├ IOUSchema.java
-│            │ └ IOUSchemaV1.java
-│            └ state
-│              └ IOUState.java
-├─ contracts-kotlin
-│  ├ build.gradle
-│  └ src
-│    └ main
-│      └ kotlin
-│        └ com
-│          └ example
-│            ├ contract
-│            │ └ IOUContract.kt
-│            ├ schema
-│            │ └ IOUSchema.kt
-│            └ state
-│              └ IOUState.kt
-├─ cordapp-example.iml
-├─ gradle
-│  └ wrapper
-│    ├ gradle-wrapper.jar
-│    └ gradle-wrapper.properties
-├─ gradle.properties
-├─ gradlew
-├─ gradlew.bat
-├─ lib
-│  ├ README.txt
-│  └ quasar.jar  ← rewrites flows to be checkpointable
-├─ settings.gradle
-├─ workflows-java
-│  ├ build.gradle
-│  └ src
-│    ├ integrationTest
-│    │ └ java
-│    │   └ com
-│    │     └ example
-│    │       └ DriverBasedTests.java
-│    ├ main
-│    │ └ java
-│    │   └ com
-│    │     └ example
-│    │       └ flow
-│    │         └ ExampleFlow.java
-│    └ test
-│      └ java
-│        └ com
-│          └ example
-│            ├ NodeDriver.java
-│            ├ contract
-│            │ └─IOUContractTests.java
-│            └ flow
-│              └─IOUFlowTests.java
-└─ workflows-kotlin
-   ├── build.gradle
-   └── src
-       ├ integrationTest
-       │ └ kotlin
-       │   └ com
-       │     └ example
-       │       └ DriverBasedTests.kt
-       ├ main
-       │ └ kotlin
-       │   └ com
-       │     └ example
-       │       └── flow
-       │           └── ExampleFlow.kt
-       └ test
-         └── kotlin
-             └── com
-                 └── example
-                     ├── NodeDriver.kt
-                     ├── contract
-                     │   └── IOUContractTests.kt
-                     └── flow
-                         └── IOUFlowTests.kt
-
-$*./gradlew deployNodes*
-  Will create
-  $ workflows-kotlin/build/nodes/node"I"
-  $ "runnodes" shell script for running all the nodes simultaneously
-
-    . node"I"
-    ├── additional-node-infos  //
-    ├── certificates
-    ├── corda.jar              // The Corda node runtime
-    ├── cordapps               // The node's CorDapps
-    │   ├── corda-finance-contracts-4.1.jar
-    │   ├── corda-finance-workflows-4.1.jar
-    │   └── cordapp-example-0.1.jar
-    ├── drivers
-    ├── logs
-    ├── network-parameters
-    ├── node.conf              // The node's configuration file
-    ├── nodeInfo-<HASH>        // The hash will be different each time you generate a node
-    └── persistence.mv.db      // The node's database
-
-Running the CorDapp:
- $ workflows-kotlin/build/nodes/runnodes
-
-For each party A/B/C, start the Spring Boot server in its own terminal like:
-
- $ ./gradlew runParty"X"Server
- → ...
- →    ______               __
- →   / ____/     _________/ /___ _
- →  / /     __  / ___/ __  / __ `/  Top tip: never say "oops", instead
- → / /___  /_/ / /  / /_/ / /_/ /   always say "Ah, Interesting!"
- → \____/     /_/   \__,_/\__,_/
- →
- → --- Corda Open Source corda-4.1 (4157c25) ------------
- →
- → Logs can be found in                    : .../cordapp-example/workflows-kotlin/build/nodes/PartyA/logs
- → Database connection url is              : jdbc:h2:tcp://localhost:59472/node
- → Incoming connection address             : localhost:10005
- → Listening on port                       : 10005
- → Loaded CorDapps                         : corda-finance-corda-4.1, cordapp-example-0.1, corda-core-corda-4.1
- → Node for "PartyA" started up and registered in 38.59 sec
- →
- →
- → Welcome to the Corda interactive shell.
- → Useful commands include 'help' to see what is available, and 'bye' to shut down the node.
- →
- → Fri Mar 02 17:34:02 GMT 2018>>>
- →
- →
-
- Check status like http://localhost:[?????]/api/status
-                                     50005
-                                     50006
-                                     50007
-
-Spring Boot server exposed API endpoints:
-      /api/example/me
-      /api/example/peers
-      /api/example/create-iou
-
-    - create an IOU between PartyA and PartyB like:
-      curl -X PUT \
-        'http://localhost:50005/api/example/create-iou?iouValue=1&partyName=O=PartyB,L=New%20York,C=US'
-                                ^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^^   ^^^^^^^^^
-
-     *Once the process is complete, both nodes will have a signed, notarised copy of the IOU. PartyC will not.*
-
-    - Check correct creation in both peers like:
-      PartyA's vault → http://localhost:50005/api/example/ious
-      PartyB's vault → http://localhost:50006/api/example/ious
-
-    - Check that C is not affected:
-      PartyC's vault → http://localhost:50007/api/example/ious
-
-Via the interactive shell:
-
-PartyA shell >>> flow list
-→ com.example.flow.ExampleFlow$Initiator
-→ net.corda.core.flows.ContractUpgradeFlow$Authorise
-→ net.corda.core.flows.ContractUpgradeFlow$Deauthorise
-→ net.corda.core.flows.ContractUpgradeFlow$Initiate
-→ net.corda.finance.flows.CashExitFlow
-→ net.corda.finance.flows.CashIssueAndPaymentFlow
-→ net.corda.finance.flows.CashIssueFlow
-→ net.corda.finance.flows.CashPaymentFlow
-→ net.corda.finance.internal.CashConfigDataFlow
-
-create a new IOU like:
-PartyA shell >> flow start ExampleFlow$Initiator iouValue: 50, otherParty: "O=PartyB,L=New York,C=US"
-→ OK   Generating transaction based on new IOU.
-→ OK   Verifying contract constraints.
-→ OK   Signing transaction with our private key.
-→ OK   Gathering the counterparty's signature.
-→     OK   Collecting signatures from counterparties.
-→     OK   Verifying collected signatures.
-→ OK   Obtaining notary signature and recording transaction.
-→     OK   Requesting signature by notary service
-→             Requesting signature by Notary service
-→             Validating response from Notary service
-→     OK   Broadcasting transaction to participants
-→ OK   Done
-
-Display full list of available operations:
-PartyA shell >> run vaultQuery contractStateType: com.example.state.IOUState
-
-Change node location:
-(Automatic in Corda 4 with Corda_Service_Map?)
-STEP 1) Deploy
-$ ./gradlew deployNodes  # (No changes here)
-
-$ cd .../workflows-kotlin/build/nodes
-$ vim node.conf # update its p2pAddress  matching that of the node
-
-Distribute new node-info files amongst nodes:
-$ java -jar network-bootstrapper.jar workflows-kotlin/build/nodes
-            ^^^^^^^^^^^^^^^^^^^^^^^^
-            network bootstrapper tool
-            network bootstrapper tool
-            distribute files locally
-"Copy/move" folders to their corresponding machines
-
-- After starting each node, they will "see" one another
-</pre>
 
 <pre zoom>
-˂span xsmall TODO˃PERSISTENCE API˂/span˃
+<span xsmall TODO>PERSISTENCE API</span>
 @[https://docs.corda.net/api-persistence.html]
+
 - Allows to sync vault contractStates (or just parts) to an
   external DDBB to allow complex SQL queries not possible with
    the vault-query-API.
@@ -1358,6 +1378,14 @@ JDBC sessions can be used in flows and services (see “Writing flows”).
 - particularly useful if off-ledger data must be maintained in conjunction
   with on-ledger state data.
 - See oficial docs for examples.
+
+<span xsmall>DDBB table nomenclature</span>
+- node_ prefixed tables are private to Corda
+  and should not be directly accessed at all.
+- contract_ prefixed tables are generated by apps
+  and designed to be queried by end users, GUIs, tools etc.
+
+
 </pre>
 
 <pre zoom labels="qa,error-handling">
@@ -1375,7 +1403,10 @@ requireThat {
     "X's value must be ˃0 "                using (out.x.value ˃ 0)
 }
 </pre>
+</div>
 
+<div groupv>
+<span title>Understanding source</span>
 <pre zoom>
 <a  bgorange xsmall href="https://github.com/corda/corda/tree/master/core/src/main/kotlin/net/corda/core">net.corda.core</a>
 ┌────────────────────────   ┌──────────────────────────────────
@@ -1552,8 +1583,6 @@ requireThat {
 │./internal/rules/TargetVersionDependentRules.kt
 └────────────────────────────────────────────────
 </pre>
-
-<div groupv>
 <pre zoom>
 <a xsmall href="https://github.com/corda/corda/tree/master/node/src/main/kotlin/net/corda/node">net.corda.node</a>
 ┌────────────────────────  ┌────────────────────────────────────────────
@@ -1699,12 +1728,8 @@ requireThat {
 └─────────────────────────────────────────────────────────────
 </pre>
 </div>
-</div>
-<div group>
-<pre title>
-   DevOps
-</pre>
-<div group>
+<div groupv>
+<span title>DevOps</span>
 <pre zoom labels="permissioning,identity">
 UUID: 0ba845f3-579d-491c-b580-9f9803808117
 <span xsmall>(X.509)IDENTITIES</span>
@@ -1842,7 +1867,7 @@ packageOwnership      :-  network-wide java package list that were
 Read more about Package ownership here
 Package namespace ownership.
 </pre>
-</div>
+
 <pre zoom >
 <span xsmall>Setting Up</span>
 Getting Set Up:@[https://docs.corda.net/getting-set-up.html]
@@ -1875,37 +1900,25 @@ docker run -d --name corda-test-${SALT} --network=host --hostname=127.0.0.1 \
   corda/corda-corretto-4.0 config-generator --generic
 </pre>
 
-<pre zoom>
-<span xsmall>NODE PRE-SETUP</span>
-<span xsmall>(TLS Setup)</span>
-node    → node   :   generates key pair
-                   + certificate signing request
-node    → doorman: Certificate signing request
-doorman → doorman: signs cert *1
-doorman → node   : (root-authority-signed) certificate CERT1
-node    → node   : creates and signs (using CERT1) two more certs:
-                    - TLS certificate
-                    - Signing-certificate *2
-                    (node’s well-known-identity)
-node    → node   : builds node-info-record
-                   address well-known-identity
-node    → network: register node-info-record
-          map srv
-...
-node    → ??? : establish TLS session using certificate
 
-  * CERT: X.509 certificate
-  * 1: or forwards to well known signing authority
-  * 2: an organisation can further use the
-       Signing-certificate to create both
-       well-known and confidential identities.
+
+<pre zoom >
+<span xsmall TODO>Package</span>
+<span xsmall>namespace</span>
+<span xsmall>Ownership (4.0+)</span>
+@[https://docs.corda.net/design/data-model-upgrades/package-namespace-ownership.html]
 </pre>
+
+<pre zoom TODO >
+<span xsmall>Monitoring</span>
+<span xsmall>Nodes</span>
+@[https://medium.com/corda/monitoring-corda-nodes-part-1-3316d26d8fda]
+</pre>
+
 </div>
 
 <div groupv>
-<pre title>
-    Releases
-</pre>
+<span title>Releases</span>
 <pre zoom>
 <span xsmall>Ext.Links</span>
   @[https://docs.corda.net/release-notes.html] Release notes
@@ -2057,14 +2070,8 @@ See also:
 </pre>
 </div>
 
-<div group>
-<pre title>
-  TODO
-</pre>
-
-
-
-
+<div groupv>
+<span title> TODO </span>
 <pre zoom>
 <span xsmall>State pointers</span>
 - Corda 4.0+
@@ -2089,22 +2096,89 @@ See also:
     create a test network in the cloud.
 </pre>
 
-<pre zoom>
-<span xsmall>DDBB table nomenclature</span>
-- node_ prefixed tables are private to Corda
-  and should not be directly accessed at all.
-- contract_ prefixed tables are generated by apps
-  and designed to be queried by end users, GUIs, tools etc.
+<pre zoom >
+<span xsmall TODO>Custom Node Service</span>
+@[https://docs.corda.net/node-services.html]
+
+Extracted from @[https://docs.corda.net/api-persistence.html]
+The following example illustrates the creation of a custom Corda service using a jdbcSession:
+object CustomVaultQuery {
+ *@CordaService*
+  class Service(val services: AppServiceHub) : SingletonSerializeAsToken() {
+    private companion object {
+      private val log = contextLogger()
+    }
+
+    fun rebalanceCurrencyReserves(): List˂Amount˂Currency˃˃ {
+      val nativeQuery = """
+          select
+              cashschema.ccy_code,
+              sum(cashschema.pennies)
+          from
+              vault_states vaultschema
+          join
+              contract_cash_states cashschema
+          where
+              vaultschema.output_index=cashschema.output_index
+              and vaultschema.transaction_id=cashschema.transaction_id
+              and vaultschema.state_status=0
+          group by
+              cashschema.ccy_code
+          order by
+              sum(cashschema.pennies) desc
+      """
+      log.info("SQL to execute: $nativeQuery")
+      val session = services.jdbcSession()
+      return session.prepareStatement(nativeQuery).use { prepStatement -˃
+        prepStatement.executeQuery().use { rs -˃
+          val topUpLimits: MutableList˂Amount˂Currency˃˃ = mutableListOf()
+          while (rs.next()) {
+            val currencyStr = rs.getString(1)
+            val amount = rs.getLong(2)
+            log.info("$currencyStr : $amount")
+            topUpLimits.add(Amount(amount, Currency.getInstance(currencyStr)))
+          }
+          topUpLimits
+        }
+      }
+    }
+  }
+}
+
+which is then referenced within a custom flow:
+
+        @Suspendable
+        @Throws(CashException::class)
+        override fun call(): List˂SignedTransaction˃ {
+            progressTracker.currentStep = AWAITING_REQUEST
+            val topupRequest = otherPartySession.receive˂TopupRequest˃().unwrap {
+                it
+            }
+
+            val customVaultQueryService = serviceHub.cordaService(CustomVaultQuery.Service::class.java)
+            val reserveLimits = customVaultQueryService.rebalanceCurrencyReserves()
+
+            val txns: List˂SignedTransaction˃ = reserveLimits.map { amount -˃
+                // request asset issue
+                logger.info("Requesting currency issue $amount")
+                val txn = issueCashTo(amount, topupRequest.issueToParty, topupRequest.issuerPartyRef, topupRequest.notaryParty)
+                progressTracker.currentStep = SENDING_TOP_UP_ISSUE_REQUEST
+                return@map txn.stx
+            }
+
+            otherPartySession.send(txns)
+            return txns
+        }
+
+For examples on testing @CordaService implementations,
+see the oracle example @[https://docs.corda.net/oracles.html]
 </pre>
 
-<pre zoom>
-<span xsmall>Deterministic JVM</span>
-@[https://docs.corda.net/key-concepts-djvm.html]
-- Preview in 4.0
-</pre>
+
+
 </div>
 
-<div group>
+<div groupv>
 <pre zoom>
 <span xsmall>Financial</span>
 <span xsmall>Models</span>
@@ -2180,10 +2254,23 @@ Corda supports several types of constraints to cover a wide set of client requir
 @[https://docs.corda.net/tutorial-clientrpc-api.html]
 </pre>
 
+</div>
+
+<div groupv>
+<span title>Unordered</span>
+
+<pre zoom>
+<span xsmall>Deterministic JVM</span>
+@[https://docs.corda.net/key-concepts-djvm.html]
+- Preview in 4.0
+</pre>
+
+
 
 </div>
 
-<div group>
+<div groupv>
+<span xsmall>Tec.Radar</span>
 <pre zoom TODO>
 <span xsmall>Corda Network</span>
 @[https://corda.network/]
@@ -2241,102 +2328,8 @@ Corda supports several types of constraints to cover a wide set of client requir
 
 *Support Service is also provided*
 </pre>
-
-
 </div>
 
-<pre zoom TODO>
-<span xsmall>Package</span>
-<span xsmall>namespace</span>
-<span xsmall>Ownership (4.0+)</span>
-https://docs.corda.net/design/data-model-upgrades/package-namespace-ownership.html
-</pre>
-
-
-<pre zoom TODO >
-<span xsmall>Node Services</span>
-@[https://docs.corda.net/node-services.html]
-
-
-Extracted from @[https://docs.corda.net/api-persistence.html]
-The following example illustrates the creation of a custom Corda service using a jdbcSession:
-object CustomVaultQuery {
-    @CordaService
-    class Service(val services: AppServiceHub) : SingletonSerializeAsToken() {
-        private companion object {
-            private val log = contextLogger()
-        }
-
-        fun rebalanceCurrencyReserves(): List˂Amount˂Currency˃˃ {
-            val nativeQuery = """
-                select
-                    cashschema.ccy_code,
-                    sum(cashschema.pennies)
-                from
-                    vault_states vaultschema
-                join
-                    contract_cash_states cashschema
-                where
-                    vaultschema.output_index=cashschema.output_index
-                    and vaultschema.transaction_id=cashschema.transaction_id
-                    and vaultschema.state_status=0
-                group by
-                    cashschema.ccy_code
-                order by
-                    sum(cashschema.pennies) desc
-            """
-            log.info("SQL to execute: $nativeQuery")
-            val session = services.jdbcSession()
-            return session.prepareStatement(nativeQuery).use { prepStatement -˃
-                prepStatement.executeQuery().use { rs -˃
-                    val topUpLimits: MutableList˂Amount˂Currency˃˃ = mutableListOf()
-                    while (rs.next()) {
-                        val currencyStr = rs.getString(1)
-                        val amount = rs.getLong(2)
-                        log.info("$currencyStr : $amount")
-                        topUpLimits.add(Amount(amount, Currency.getInstance(currencyStr)))
-                    }
-                    topUpLimits
-                }
-            }
-        }
-    }
-}
-
-which is then referenced within a custom flow:
-
-        @Suspendable
-        @Throws(CashException::class)
-        override fun call(): List˂SignedTransaction˃ {
-            progressTracker.currentStep = AWAITING_REQUEST
-            val topupRequest = otherPartySession.receive˂TopupRequest˃().unwrap {
-                it
-            }
-
-            val customVaultQueryService = serviceHub.cordaService(CustomVaultQuery.Service::class.java)
-            val reserveLimits = customVaultQueryService.rebalanceCurrencyReserves()
-
-            val txns: List˂SignedTransaction˃ = reserveLimits.map { amount -˃
-                // request asset issue
-                logger.info("Requesting currency issue $amount")
-                val txn = issueCashTo(amount, topupRequest.issueToParty, topupRequest.issuerPartyRef, topupRequest.notaryParty)
-                progressTracker.currentStep = SENDING_TOP_UP_ISSUE_REQUEST
-                return@map txn.stx
-            }
-
-            otherPartySession.send(txns)
-            return txns
-        }
-
-For examples on testing @CordaService implementations,
-see the oracle example @[https://docs.corda.net/oracles.html]
-</pre>
-
-<pre zoom TODO >
-<span xsmall>Monitoring</span>
-<span xsmall>Nodes</span>
-@[https://medium.com/corda/monitoring-corda-nodes-part-1-3316d26d8fda]
-</pre>
 
 </body>
 </html>
@@ -2347,5 +2340,10 @@ see the oracle example @[https://docs.corda.net/oracles.html]
 <a href="https://hbr.org/2017/01/the-truth-about-blockchain">The Truth About Blockchain</a>
 
 https://docs.corda.net/debugging-a-cordapp.html?highlight=debug
+
+___________________
+From corda doc:
+... an "Interest Rate Swap contract" or "Equity OTC Option" are expected to be storaged as the same "Derivative contract" in DDBB schema
+____________________________
 -->
 

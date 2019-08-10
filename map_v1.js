@@ -122,18 +122,21 @@ function doOpenZoom(e, isHistoric, showTimeControl, CallbackOnClose) {
       isHistoric = true 
       // spb.visited_idx == ???
   }
+// debugger;
   if(spb.visited.indexOf(e)>=0) { 
       isHistoric = true
-      // spb.visited_idx == ???
+      spb.visited_idx = spb.visited.indexOf(e)
   }
   if (!!!isHistoric) { // Apend new visits only
     spb.visited.push(e)
     spb.visited_idx =spb.visited.length-1
   }
-  let backNumber = spb.visited_idx;
-  let forwNumber = (spb.visited.length-1)-spb.visited_idx;
-  let backControl = (backNumber>0) ? "<span onClick='goBack   ()' style='color:blue; font-size:2.0rem'>"+backNumber+"⇦</span>" : ""
-  let forwControl = (forwNumber>0) ? "<span onClick='goForward()' style='color:blue; font-size:2.0rem'>⇨"+forwNumber+"</span>" : "" 
+  let nbackNumber =  spb.visited_idx                       
+  let nforwNumber = (spb.visited.length-1)-spb.visited_idx
+  let backNumber = ((nbackNumber>0) ? ("xxx"+nbackNumber).slice(-3)+"←" : "xxxx").replace(/x/g,"&nbsp;")
+  let forwNumber = ((nforwNumber>0) ? "→"+("xxx"+nforwNumber).slice(-3) : "xxxx").replace(/x/g,"&nbsp;")
+  let backControl = "<span onClick='goBack   ()' style='font-family:monospace; color:blue; font-size:2.0rem'>"+backNumber+"</span>"
+  let forwControl = "<span onClick='goForward()' style='font-family:monospace; color:blue; font-size:2.0rem'>"+forwNumber+"</span>"
   let sLabels="";
   if (e.attributes && e.attributes.labels) {
     e.attributes.labels.value.split(",").forEach(label_i => {
@@ -427,7 +430,10 @@ function onPageLoaded() {
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/R\*([^\*\n]*)\*/g, "<b red   >  $1 </b>")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/B\*([^\*\n]*)\*/g, "<b blue  >  $1 </b>")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/O\*([^\*\n]*)\*/g, "<b orange>  $1 </b>")   
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[^\/]\*([^\*\n]*)\*[^\/]/g, "<b       > $1 </b>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Q\*([^\*\n]*)\*/g, "<b brown >  $1 </b>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Y\*([^\*\n]*)\*/g, "<b yellow>  $1 </b>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /\*([^\*\n]*)\*/g, "<b        > $1 </b>")   
+    //nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /\*([^\*\n]*)\*[^\/]/g, "<b       > $1 </b>")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[˂]/g, "&lt;")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[˃]/g, "&gt;")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[⅋]/g, "&amp;")   

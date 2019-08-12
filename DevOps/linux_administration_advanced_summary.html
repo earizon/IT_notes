@@ -9,13 +9,10 @@
 
 <body>
 
-<table style='width:100%'{>
-<tbody>
-
-<tr {>
-<td>
- <a xsmall TODO href="https://www.freeipa.org/page/Main_Page">Central Authentication</a>
+    <div groupv>
 <pre zoom>
+<span xsmall>Central Authentication</span>
+@[https://www.freeipa.org/page/Main_Page]
 - Manage Linux users and client hosts in your realm from one central location 
   with CLI, Web UI or RPC access. Enable Single Sign On authentication for all 
   your systems, services and applications.
@@ -26,123 +23,179 @@
 - Create mutual trust with other Identity Management systems like Microsoft 
   Active Directory.
 </pre>
-</td>
 
-<td>
- <a xsmall TODO href="">Setup Time Services</a>
 <pre zoom>
+<span xsmall>SystemD Timers</span>
+<span xsmall>(Cron alt)</span>
+@[https://www.maketecheasier.com/use-systemd-timers-as-cron-replacement/]
+</a>
 </pre>
-</td>
-
-<td>
- <a xsmall TODO href="https://www.maketecheasier.com/use-systemd-timers-as-cron-replacement/">Systemd Timers(Cron alt)</a>
-<pre zoom>
-</pre>
-</td>
 
 <pre zoom TODO>
- <a xsmall TODO href="https://www.linux-kvm.org/">KVM/Qemu</a>
- Lesson 11: Working with Virtual Machines
- 11.1 Introducing KVM Virtualization 
- 11.2 Managing Libvirt and KVM 
- 11.3 Installing a Virtual Machine 
- 11.4 Using virsh 
- 11.5 Using virt-manager 
- 11.6 Understanding KVM Networking 
- 11.7 Managing KVM Networking 
- 11.8 Importing OVF Virtual Machine Files 
-</pre>
- <a xsmall TODO href="https://www.linux-kvm.org/page/Migration">KVM live migration</a>
-<pre zoom>
-</pre>
-
- <a xsmall TODO href="http://fedoraproject.org/wiki/Features/Spice">Spice (Virt.Desktops)</a>
-<pre zoom>
-Spice aims to provide a complete open source solution 
-for interaction with virtualized desktops 
+<span xsmall TODO>KVM/Qemu</span>
+@[https://www.linux-kvm.org/]
+- Working with Virtual Machines
+  - Managing Libvirt and KVM 
+  - Installing a Virtual Machine 
+  - Using virsh 
+  - Using virt-manager 
+  - Understanding KVM Networking 
+  - Managing KVM Networking 
+  - Importing OVF Virtual Machine Files 
+- <span xsmall>KVM live migration</span>
+@[https://www.linux-kvm.org/page/Migration]
 </pre>
 
-</td>
+<pre zoom labels="backups">
+<span xsmall>KVM</span>
+<span xsmall>weekly</span>
+<span xsmall>backup</span>
+WARN: maybe oudated. 
+KVM weekly backup, the easy way
+For the joy of all my readers here it comes the master-of-the-universe weekly script backup for KVM:
 
+# Redirect stdout/stderr to custom log.
 
+exec 1˃˃ /var/log/custom_$(basename ${0}).$(whoami).$(date '+%Y%m%d').log 2˃⅋1
+pushd /media/backup/MyServer1/
+# Keep copies of the VM for the last 4 weeks.
+mv kvm.qemu.gz.1 kvm.qemu.gz.2
+mv kvm.qemu.gz.0 kvm.qemu.gz.1
+mv kvm.qemu.gz kvm.qemu.gz.0
 
+# Stop KVM instance through telnet.
+# KVM has to be started with the option:
+# -monitor telnet:127.0.0.1:9942,server,nowait
+echo "stop" | nc -q 10 127.0.0.1 9942 # Freeze KVM instance
 
+#Here we do the real backup of the KVM instance
+cat /VM_Images/kvm.qemu | gzip ˃ /media/backup/MyServer1/kvm.qemu.gz
+if [ $? != 0 ]; then
+echo "WARN: KVM backup failed"
+fi
+echo "c" | nc -q 10 127.0.0.1 9942 # Continue KVM instance
+popd
 
+For the previous script to work correctly we have to start the KVM instance with the option -monitor telnet:127.0.0.1:9942.
 
-</tr>
-</table>
-<br/>
-  Storage
-<table>
-<tr>
-<td>
- <a xsmall TODO href="https://alpss.at/">REF:Alpine Persistence/Storage Summit</a>
-<pre zoom>
-  https://alpss.at/ : Alpine Linux Persistence and Storage Summit
-  08:30 - 09:00   Zoned Namespaces for NVMe   Matias Bjørling and Christoph Hellwig
-  10:00 - 10:30   Copy Offload    Bart van Assche
-  10:30 - 11:00   PCI 2P2 and computational storage   Stephen Bates
-  11:00 - 11:30   Exciting new stuff in RDMA  Idan Burstein
-  12:00 - 12:30   SPI-attached Flash Memory   Boris Brezillon and Miquel Raynal
-  12:30 - 13:00   Advanced power-cut testing the MTD stack    Richard Weinberger
-  14:00 - 19:00   BOFs and hallway track (or hiking on your own)  
-  08:30 - 09:00   Qemu as a Memory emulation platform Damien Le Moal
-  09:00 - 09:30   UMAP    Adam Manzanares
-  10:00 - 10:30   Inode namespacing – COW inodes  Jeff Mahoney
-  10:30 - 11:00   Adding filesystem authentication to UBIFS   David Gstir
-  11:00 - 11:30   Reverse Engineering APFS (Apple File System)    Johannes Thumshirn
-  09:00 - 09:30   Blk-mq and zoned devices    Bart van Assche and Damien Le Moal
-  12:00 - 13:00   Blk-mq: timeout handling, power management, etc Bart van Assche
+In my particular system I start KVM instances at startup in /etc/rc.local. This is script is also quite interesting so I extracted all the kvm related stuff:
 
+/etc/rc.local:
+# Setting up the bridge (tip: apt-get install bridge-utils)
+brctl addbr ofi1
+brctl addif ofi1 eth1
+ifconfig eth1 0.0.0.0 promisc up
+ifconfig ofi1 192.168.2.100 netmask 255.255.0.0 up
+ifconfig ofi1:1 172.16.1.3
+
+...
+kvm -net nic,macaddr=52:54:00:19:34:56 \
+-net tap,script=/etc/qemu-ifup -hda /VM-Images/kvm.qemu \
+-boot c -vnc :5 1˃/var/log/custom_kvm.qemu.log \
+-monitor telnet:127.0.0.1:9942,server,nowait 2˃⅋1 ⅋
+...
+# ionice/renice down our virtual machine
+PID=$(sof /VM-Images/kvm.qemu | grep -v ^COMMAND | while read cmd pid staff; do echo $pid; done)
+ionice -c 3 -p ${PID} ⅋
+renice 10 -p ${PID} ⅋
+
+/etc/qemu-ifup:
+#!/bin/sh
+# ofi1 is the choosen name in /etc/rc.local
+/usr/sbin/brctl addif ofi1 $1 ;
+ifconfig $1 0.0.0.0 up;
 </pre>
-</td>
-<td>
-block multi-queue (kernel 3.13+)
+
 <pre zoom>
-block layer "blk-mq" introduces block multi-queue support,
-intended to meet the high IOPS requirements of SSDs:
-Cite (Jens Axobe):
-"""the classic request_fn based driver doesn't work well enough
-(for big IOPS)
-Axboe The design is centered around per-cpu queues for queueing IO,  
-which then funnel down into x number of hardware submission queues
+<span xsmall TODO>Spice</span>
+<span xsmall>(Virt.Desktops)</span>
+@[http://fedoraproject.org/wiki/Features/Spice]
+- Spice aims to provide a complete open source solution 
+  for interaction with virtualized desktops 
 </pre>
-</td>
-<td>
- <a xsmall TODO href="http://fedoraproject.org/wiki/Features/Opensharedroot">sharedroot</a>
+
+<span title>Storage</span>
 <pre zoom>
+<span xsmall>REF:Alpine Persistence</span>
+<span xsmall>Storage Summit</span>
+@[https://alpss.at/]
+08:30 - 09:00   Zoned Namespaces for NVMe   Matias Bjørling and Christoph Hellwig
+10:00 - 10:30   Copy Offload    Bart van Assche
+10:30 - 11:00   PCI 2P2 and computational storage   Stephen Bates
+11:00 - 11:30   Exciting new stuff in RDMA  Idan Burstein
+12:00 - 12:30   SPI-attached Flash Memory   Boris Brezillon and Miquel Raynal
+12:30 - 13:00   Advanced power-cut testing the MTD stack    Richard Weinberger
+14:00 - 19:00   BOFs and hallway track (or hiking on your own)  
+08:30 - 09:00   Qemu as a Memory emulation platform Damien Le Moal
+09:00 - 09:30   UMAP    Adam Manzanares
+10:00 - 10:30   Inode namespacing – COW inodes  Jeff Mahoney
+10:30 - 11:00   Adding filesystem authentication to UBIFS   David Gstir
+11:00 - 11:30   Reverse Engineering APFS (Apple File System)    Johannes Thumshirn
+09:00 - 09:30   Blk-mq and zoned devices    Bart van Assche and Damien Le Moal
+12:00 - 13:00   Blk-mq: timeout handling, power management, etc Bart van Assche
+</pre>
+<pre zoom>
+<span xsmall>block multi-queue</span>
+- kernel 3.13+
+- block layer "blk-mq" introduces block multi-queue support,
+  intended to meet the high IOPS requirements of SSDs:
+  Cite (Jens Axobe):
+  """the classic request_fn based driver doesn't work well enough
+  (for big IOPS)
+  Axboe The design is centered around per-cpu queues for queueing IO,  
+  which then funnel down into x number of hardware submission queues
+</pre>
+
+
+<pre zoom bgorange>
+<span xsmall>sharedroot</span>
+@[http://fedoraproject.org/wiki/Features/Opensharedroot]
 The open sharedroot project provides abilities to boot multiple linux systems 
 with the same root filesystem providing a single system filesystem based 
 cluster. (NFS, GFS,...)  
 </pre>
-</td>
 
-<td>
- <a xsmall TODO href="">Loop device</a>
 <pre zoom>
+<span xsmall TODO>Loop device</span>
 </pre>
-</td>
 
-<td>
- <a xsmall TODO href="https://linux.die.net/man/8/debugfs">man 8 debugfs</a>
 <pre zoom>
-  ext2/ext3/ext4 file system debugger:
+<span xsmall>debugfs</span>
+@[https://linux.die.net/man/8/debugfs]
+- ext2/ext3/ext4 file system debugger
 
 - It can be used to examine and change
   the state of an ext2, ext3, or ext4 file system.
 </pre>
-</td>
 
-</tr>
-</table>
-<br/>
-Kernel
-<table>
-<tr>
-<td>
+<pre zoom TODO labels="storage,security">
+<span xsmall>File Integrity Monitoring at scale</span>
+(RSA Conf)
+    https://www.rsaconference.com/writable/presentations/file_upload/csv-r14-fim-and-system-call-auditing-at-scale-in-a-large-container-deployment.pdf
+</pre>
+
+<pre zoom labels="">
+<span xsmall>Hard.Storage</span>
+@[https://www.thomas-krenn.com/en/wiki/Category:Storage]
+</pre>
+
+<pre zoom labels="monitoring,storage" TODO>
+<span xsmall>eBPF</span>
+<span xsmall>trace FS</span>
+<span xsmall>disk request</span>
+@[https://www.collabora.com/news-and-blog/blog/2018/11/21/gaining-ebpf-vision-tracing-linux-filesystem-disk-requests/]
+</pre>
+
+
+
+
+</div>
+
+<div groupv>
+<span title>Kernel</span>
   
- <a xsmall TODO href="">/proc/meminfo</a>
 <pre zoom>
+<span xsmall>/proc/meminfo</span>
 $ cat /proc/meminfo 
 MemTotal:       16116792 kB
 MemFree:         2042420 kB
@@ -194,16 +247,23 @@ DirectMap4k:     1147072 kB
 DirectMap2M:    15319040 kB
 </pre>
 
-</td>
-<td>
- <a xsmall TODO href="https://en.wikipedia.org/wiki/Executable_and_Linkable_Format">ELF</a>
 <pre zoom>
-man readelf
+<span xsmall TODO>ELF</span>
+@[https://en.wikipedia.org/wiki/Executable_and_Linkable_Format]
+- man readelf
 </pre>
-</td>
-<td>
- <a xsmall TODO href="https://en.wikipedia.org/wiki/Ksplice">Ksplice</a>
+
+<pre zoom labels="">
+<span xsmall>Shared Lib</span>
+<span xsmall>management</span>
+Linux Commands For Shared Library Management and Debugging Problems:
+@[http://www.cyberciti.biz/tips/linux-shared-library-management.html]
+</pre>
+
+
 <pre zoom>
+<span xsmall>Ksplice</span>
+@[https://en.wikipedia.org/wiki/Ksplice]
 See also:
  - kexec, a method for loading a whole new kernel from a running system
  - kGraft, kpatch and KernelCare, other Linux kernel live patching 
@@ -213,44 +273,149 @@ See also:
 <a TODO href="https://www.2daygeek.com/how-to-updateinstall-oracle-kernel-critical-security-updates-without-rebooting/">2</a>
 <a TODO href="https://serverfault.com/questions/78406/is-ksplice-production-ready/">3</a>
 </pre>
-</td>
-<td>  
-<a TODO href="https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_MRG/1.3/html/Realtime_Tuning_Guide/sect-Realtime_Tuning_Guide-General_System_Tuning-Interrupt_and_Process_Binding.html">Attach Interrupt to CPU/Real-time processes</a>
-</td>  
-<td>
- <a xsmall TODO href="">automatic NUMA balancing</a>
-<pre zoom>
- automatic non-uniform memory access (NUMA) balancing, Linux 3.13+
-</pre>
-</td>
-</tr>
-</table>
 
-<br/>
- Containers
-<table>
-<tr>
-<td>
- <a xsmall TODO href="">man 5 namespace.conf</a>
+<pre zoom labels="">
+<span xsmall>Attach Interrupt to CPU</span>
+<span xsmall>Real-time processes</span>
+@[https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_MRG/1.3/html/Realtime_Tuning_Guide/sect-Realtime_Tuning_Guide-General_System_Tuning-Interrupt_and_Process_Binding.html]
+</pre>
+
 <pre zoom>
+<span xsmall>automatic NUMA balancing</span>
+- automatic non-uniform memory access (NUMA) balancing, Linux 3.13+
+</pre>
+
+<pre zoom>
+<span xsmall>slabtop</span>
+<span xsmall>Mem Monit</span>
+  
+$ sudo slabtop
+
+@[Ref: http://xmodulo.com/visualize-memory-usage-linux.html]
+In the presence of virtual memory abstraction, accurately quantifying physical memory usage of a process is actually 
+not straightforward.  
+The virtual memory size of a process is not meaningful because it does not tell how much of it is actually allocated
+ physical memory.
+Resident set size (RSS), reported by top command, is one 
+popular metric which captures what portion of a process' reported memory is residing in RAM.  However, aggregating RSS
+ of existing processes can easily overestimate the overall 
+physical memory usage of the Linux system because the same 
+physical memory page can be shared by different processes.  
+
+Proportional set size (PSS) is a more accurate measurement of
+ effective memory usage of Linux processes since PSS properly
+ discounts the memory page shared by more than one process.
+  Unique set size (USS) of a process is a subset of the 
+process' PSS, which is not shared by any other processes.
+
+The command-line tool smem can generate a variety of reports 
+related to memory PSS/USS usage by pulling information from 
+/proc.  It comes with built-in graphical chart generation 
+capabilities
+Install:
+Debian/Ubuntu:
+  $ sudo apt-get install smem
+Mint:
+  $ sudo apt-get install smem python-matplotlib python-tk
+Fedora or CentOS/RHEL:
+Step 1: enable EPEL repository first.
+Step 2: $ sudo yum install smem python-matplotlib
+
+Check Memory Usage with Smem
+When you run smem as a unprivileged user, it will report physical memory usage of every process launched by the current user, in an increasing order of PSS.
+
+If you want to check the overall system memory usage for all users, run smem as the root:
+$ sudo smem
+
+To view per-user memory usage:
+$ sudo smem -u
+</pre>
+
+<pre zoom labels="">
+<span xsmall>Linux input ecosystem</span>
+@[http://joeshaw.org/2010/10/01/681]
+</pre>
+
+<pre zoom labels="">
+<span xsmall>Ftrace</span>
+  Kernel monitoring/debugging
+Debugging the kernel with ftrace:1  http://lwn.net/Articles/365835/
+Debugging the kernel with ftrace:2  http://lwn.net/Articles/366796/
+Debugging the kernel with ftrace:3  http://lwn.net/Articles/370423/
+
+See also:
+- ptrace, uditd, dTrace, OProfile or SystemTap, audtctl
+- Systemtap/Dtrace/LTTng/perf Comparison:  http://sourceware.org/systemtap/wiki/SystemtapDtraceComparison
+- "http://people.redhat.com/srostedt/kernelshark/HTML/:
+KernelShark is a front end reader of trace-cmd(1) output. ""trace-cmd record"" and ""trace-cmd extract"" create
+a trace.dat (trace-cmd.dat(5)) file. kernelshark can read this file and produce a graph and list view of its data."
+</pre>
+
+<pre zoom>
+<span xsmall>SystemTap Kernel Monit</span>
+@[https://sourceware.org/systemtap/]
+- Eclipse SystemTap Integration
+   https://help.eclipse.org/neon/index.jsp?topic=%2Forg.eclipse.linuxtools.docker.docs%2FLinux_Tools_Project%2FDocker_Tooling%2FUser_Guide%2FUser-Guide.html&cp=15_0
+
+- https://sourceware.org/systemtap/tutorial/
+- http://phoronix.com/scan.php?page=news_item&px=SystemTap-3.0-Released
+https://sourceware.org/ml/systemtap/2016-q1/msg00179.html
+- SystemTap, a DTrace-like means of dynamically profiling Linux with a scripting language and tool, is out with version 3.0.
+    SystemTap 3.0 was announced on Sunday and it ships with experimental monitor and interactive modes, 
+    optimized associative arrays, function overloading, new scripting samples, scripting language changes, and more.
+</pre>
+
+<pre zoom>
+<span xsmall>Monit uninterruptible(blocking) system calls</span>
+
+- KISS script to list any process that could have trouble beeing blocked by an uninterruptible system call.
+
+# while true; do ps -e fo stat,cmd | grep ^D && echo "-------"; sleep 0.1 ; done
+
+D˂    └─ [scsi_eh_0]
+D         └─ hald─addon─storage: polling /dev/sr0 (every 2 sec)
+───────
+D         └─ hald─addon─storage: polling /dev/sr0 (every 2 sec)
+───────
+D˂    └─ [md0_raid1]
+D˂    └─ [kjournald]
+───────
+D˂    └─ [md0_raid1]
+───────
+D˂    └─ [md0_raid1]
+───────
+D˂    └─ [md0_raid1]
+The output in this case is normal [md0_raid1],kjournald and syslogd are making frequent disk writes.
+</pre>
+
+
+</div>
+
+<div groupv>
+<span title>Containers</span>
+ 
+<pre zoom>
+<span xsmall>namespace.conf</span>
+- man 5 namespace.conf
 Linux Namespaces:
 - https://en.wikipedia.org/wiki/Linux_namespaces
 - http://man7.org/linux/man-pages/man1/nsenter.1.html
+@[https://lwn.net/Articles/531114/]
 </pre>
-</td>
-<td>
- <a xsmall TODO href=""> Cgroups:</a>
+ 
 <pre zoom>
+<span xsmall>Cgroups</span>
 </pre>
-</td>
-<td>
- <a xsmall TODO href="https://unix.stackexchange.com/questions/98808/how-to-assign-an-additional-ip-hostname-to-a-chrooted-environment">Assign new IP to chrooted env</a>
+
 <pre zoom>
+<span xsmall>Assign new IP</span>
+<span xsmall>to chrooted env</span>
+@[https://unix.stackexchange.com/questions/98808/how-to-assign-an-additional-ip-hostname-to-a-chrooted-environment]
 </pre>
-</td>
-<td>
-  <span xsmall>Hidding processes to other Users:</span> 
+
 <pre zoom>
+<span xsmall>Hidding processes</span>
+<span xsmall>to other Users</span>
 <a href="http://www.cyberciti.biz/faq/linux-hide-processes-from-other-users/">REF</a>
 - The hidepid option in the procfs defines how much info
   about processes we want to be available for non-owners. 
@@ -274,16 +439,14 @@ Ex:
 # mount -o remount,rw,hidepid=2 /proc
 Alternatively edit /etc/fstab:
 proc  /proc  proc defaults,hidepid=2  0   0
-</td>
-</tr>
-</table>
+</pre>
+</div>
 
- Security Hardening
-<table>
-<tr>
-<td>
- <a xsmall TODO href="https://grsecurity.net/">Grsecurity®</a>
+<div groupv>
+<span title>Security Hardening</span>
 <pre zoom>
+<span xsmall>Grsecurity®</span>
+@[https://grsecurity.net/]
 Grsecurity: extensive security enhancement to the Linux kernel that defends 
   against a wide range of security threats through intelligent access control, 
   memory corruption-based exploit prevention, and a host of other system 
@@ -303,165 +466,6 @@ such as buffer overflows. PaX also provides address space layout randomization
 (ASLR), which randomizes important memory addresses to reduce the probability
 of attacks that rely on easily predicted memory addresses."""
 </pre>
-</td>
-
-<td>
- <a xsmall TODO href="https://sysdig.com/blog/selinux-seccomp-falco-technical-discussion/">SysDig Falco</a>
-<pre zoom>
-</pre>
-
-<a xsmall TODO href="https://labs.mwrinfosecurity.com/blog/high-interaction-honeypots-with-sysdig-and-falco">HoneyPots with SysDig and Falco</a>
-<pre zoom>
-</pre>
-
-
-</td>
-
-<td>
- <a xsmall TODO href="https://github.com/trimstray/the-practical-linux-hardening-guide">practical linux hardening guide</a>
-</td>
-</tr>
-</table>
-
-<pre zoom labels="" bgorange>
-<span xsmall>Tracing Systems</span>
-<span xsmall>and how they fit</span>
-<span xsmall>together</span>
-@[https://jvns.ca/blog/2017/07/05/linux-tracing-systems/] (Julia Evans
-
-
-</pre>
-
-<pre zoom labels="monitoring">
-<span xsmall>Standard kernel</span>
-<span xsmall>monitoring tools</span>
-
-http://ls.pwd.io/2013/06/linux-monitoring-tools/
-strace
-netstat
-perf
-top / htop / iotop strace / lsof
-   + (non-standard) nmon: "advanced htop": allows, amongst others, to visualize kernel context switches and interruptions per second
-pidstat
-mpstat
-dstat
-perf
-vmstat
-slabtop
-dstat
-free
-...
-</pre>
-
-<pre zoom labels="performance,tunning">
-<span xsmall>DeviceKit-power</span>
-<span xsmall>latency control</span>
-@[https://blogs.gnome.org/hughsie/2008/11/06/devicekit-power-latency-control/]
-Use cases:
-    I want my IM application to request 0.5s latency for messages
-    I’m running an OpenGL simulation and want maximum performance, even on battery
-    I’m running an SQL server for a credit card company, and want the server to request low latency CPU and network as any delay costs money
-    I’m an admin, and want to change the power consumption vs. latency from cron scripts so it uses high latency during the night for maximum power saving, and low latency during business hours.
-    I want high throughput when copying files, but want low throughput for downloading updates in the background.
-    I want my power manager to set all latencies to lowest when on AC power
-    I don’t want my users messing with latency settings
-    I’m and admin and I want to be able to override all latency settings on my machines
-</pre>
-
-<pre zoom labels="">
-<span xsmall>uPower</span>
-https://upower.freedesktop.org/
-
- UPower is an abstraction for enumerating power devices, listening to device events and querying history and statistics. Any application or service on the system can access the org.freedesktop.UPower service via the system message bus. Some operations (such as suspending the system) are restricted using PolicyKit.
-
-UPower was once called DeviceKit-power. UPower aims to make a large chunk of HAL redundant, as HAL is officially deprecated.
-
-UPower is also useful to control the latency of different operations on your computer, which enables you to save significant amounts of power. Nothing much uses this interface yet, but this is a classic chicken and egg scenario, and I think it's important to encourage the egg to lay a chicken. Please report any problems to the Freedesktop bugzilla or send a mail to the DeviceKit mailing list for discussion. 
-</pre>
-
-<pre zoom labels="monitoring,storage" TODO>
-<span xsmall>eBPF</span>
-<span xsmall>trace FS</span>
-<span xsmall>disk request</span>
-@[https://www.collabora.com/news-and-blog/blog/2018/11/21/gaining-ebpf-vision-tracing-linux-filesystem-disk-requests/]
-</pre>
-
-<pre zoom labels="AAA">
-<span xsmall>LDAP Connection</span>
-https://www.oreilly.com/library/view/red-hat-certified/9780134723990/
-Lesson 20: Connecting to an LDAP Server
-    20.1 Understanding LDAP, Kerberos, IPA, and AD 
-    20.2 Setting up LDAP Authentication 
-    20.3 Connecting to an IPA Server 
-    20.4 Joining an AD Domain 
-</pre>
-
-<pre zoom labels="">
-<span xsmall>Hard.Storage</span>
-@[https://www.thomas-krenn.com/en/wiki/Category:Storage]
-</pre>
-
-<pre zoom labels="backups">
-<span xsmall>KVM</span>
-<span xsmall>weekly</span>
-<span xsmall>backup</span>
-WARN: maybe oudated. 
-KVM weekly backup, the easy way
-For the joy of all my readers here it comes the master-of-the-universe weekly script backup for KVM:
-
-# Redirect stdout/stderr to custom log.
-
-exec 1>> /var/log/custom_$(basename ${0}).$(whoami).$(date '+%Y%m%d').log 2>&1
-pushd /media/backup/MyServer1/
-# Keep copies of the VM for the last 4 weeks.
-mv kvm.qemu.gz.1 kvm.qemu.gz.2
-mv kvm.qemu.gz.0 kvm.qemu.gz.1
-mv kvm.qemu.gz kvm.qemu.gz.0
-
-# Stop KVM instance through telnet.
-# KVM has to be started with the option:
-# -monitor telnet:127.0.0.1:9942,server,nowait
-echo "stop" | nc -q 10 127.0.0.1 9942 # Freeze KVM instance
-
-#Here we do the real backup of the KVM instance
-cat /VM-Images/kvm.qemu | gzip > /media/backup/MyServer1/kvm.qemu.gz
-if [ $? != 0 ]; then
-echo "WARN: KVM backup failed"
-fi
-echo "c" | nc -q 10 127.0.0.1 9942 # Continue KVM instance
-popd
-
-For the previous script to work correctly we have to start the KVM instance with the option -monitor telnet:127.0.0.1:9942.
-
-In my particular system I start KVM instances at startup in /etc/rc.local. This is script is also quite interesting so I extracted all the kvm related stuff:
-
-/etc/rc.local:
-# Setting up the bridge (tip: apt-get install bridge-utils)
-brctl addbr ofi1
-brctl addif ofi1 eth1
-ifconfig eth1 0.0.0.0 promisc up
-ifconfig ofi1 192.168.2.100 netmask 255.255.0.0 up
-ifconfig ofi1:1 172.16.1.3
-
-...
-kvm -net nic,macaddr=52:54:00:19:34:56 \
--net tap,script=/etc/qemu-ifup -hda /VM-Images/kvm.qemu \
--boot c -vnc :5 1>/var/log/custom_kvm.qemu.log \
--monitor telnet:127.0.0.1:9942,server,nowait 2>&1 &
-...
-# ionice/renice down our virtual machine
-PID=$(sof /VM-Images/kvm.qemu | grep -v ^COMMAND | while read cmd pid staff; do echo $pid; done)
-ionice -c 3 -p ${PID} &
-renice 10 -p ${PID} &
-
-
-/etc/qemu-ifup:
-#!/bin/sh
-# ofi1 is the choosen name in /etc/rc.local
-/usr/sbin/brctl addif ofi1 $1 ;
-ifconfig $1 0.0.0.0 up;
-</pre>
-
 
 <pre zoom TODO>
 <span xsmall>SysDig Container Monit</span>
@@ -579,6 +583,61 @@ For more information, examples, and case studies, you can check out the project 
  Install sysdig and start digging today!
 </pre>
 
+
+<pre zoom>
+<span xsmall>SysDig Falco</span>
+@[https://sysdig.com/blog/selinux-seccomp-falco-technical-discussion/]
+</pre>
+
+<pre zoom>
+<span xsmall bgorange>HoneyPots with</span>
+<span xsmall bgorange>SysDig and Falco</span>
+@[https://labs.mwrinfosecurity.com/blog/high-interaction-honeypots-with-sysdig-and-falco]
+</pre>
+
+<pre zoom labels="">
+<span xsmall>practical hardening guide</span>
+@[https://github.com/trimstray/the-practical-linux-hardening-guide]
+</pre>
+
+
+<pre zoom labels="" bgorange>
+<span xsmall>Tracing Systems</span>
+<span xsmall>and how they fit</span>
+<span xsmall>together</span>
+@[https://jvns.ca/blog/2017/07/05/linux-tracing-systems/] (Julia Evans
+</pre>
+</div>
+
+<div groupv>
+<span xsmall>Non-ordered</span>
+<pre zoom labels="performance,tunning">
+<span xsmall>DeviceKit-power</span>
+<span xsmall>latency control</span>
+@[https://blogs.gnome.org/hughsie/2008/11/06/devicekit-power-latency-control/]
+Use cases:
+    I want my IM application to request 0.5s latency for messages
+    I’m running an OpenGL simulation and want maximum performance, even on battery
+    I’m running an SQL server for a credit card company, and want the server to request low latency CPU and network as any delay costs money
+    I’m an admin, and want to change the power consumption vs. latency from cron scripts so it uses high latency during the night for maximum power saving, and low latency during business hours.
+    I want high throughput when copying files, but want low throughput for downloading updates in the background.
+    I want my power manager to set all latencies to lowest when on AC power
+    I don’t want my users messing with latency settings
+    I’m and admin and I want to be able to override all latency settings on my machines
+</pre>
+
+<pre zoom labels="">
+<span xsmall>uPower</span>
+https://upower.freedesktop.org/
+
+ UPower is an abstraction for enumerating power devices, listening to device events and querying history and statistics. Any application or service on the system can access the org.freedesktop.UPower service via the system message bus. Some operations (such as suspending the system) are restricted using PolicyKit.
+
+UPower was once called DeviceKit-power. UPower aims to make a large chunk of HAL redundant, as HAL is officially deprecated.
+
+UPower is also useful to control the latency of different operations on your computer, which enables you to save significant amounts of power. Nothing much uses this interface yet, but this is a classic chicken and egg scenario, and I think it's important to encourage the egg to lay a chicken. Please report any problems to the Freedesktop bugzilla or send a mail to the DeviceKit mailing list for discussion. 
+</pre>
+
+
 <pre zoom>
 <span xsmall>Monit</span>
 <span xsmall>Ligthweight</span>
@@ -591,51 +650,7 @@ For more information, examples, and case studies, you can check out the project 
 - having a watchdog with a toolbox on your server
 </pre>
 
-<pre zoom>
-<span xsmall>slabtop</span>
-<span xsmall>Mem Monit</span>
-  
-$ sudo slabtop
 
-@[Ref: http://xmodulo.com/visualize-memory-usage-linux.html]
-In the presence of virtual memory abstraction, accurately quantifying physical memory usage of a process is actually 
-not straightforward.  
-The virtual memory size of a process is not meaningful because it does not tell how much of it is actually allocated
- physical memory.
-Resident set size (RSS), reported by top command, is one 
-popular metric which captures what portion of a process' reported memory is residing in RAM.  However, aggregating RSS
- of existing processes can easily overestimate the overall 
-physical memory usage of the Linux system because the same 
-physical memory page can be shared by different processes.  
-
-Proportional set size (PSS) is a more accurate measurement of
- effective memory usage of Linux processes since PSS properly
- discounts the memory page shared by more than one process.
-  Unique set size (USS) of a process is a subset of the 
-process' PSS, which is not shared by any other processes.
-
-The command-line tool smem can generate a variety of reports 
-related to memory PSS/USS usage by pulling information from 
-/proc.  It comes with built-in graphical chart generation 
-capabilities
-Install:
-Debian/Ubuntu:
-  $ sudo apt-get install smem
-Mint:
-  $ sudo apt-get install smem python-matplotlib python-tk
-Fedora or CentOS/RHEL:
-Step 1: enable EPEL repository first.
-Step 2: $ sudo yum install smem python-matplotlib
-
-Check Memory Usage with Smem
-When you run smem as a unprivileged user, it will report physical memory usage of every process launched by the current user, in an increasing order of PSS.
-
-If you want to check the overall system memory usage for all users, run smem as the root:
-$ sudo smem
-
-To view per-user memory usage:
-$ sudo smem -u
-</pre>
 
 <pre zoom labels="performance">
 <span xsmall>Timechart</span>
@@ -673,76 +688,9 @@ Timechart developer van de Ven still has some misgivings about the program's
 name and is thus looking for suggestions in his blog.
 </pre>
 
-<pre zoom labels="">
-<span xsmall>Shared Lib</span>
-<span xsmall>management</span>
-Linux Commands For Shared Library Management and Debugging Problems:
-@[http://www.cyberciti.biz/tips/linux-shared-library-management.html]
-</pre>
 
 
-<pre zoom TODO labels="storage,security">
-<span xsmall>File Integrity Monitoring at scale</span>
-(RSA Conf)
-    https://www.rsaconference.com/writable/presentations/file_upload/csv-r14-fim-and-system-call-auditing-at-scale-in-a-large-container-deployment.pdf
-</pre>
-
-<pre zoom labels="">
-<span xsmall>Linux input ecosystem</span>
-@[http://joeshaw.org/2010/10/01/681]
-</pre>
-
-<pre zoom labels="">
-<span xsmall>Ftrace</span>
-  Kernel monitoring/debugging
-Debugging the kernel with ftrace:1  http://lwn.net/Articles/365835/
-Debugging the kernel with ftrace:2  http://lwn.net/Articles/366796/
-Debugging the kernel with ftrace:3  http://lwn.net/Articles/370423/
-
-See also:
-- ptrace, uditd, dTrace, OProfile or SystemTap, audtctl
-- Systemtap/Dtrace/LTTng/perf Comparison:  http://sourceware.org/systemtap/wiki/SystemtapDtraceComparison
-- "http://people.redhat.com/srostedt/kernelshark/HTML/:
-KernelShark is a front end reader of trace-cmd(1) output. ""trace-cmd record"" and ""trace-cmd extract"" create
-a trace.dat (trace-cmd.dat(5)) file. kernelshark can read this file and produce a graph and list view of its data."
-</pre>
-
-<pre zoom>
-<span xsmall>SystemTap Kernel Monit</span>
-@[https://sourceware.org/systemtap/]
-- Eclipse SystemTap Integration
-   https://help.eclipse.org/neon/index.jsp?topic=%2Forg.eclipse.linuxtools.docker.docs%2FLinux_Tools_Project%2FDocker_Tooling%2FUser_Guide%2FUser-Guide.html&cp=15_0
-
-- https://sourceware.org/systemtap/tutorial/
-- http://phoronix.com/scan.php?page=news_item&px=SystemTap-3.0-Released
-https://sourceware.org/ml/systemtap/2016-q1/msg00179.html
-- SystemTap, a DTrace-like means of dynamically profiling Linux with a scripting language and tool, is out with version 3.0.
-    SystemTap 3.0 was announced on Sunday and it ships with experimental monitor and interactive modes, 
-    optimized associative arrays, function overloading, new scripting samples, scripting language changes, and more.
-</pre>
-
-<pre zoom>
-<span xsmall>Monit uninterruptible(blocking) system calls</span>
-
-- KISS script to list any process that could have trouble beeing blocked by an uninterruptible system call.
-
-# while true; do ps -e fo stat,cmd | grep ^D && echo "-------"; sleep 0.1 ; done
-
-D<    \_ [scsi_eh_0]
-D         \_ hald-addon-storage: polling /dev/sr0 (every 2 sec)
--------
-D         \_ hald-addon-storage: polling /dev/sr0 (every 2 sec)
--------
-D<    \_ [md0_raid1]
-D<    \_ [kjournald]
--------
-D<    \_ [md0_raid1]
--------
-D<    \_ [md0_raid1]
--------
-D<    \_ [md0_raid1]
-The output in this case is normal [md0_raid1],kjournald and syslogd are making frequent disk writes.
-</pre>
+</div>
 
 <div groupv>
 <pre title>
@@ -788,6 +736,9 @@ TODO: Explain
 </pre>
 </div>
 
+<div groupv>
+<span xsmall>Non-classified</span>
+
 <pre zoom labels="forensic,security">
 <span xsmall>Dump proc.memory in real time</span>
 @[http://www.forensicswiki.org/wiki/Tools%3aMemory_Imaging#Linux]
@@ -817,7 +768,6 @@ auditctl -a exit,always -S fnctl -S open -S flock -F dir=/path/to/directory
 
 The -S option can be used to restrict the logging to specific syscalls. The logs appear in /var/log/audit/audit.log on Debian, and probably on Fedora as well."   
 </pre>
-
 
 <pre zoom labels="">
 <span xsmall>A tour of the Linux Graphics Stack</span>
@@ -859,6 +809,7 @@ any of the metadata associated with them.
 http://linuxshellaccount.blogspot.com/2009/05/using-tct-to-recover-lost-data-on-linux.html
 </pre>
 
+</div>
 </body>
 
 </html>

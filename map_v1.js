@@ -148,7 +148,7 @@ function doOpenZoom(e, isHistoric, showTimeControl, CallbackOnClose) {
      "<div style='margin-bottom:0.5rem'>" 
    + " <div id='divCloseZoom' onClick='doCloseZoom()'>✕ (close)</div>" 
    + ((showTimeControl) 
-       ? "<div id='historyBackFor' style='display:inline; '>" + backControl + forwControl + "</div>" 
+       ? "<div id='historyBackFor' style='display:inline; '>" + backControl + " "+ forwControl + "</div>" 
        : ""
      )
    + " <div id='divElementLabels'>"+sLabels+"</div>" 

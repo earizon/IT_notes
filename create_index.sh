@@ -2,6 +2,24 @@
 
 OUTPUT=IT_notes_index.html
 cat << EOF >$OUTPUT
+<html>
+<head>
+<link rel="stylesheet" type="text/css" href="/IT_notes/map_v1.css" />
+<style>
+h1, h2, h3, body { font-family: sans-serif; /*text-shadow: 0px 0px 1px #555;*/ line-height:1.4; 
+}
+body { 
+  max-width: 40rem;
+  margin-left:5rem;
+  padding-left:1rem;
+  padding-right:1rem;
+  padding-top:1rem;
+  box-shadow: -10px 0px 10px 10px #aaaaaa; 
+  }
+</style>
+</head>
+<body>
+
 <h3>Current list of Single Page Books:</h3>
 <ul>
 <li>Next follow a list of example single-page-books I've created while working on different topics.<br/>

@@ -161,78 +161,6 @@ function doOpenZoom(e, isHistoric, showTimeControl, CallbackOnClose) {
   return false;
 }
 
-var help = '<h1>HELPMan to the rescue!!!</h1>' 
-         + '<h2>Using the content:</h2>' 
-         + '<ul>' 
-         + '<li> Enter a text and press the "Regex Search" button to highlight cells with matching content.<br/>'
-         + '     Browse visually around the highlighted content to see if the context matches with the search.'
-         + '</li>' 
-         + '<li> <b>double-click</b> or <b>long-press</b> to zoom into highlighted content</b><br/></li>' 
-         + '<li> All cells and all "greyed" context can be zoom-in for reading</li>' 
-         + '<li> TIP: If just a single search is found it will automatically zoom-in the content.'
-         + '     This can be used to create external links to you page that automatically opens the '
-         + '     desired cell/content using a link similar to: '
-         + '     <a href="https://singlepagebookproject.github.io/IT_notes/DevOps/linux_administration_summary.html?query=port+knock">this link</a>'
-         + '</li>' 
-         + '</ul>' 
-         + '' 
-         + '<h2>Editing the content:</h2>' 
-         + '<ul>' 
-         + '<li>Content is plain html</li>' 
-         + '<li> Use <a href="https://github.com/singlepagebookproject/IT_notes/issues">GitHub pull request</a> to request occasional changes.<br/></li>' 
-         + '<li> Become a member of <a href="https://github.com/singlepagebookproject/">The Single-Page-Book Project@GitHub</a> to add you own page books.<br/></li>' 
-         + '<li> Highly random UUID can be generated <a href="#" onClick="generate_uuidv4()"> clicking here </a>'
-         + '<input type=text id="id_uuid_display" size="40rem"/><br/>'
-         + 'The UUID can then be placed anywhere and use the URL extra query param ?query=UUID to point to a concrete block of info'
-         + '</li>'
-         + '(useful for safe internal links)'
-
-         + '<li> Text diagrams are really welcome in this project. Some basic help to create txt diagram follows: '
-         + '<pre style="float:none;">'
-         + '(Copy&Paste into your favourite editor)              \n'
-         + '<b>Common Arrows</b>         <b>Less/Greater-than</b>\n'
-         + '← →  ↑ ↓  ⇿           html-friendly replacements     \n'
-         + '                      ˂  ˃                           \n'
-         + '<b>Boxes</b>                                    <b>Trees</b> \n'
-         + '┌─────┬─────┐ ┌───┐  ┌────┐  ┌───┬───┬───┐ ├─ level1.1     \n'
-         + '│     │     │ │   │  │    │  │   │   │   │ │  │            \n'
-         + '│     │     │ │   │  ├────┤  │   │   │   │ │  ├─ level2.1  \n'
-         + '├─────┼─────┤ │   │  │    │  │   │   │   │ │  │   │        \n'
-         + '│     │     │ └───┘  ├────┤  │   │   │   │ │  │   └─ level3\n'
-         + '│     │     │        │    │  └───┴───┴───┘ │  │            \n'
-         + '└─────┴─────┘        └────┘                │  └─ level2.2  \n'
-         + '                                           │               \n'
-         + '                                           └─ level1.2     \n'
-         + '<b>Other useful symbols:</b>                        \n'
-         + ' https://en.wikipedia.org/wiki/Arrows_(Unicode_block)  \n'
-         + '    0   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F     \n'
-         + 'U+219x  ←   ↑   →   ↓   ↔   ↕   ↖   ↗   ↘   ↙   ↚   ↛   ↜   ↝   ↞   ↟ \n'
-         + 'U+21Ax  ↠   ↡   ↢   ↣   ↤   ↥   ↦   ↧   ↨   ↩   ↪   ↫   ↬   ↭   ↮   ↯ \n'
-         + 'U+21Bx  ↰   ↱   ↲   ↳   ↴   ↵   ↶   ↷   ↸   ↹   ↺   ↻   ↼   ↽   ↾   ↿ \n'
-         + 'U+21Cx  ⇀   ⇁   ⇂   ⇃   ⇄   ⇅   ⇆   ⇇   ⇈   ⇉   ⇊   ⇋   ⇌   ⇍   ⇎   ⇏ \n'
-         + 'U+21Dx  ⇐   ⇑   ⇒   ⇓   ⇔   ⇕   ⇖   ⇗   ⇘   ⇙   ⇚   ⇛   ⇜   ⇝   ⇞   ⇟ \n'
-         + 'U+21Ex  ⇠   ⇡   ⇢   ⇣   ⇤   ⇥   ⇦   ⇧   ⇨   ⇩   ⇪   ⇫   ⇬   ⇭   ⇮   ⇯ \n'
-         + 'U+21Fx  ⇰   ⇱   ⇲   ⇳   ⇴   ⇵   ⇶   ⇷   ⇸   ⇹   ⇺   ⇻   ⇼   ⇽   ⇾   ⇿ \n'
-         + '\n'
-         + '\n'
-         + '</pre>'
-         + '<br/>'
-         + '</li>'
-         + '<li><a href="http://asciiflow.com/">Ascii Flow online diagram editor</a> easify txt diagrams</li>'
-         + '<li><a href="http://www.figlet.org/">figlet.org</a>: Create large ascii letters</li>'
-         + '<li><a href="https://htmleditor.io">htmleditor.io</a> light-weigth online html editor</li>'
-
-         + '<li>HINT: txt editors with block and/or column edit mode (Vim, UltraEdit, gedit, Notepad++, Eclipse, ...) will make your life much easier</li>'
-         + '<li>HINT: Vim is the best text editor. Love him and it will love you for the rest of your life!</li>'
-         + '</ul>'
-
-function doHelp() {
-    ctx = {
-        outerHTML : help
-    }
-    doOpenZoom.call(ctx, ctx, true, false);
-}
-
 function doExtraOptions() {
     ctx = {
         outerHTML : getSearchOptions()
@@ -360,7 +288,7 @@ function onPageLoaded() {
    + '  <input id="singleLineOnly" type="checkbox"><code xsmall>single-line</code><br/>'
    + '  <input id="caseSensitive"  type="checkbox"><code xsmall>Case-match</code>'
    + '  </div>'
-   + '  &nbsp;<input id="idButtonHelp" type="button" value="?" onClick="doHelp()">'
+   + '  &nbsp;<a href="../help.html" target="_blank">HELP</a>'
    + '</form>'
    + '<a href="'+UP+'">[FOLDER UP]</a>&nbsp;'
    + '<a href="https://github.com/singlepagebookproject/IT_notes/issues">[Github pull requests]</a>&nbsp;'
@@ -496,15 +424,6 @@ function resetTextFoundAttr(bOnlyFalse) {
         removeNodeList[idx].removeAttribute("textFound"); 
     }
   }
-}
-
-function generate_uuidv4() {
-  let UUID = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-    return v.toString(16);
-  });
-  document.getElementById("id_uuid_display").value=UUID;
-
 }
 
 function isAnyLabelSelected() {

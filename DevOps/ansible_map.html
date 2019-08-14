@@ -177,7 +177,8 @@ Ussually we use facts for conditionals:
 - Ansible waits until all hosts have completed a task before moving to the next task.
   (See schedule "serial"/"free" execution to change default execution strategy)
 -------------------------------------------------------------+-------------------------------------------------------------------
-PLAYBOOK YAML LAYOUT WITH TASKS:                             | PLAYBOOK YAML LAYOUT WITH <a href="https://docs.ansible.com/ansible/latest/user_guide/playbooks_reuse_roles.html">ROLES</a>:
+ PLAYBOOK YAML*LAYOUT WITH TASKS*                            | PLAYBOOK YAML*LAYOUT WITH ROLES*
+                                                             | @[https://docs.ansible.com/ansible/latest/user_guide/playbooks_reuse_roles.html]
                                                              | role: primary mechanism for breaking playbooks into reusable parts
 -------------------------------------------------------------+-------------------------------------------------------------------
 ---                                                          | *based on a well known file structure*.
@@ -198,13 +199,13 @@ PLAYBOOK YAML LAYOUT WITH TASKS:                             | PLAYBOOK YAML LAY
         update_cache=yes                                     |      database_name: " {{ myProject_ddbb_name }}"
         state=lates                                          |      database_user: " {{ myProject_ddbb_user }}"
      notify:                                                 |    - { role: consumer, when: tag | default('provider') == 'consumer'}
-       - *restart-apache2-id*                                  |    - { role: provider, when: tag | default('provider') == 'provider'}
+       - *restart-apache2-id*                                |    - { role: provider, when: tag | default('provider') == 'provider'}
    - name: next_task_to_exec                                 | 
      "module": ...                                           | 
                                                              |   B*# post_tasks execute after roles *
   handlers:                ←  tasks triggered by events      |   B*post_tasks*:
-   - name: restart-apache2 ←  *name as a Unique-ID*            |     - name: notify Slack
-     service: name=apache2 state=restarted                   |       local_action: &gt;
+   - name: restart-apache2 ←  *name as a Unique-ID*          |     - name: notify Slack
+     service: name=apache2 state=restarted                   |       local_action: ˃
                                                              |         slack
 - hosts: localhost                                           |         domain=acme.slack.com
   connection: local                                          |         token={{ slack_token }}
@@ -871,31 +872,32 @@ O*  - 30   *
 - (helps to) keep secrets in (symetric password)encrypted 
 files that can be distributed/added to SCM.
 
-*RUNNING ANSIBLE-PLAYBOOK AGAINST VAULT PROTECTED YML*           | *RUNNING ANSIBLE-PLAYBOOK CONTAINING VAULT PROTECTED VARIABLE (Password, secret,...)*
-                                                               | 
+*RUNNING ANSIBLE-PLAYBOOK AGAINST VAULT PROTECTED YML*          | *RUNNING ANSIBLE-PLAYBOOK CONTAINING VAULT PROTECTED VARIABLE (Password, secret,...)*
+                                                                | 
 *STEP 1: Create the Vault protected playbook :                  | STEP 1:  Create vaulted variable:*
-   (or role or "embedded file")
-$ ansible-vault create myVaultProtectedPlaybook.yml            | $  ansible-vault *encrypt_string*
-                                                               | → mySecretToEncrypt                      Copy&amp;Paste to a yml file:
-                                                               | → bla bla blah(Ctrl+D)→ !vault |       ←  vars:
-                                                               | →           $ANSIBLE_VAULT;1.1;AES256     - mySecret: !vault |                 
-                                                               | →           66386439653236336462...                $ANSIBLE_VAULT;1.1;AES256
-                                                               | →           64316265363035303763...                66386439653236336462...
-                                                               | →           ...                                    64316265363035303763...
-                                                               |                                                    ...
-                                                               |
-*STEP 2: Use the Vault:*                                         | *STEP 2: (Similar to the vault protected playbook using*                     
-$ ansible-playbook myVaultProtectedPlaybook.yml \              | *--ask-vault-pass|--vault-password-file|ANSIBLE_VAULT_PASSWORD_FILE*)
-   *--ask-vault-pass*                                            | 
-   ^ prompt user for pass                                      |
-     Currently requires all files to                           |
-     be encrypted with same password                           |
-     Alternative1: use *--vault-password-file ~/.vault_pass.txt* |
-                       *                      ~/.vault_pass.py*  |
-                       </>            ^ password should be a      |
-                                string stored as a single line |
-     Alternative2:                                             |
-      export ANSIBLE_VAULT_PASSWORD_FILE=~/.vault_pass.txt     |
+   (or role or "embedded file")                                 |
+$ ansible-vault create myVaultProtectedPlaybook.yml             | $  ansible-vault *encrypt_string*
+                                                                | → mySecretToEncrypt                      Copy&amp;Paste to a yml file:
+                                                                | → bla bla blah(Ctrl+D)→ !vault |       ←  vars:
+                                                                | →           $ANSIBLE_VAULT;1.1;AES256     - mySecret: !vault |                 
+                                                                | →           66386439653236336462...                $ANSIBLE_VAULT;1.1;AES256
+                                                                | →           64316265363035303763...                66386439653236336462...
+                                                                | →           ...                                    64316265363035303763...
+                                                                |                                                    ...
+                                                                |
+*STEP 2: Use the Vault:*                                        | *STEP 2: (Similar to the vault protected playbook using*                     
+$ ansible-playbook myVaultProtectedPlaybook.yml \               | *--ask-vault-pass|--vault-password-file|ANSIBLE_VAULT_PASSWORD_FILE*)
+   *--ask-vault-pass*                                           | 
+   ^ prompt user for pass                                       |
+     Currently requires all files to                            |
+     be encrypted with same password                            |
+     Alternative1: use *--vault-password-file ~/.vault_pass.txt*|
+                       *                      ~/.vault_pass.py* |
+                                              ^^^^^^^^^^^^^^^^^^|
+                                            password should be a|
+                                  string stored as a single line|
+     Alternative2:                                              |
+      export ANSIBLE_VAULT_PASSWORD_FILE=~/.vault_pass.txt      |
 </pre>
 
 <pre zoom>
@@ -1182,10 +1184,10 @@ $ ansible-playbook myVaultProtectedPlaybook.yml \              | *--ask-vault-pa
       action: file path=/tmp/secret mode=0600 owner=root group=root
     #
     # Format 'action' like above:
-    # <modulename> <module parameters>
+    # modulename  module_parameters
     #
     # Test your parameters using:
-    #   ansible -m <module> -a "<module parameters>"
+    #   ansible -m $module  -a "$module_parameters"
     #
     # Documentation for the stock modules:
     # http://ansible.github.com/modules.html

@@ -423,24 +423,18 @@ function onPageLoaded() {
         + "<a target='_blank' href='"+window.location.href.split('?')[0]+"?query=$1&labels="+labelMapSelectedToCSV()+"'>( ⏏ )</a>"
 //        "<a href='"+window.location.href.split('?')[0]+"?query=$1'>$1</a>"
       )
-                                                              // @[   http.....  ]
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/@\[(http[^\]]*)\]/g,"<a target='_new' href='$1'> [$1]</a>")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/@\[([^\]]*)\]/g,    "<a               href='$1'> [$1]</a>")   
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/G\*([^\*\n]*)\*/g, "<b green >  $1 </b>")   
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/R\*([^\*\n]*)\*/g, "<b red   >  $1 </b>")   
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/B\*([^\*\n]*)\*/g, "<b blue  >  $1 </b>")   
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/O\*([^\*\n]*)\*/g, "<b orange>  $1 </b>")   
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Q\*([^\*\n]*)\*/g, "<b brown >  $1 </b>")   
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Y\*([^\*\n]*)\*/g, "<b yellow>  $1 </b>")   
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /\*([^\*\n]*)\*/g, "<b        > $1 </b>")   
-    //nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /\*([^\*\n]*)\*[^\/]/g, "<b       > $1 </b>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Gº([^º\n]*)º/g, "<b green >  $1 </b>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Rº([^º\n]*)º/g, "<b red   >  $1 </b>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Bº([^º\n]*)º/g, "<b blue  >  $1 </b>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Oº([^º\n]*)º/g, "<b orange>  $1 </b>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Qº([^º\n]*)º/g, "<b brown >  $1 </b>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Yº([^º\n]*)º/g, "<b yellow>  $1 </b>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /º([^º\n]*)º/g, "<b        > $1 </b>")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[˂]/g, "&lt;")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[˃]/g, "&gt;")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[⅋]/g, "&amp;")   
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/g\|([^\*\n]*)\|/g, "<span green >  $1 </span>")   
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/r\|([^\*\n]*)\|/g, "<span red   >  $1 </span>")   
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/b\|([^\*\n]*)\|/g, "<span blue  >  $1 </span>")   
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/o\|([^\*\n]*)\|/g, "<span orange>  $1 </span>")   
       // Some utf-8 hand icons do not work properly while editing in vim/terminal
       // but looks much better in the final HTML. Replace icons:
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☜/g, "👈")   

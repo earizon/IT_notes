@@ -9,7 +9,33 @@ var spb = {
   CallbackOnClose:false,
   labelAndMode : true,
   labelMap : { /* label : dom_list*/ },
-  labelMapSelected : { /* label : isSelected true|false */ }
+  labelMapSelected : { /* label : isSelected true|false */ },
+  onKeyUp: function(e) {
+    if (e.code === "Escape") {
+      if (spb.zoomDivDOM.innerHTML == '') {
+        resetTextFoundAttr(true);
+      } else {
+           doCloseZoom();
+      }
+    }
+    if (e.code === "F1") doHelp(); 
+  },
+  searchAndMark : function(node, query) {
+      var htmlContent = (singleLineOnly) 
+           ? node.innerHTML 
+           : node.innerHTML.replace(/\n/gm, '')
+// debugger;
+//    var searchFound = htmlContent.match(query)
+      var searchFound = query.test(htmlContent)
+      node.setAttribute("textFound", searchFound?"true":"false")
+      if (searchFound) {
+          spb.visited.push(node)
+          window.lastElementFound = node
+      }
+      return searchFound
+  }
+
+
 }
 function doCloseZoom() {
   spb.zoomDivDOM.innerHTML = ''; 
@@ -274,7 +300,8 @@ function onPageLoaded() {
    + '  <input id="singleLineOnly" type="checkbox"><code xsmall>single-line</code><br/>'
    + '  <input id="caseSensitive"  type="checkbox"><code xsmall>Case-match</code>'
    + '  </div>'
-   + '  &nbsp;<a href="../help.html" target="_blank">HELP</a>'
+   + '  &nbsp;<a href="../help.html" target="_blank">[HELP]</a>'
+   + '  &nbsp;<div style="display:inline; color:blue" onClick="spb.onKeyUp({ code: \'Escape\'})">[show all]</div>'
    + '</form>'
    + '<a href="'+UP+'">[FOLDER UP]</a>&nbsp;'
    + '<a href="https://github.com/singlepagebookproject/IT_notes/issues">[Github pull requests]</a>&nbsp;'
@@ -292,19 +319,8 @@ function onPageLoaded() {
   
 
   spb.zoomDivDOM = document.getElementById('zoomDiv')
-  document.addEventListener('keyup',
-      function(e) {
-          if (e.code === "Escape") {
-              if (spb.zoomDivDOM.innerHTML == '') {
-                 resetTextFoundAttr(true);
-              } else {
-                 doCloseZoom();
-              }
-          }
-          if (e.code === "F1")     doHelp(); 
 
-      }
-  )
+  document.addEventListener('keyup', spb.onKeyUp)
 
   // Change default a.target to blank. Ussually this is bad practice 
   // but this is the exception to the rule
@@ -438,6 +454,8 @@ Array.prototype.intersection = function(a)
   return r;
 };
 
+
+
 function highlightSearch(query) {
   if (typeof query != "string") query = "";
   if (!!query) { QUERY.value = query; }
@@ -474,29 +492,18 @@ function highlightSearch(query) {
   if (!singleLineOnly) regexFlags += "m";
   var query = (isEmptyQuery) 
         ? new RegExp(".*")
-        : new RegExp("[^=>;]*(" + text + ")", regexFlags)
+        : new RegExp("[^=>;](" + text + ")", regexFlags)
 
   var numberOfMatches = 0
 
   spb.visited=[]
-  var searchAndMark = function(node) {
-      var htmlContent = (singleLineOnly) 
-           ? node.innerHTML 
-           : node.innerHTML.replace(/\n/gm, '')
-      var searchFound = htmlContent.match(query)
-      node.setAttribute("textFound", searchFound?"true":"false")
-      if (searchFound) {
-          spb.visited.push(node)
-          window.lastElementFound = node
-      }
-      return searchFound
-  }
+
   var foundElement = false
   for (idx2 in innerZoom_l) {
     var node = innerZoom_l[idx2]
     if (node.innerHTML == null) continue
     if (!node.setAttribute    ) continue
-    if (searchAndMark(node)) { 
+    if (spb.searchAndMark(node,query)) { 
         numberOfMatches++ 
         foundElement = true
     }

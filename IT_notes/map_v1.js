@@ -354,6 +354,15 @@ function onPageLoaded() {
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☝/g, "👆")
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☞/g, "👉")
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☟/g, "👇")
+//    if (typeof window.orientation !== 'undefined') {
+//        // There ar some glitches with font support in mobiles :(
+//        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/│/g, "|")
+//        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/─/g, "-")
+//        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/┌/g, "/")
+//        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/┐/g, "\\")
+//        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/└/g, "\\")
+//        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/┘/g, "/")
+//    }
   }
 
 

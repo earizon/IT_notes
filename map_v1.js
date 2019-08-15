@@ -22,62 +22,48 @@ function doCloseZoom() {
 var longPress = {
    longpress : false,
    presstimer : null,
-
    click : function(e) {
-       if (longPress.presstimer !== null) {
-           clearTimeout(longPress.presstimer);
-           longPress.presstimer = null;
-       }
-   
-       this.classList.remove("longpress");
-   
-       if (longPress.longpress) {
-           return false;
-       }
+     if (longPress.presstimer !== null) {
+       clearTimeout(longPress.presstimer)
+       longPress.presstimer = null
+     }
+     if (longPress.longpress) { return false }
    },
    start : function(e) {
-       var self = this
+     var self = this
+     if (e.type === "click" && e.button !== 0) { return }
+     longPress.longpress = false
    
-       if (e.type === "click" && e.button !== 0) {
-           return;
-       }
+     if (longPress.presstimer === null) {
+       longPress.presstimer = setTimeout(function() {
+         doOpenZoom.call(self, self, false, true)
+         longPress.longpress = true
+       }, 1000)
+     }
    
-       longPress.longpress = false;
-   
-       this.classList.add("longpress");
-   
-       if (longPress.presstimer === null) {
-           longPress.presstimer = setTimeout(function() {
-               doOpenZoom.call(self, longPress.element, false, true);
-               longPress.longpress = true;
-           }, 1000);
-       }
-   
-       return false;
+     return false;
    },
    cancel : function(e) {
-       if (longPress.presstimer !== null) {
-           clearTimeout(longPress.presstimer);
-           longPress.presstimer = null;
-       }
-   
-       this.classList.remove("longpress");
+     if (longPress.presstimer !== null) {
+       clearTimeout(longPress.presstimer);
+       longPress.presstimer = null;
+     }
    },
    enableDblClick : function (node) {
-       let self = node
-       node.addEventListener('dblclick', function() { 
-           doOpenZoom.call(self, self, false, true) 
-           if (!!this.stopPropagation) { this.stopPropagation(); }
-       } , true)
+     let self = node
+     node.addEventListener('dblclick', function() { 
+       doOpenZoom.call(self, self, false, true) 
+       if (!!this.stopPropagation) { this.stopPropagation(); }
+     } , true)
    },
    enableLongTouch : function (node) { 
-       node.addEventListener("mousedown", longPress.start);
-       node.addEventListener("touchstart", longPress.start);
-       node.addEventListener("click", longPress.click);
-       node.addEventListener("mouseout", longPress.cancel);
-       node.addEventListener("touchend", longPress.cancel);
-       node.addEventListener("touchleave", longPress.cancel);
-       node.addEventListener("touchcancel", longPress.cancel);
+     node.addEventListener("mousedown" , longPress.start);
+     node.addEventListener("touchstart", longPress.start);
+     node.addEventListener("click"     , longPress.click);
+     node.addEventListener("mouseout"  , longPress.cancel);
+     node.addEventListener("touchend"  , longPress.cancel);
+     node.addEventListener("touchleave", longPress.cancel);
+     node.addEventListener("touchcancel", longPress.cancel);
    }
 }
 
@@ -335,9 +321,8 @@ function onPageLoaded() {
   nodeList = document.querySelectorAll('*[zoom]')
   for (idx in nodeList) { 
      if (!!! nodeList[idx].addEventListener) continue;
-     longPress.enableDblClick(nodeList[idx]);
-     // Touch screen do not have enough resolution to click on
-     //  internal td elements
+     longPress.enableDblClick (nodeList[idx]);
+     longPress.enableLongTouch(nodeList[idx]);
   }
   nodeList = document.querySelectorAll('*[zoom]')
   for (idx in nodeList) { 

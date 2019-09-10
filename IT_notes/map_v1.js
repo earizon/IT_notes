@@ -492,7 +492,7 @@ function highlightSearch(query) {
   if (!singleLineOnly) regexFlags += "m";
   var query = (isEmptyQuery) 
         ? new RegExp(".*")
-        : new RegExp("[^=>;](" + text + ")", regexFlags)
+        : new RegExp("[^=>;]?(" + text + ")", regexFlags)
 
   var numberOfMatches = 0
 

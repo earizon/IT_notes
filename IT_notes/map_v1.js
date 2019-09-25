@@ -292,7 +292,8 @@ function onPageLoaded() {
   var searchDiv = document.createElement('spam');
       searchDiv.innerHTML = 
      '<form action="#" method="" id="search" name="search">'
-   +  labelFilterIconSVG
+// +  labelFilterIconSVG
+   + '<img id="idLabelsFilter" src="/IT_notes/labelIcon.svg" />'
    + '  <input name="inputQuery" id="inputQuery" type="text" size="20" placeholder="(regex) text search" maxlength="30">'
    + '&nbsp;'
    +  lenseIconSVG

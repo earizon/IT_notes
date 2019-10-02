@@ -13,7 +13,7 @@
 <div groupv>
 <pre zoom>
 <span xsmall>External</span>
-<span xsmall> Links</span>
+<span xsmall>Links</span>
 @[https://github.com/ethereum/wiki/wiki/White-Paper]
 @[https://ethereum.github.io/yellowpaper/paper.pdf]
 @[https://solidity.readthedocs.io/en/v0.5.0/resources.html] Solidity Resources
@@ -59,7 +59,17 @@
 - Joseph Lubin:
   @[https://en.wikipedia.org/wiki/Joseph_Lubin_(entrepreneur)]
   founder of ConsenSys.
-  
+
+- Anthony Diiorio
+  @[https://anthonydiiorio.ca/]
+  In 2013, Anthony Diiorio funded, and along with Charles Hoskinson,
+  Mihai Alisie, and Vitalik Buterin, co-founded the smart contract
+  platform Ethereum.
+ 
+- Loredana Cirstea:
+  Author of dType, seth.io, Pipeline remix plugin, ...
+  @[https://github.com/loredanacirstea/articles]
+  @[https://github.com/loredanacirstea?utf8=%E2%9C%93&tab=repositories&q=&type=source&language=]
 
 - Nick Johnson "Arachnid":
   @[http://blog.notdot.net/]
@@ -481,7 +491,7 @@ In comparison to contracts:
 
 <pre zoom >
 <span xsmall TODO>ABI Spec</span>
-Full reference:@[https://solidity.readthedocs.io/en/latest/abi-spec.html/]
+Full reference:@[https://solidity.readthedocs.io/en/latest/abi-spec.html]
 
 - The encoding is not self describing and thus requires a schema in order to decode.
 - Interface functions of a contract are strongly typed
@@ -2011,7 +2021,7 @@ Syntax:
     particularly after contract-self-destruction =˃
     - code must manually clean mappings by deleting each key.
 
-<span xsmall TODO>Walk over</span>
+<span xsmall>Walk over</span>
 - Mappings are virtually initialized:
   - ºevery possible key exists mapped to zero-byte-reprº
   - keys are NOT stored in the map
@@ -2618,6 +2628,87 @@ Current Status (updated: June 22, 2019)
 <pre zoom  labels="learn_x_in_y_min,qa">
 <span xsmall>Security Best Practices</span>
 @[https://consensys.github.io/smart-contract-best-practices/]
+</pre>
+
+<pre zoom labels="learn_x_in_y_min,debug">
+<span xsmall>How to fix "stack too deep" error</span>
+@[https://blog.aventus.io/stack-too-deep-error-in-solidity-5b8861891bae]
+Alex Pinto (2019-01)
+- error generated when the code needs to access a slot in the stack frame deeper than its 16th element 
+  (counting from the top downwards). 
+
+
+    FUNCTION 
+  STACK FRAME
+  -----------
+- local var3
+- local var2
+- local var1
+...
+- input  arg3
+- input  arg2
+- input  arg1
+- 'return address' ← where to return from function
+
+- There are too many ways in which it can be triggered.
+
+- So here are some streamlined notes to keep in mind:
+  - When a function is called, a stack frame is created. This includes, from bottom to top:
+  - the function selector
+  - the return address
+  - the leftmost value-type argument of the function
+  - …
+  - the rightmost value-type argument of the function
+  - “Stack Too Deep” errors depend on the central opcode of an action
+    (eg arithmetic, hashing, calling another function, emitting events, etc.)
+    If these central operations are performed on pure function arguments,
+    the order in which they are passed to the function may decide the occurrence
+    of a “Stack Too Deep” error.
+    (Stack slots can also be used for intermediate calculations and local variables)
+  - It is crucial to know the number and order of the arguments for the opcode.
+    These arguments are typically read from the stack 
+    (the only exception is the PUSH opcode).
+  - Opcode arguments have to be pushed to the stack before executing the opcode.a
+   ºEach PUSH moves the function arguments down at least one slotº
+  - The function arguments deeper in the stack are the ones that were processed first,
+    that is, the leftmost ones in the function signature.
+  -ºIf some of the function arguments are not used in that opcode operation,    º
+   ºthen they should come first in the function signature, to reduce the chancesº
+   ºthat opcode arguments will be off-reach when they need to be stacked.       º
+
+  -ºOpcodes use arguments at different levels in the stack. Deeper levels are pushed first.º
+   ºIf an argument is pushed after another, it should appear in the function signature     º
+   ºafter the former as well, otherwise it would push the other one down the               º
+   ºstack before it could be used.                                                         º
+    Example:
+    - Consider an event with two indexed arguments [t1, t2] in this order,
+      called in a function with several arguments, among which a1 coming before a2
+      If the event is emitted with t1 = a1 and t2 = a2, the opcode LOG3 will be called.
+      Before calling this opcode, t2 = a2 will be pushed first into the stack.
+      This will push a1 down and put it at risk of being unreachable when the time 
+      comes to push the value of t1 = a1.
+      This would be avoided if a1 came after a2 in the function signature, since it
+      would be higher in the stack than a2. Assuming a2 was reachable when it was pushed,
+      so would be a1 afterwards.
+
+  - more difficult cases arise when calling
+    functions in other contracts or libraries, since the opcodes CALL and DELEGATECALL 
+    take 7 or 6 input arguments each, with a lot more possibilities of interaction between
+    the opcode and function arguments.
+
+Alexandre Pinto — Blockchain developer at Artos (Aventus Ecosystem Party)
+
+As part of his research, Alex has published papers on Kolmogorov Complexity, Cryptography, Database Anonymization and Code Obfuscation.
+
+Pinto also spent seven years lecturing at the University Institute of Maia
+including directing the degree programmes for BSc Computer Science and
+Information Systems and Software.
+
+This article was originally posted on his blog.
+
+Since you are here, we would love if you connected with us on Telegram,Reddit, Twitter, Facebook, Youtube, Instagram and LinkedIn.
+
+Also, we have started a LinkedIn Group for ticketing developers/other developers to engage, join us and start a conversation.
 </pre>
 </div>
 </div>
@@ -4798,7 +4889,7 @@ Roadmap                  @[https://github.com/jpmorganchase/quorum/wiki/Product-
   @[https://github.com/ethereum/EIPs/issues/225]
   @[https://github.com/ethereum/go-ethereum/blob/master/consensus/clique/clique.go]
   @[https://github.com/NethermindEth/nethermind/tree/master/src/Nethermind/Nethermind.Clique]
-  @[https://github.com/PegaSysEng/pantheon/tree/master/consensus/clique/src/main/java/tech/pegasys/pantheon/consensus/clique]
+  @[https://github.com/hyperledger/besu/tree/master/consensus/clique/src/main/java/org/hyperledger/besu/consensus/clique]
   - TestNet:
   @[https://github.com/goerli/testnet]  @[https://goerli.net/]
   """Görli Testnet is the first proof-of-authority cross-client testnet, synching Parity Ethereum, Geth, Nethermind,
@@ -5366,9 +5457,105 @@ $ catOºnodePrivateKeyº |ºopensslºec -noout -text                            
 </pre>
 
 <pre zoom>
-<span bgorange TODO xsmall>X509 Cert 2 Wallet</span>
-@[https://cn.hyperledger.org/blog/2018/07/24/hyperledger-sawtooth-seth-and-truffle-101]
+<span TODO xsmall>PKCS-friendly Wallet</span>
+@[https://kobl.one/blog/create-full-ethereum-keypair-and-address/]
+@[https://github.com/maandree/sha3sum] C implementation
+
+ ºINPUTº        → ºTOOLSº     →  ºOUTPUTº 
+  "/dev/random"    - OpenSSL      - ECDSA private key
+                   - sha3sum      - Ethereum address
+
+WARN:
+SHA3 != keccak (Ethereum keccak-256) 
+More info at:
+@[https://ethereum.stackexchange.com/questions/550/which-cryptographic-hash-function-does-ethereum-use]
+
+
+STEP 1: Generate EC private key
+
+
+This command will print the private key in PEM format (using the wonderful ASN.1 key structure) on stdout. If you want more OpenSSL info on elliptic curves, please feel free to dig further.
+
+$ openssl ecparam        -name secp256k1 -genkey -noout  > /tmp/privateKey01
+          ^^^^^^^              ^^^^^^^^^                  ^^^^^^^^^^^^^^^^^^ 
+      create Ellip.Curve      secp256k1 curve             ASN encoded in base64
+          private key         (Same as Bitcoin)
+
+  → -----BEGIN EC PRIVATE KEY-----
+  → MHQCAQEEIFDLYO9KuwsC4ej2UsdA4SYk7s3lb8aZuW+B8rjugrMmoAcGBSuBBAAK
+  → oUQDQgAEsNjwhFoLKLXGBxfpMv3ILhzg2FeySRlFhtjfi3s8YFZzJtmckVR3N/YL
+  → JLnUV7w3orZUyAz77k0ebug0ILd1lQ==
+  → -----END EC PRIVATE KEY-----
+
+$ cat /tmp/privateKey01 | openssl ec -text -noout > /tmp/splitedKey01
+                                  ^^^^^^^^                                      
+                             display private+public key in
+                             hexadecimal format
+  → read EC key
+  → Private-Key: (256 bit)
+  → priv:
+  →     20:80:65:a2:47:ed:be:5d:f4:d8:6f:bd:c0:17:13:  ←─┐
+  →     03:f2:3a:76:96:1b:e9:f6:01:38:50:dd:2b:dc:75:    │
+  →     9b:bb                                            │
+  → pub:                                                 │
+  →     04:83:6b:35:a0:26:74:3e:82:3a:90:a0:ee:3b:91:    │
+  →     bf:61:5c:6a:75:7e:2b:60:b9:e1:dc:18:26:fd:0d:    │
+  →     d1:61:06:f7:bc:1e:81:79:f6:65:01:5f:43:c6:c8:    │
+  →     1f:39:06:2f:c2:08:6e:d8:49:62:5c:06:e0:46:97:    │
+  →     69:8b:21:85:5e                                   │
+  → ASN1 OID: secp256k1                                  │
+  ┌──────────────────────────────────────────────────────┘
+  │
+  └─ Remove any null byte (0x00) in front of the private part,
+     (this happens "sometimes"). Priv.key length must be 32 bytes
+
+     Uncompressed Public key length must be 64 bytes long 
+     (65 with the ºconstant 0x04 prefixº)
+
+STEP 2: Extract the public key and format properly for keccak-256:
+$ cat /tmp/splitedKey01 | grep pub -A 5 | tail -n +2 | 
+            tr -d '\n[:space:]:' | sed 's/^04//' \
+  > /tmp/pubKey01
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ (example script to extract the 64 bytes in a row)
+   
+ Output (/tmp/pubKey01) must look similar to:
+ 836b35a026743e823a90a0ee3b91bf615c6a757e2b60b9e1dc1826fd0dd16106f7bc1e8179f665015f43c6c81f39062fc2086ed849625c06e04697698b21855e
+ (hexadecimal representation of the 64 bytes)
+
+STEP 3: Calculate Ethereum address as:
+
+$ cat /tmp/pubKey01 | keccak-256sum -x -l | tr -d ' -' | tail -c 41 
+                                    ^^      ^^^^^^^^^^^^^^^^^^^^^^^ 
+                            Input are hex   keep only the last 20 bytes 
+                            char(vs string) (get rid of first 12).
+                                            20bytes = 40chars (+1 line return)
+
+  Output will be similar to
+  → 0bed7abd61247635c1973eb38474a2516ed1d884
+    0         1         2         3
+     123456789 123456789 123456789 123456789
+
+RºCAUTION!: if final address looks like 
+    *0xdcc703c0E500B653Ca82273B7BFAd8045D85a470* this means you
+     have hashed an empty public key. Sending funds to this
+     address will lock them forever!
+
+STEP 4: (Optional) Import private key to geth
+# Extract the private key and remove the leading zero byte
+$ geth account import priv "privateKey_hexFormat_no_leading_00"
+Passphrase: 
+Repeat passphrase: 
+Address: {0bed7abd61247635c1973eb38474a2516ed1d884}
+
+You're now ready to use the new account with geth. Of course, 
+it would be easier to take advantage of the geth account new feature 
+in order to quickly setup an Ethereum account. But manually doing
+it gives you the power of knowing your public and unencrypted 
+private keys. In addition, this would be useful to generate a
+secure Ethereum account completely off chain.
 </pre>
+
 <span title>Geth</span>
 <pre zoom>
 <span xsmall>Setup Node</span>
@@ -5867,7 +6054,7 @@ Available metrics (use geth monitor for full list)
         pauses: time spent in the garbage collector
 </pre>
 
-<pre zoom TODO label="devops">
+<pre zoom TODO labels="devops">
 <span xsmall>Geth 1.9 Release Notes</span>
 @[https://blog.ethereum.org/2019/07/10/geth-v1-9-0/]
 Release page      : @[https://github.com/ethereum/go-ethereum/releases/tag/v1.9.0]
@@ -6417,12 +6604,12 @@ Eth-Connect
 </div>
 
 <div groupv>
-<span title>Pantheon</span>
+<span title>Besu(Pantheon)</span>
 
-<pre zoom>
-  <span xsmall>Pantheon Java Node</span>
+<pre zoom labels="hyperledger_besu">
+  <span xsmall>Features</span>
 @[https://docs.pantheon.pegasys.tech/en/stable/]
-- Java based.
+- Java based, using VertX as core framework.
 - Apache 2.0.
 - Supports Proof of Work (Ethash)  and Proof of Authority (Clique)
 -
@@ -6443,15 +6630,15 @@ Pantheon so I can’t put exact numbers on things.
 enough to keep up with all the public networks.
 Improving performance is a current focus... """
 </pre>
-<pre zoom>
+<pre zoom labels="hyperledger_besu">
 <span TODO xsmall>ONchain Permissioning</span>
 https://docs.pantheon.pegasys.tech/en/latest/Permissions/Onchain-Permissioning/
 </pre>
-<pre zoom>
+<pre zoom labels="hyperledger_besu">
 <span xsmall>Web3J(ava)</span>
 <span xsmall>Integration</span>
-@[https://github.com/web3j/web3j/blob/master/pantheon/src/test/java/org/web3j/protocol/pantheon/RequestTest.java]
-@[https://github.com/web3j/web3j/blob/master/pantheon/src/test/java/org/web3j/protocol/pantheon/ResponseTest.java]
+@[https://github.com/web3j/web3j/blob/master/besu/src/test/java/org/web3j/protocol/besu/RequestTest.java]
+@[https://github.com/web3j/web3j/blob/master/besu/src/test/java/org/web3j/protocol/besu/ResponseTest.java]
 
 Extracted from Initial Pull Request:
 (@[https://github.com/web3j/web3j/pull/767]=
@@ -6462,14 +6649,14 @@ Extracted from Initial Pull Request:
 ºconor10 º: ... let’s leave the duplication in for now ...
 </pre>
 
-<pre zoom>
+<pre zoom labels="hyperledger_besu">
 UUID: a4c55453-c75d-4faf-91aa-ae437ef80e97
 <span xsmall>ARCHITECTURE</span>
  ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
  │                                       JSON RPC                                                                                      │
  └─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
  ┌───────────────────────────────────────┐    ┌─────────────────────────────┐    ┌─────────────────────────────────────────────────────┐
- │                 ºCOREº                │    │   ºCHAIN PROCESSINGº        │    │                   ºP2Pº                             │
+ │                 ºCOREº                │    │   ºCHAIN PROCESSING º       │    │                   ºP2Pº                             │
  │                                       │    │                             │    │                                                     │
  │  ┌──────────────────────────────────┐ │    │ ┌─────────────────────────┐ │    │ ┌─────────────────────────────────────────────────┐ │
  │  │          SYNCHRONIZER            │ │    │ │    PROTOCOL SPEC        │ │    │ │               ETH SUB─PROTOCOL                  │ │
@@ -6495,27 +6682,109 @@ UUID: a4c55453-c75d-4faf-91aa-ae437ef80e97
   │                                ºSTATEº                                   │   │   └─────────────────────────────────────────────┘   │
   │                      ┌─────────┐    ┌────────────┐                       │   │   ┌─────────────────────────────────────────────┐   │
   │                      │WORLD    │    │BLOCKCHAIN  │                       │   │   │          DISCOVERY AGENT                    │   │
-  │                      │STATE    │    └────────────┘                       │   │   └─────────────────────────────────────────────┘   │
-  │                      │ARCHIVE  │                                         │   │                                                     │
-  │                      └─────────┘                                         │   └─────────────────────────────────────────────────────┘
-  │                      ┌─────────┐    ┌────────────┐                       │
-  │                      │CONSENSUS│    │ SYNC STATE │                       │
-  │                      └─────────┘    └────────────┘                       │
-  └──────────────────────────────────────────────────────────────────────────┘
-
-pantheon/
-   ├── bin  (install)
-   ├── lib  (install)
-   ├── key  (run─time) Node Private key (--data-path)
-   └── ddbb (run─time) RocksDB data     (--data-path)
+  │                      │STATE    │    └────────────┘                       │   │   └──^──────────────────────────────────────────┘   │
+  │                      │ARCHIVE  │                                         │   │      │                                              │
+  │                      └─────────┘                                         │   └──────│──────────────────────────────────────────────┘
+  │                      ┌─────────┐    ┌────────────┐                       │          │ 
+  │                      │CONSENSUS│    │ SYNC STATE │                       │        DEVp2p Peer Discovery
+  │                      └─────────┘    └────────────┘                       │        . UDP based system to discover other nodes
+  └──────────────────────────────────────────────────────────────────────────┘        . Based on a ºwell-known set of boot nodesº.
+                                                                                      . Recursively looks up new peers (neighbors) 
+pantheon/                                                                               from known peers.
+   ├──   bin  (install)                                                               
+   ├──   lib  (install)                                                               DISCOVERY PACKET EXCHANGE 
+   ├── * key  (run─time) Node Private key (config through --data-path)                - Learns of a node IP:
+   └── * ddbb (run─time) RocksDB data     (config through --data-path)                  Initiating Node  → Responding Node: Ping
+                                                                                        Initiating Node  ← Responding Node: Pong  
+  $ bin\besu --config=my.cfg \                                                        
+    --data-path=/var/lib/besu/node1 \                                                 - What other nodes do you know about?    
+    --genesis=my.genesis \                                                              Initiating Node  → Responding Node: Find Neighbors
+    --max-peers=5 \                                                                     Initiating Node  ← Responding Node: List of known nodes
+    --rpc-enabled
 
 LOGS go to STDOUT
 </pre>
 
-<pre zoom>
+<pre zoom labels="hyperledger_besu">
 <span xsmall>Understanding codebase</span>
+StartUp:
+Initial bootstrap           →  Create BesuController.java             → Create Runner.java
+^^^^^^^^^^^^^^^^^              It will collect all bck-related
+Parse cli flags                config and services:                         RUnner (BUild through RUnnerBUilder.java):  
+(^@cli/BesuCommand.java)       - chain+world state DBs                      (Run through command Line)
+parse config file,               - StorageProvider: (InMemory/RocksDB)        - COntains services for:
+load|genrate node keypair,     - Genesis Config File                            - Network                    
+parse genesis file             - Node keypair                                   - Besu COntroller                                     
+                               - ProtocolSchedule + ProtocolSPec:               - JSON RPC                                            
+                                                    ^^^^^^^^^^^^                - WebSocket RPC                                       
+                                 valid for a "bunch of blocks" in the           - Plugable Metrics System (Prometheus)                
+                                 chain (validators and proccessor that          - Data directory                                      
+                                 apply to Byzantium,Constantinople, ...).                                                             
+                                 The ProtocolSchedule "groups them all"                                                               
+                                (@ethereum/mainnet/ProtocolSpec.java)                                                                 
+                                 Maps milestone block ranges to                                                                       
+                                 specific protocol logic
+                               - Synchronizer
+                               - Transaction Pool
+                               - Miner
+
+
+
+
+Runner: Network Startup:
+→ Discover neighbors  →  Setup connections                      
+                         DEVp2p Wire Protocol (RLPx)          
+                         . Manages which peer nodes are valid
+                           (capabilites) and best to talk to
+                           (Peer reputation)
+                         . Peer Authentication
+                         . Encryption (ECIES based on
+                           node private keys)
+                         . COmpression
+                         . Keep Alive
+
+                         DEVp2p Subprotocol
+                         - Pluggable subprotocols that handle
+                          specific consensys mechanisms such 
+                          as Eth, Ibft, Istanbul64Protocol         
+                         -ºDefines the set, and appropiateº
+                          ºordering of messages on the    º
+                          ºnetwork                        º
+                         -BºPROTOCOL MANAGERº
+                           "Acumulates the logic of different
+                            subprotocols"
+                           a) Processes incoming messages
+                              for their subprotocol
+                           b) Sends outbound messages to
+                              other nodes using this 
+                              subprotocol
+                         
+                         Example Sample Message Set for EthPV62:
+                         - STATUS
+                         - NEW_BLOCK_HASHES
+                         - TRANSACTIONS
+                         - GET_BLOCK_HEADERS
+                         - BLOCK_HEADERS
+                         - GET_BLOCK_BODIES
+                         - BLOCK_BODIES
+                         - NEW_BLOCK
+
+
+ºSYNCHRONIZERº
+- Manages the overall sync runtime
+-ºChainDownloaderºLoops over:
+  - Find best peer to sync from (most/best new data)
+  - Pull checkpoint headers (Multithreaded downloading)
+  -ºPipelinedºblocks Import
+    -ºDownload and validateºheaders
+    -ºDownload bodiesº
+    - Extract transaction senders (PKI key recovery)
+    -ºValidate / Persistºblocks
+  -"repeat"
+
 - Github repo:
-@[https://github.com/PegaSysEng/pantheon]
+@[https://github.com/hyperledger/besu]
+
 
 - Video explaining the general architecture (a "MUST TO" read):
 @[https://www.youtube.com/watch?v=OJfib9kTK7U]
@@ -6524,10 +6793,10 @@ LOGS go to STDOUT
 @[https://gitter.im/PegaSysEng/pantheon]
 </pre>
 
-<pre zoom>
+<pre zoom labels="hyperledger_besu">
 <span xsmall bgorange>PANTHEON STARTUP</span>
 1.- Parse Command Line
-https://github.com/PegaSysEng/pantheon/blob/master/pantheon/src/main/java/tech/pegasys/pantheon/cli/PantheonCommand.java
+@[https://github.com/hyperledger/besu/blob/master/besu/src/main/java/org/hyperledger/besu/cli/BesuCommand.java]
 
 2.- Parse Config File
 
@@ -6536,7 +6805,7 @@ https://github.com/PegaSysEng/pantheon/blob/master/pantheon/src/main/java/tech/p
 4.- Parse Genesis File
 
 5.- Create PantheonController
-   https://github.com/PegaSysEng/pantheon/blob/master/pantheon/src/main/java/tech/pegasys/pantheon/controller/PantheonController.java
+  https://github.com/hyperledger/besu/blob/master/besu/src/main/java/org/hyperledger/besu/controller/BesuController.java
 
    - Collect all the blockchain-related config and services
    - Chain and world state DBs
@@ -6544,7 +6813,7 @@ https://github.com/PegaSysEng/pantheon/blob/master/pantheon/src/main/java/tech/p
    - Genesis config file
    - Node Keypair
    - ProtocolSchedule and ProtocolSpec: Maps milestone block ranges to specific protocol logic
-     Ej: https://github.com/PegaSysEng/pantheon/blob/master/ethereum/core/src/main/java/tech/pegasys/pantheon/ethereum/mainnet/MainnetProtocolSpecs.java
+     Ej: https://github.com/hyperledger/besu/blob/master/ethereum/core/src/main/java/org/hyperledger/besu/ethereum/mainnet/MainnetProtocolSpecs.java
 
    - Synchronizer
    - Transaction Pool
@@ -6562,7 +6831,7 @@ https://github.com/PegaSysEng/pantheon/blob/master/pantheon/src/main/java/tech/p
 7.- Run the Runner instance!
 </pre>
 
-<pre zoom>
+<pre zoom labels="hyperledger_besu">
 <span xsmall>Dev P2P</span>
 - Peer Discovery
   - UDP based system
@@ -6622,21 +6891,51 @@ https://github.com/PegaSysEng/pantheon/blob/master/pantheon/src/main/java/tech/p
 </pre>
 
 
-<pre zoom>
+<pre zoom labels="hyperledger_besu">
 <span xsmall>Core Developers</span>
-@[https://github.com/PegaSysEng/pantheon/graphs/contributors?from=2019-01-07&to=2019-05-30&type=c]
+@[https://github.com/hyperledger/besu/graphs/contributors?from=2019-01-07&to=2019-05-30&type=c]
 </pre>
 <span title>DevOps</span>
-<pre zoom>
-<span xsmall>Prerequisites</span>
 
+<pre zoom  labels="hyperledger_besu">
+<span xsmall>Accounts for testing</span>
+@[https://docs.pantheon.pegasys.tech/en/stable/Reference/Accounts-for-Testing/]
+ºAlternative 1:º
+- use nextºpredefined accountsºin dev network (--network=dev)
+                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                  dev.json genesis file will be used
+   ºAccount 1 (Miner Coinbase Account)º
+       Address: 0xfe3b557e8fb62b89f4916b721be55ceb828dbd73
+       Private key : 0x8f2a55949038a9610f50fb23b5883af3b4ecb3c3bb792cbcefbd1542c692be63
+       Initial balance : 0xad78ebc5ac6200000 (200000000000000000000 in decimal)
+   ºAccount 2º
+       Address: 0x627306090abaB3A6e1400e9345bC60c78a8BEf57
+       Private key : 0xc87509a1c067bbde78beb793e6fa76530b6382a4c0241e5e4a9ec0a0f44dc0d3
+       Initial balance : 0x90000000000000000000000 (2785365088392105618523029504 in decimal)
+   ºAccount 3º
+       Address: 0xf17f52151EbEF6C7334FAD080c5704D77216b732
+       Private key : 0xae6ae8e5ccbfb04590405997ee2d52d2b330726137b875053c36d94e974d162f
+       Initial balance : 0x90000000000000000000000 (2785365088392105618523029504 in decimal
+ºAlternative 2:º
+- reuse existing test accounts by editing the genesis file (--genesis-file)
+</pre>
+<pre zoom labels="hyperledger_besu">
+<span xsmall>Prerequisites</span>
 <span xsmall>Disk/RAM</span>
                           DISK Space:  RAM:
 test/private network      -200+MB      - 4+GB RAM
 mainnet/public-test-net   -1.5+TB      - 8+GB RAM
+
+
+Notes:
+Testing with pantheon-quick-start and IBFT 2.0 with defaults settings
+(1 block each 5? seconds) the disk compsumption is:
+
+          1 hour     1 day      1year
+          2044K      47.9MB     17485.8MB
 </pre>
 
-<pre zoom>
+<pre zoom labels="hyperledger_besu">
 <span xsmall>Monit network with Prometheus and Grafana</span>
 Extracted from @[https://gitter.im/PegaSysEng/pantheon] on 2019-05-29 20:01
 Adrian Sutton@ajsutton
@@ -6652,13 +6951,13 @@ I did sneak some extra metrics into trunk yesterday so the board
 work best with a build from master or anything from 1.1.2 onwards
 once it's released.
 </pre>
-<pre zoom>
+<pre zoom labels="hyperledger_besu">
   <span xsmall>Minimum Private network</span>
 @[https://docs.pantheon.pegasys.tech/en/stable/Getting-Started/Run-Docker-Image/]
 @[https://docs.pantheon.pegasys.tech/en/stable/Tutorials/Create-Private-Network/]        (PoW)
 @[https://docs.pantheon.pegasys.tech/en/stable/Tutorials/Create-Private-Clique-Network/] (PoA Clique)
 @[https://docs.pantheon.pegasys.tech/en/stable/Tutorials/Create-IBFT-Network/]           (PoA IBFT)
-$ git clone --branch 1.1.0 @[https://github.com/PegaSysEng/pantheon-quickstart.git]
+$ git clone --branch 1.1.0 @[https://github.com/PegaSysEng/besu-quickstart]
 $ cd pantheon-quickstart
 $ ./run.sh               ← build docker images and run the containers
                            It also scales the regular node container to four containers
@@ -6692,10 +6991,10 @@ $ ./stop.sh  ← shut down private network without deleting the containers
 $ ./remove.sh ← Shut downa and remove all data.
 
 </pre>
-<pre zoom>
+<pre zoom labels="hyperledger_besu">
   <span TODO xsmall>backup, disaster recovery</span>
 </pre>
-<pre zoom>
+<pre zoom labels="hyperledger_besu">
   <span xsmall>set max Contract size</span>
 - Done at the network (genesis.json) config level.
 @[https://docs.pantheon.pegasys.tech/en/stable/Configuring-Pantheon/Config-Items/]
@@ -6711,7 +7010,7 @@ $ ./remove.sh ← Shut downa and remove all data.
                      private networks with very complex smart contracts. Default is 1024.
 </pre>
 
-<pre zoom labels="">
+<pre zoom  labels="hyperledger_besu">
 <span xsmall>1.2 Release</span>
 <span xsmall>2019-08</span>
 - additional improvements to our privacy groups
@@ -7187,236 +7486,96 @@ Alpha state as 2019-09-08
 <span xsmall>GNOSIS Research</span>
 @[https://github.com/gnosis/research]
 </pre>
+
+<pre zoom labels="">
+<span xsmall>Status</span>
+<span xsmall>Wallet an IM</span>
+@[https://status.im/]
+@[https://github.com/status-im/status-react]
+- currently in alpha:
+- can be tested on Android and iPhone.
+- Status is a mobile messenger, crypto wallet, and Web3 browser.
+- peer-to-peer protocol that doesn't rely on centralized servers.
+
+@[https://ethereum.stackexchange.com/questions/18461/how-can-dapps-work-on-smartphones]
+  - Download Status on your phone
+  - configure an account
+  - Install 
+    $ npm i -g status-dev-cli
+  - In status console, enter /debug. 
+    That will give you your device IP address {DEVICE_IP}
+  - From your machine, make sure you can see you device and status:
+    status-dev-cli scan (status must be running)
+  - Last step, consist in registering the dapp in status:
+    status-dev-cli add 
+       "{\"whisper-identity\": \"my-dapp\", \"dapp-url\": \"{DAPP_URL}\", \"name\": \"MyDAPP\"}" --ip {DEVICE_IP}
+</pre>
+
+<pre zoom labels="">
+<span xsmall>Augur Prediction Markets</span>
+@[https://www.augur.net/]
+Markets for Anyone Anywhere on Anything
+- politics and elections prediction markets
+- sport and football prediction markets
+- crypto and bitcoin prediction markets
+- prediction markets on anything
+- ...
+</pre>
+
 </div>
 </body>
 </html>
 <!--
-
-________________________
-https://ethereum.stackexchange.com/questions/18461/how-can-dapps-work-on-smartphones
-
-Status is a good start to develop a Ethereum mobile dapp.
-
-    Status is an open source messaging platform and mobile browser to interact with decentralized applications that run on the Ethereum Network.
-
-    Decentralized Apps at your fingertips: With Status your mobile device becomes a light client node on the Ethereum Network, enabling you to access Ethereum’s entire ecosystem from anywhere.
-
-    Smarter private messaging: Status is more than a messenger. Send payments and smart contracts to friends from within chats, and enjoy encrypted messaging by default, using a peer-to-peer protocol that doesn’t rely on centralized servers.
-
-Status app (Ethereum Mobile gateway) is currently in alpha and can be tested on Android and iPhone.
-
-Please find below a quick tutorial how to deploy a dapp on Status.Let's imagine you have a dapp (ReactNative, Ionic, ...) running on {DAPP_URL}
-
-    Download Status on your phone and configure an account
-
-    Install status-dev-cli npm i -g status-dev-cli
-
-    In status console, enter /debug. That will give you your device IP address {DEVICE_IP}
-
-    From your machine, make sure you can see you device and status: status-dev-cli scan (status must be running)
-
-    Last step, consist in registering the dapp in status: status-dev-cli add "{\"whisper-identity\": \"my-dapp\", \"dapp-url\": \"{DAPP_URL}\", \"name\": \"MyDAPP\"}" --ip {DEVICE_IP}
-
-You can now refresh you status app and you will see appear MyDapp in the list. The browser will launch you dapp and it can interact (web3) with the Ethereum blockchain and smart contracts.
-
-By default, status run on the testnet network. You can switch to another node (private, testrpc or mainnet) with the following command status-dev-cli switch-node {NODE_URL} --ip {DEVICE_IP}
-
-Documentation: Here
-
-Some examples: Me and other devs have recently attended to the Status hackaton. This blog post (Winners Announcement) will illustrate some of the projects developed in a one-week period.
-___________________________
-Pantheon: Ethereum Java Client for the "Enterprise" with private TXs
-https://pegasys.tech/enterprise/
-_________________________
-https://www.augur.net/
 _________________________
 https://ethereum.stackexchange.com/questions/267/why-dont-ethereum-addresses-have-checksums
   _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
   ICAP: Inter Exchange Client Address Protocol (ICAP) compatible
         with IBAN account formatting.
         https://github.com/ethereum/wiki/wiki/Inter-exchange-Client-Address-Protocol-(ICAP)
-_____________________
-https://github.com/machinomy/contracts/blob/master/contracts/Unidirectional.sol
-
-Machinomy simple Channels on Ethereum contract
-_____________________
-https://www.codementor.io/sambhav2612/setting-up-a-dao-contract-for-meetup-groups-k6jvjpvnr
-_____________________
-https://github.com/status-im/geth_exporter
-geth metrics exporter for Prometheus
-______________________________
-https://legalconsortium.org/apply/
-______________________________
-https://solidity.readthedocs.io/en/v0.5.0/style-guide.html
 ______________________________
 Quorum TODO_Start: {{{
-_____________________________________________________
-<p>See the <a href="https://github.com/jpmorganchase/quorum/blob/master/docs/api.md#privacy-apis">Quorum API</a> page for details on the <code>sendTransaction</code> call, which includes some modifications to the standard Ethereum call.</p>
-      <p>Developing Smart Contracts with Solidity</p>
-      <p>Smart Contracts can be public or private to one or more network participants.
-      <p>Public  Transactions/Smart Contracts: Send an Ethereum Transaction to the network (TX.to         = "empty" creates a Contract)</p>
-      <p>Private Transactions/Smart Contracts: Send an Ethereum Transaction to the network setting TX.privateFor = participant(s) public_key_list</p>
-      <p>Example JSON message:
-       <pre>
-{
-  "jsonrpc":"2.0",
-  "method":"eth_sendTransaction",
-  "params":[
-    {
-     "from": $FROM_AC,
-     "to": $TO_AC,
-     "data": $CODEHASH,
-     "privateFor": ["$PUBKEY1,PUBKEY2"]
-    }
-  ],
-  "id":$ID
-}
-       </pre>
-      </p>
-_________________________________
-Youtube Video: Raspeberry Pi java sending telemetry data to quorum.
-https://www.youtube.com/watch?v=64kMWxTaXw8
-___________________________________________________
-
-
-## Permissioned Network
-Node Permissioning is a feature that controls which nodes can connect to a given node and also to which nodes this node can dial out to. Currently, it is managed at individual node level by the command line flag `--permissioned` while starting the node.
-
-If the `--permissioned` node is present, the node looks for a file named `<data-dir>/permissioned-nodes.json`. This file contains the list of enodes that this node can connect to and also accepts connections only from those nodes. In other words, if permissioning is enabled, only the nodes that are listed in this file become part of the network. It is an error to enable `--permissioned` but not have the `permissioned-nodes.json` file. If the flag is given, but no nodes are present in this file, then this node can neither connect to any node or accept any incoming connections.
-
-The `permissioned-nodes.json` follows following pattern (similar to `static-nodes.json`):
-
-```json
-[
-  "enode://enodehash1@ip1:port1",
-  "enode://enodehash2@ip2:port2",
-  "enode://enodehash3@ip3:port3",
-]
-```
-
-Sample file:
-
-```json
-[
-  "enode://6598638ac5b15ee386210156a43f565fa8c48592489d3e66ac774eac759db9eb52866898cf0c5e597a1595d9e60e1a19c84f77df489324e2f3a967207c047470@127.0.0.1:30300",
-]
-```
-
-In the current release, every node has its own copy of `permissioned-nodes.json`. In a future release, the permissioned nodes list will be moved to a smart contract, thereby keeping the list on chain and one global list of nodes that connect to the network.
-___________________
-Quorum Enterprise Toolkit:
-Quorum Core +
-  - remporting DB & adapters
-  - Entitlements Framework
-  - Certificate Authority
-  - SAML/OAuth Integration
-  - Data Archival/Pruning
-  - Quorum API (RESTful)
-  - Blockchain Explorer
-  - Node Manager
-  - Monitoring Capabilities
 ____________________________________
-  Layers of Privacy
-<pre zoom>
-<a href="https://media.consensys.net/busting-the-myth-of-private-blockchains-9ae0ed058b0d">[REF@media.consensys.net]</a>
-- In reality, privacy is not a property of any blockchain.
-  Rather, there are layers of privacy that can be applied to any blockchain,
-  even public chains, allowing for private or “shielded” transactions on a
-  public blockchain. This allows companies to benefit from the decentralized
-  security of a public blockchain while concealing private information.
+- Privacy layer:
+  maintaining the confidentiality of the participants, data, and terms.
+  Even within a single layer, there are multiple sublayers
+  where privacy can be kept on-chain, off-chain, and through
+  private transactions.
+  - Privacy of participants: 
+    Allow for anonymous parties.
+    - on-chain cryptographic mechanisms
+      like ring signatures, stealth addresses, mixing,
+      or storage of private data off-chain.
+  - Privacy of data:
+    keep transactions, balances, smart contracts,
+    and other data encrypted on or off chain, with
+    cryptographic tools like zero-knowledge proofs
+    and zk-SNARKS, Pedersen commitments, or off-chain
+    privacy layers like TEEs.
+    - Consensys Project Ubin:
+      - Shielded public transactions that are validated by the whole
+        network but whose amount (and/or asset type,...) are shielded.
+      - In Project Ubin, a consortium of financial institutions used
+        zero-knowledge proofs to enable the transfer of digital assets on a
+        distributed ledger without revealing information about the balances
+        or transaction amounts.
+    - Project Khokha (South African Reserve Bank "PoC"): Pedersen Commitments
+      - Pedersen commitments are also additively homomorphic, which means that
+        for a balance update, network participants can validate that the correct
+        update has happened without knowing the opening balance, the closing balance,
+        or the transfer amount.
+      - Pedersen commitments and Folklore range proofs to process the typical
+        daily volume of payments for the SARB with full confidentiality and
+        finality in less than two hours. These commitment schemes proved to be
+        much quicker to validate than the zero-knowledge proofs.
+      - Adhara has been exploring substituting range proofs with bullet proofs,
+        which are much smaller and quicker to validate. Very simply, instead
+        of writing the balances and the transaction amounts in the clear as in
+        a normal ERC20 contract, nodes write a proof or a Pedersen commitment
+        of the balance.
 
-- Layers of Privacy with Enterprise Blockchains
-  Privacy and confidentiality are essential for enterprise solutions.
-  Enterprises have a number of concerns when considering blockchain
-  implementations:
-
-  - Access: who has permissions to read and/or write?
-  - Visibility: to whom are transactions broadcasted?
-  - Storage: how is data stored?
-  - Execution: who has the right to start, stop, or restart a process?
-
-- A private blockchain is only as secure as the permissioning and
-  security controls around the network. As these “private” networks gain more
-  participants, enforcing controls around access and visibility becomes more
-  difficult. For example, the way that Fabric ensures transaction privacy
-  between different parties within a consortium is through the concept of
-  channels. A channels is essentially a single protected route between two
-  parties. This means you need a channel for each party pair and must maintain
-  all of this infrastructure as the system evolves, making it more complicated
-  to manage.
-
-- Layered Privacy:
-  -  Permissioning
-     layer  : permissioning or credentials layer of tooling which
-              involves who has access to information and how that is
-              controlled and authenticated.
-  -  Privacy
-       layer: maintaining the confidentiality of the participants,
-              data, and terms.
-              Even within a single layer, there’s multiple sublayers
-              where privacy can be kept on-chain, off-chain, and through
-              private transactions.
-              - Privacy of
-                participants: ensure participants remain anonymous to one
-                              another as well as to those outside of the
-                              network with on-chain cryptographic mechanisms
-                              like ring signatures, stealth addresses, mixing,
-                              or storage of private data off-chain.
-              - Privacy of
-                        data: keep transactions, balances, smart contracts,
-                              and other data encrypted on or off chain, with
-                              cryptographic tools like zero-knowledge proofs
-                              and zk-SNARKS, Pedersen commitments, or off-chain
-                              privacy layers like TEEs.
-              - Privacy of
-                       terms: keep terms of contracts between two parties private
-                                    with range proofs or Pedersen commitments.
-
-- ºPrivate blockchains do not give you privacy by defaultº. There is a distinction
-  between permissioned networks and private transaction managers. Really, the only
-  privacy that private blockchains do provide by default are that the
-  participants and contracts cannot be viewed by non-participants. Rather,
-  privacy layers must be built on any blockchain and can be built into both
-  public and private chains, or, with a combination of the two (such as
-  Ethereum and Quorum).
-
-- ºLayer 2 of the EEA client specification V2º
-- many options for Private Transactions available providing various layers of privacy.
-  - Pantheon: the protocol by  PegaSys, the engineering team at ConsenSys.
-    Enterprise Ethereum client in Java.
-  - Privacy layers for public/permissioned networks in progress:
-    - zk-SNARKS and zero-knowledge proofs: hide transaction attributes like balances.
-    - ring signatures and hashes: provide layers of privacy for
-                      participants, data, and/or terms.
-    - off-chain solutions: store private data and perform high-throughput transactions.
-
-  - Project Ubin:
-    - Shielded public transactions that are validated by the whole
-      network but whose amount (and/or asset type,...) are shielded.
-    - collaborative Ethereum project between ConsenSys and the
-      Monetary Authority of Singapore to create an interbank payment network.
-    - In Project Ubin, a consortium of financial institutions used
-      zero-knowledge proofs to enable the transfer of digital assets on a
-      distributed ledger without revealing information about the balances
-      or transaction amounts.
-
-  - Project Khokha (South African Reserve Bank "PoC"): Pedersen Commitments
-    - Pedersen commitments are also additively homomorphic, which means that
-      for a balance update, network participants can validate that the correct
-      update has happened without knowing the opening balance, the closing balance,
-      or the transfer amount.
-    - Pedersen commitments and Folklore range proofs to process the typical
-      daily volume of payments for the SARB with full confidentiality and
-      finality in less than two hours. These commitment schemes proved to be
-      much quicker to validate than the zero-knowledge proofs.
-    - Adhara has been exploring substituting range proofs with bullet proofs,
-      which are much smaller and quicker to validate. Very simply, instead
-      of writing the balances and the transaction amounts in the clear as in
-      a normal ERC20 contract, nodes write a proof or a Pedersen commitment
-      of the balance.
-  - Public-First + Privacy Layers = Future-Proof
-    - Business networks need resilience, interoperability, permissioning,
-      and privacy to succeed.
+- Public-First + Privacy Layers = Future-Proof
+  - Business networks need resilience, interoperability, permissioning,
+    and privacy to succeed.
 
    These requirements, however, are out of scope for proprietary distributed ledgers, let alone traditional database technologies. The Ethereum blockchain’s granular privacy layers and public-first approach make it a powerful enterprise solution for organizations that need the flexibility of an in-house platform and that want the global reach to participate in economies of scale.
 
@@ -7673,23 +7832,77 @@ ______________________
 @[https://blog.quillhash.com/wp-content/uploads/2019/03/Ethereum-or-Hyperledger-Fabric-3.png] Fabric Block Structure
 ______________________
 https://docs.dydx.exchange/#/
-_________________________
+______________________
 Proof of Authority consensus
 https://www.mattbrill.com/2019/02/21/getting-started-with-the-gorli-testnet/
-____________________
+______________________
 https://media.consensys.net/ethereum-2-0s-latest-strides-forward-13f63652e57d
 https://media.consensys.net/the-state-of-the-ethereum-network-2019-8a21d57c1895
 https://media.consensys.net/the-7-biggest-trends-in-blockchain-right-now-ded62d98ec06
 
 https://marketplace.kaleido.io/
-____________________
+______________________
 https://tatum.io/
-_________________________
+______________________
+
 https://www.matrix.io/
 _____________________
+
 https://media.consensys.net/mythx-pro-will-provide-the-most-robust-security-platform-in-the-ethereum-ecosystem-85c3465999b3
 ___________________
-https://docs.onchainid.com/introduction/
-https://tokeny.com/wp-content/uploads/2018/12/t-rex-whitepaper.pdf
-http://onchainid.com/
+
+OnChainID: Token "ID" for regulated exchange markets:
+ - https://docs.onchainid.com/introduction/
+ - https://tokeny.com/wp-content/uploads/2018/12/t-rex-whitepaper.pdf
+ - https://onchainid.com/
+___________________
+
+https://ethereum.stackexchange.com/questions/1686/ethereum-event-log-maximum-size
+Ethereum max. log size:
+According to the Yellow paper:
+- There is no size limit to the data: you will be limited by how much Ether you have. (And of course the block gas limit.)
+- The size limit of one event is a function of the block's gas limit, which as of now tends to be
+  around 3,145,192 (i.e., the first seven digits of pi). According to Jonathan Patrick, logging costs 
+  76 gas per byte. So I'd assume you could get in around 41kb per log event.
+___________________
+https://medium.com/uport/goodbye-uport-dids-hello-ethr-dids-ea2e80256f54
+- Goodbye uPort DIDs, Hello Ethr-DIDs
+  We have released a major app update that enables migrating all old uPort 
+  identities created before September 2018, to the current DID architecture. 
+  Not to worry though, your old Identity data will still be available to use 
+  and all verifications issued will be available
+___________________
+https://stackoverflow.com/questions/50137954/verify-smart-contract-code-deployed-with-truffle
+https://github.com/BlockCatIO/solidity-flattener
+https://github.com/nomiclabs/buidler
+https://github.com/nomiclabs/truffle-flattener
+https://github.com/RyuuGan/sol-merger
+____________________________
+https://ethereum.stackexchange.com/questions/7735/bytecode-on-block-chain-different-from-the-one-used-when-deploying
+______________________
+solc appears to generate two bytecode blobs per contract, and truffle relies on both: bytecode includes the wrapper code necessary to init and deploy the contract, and deployedBytecode just contains the core, deployed code. Right now we are only generating the latter but we are calling it the former.
+__________________
+Ethereum SHA3 vs SHA3-NIST standard)
+
+SHA3 Solidity  5f16f4c7f149ac4f9510d9cf8cf384038ad348b3bcdc01915f95de12df9d1b02
+Keccak-256     5f16f4c7f149ac4f9510d9cf8cf384038ad348b3bcdc01915f95de12df9d1b02
+SHA3-256-NIST) 7f5979fb78f082e8b1c676635db8795c4ac6faba03525fb708cb5fd68fd40c5e
+_______________________
+https://blog.aventus.io/stack-too-deep-error-in-solidity-5b8861891bae   !!!!!! @ma
+____________________________
+https://medium.com/coinmonks/practical-zk-snarks-for-ethereum-140cbddcb55d
+________________________________
+EVM ASM:
+https://blog.openzeppelin.com/deconstructing-a-solidity-contract-part-i-introduction-832efd2d7737/
+Deconstructing a Solidity Contract  to ASM OPCODE
+
+https://ethervm.io/
+_____________________________
+Remix Libra Move-Language Plugin
+https://github.com/loredanacirstea/remix-libra-plugin
+_____________________________
+https://github.com/loredanacirstea/articles
+_____________________________
+https://medium.com/@loredana.cirstea/dtype-decentralized-type-system-functional-programming-on-ethereum-4f7666377c9f
+https://www.youtube.com/watch?v=GZg4L2o0Nyw&feature=youtu.be
 -->

@@ -41,14 +41,52 @@
 
 <pre zoom>
 <span xsmall>Init bare ("origin") repo</span>
+ºExample 1:º
 $ cd anyPathInFileSystem      ← Probably one used for git "origin" repos, where backups have 
                                 been setup properly
 $ mkdir myRepo.git            
 $ chgrp workGroup myRepo.git  ← Group of users accesing this repository.
 $ cd myRepo.git               ← .git extension is a convention for bare dirs
-$ *git init --bare  \ *         ← --bare : will not contain working copy of source files.
-  º  ← --shared=groupº                     only used to share with (remote|local) origin
+$ gitºinit --bare º\          ← --bare : will not contain working copy of source files.
+  º  ← --shared=groupº                   only used to share with (remote|local) origin
                                : --shared=group fixed permissions for group.
+
+Example 2:
+Create Unix group to share amongst different users through ssh:
+  STEP 1: On the ssh Server:
+     #!/bin/bash
+     
+     if [[ $EUID != 0 ]] ; then    # ← get sure that we are root
+       echo "exec as root/sudo"
+       exit 1
+     fi
+     
+     addgroup my_git_team 
+     for USER in GºmyUser1º  myUser2 ... ; do
+        useradd ${USER} \
+           --shell=/usr/bin/git-shell \
+           --groups my_git_team \
+           --password ${SECRET}
+     done
+     
+   BºBASE_GIT_DIR=/var/lib/my_git_teamº
+   GºPROJECT_NAME=ourFirstProjectº
+     mkdir $BASE_GIT_DIR
+     mkdir $BASE_GIT_DIR/PROJECT_NAME
+     pushd .
+     cd    $BASE_GIT_DIR/ourFirstProject ; gitºinit --bareº
+     popd
+     find $BASE_GIT_DIR         -exec chown -R root:everisgit {} ;  # ← Fix group
+     find $BASE_GIT_DIR -type d -exec chmod group+rwx {} ;          # ← Fix permissions
+     find $BASE_GIT_DIR -type f -exec chmod group+rw  {} ;;         # ← "   "       
+  
+ STEP 2: On the remote workstation each user in the team will do something similar to:
+     GIT_URL="myRemoteSSHServer"
+   BºGIT_URL="${GIT_URL}/var/lib/my_git_team"º
+   GºGIT_URL="${GIT_URL}/ourFirstProject"º
+
+    ºgit cloneº GºmyUser1º@${GIT_URL}
+
 </pre>
   
 <pre zoom>
@@ -490,5 +528,55 @@ finding and applying series
     fetch all the patches in the series, and apply them in the right order.
 </pre>
 
+<pre zoom labels="">
+<span xsmall>GIT Commit Standard Emojis</span>
+@[https://gist.github.com/parmentf/035de27d6ed1dce0b36a]
+ºCommit type               Emoji                    Graphº
+ Initial commit           :tada:                      🎉 
+ Version tag              :bookmark:                  🔖 
+ New feature              :sparkles:                  ✨ 
+ Bugfix                   :bug:                       🐛 
+ Metadata                 :card_index:                📇 
+ Documentation            :books:                     📚 
+ Documenting src          :bulb:                      💡 
+ Performance              :racehorse:                 🐎 
+ Cosmetic                 :lipstick:                  💄 
+ Tests                    :rotating_light:            🚨 
+ Adding a test            :white_check_mark:          ✅ 
+ Make a test pass        :heavy_check_mark:           ✔️  
+ General update           :zap:                       ⚡️ 
+ Improve format           :art:                       🎨 
+ /structure                                              
+ Refactor code            :hammer:                    🔨 
+ Removing stuff           :fire:                      🔥 
+ CI                       :green_heart:               💚 
+ Security                 :lock:                      🔒 
+ Upgrading deps.         :arrow_up:                   ⬆️  
+ Downgrad. deps.         :arrow_down:                 ⬇️  
+ Lint                     :shirt:                     👕 
+ Translation              :alien:                     👽 
+ Text                     :pencil:                    📝 
+ Critical hotfix          :ambulance:                 🚑 
+ Deploying stuff          :rocket:                    🚀 
+ Work in progress         :construction:              🚧 
+ Adding CI build system   :construction_worker:       👷 
+ Analytics|tracking code  :chart_with_upwards_trend:  📈 
+ Removing a dependency    :heavy_minus_sign:          ➖ 
+ Adding a dependency      :heavy_plus_sign:           ➕ 
+ Docker                   :whale:                     🐳 
+ Configuration files      :wrench:                    🔧 
+ Package.json in JS       :package:                   📦 
+ Merging branches         :twisted_rightwards_arrows: 🔀 
+ Bad code / need improv.  :hankey:                    💩 
+ Reverting changes        :rewind:                    ⏪ 
+ Breaking changes         :boom:                      💥 
+ Code review changes      :ok_hand:                   👌 
+ Accessibility            :wheelchair:                ♿️ 
+ Move/rename repository  :truck:                      🚚 
+
+</pre>
 </body>
 </html>
+<!--
+    https://dev.to/sdmg15/gpg-signing-your-git-commits-3epc
+-->

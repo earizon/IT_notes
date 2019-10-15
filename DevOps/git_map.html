@@ -51,42 +51,48 @@ $ gitºinit --bare º\          ← --bare : will not contain working copy of so
   º  ← --shared=groupº                   only used to share with (remote|local) origin
                                : --shared=group fixed permissions for group.
 
-Example 2:
-Create Unix group to share amongst different users through ssh:
-  STEP 1: On the ssh Server:
-     #!/bin/bash
-     
-     if [[ $EUID != 0 ]] ; then    # ← get sure that we are root
-       echo "exec as root/sudo"
-       exit 1
-     fi
-     
-     addgroup my_git_team 
-     for USER in GºmyUser1º  myUser2 ... ; do
-        useradd ${USER} \
-           --shell=/usr/bin/git-shell \
-           --groups my_git_team \
-           --password ${SECRET}
-     done
-     
-   BºBASE_GIT_DIR=/var/lib/my_git_teamº
-   GºPROJECT_NAME=ourFirstProjectº
-     mkdir $BASE_GIT_DIR
-     mkdir $BASE_GIT_DIR/PROJECT_NAME
-     pushd .
-     cd    $BASE_GIT_DIR/ourFirstProject ; gitºinit --bareº
-     popd
-     find $BASE_GIT_DIR         -exec chown -R root:everisgit {} ;  # ← Fix group
-     find $BASE_GIT_DIR -type d -exec chmod group+rwx {} ;          # ← Fix permissions
-     find $BASE_GIT_DIR -type f -exec chmod group+rw  {} ;;         # ← "   "       
-  
- STEP 2: On the remote workstation each user in the team will do something similar to:
+ºEXAMPLE 2:º
+ Create Unix group to share amongst different users through ssh:
+ ºSTEP 1:ºOn the ssh Server:
+    #!/bin/bash
+    
+    if [[ $EUID != 0 ]] ; then    # ← get sure that we are root
+      echo "exec as root/sudo"
+      exit 1
+    fi
+    TEAM=team01
+    addgroup ${TEAM}
+    for USER in lyarzas earizonb ; do
+       grep "^${USER}:" /etc/passwd 
+       if [[ $? != 0 ]]; then
+         useradd ${USER} \
+            --shell=/usr/bin/git-shell \
+            --groups ${TEAM} \
+            --password ${SECRET}
+       fi
+       # Add to group
+       usermod -a -G ${TEAM} ${USER} 
+    done
+    
+  BºBASE_GIT_DIR=/var/lib/${TEAM}º
+  GºPROJECT_NAME=project01º
+    mkdir -p ${BASE_GIT_DIR}/${PROJECT_NAME}
+    pushd .
+    cd    ${BASE_GIT_DIR}/${PROJECT_NAME} ; gitºinit --bareº
+    popd
+    find ${BASE_GIT_DIR}         -exec chown -R root:${TEAM} {} \; # ← Fix group
+    find ${BASE_GIT_DIR} -type d -exec chmod g+rwx {}           \; # ← Fix permissions
+    find ${BASE_GIT_DIR} -type f -exec chmod g+rw  {}           \; # ← "   " 
+
+
+
+ ºSTEP 2:ºOn the remote workstation each user in the team 
+          will do something similar to:
      GIT_URL="myRemoteSSHServer"
    BºGIT_URL="${GIT_URL}/var/lib/my_git_team"º
    GºGIT_URL="${GIT_URL}/ourFirstProject"º
 
     ºgit cloneº GºmyUser1º@${GIT_URL}
-
 </pre>
   
 <pre zoom>

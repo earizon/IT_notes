@@ -10,10 +10,11 @@
 
 <body>
 
+<div group bgblue>
+<span title>About Ethereum</span> <br/>
 <div groupv>
 <pre zoom>
-<span xsmall>External</span>
-<span xsmall>Links</span>
+<span xsmall>External Links</span>
 @[https://github.com/ethereum/wiki/wiki/White-Paper]
 @[https://ethereum.github.io/yellowpaper/paper.pdf]
 @[https://solidity.readthedocs.io/en/v0.5.0/resources.html] Solidity Resources
@@ -279,8 +280,28 @@ CHAIN_ID    Chain(s)
 
 
 </pre>
-</div>
+<span title>Related</span>
+<span title>Taxonomies</span>
+<pre zoom>
+<span xsmall TODO>Laws Taxo.</span>
+@[https://law.stackexchange.com/tags]
 
+<span xsmall TODO>Economics Taxo.</span>
+@[https://economics.stackexchange.com/tags]
+</pre>
+
+<span title>Semantic chain</span>
+<pre zoom labels="">
+<span xsmall TODO>Seth.one</span>
+@[http://seth.one/]
+@[https://www.youtube.com/playlist?list=PL4S-ERdT4ERo-2zbl4CtkFYFkR5SPVlgI]
+</pre>
+</div>
+</div><!-- about ethereum -->
+
+
+<div group bggreen>
+<span title>EVM</span><br/>
 <div groupv>
 <pre zoom labels="learn_x_in_y_min">
 <span xsmall>Accounts</span>
@@ -644,6 +665,66 @@ In effect, a log entry using this ABI is described as:
                         º- Use the same dynamic value repeated in index and non-index event º
                         º  fields for full functionallity.                                  º
 </pre>
+
+<pre zoom labels="learn_x_in_y_min,transaction_event">
+<span xsmall bgorange>Events ⅋ LOGS</span>
+BEST PATTERNS:
+- External clients must be able to restore current contract state
+  by just reading events.
+- Ethereum can return just a very limited information in each
+  read-only query. (Up to 7 fields). That means that reports and
+  data-analysis must be done on event logs.
+- Contract/s state/s must be consulted only by code originated by
+  a new transaction trying to update the current state.
+
+- Logs: It is possible to store data in a specially indexed data structure
+  that maps all the way up to the block level.
+  This feature called 'logs' is used to implement events.
+- Contracts ºCAN NOTº access log data after it has been created, but they
+  can be efficiently accessed from outside the blockchain. 
+  Since some part of the log data is stored in bloom filters,
+  it is possible to search for this data in an efficient and cryptographically
+  secure way, so network peers that do not download the whole blockchain
+  ("light clients") can still find these logs.
+- Logs were designed to be a form of storage that costs significantly
+  less gas than contract storage:
+  Logs basically[3] cost 8 gas per byte, whereas contract storage costs 20,000 gas per 32 bytes.
+  Up to 3 parameters can be indexed.
+
+ºEvent Limits:º
+- Up to 3 indexed fields.
+- Up to 7 fields (indexed + non-indexed fields)
+- The size limit of one event is a function of the block's gas limit,
+  ~ 3_145_192 (first seven digits of pi * 2)
+  With a gas costs of 76 gas per byte limit is about 41kb per log event.
+  REF: <a TODO href="http://jonathanpatrick.me/blog/ethereum-compressed-text"> Storing compressed text in Ethereum transaction logs</a>
+
+ºSolidity code:º
+event EventDepositLog(
+    uint256 indexed _market,  ← Up to 3 indexes
+    address indexed _sender,    Strings, arrays can ºNOTº be used in indexes
+    uint256 _amount,            (will be automatically replaced by its hash)
+    uint256 _time);
+
+ºJS Client Log monitoring:º
+var myEventMonitor =
+  myContract.MyEventNameLog(
+     {_sender: userAddress },           // ← filter by idx sender
+     {fromBlock: 0, toBlock: 'latest'}  // ← filter by block range*1
+  );                                         if ommited observe
+                                             "real-time" events
+
+myEventMonitor.watch(                  // ← Start watching
+  (err, result) => {
+    if (err) { ...    return; }
+    console.log(
+         "_market:"+result.args._market
+       + "_sender:"+result.args._sender );
+  }
+)
+....
+myEventMonitor.stopWatching()          // ← Stop watching
+</pre>
 </div>
 
 <div groupv>
@@ -684,8 +765,8 @@ if target == "zero.."
 - transaction.gas: Its purpose is to limit the amount of work needed to execute the transaction
   and to pay for this execution.
 - transaction creator (sender?) chooses the gas to pay.
-    - If execution gas < transaction.gas => Refund to sender
-    - If execution gas > transaction.gas => out-of-gas exception triggered
+    - If execution gas ˂ transaction.gas =˃ Refund to sender
+    - If execution gas ˃ transaction.gas =˃ out-of-gas exception triggered
         (reverts all modifications made to the state in current call frame)
 
 - nonce: increasing numeric value which is used to uniquely identify transactions.
@@ -731,6 +812,24 @@ ecrecover Solidity Global Crypto Funct:
 ecrecover (bytes32 hash, uint8 v, bytes32 r, bytes32 s)
   returns (address): recover the address associated with the public key
                      from elliptic curve signature or return zero on error
+
+<span xsmall>Ether TXs in Solidity:</span>
+addressInstance.balance (uint256): balance in Wei
+addressInstance.transfer(uint256 amount):
+    msg.sender →(amount in wei) → addressInstance
+    throws on failure
+
+addressInstance.send(uint256 amount): returns (bool):
+    msg.sender ->(amount in wei) ->addressInstance
+    returns true/false, does NOT throw an exception
+
+- In addressInstance.transfer (or send), if addressInstance
+  is a contract address, its code (more specifically: its fallback function, if present)
+  will be executed together with the transfer call. This is a limitation of the EVM and
+  cannot be prevented. 
+  If that execution runs out of gas or fails in any way, the Ether transfer will be
+  reverted and the current contract will stop with an exception.
+</pre>
 
 </pre>
 
@@ -998,71 +1097,161 @@ with or without connection to any ethereum    |   secured is usually less safe t
 network node.                                 |   (but offline clients can also be insecure or
 The signed TX is then sent to the network.    |   hacked)
 </pre>
-</div>
 
-<div groupv>
-<pre zoom labels="learn_x_in_y_min,transaction_event">
-<span xsmall bgorange>Events ⅋ LOGS</span>
-BEST PATTERNS:
-- External clients must be able to restore current contract state
-  by just reading events.
-- Ethereum can return just a very limited information in each
-  read-only query. (Up to 7 fields). That means that reports and
-  data-analysis must be done on event logs.
-- Contract/s state/s must be consulted only by code originated by
-  a new transaction trying to update the current state.
+<pre zoom labels="">
+<span xsmall>About 24K</span>
+<span xsmall>Contract Size</span>
+[https://ethereum-magicians.org/t/removing-or-increasing-the-contract-size-limit/3045]
 
-- Logs: It is possible to store data in a specially indexed data structure
-  that maps all the way up to the block level.
-  This feature called 'logs' is used to implement events.
-- Contracts ºCAN NOTº access log data after it has been created, but they
-  can be efficiently accessed from outside the blockchain. 
-  Since some part of the log data is stored in bloom filters,
-  it is possible to search for this data in an efficient and cryptographically
-  secure way, so network peers that do not download the whole blockchain
-  ("light clients") can still find these logs.
-- Logs were designed to be a form of storage that costs significantly
-  less gas than contract storage:
-  Logs basically[3] cost 8 gas per byte, whereas contract storage costs 20,000 gas per 32 bytes.
-  Up to 3 parameters can be indexed.
+BºNote:º Pantheon (maybe others) allows to tune max.contract size 
+         in consortium / private networks.
 
-ºEvent Limits:º
-- Up to 3 indexed fields.
-- Up to 7 fields (indexed + non-indexed fields)
-- The size limit of one event is a function of the block's gas limit,
-  ~ 3_145_192 (first seven digits of pi * 2)
-  With a gas costs of 76 gas per byte limit is about 41kb per log event.
-  REF: <a TODO href="http://jonathanpatrick.me/blog/ethereum-compressed-text"> Storing compressed text in Ethereum transaction logs</a>
+RºWARN: I admit that I haven’t kept up with the 2.0 specs and all my statements are º
+       ºbased on eth 1.x. º
 
-ºSolidity code:º
-event EventDepositLog(
-    uint256 indexed _market,  ← Up to 3 indexes
-    address indexed _sender,    Strings, arrays can ºNOTº be used in indexes
-    uint256 _amount,            (will be automatically replaced by its hash)
-    uint256 _time);
+(See original link for -very- detailed info)
 
-ºJS Client Log monitoring:º
-var myEventMonitor =
-  myContract.MyEventNameLog(
-     {_sender: userAddress },           // ← filter by idx sender
-     {fromBlock: 0, toBlock: 'latest'}  // ← filter by block range*1
-  );                                         if ommited observe
-                                             "real-time" events
+- EIP #170 22 establish a max contract size of 24KB to solve the problem:
+  “When a contract is called, even though the call takes a constant amount of gas,
+  the call can trigger O(n) cost in terms of reading the code from disk, preprocessing
+  the code for VM execution, and also adding O(n) data to the Merkle proof for the
+  block’s proof-of-validity”.
 
-myEventMonitor.watch(                  // ← Start watching
-  (err, result) => {
-    if (err) { ...    return; }
-    console.log(
-         "_market:"+result.args._market
-       + "_sender:"+result.args._sender );
-  }
-)
-....
-myEventMonitor.stopWatching()          // ← Stop watching
+ºCurrent Solutionº
+- Delegate call proxy patterns and Libraries:
+  Using delegate calls, you can store the code of your smart contract in parts
+  in different contracts and have a "dispatcher" contract that calls the actual
+  contract using delegate calls.
+  - Please refer to ZeppelinOS’s upgradability contracts 8 and EIP #1538 3.
+
+  -ºLimitationsº
+    - extra unnecessary code.
+    - Proxy patterns add another attack vector.
+    - Proxy patterns make calls to contracts a lot more
+      expensive as the Proxy has to copy the parameters make an
+      external delegate call every time.
+    - Proxy patterns like EIP 1538 also make inter-logic contract call 
+      a lot more expensive. 
+       external call -> proxy    -> contract -> contract2 
+                        contract    call 
+    - hurt readability for the end user:
+      - The actual contract code/ABI of the proxy is different from the one 
+        we need to access the contract behind the proxy. Like it or not but
+        most people can barely use the read/write features in etherscan, 
+       they can't load a custom ABI and make web3 calls.
+    - Proxies make smart contract development slightly more complex.
+    - Proxies make it harder to verify the actual code and hence reduce trust.
+    - Loading a large contract will be fast-sequential read while loading 
+      multiple small ones will be slow-random read.
+
+ºPossible Solutionsº
+- Increase contract size limit to 32,768 (2**15) proposed by @gavofyork in 
+  EIP 170 discussion 8. (50% code increase)
+- If required, relevant opcodes like CALL can have their cost increased 
+  by a bit through EIP #1838 4.
+- Allow infinite contract size by Implementing paging of contract code
+  as suggested by @SergioDemianLerner in EIP #170 discussion 3.
+  "Make contracts a vector of 24 Kbytes pages". 
+  - first page is loaded for free when a CALL is received while jumping
+    or running into another page pays a fee (500 gas) because the page
+    must be fetched from disk.
+- Allow infinite contract size and make the cost of OPCODES like CALL
+  dynamic to allow for this change. Code size will still be limited by
+  block gas limit. This is a moderate difficulty change but makes a lot 
+  of sense IMO. More on this later:
+  - In detail:
+    - ethereum account   (array in state trie)
+      ---------------- 
+       nonce 
+       balance 
+       storageRoot 
+       codeHash 
+      ºcodeSize     ←-- New proposed additionº
+       ^^^^^^^^         
+      - Whenever a new contract is deployed, its size is stored here
+      - If a contract is destructed, codeSize is reseted.
+
+    - CALL, DELEGATECALL, CALLCODE , ... opcodes should charge additional 
+      X(3?) gas per extra word if the contract code size is greater than 24KB.
+  - Rationale
+    The only reason why the contract size was limited was to prevent people
+    from exploiting the fixed costs. We can overcome this by making the 
+    costs variable. The codeSize element will help in calculating call cost 
+    before reading the whole contract and eventually throwing OOG. 
+    - Merkle proofs will also be generated at a fixed cost as we won't have
+      to load whole contracts from disk first. The codeSize should be enough
+      for generating Merkle proofs of calls that are going to be OOG due
+      to contract size.
+  - Backwards Compatibility 
+    - All existing accounts have less than 24KB of code, so no extra cost
+      has to be charged from calls being sent to them.
+
+Tagging @karalabe for his thoughts as he is working on reducing state size.
 </pre>
+
 </div>
 
+
+
 <div groupv>
+<span title>Ether.Addresses</span>
+<pre zoom labels="">
+<span xsmall>Issues</span>
+REF: @[https://ethereum.stackexchange.com/questions/267/why-dont-ethereum-addresses-have-checksums]
+Initial Ethereum design didn't have support for address checksum.
+thus, a single mistyped digit could make sending to an invalid 
+address (loosing all the money).
+
+Q: Was it an oversight that was overlooked by the designers?
+A: the raw hexadecimal string ussually called "Ethereum address" 
+   wasn't even intended to be the standard way of representing such information.
+   containing no checksums. On top of it software can be written 
+   creating an encoding and string in base 58 with built-in version number
+   and checksum, 100% interoperable by silently decoding the new 
+
+NOTE: always include "0x" prefix in front of raw addresses
+
+<span xsmall>ICAP Addresses</span>
+<span xsmall>IBAM Compatible</span>
+@[https://github.com/ethereum/wiki/wiki/Inter-exchange-Client-Address-Protocol-(ICAP)]
+- ICAP: Inter Exchange Client Address Protocol (ICAP) 
+- compatible with IBAN account formatting.
+ 
+It looks like: "XE7338O073KYGTWWZN0F2WZ0R8PX5ZPPZS". 
+
+- (it uses a wider range of alphanumeric characters to save
+  space and includes a checksum. similar to Bitcoin) 
+
+- ICAP is a fully valid International Bank Account Number (or IBAN).
+
+- It doesn't use hexadecimal addresses. BY the help of ENS 
+  it can just use an actual human-readable-string to end up
+  with something like "XE81ETHXREGJEFFCOLEMAN".
+                       ^^^^^^^^^^^^^^^^^^^^^^
+                   "XE81 ETH XREG JEFF COLEMAN"
+                  (It still matches bank formats)
+
+ Update 2016-02: Vitalik ºtransitionalº checksumming: 
+  - provides some additional protection against accidental errors 
+  while remaining backwards compatible with wallets that doesn't support 
+  the checksum (and will ignore the case differences). 
+
+  - Ex: Input address '0xcd2a3d9f938e13cd947ec05abc7fe734df8dd826'
+  
+    Output checksumed:'0xCd2a3d9f938e13Cd947eC05ABC7fe734df8DD826'
+                         ^             ^     ^  ^^^         ^^
+                         └──────────────────────────────────────┘
+            letters are in the same corresponding place as a "1" bit
+            in the raw binary keccack-256 hash of the address bytes
+            are capitalised. Numbers are unchanged.
+ 
+
+Update: EIP55 introduces checksum in Ethereum addresses. (Still optional
+        but widely adopted -Metamask,...-)
+
+
+</pre>
+
 <pre zoom>
 <span TODO xsmall>Ethereum Name Service</span>
 @[https://ens.domains/]
@@ -1154,6 +1343,8 @@ such as serving an infrequently changed address for a name.
   TESTNET DEPLOYMENT: 0xe7410170f87102df0055eb195163a03b7f2bff4a
                       .test supported
 </pre>
+</div>
+
 </div>
 
 <div group bgyellow >
@@ -1547,6 +1738,7 @@ function () payable {
   EventFallback(msg.sender, receiver, amount);
 };
 </pre>
+
 <pre bgorange zoom   labels="learn_x_in_y_min">
 UUID: 080d788a-24ab-4469-aec2-05c111c60db9
 
@@ -1622,7 +1814,35 @@ For example:
 0x0000000000000000000000000000000000000000000000000000000000000020 // Data offset
 0x000000000000000000000000000000000000000000000000000000000000001a // String length
 0x4e6f7420656e6f7567682045746865722070726f76696465642e000000000000 // String data
+
+
+<span xsmall>revert reason@clients</span>
+Since Solidity 0.4.22 the require() and revert() operation optionally 
+take a revert reason as argument: Revert with reason.
+This is accessible for eth_calls in the result field.
+
+Clients libraries will eventually support fetching such value. 
+Ex: web3j REF: @[https://github.com/web3j/web3j/issues/858]
+
+Have a method public String getRevertReason() on 
+org.web3j.protocol.core.methods.response.EthCall that retrieves 
+that revert reason.
+
+See also (future/rejected?) proposal Typed Errors EIP 838
+@[https://github.com/ethereum/EIPs/issues/838].
+Ex of proposal:
+contract MyToken {
+ ºerror InsufficientFunds(uint256 amount, uint256 balance);º // ← Strongly typed error
+
+  function ... {
+    if (! "assertCondition")
+       throw InsufficientFunds(_amount, balances[msg.sender]);
+    ...
+  }
+  ...
+}
 </pre>
+
 </div>
 <div groupv>
 <pre zoom bgorange  labels="learn_x_in_y_min">
@@ -1872,6 +2092,7 @@ if(bad) revert();
 require(!bad)
 ethfiddle.com/PgDM-drAc9
 </pre>
+
 <pre zoom  labels="learn_x_in_y_min">
 <span xsmall>STRUCTS</span>
 @[https://solidity.readthedocs.io/en/latest/structure-of-a-contract.html#struct-types]
@@ -2631,8 +2852,10 @@ Current Status (updated: June 22, 2019)
 @[https://consensys.github.io/smart-contract-best-practices/]
 </pre>
 
-<pre zoom labels="learn_x_in_y_min,debug">
-<span xsmall>How to fix "stack too deep" error</span>
+<pre zoom labels="learn_x_in_y_min,debug" bgorange>
+<span xsmall>fixing</span>
+<span xsmall>"stack too deep"</span>
+<span xsmall>error</span>
 @[https://blog.aventus.io/stack-too-deep-error-in-solidity-5b8861891bae]
 Alex Pinto (2019-01)
 - error generated when the code needs to access a slot in the stack frame deeper than its 16th element 
@@ -2710,9 +2933,16 @@ This article was originally posted on his blog.
 Since you are here, we would love if you connected with us on Telegram,Reddit, Twitter, Facebook, Youtube, Instagram and LinkedIn.
 
 Also, we have started a LinkedIn Group for ticketing developers/other developers to engage, join us and start a conversation.
+
+
+</pre>
+
 </pre>
 </div>
-</div>
+</div><!-- solidity -->
+
+<div group bgblue>
+<span title>Libraries,Tokens,...</span><br/>
 <div groupv>
 <pre zoom labels="">
 <span xsmall TODO>Token</span>
@@ -2807,6 +3037,18 @@ ERC-621 proposes that totalSupply can be modified
 <span xsmall>Non fungible</span>
 @[https://github.com/ethereum/EIPs/blob/master/EIPS/eip-721.md]
 - "Deed" token
+
+""" Daniel Uribe from Genobank.io will talk about their mission of building a 
+  secure and decentralized P2P Genomic Network on the Ethereum blockchain. 
+  He will describe how they are using ERC721 and ERC1155 to record unique 
+  genomic variants along with the use of IPFS and proxy re-encryption to allow
+  for private and secure sharing of DNA data.
+  - ERC721 and ERC1155 for recording and transmitting genomic data
+  - Proxy re-encryption to secure data and protect privacy 
+  - The Ethereum blockchain to keep track of the informed consents 
+"""
+
+
 <span xsmall>ERC-827</span>
 @[https://github.com/ethereum/EIPs/blob/master/EIPS/eip-827.md]
 A extension of the standard interface ERC20 for tokens with methods
@@ -3030,6 +3272,19 @@ See also:
 @[https://www.contract-library.com/]
 - Decompiles most smart contracts deployed on the mainnet to a high level representation.
 </pre>
+
+<pre zoom labels="">
+<span xsmall TODO>EIP-1538</span>
+<span xsmall>Upgradeable</span>
+<span xsmall>Contracts</span>
+<!-- @ma -->
+@[https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1538.md]
+- This standard provides a contract architecture that makes upgradeable 
+  contracts flexible, unlimited in size, and transparent.
+- A transparent contract publicly documents the full history of all changes
+  made to it.
+- All changes to a transparent contract are reported in a standard format.
+</pre>
 </div>
 
 <div groupv>
@@ -3246,70 +3501,101 @@ Amongst others contains
    linkedList.sol and iterable_mapping.sol but it's not maintained since Mid-2017
 </pre>
 </div>
-
-<div groupv>
-<span title>Related Taxonomies</span>
-<pre zoom>
-<span xsmall TODO>Laws Taxonomy</span>
-@[https://law.stackexchange.com/tags]
-</pre>
-
-<pre zoom>
-<span xsmall TODO>Economics Taxonomy</span>
-@[https://economics.stackexchange.com/tags]
-</pre>
-
-<span title>Semantic chain</span>
-<pre zoom labels="">
-<span xsmall TODO>Seth.one</span>
-@[http://seth.one/]
-@[https://www.youtube.com/playlist?list=PL4S-ERdT4ERo-2zbl4CtkFYFkR5SPVlgI]
-</pre>
-</div>
+</div> <!-- libraries, tokens, ... -->
 
 
 
-<div group>
+<div group bgbrown >
 <span title>Development Tools</span>
 <br/>
+<div groupv>
 <pre zoom labels="">
 <span xsmall>External Links</span>
 @[http://ethereum.stackexchange.com/questions/269/what-exactly-is-an-ethereum-client-and-what-clients-are-there/335]
 @[https://www.reddit.com/r/ethdev/comments/9jw839/long_list_of_ethereum_developer_tools_frameworks/]
 </pre>
-<div groupv>
+
 <pre zoom labels="">
 <span xsmall TODO>Remix IDE</span>
 @[https://remix-ide.readthedocs.io/en/latest/]
 @[https://medium.com/remix-ide/remix-ide-renewal-release-0-8-4a55da933b70]
 </pre>
-<pre zoom labels="">
-<span xsmall TODO>Yakindu IDE</span>
-@[https://yakindu.github.io/solidity-ide/]
-@[https://github.com/Yakindu/solidity-ide/issues]
-Rºbeta stateº
-- Eclipse based (Eclipse Public License)
-- context sensitive help and code proposals,
-- quick fixes, 
-- refactorings,
-- templates 
-- live validation.
-- Code navigation.
-- Language Server Protocol planned (Integerate with Atom, VSC, ...)
-</pre>
-</div>
 
-<pre zoom  labels="tool,js">
-<span xsmall TODO>0xcert.org</span>
-@[https://docs.0xcert.org/]
-- JavaScript framework library that provides a complete set of
-  tools for building powerful decentralized applications (dapps).
-- It enables management, digital representation, and ownership verification of
-  unique assets such as certificates, artworks, and collectibles.
+<pre zoom labels="tool,wallet,js">
+<span xsmall>MetaMask Plugin</span>
+@[https://metamask.github.io/metamask-docs/]
+- browser extension enabling browsing Ethereum blockchain enabled websites.
+- Injects a web3 provider into the window object of the web page.
+- It handles account management, ethereum client-node managements,
+- Allows users to manage accounts and their keys in a variety of ways,
+  including hardware wallets, while isolating them from the site context.
+  (vs storing the user keys on a single central server, or even in local storage)
+ºAPI Referenceº
+./API_Reference/Ethereum_Provider ← "web3 provider object"
+./API_Reference/JSON_RPC_API
+./API_Reference/Experimental_APIs
+
+ºCalling a Contract from Web Browser with Metamask and ethjsº
+@[https://medium.com/metamask/calling-a-smart-contract-with-a-button-d278b1e76705]
+(ethjs is a lightweight alternative to web3.js)
+- ethjs (or web3.js) makes use of a web3 provider object.
+  This object can be a software object, and injected object (Metamask),
+  ....
+
+PRE-SETUP:
+$ npm install ethjs
+
+BASIC JS:
+// "Webpack dependencies"
+const Eth = require('ethjs-query')
+const EthContract = require('ethjs-contract')
+const CONTRACT_ADDRESS = '0xdeadbeef123456789000000000000'
+const CONTRACT_ABI = [{
+    "name": "transfer",
+    "inputs": [ ...  ],
+    "outputs": [ ... ],
+    ...
+  }]
+
+
+function initContract (contract) {
+  const MiniToken = contract(CONTRACT_ABI)
+  const miniToken = MiniToken.at(address)
+}
+
+function startApp(web3) {
+  const eth = new Eth(ºweb3.currentProviderº)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^
+                     Injected into web page by MetaMask
+  const contract = new EthContract(eth)
+  initContract(contract)
+}
+
+window.addEventListener('load', function() {
+  if (typeof web3 === 'undefined') { return; }
+  startApp(web3);
+})
+
+
+
+function onGUIButtonCliced (miniToken) {
+    miniToken.transfer(
+      toAddress, value, { from: addr })
+      .then(
+        txHash =˃ {
+          console.log('Transaction sent')
+          console.dir(txHash)
+          waitForTxToBeMined(txHash)
+        })
+      .catch(e =˃ { ... })
+}
 </pre>
 
-<div groupv>
-<span title>Javascript</span>
+
+<pre zoom>
+<span xsmall TODO>MetaMask Mobile</span>
+@[https://mobile.metamask.io/]
+</pre>
 
 <pre zoom labels="js">
 <span xsmall>Web3JS API</span>
@@ -3337,10 +3623,15 @@ eth_getTransactionByHash                               rpc_modules
 eth_getTransactionByBlockHashAndIndex                  web3_clientVersion
 eth_getTransactionByBlockNumberAndIndex                web3_sha3
 </pre>
+</div>
+
+<div groupv>
+
+
 
 <span title>Truffle</span>
 <pre zoom labels="tool,development,testing,qa">
-<span xsmall>Truffle "Full Journey"</span>
+<span xsmall>"Full Journey"</span>
 @[https://www.truffleframework.com/]
 ºnew bare Projectº
 
@@ -3709,84 +4000,26 @@ describe("Events", function() {
   Truffle framework.
 - Compatible with Truffle 4.0 or higher.
 </pre>
+
+<pre zoom labels="">
+<span xsmall TODO>web3 v1.0</span>
+<span xsmall>(migration to)</span>
+https://medium.com/@adrianmcli/migrating-your-truffle-project-to-web3-v1-0-ed3a56f11a4
+
+The most popular library for calling into Ethereum smart contracts from the 
+Javascript world is Web3.js (repo). In fact, Truffle (the popular Ethereum 
+dapp framework) injects this within their own test environment.
+
+Unfortunately, the framework itself (and its official examples) use the 0.20.
+x version of Web3.js. And while v1.0 is still technically in beta, more and 
+more people are using it because it provides an API that is more explicit and 
+is easier to work with (like PromiEvents, I’ll talk about this below)
+</pre>
+
 </div>
 
 <div groupv>
-<pre zoom labels="tool,wallet,js">
-<span xsmall>MetaMask Plugin</span>
-@[https://metamask.github.io/metamask-docs/]
-- browser extension enabling browsing Ethereum blockchain enabled websites.
-- Injects a web3 provider into the window object of the web page.
-- It handles account management, ethereum client-node managements,
-- Allows users to manage accounts and their keys in a variety of ways,
-  including hardware wallets, while isolating them from the site context.
-  (vs storing the user keys on a single central server, or even in local storage)
-ºAPI Referenceº
-./API_Reference/Ethereum_Provider ← "web3 provider object"
-./API_Reference/JSON_RPC_API
-./API_Reference/Experimental_APIs
 
-ºCalling a Contract from Web Browser with Metamask and ethjsº
-@[https://medium.com/metamask/calling-a-smart-contract-with-a-button-d278b1e76705]
-(ethjs is a lightweight alternative to web3.js)
-- ethjs (or web3.js) makes use of a web3 provider object.
-  This object can be a software object, and injected object (Metamask),
-  ....
-
-PRE-SETUP:
-$ npm install ethjs
-
-BASIC JS:
-// "Webpack dependencies"
-const Eth = require('ethjs-query')
-const EthContract = require('ethjs-contract')
-const CONTRACT_ADDRESS = '0xdeadbeef123456789000000000000'
-const CONTRACT_ABI = [{
-    "name": "transfer",
-    "inputs": [ ...  ],
-    "outputs": [ ... ],
-    ...
-  }]
-
-
-function initContract (contract) {
-  const MiniToken = contract(CONTRACT_ABI)
-  const miniToken = MiniToken.at(address)
-}
-
-function startApp(web3) {
-  const eth = new Eth(ºweb3.currentProviderº)
-                     ^^^^^^^^^^^^^^^^^^^^^^^^
-                     Injected into web page by MetaMask
-  const contract = new EthContract(eth)
-  initContract(contract)
-}
-
-window.addEventListener('load', function() {
-  if (typeof web3 === 'undefined') { return; }
-  startApp(web3);
-})
-
-
-
-function onGUIButtonCliced (miniToken) {
-    miniToken.transfer(
-      toAddress, value, { from: addr })
-      .then(
-        txHash =˃ {
-          console.log('Transaction sent')
-          console.dir(txHash)
-          waitForTxToBeMined(txHash)
-        })
-      .catch(e =˃ { ... })
-}
-</pre>
-
-
-<pre zoom>
-<span xsmall TODO>MetaMask Mobile</span>
-@[https://mobile.metamask.io/]
-</pre>
 </div>
 
 <div groupv>
@@ -4063,9 +4296,7 @@ Nethereum UI wallet sample      Cross platform wallet example using Nethereum, X
                                 targeting: Android, iOS, Windows Mobile, Desktop (windows 10 uwp), IoT
                                 with the Raspberry PI and Xbox.
 </pre>
-</div>
 
-<div groupv>
 <span title>Python</span>
 <pre zoom labels="python,testing">
 <span xsmall>Brownie</span>
@@ -4078,7 +4309,7 @@ Nethereum UI wallet sample      Cross platform wallet example using Nethereum, X
 
 <div groupv>
 <pre zoom labels="python">
-<span xsmall TODO>Dev. Trouble-shoot</span>
+<span xsmall TODO>Troubleshooting</span>
 ºsolc ºbin output is empty, but there are no compilation warnings:*
 PROBLEM:
     Next code compiles "OK" using
@@ -4115,13 +4346,76 @@ SOLUTION:
 <a href="https://ethereum.stackexchange.com/questions/9055/cant-broadcast-ethereum-transaction-whats-wrong-with-this-transaction">REF.1</a>, <a href="https://gitter.im/web3j/web3j?at=58d1e9ce5917e26076be161c">REF 2.web3j Gitter</a>
     Solution: This means that the same transaction is sent twice with onley the nonce different.
      Probably it's a client error.
-    </pre>
+</pre>
+<span title>TODO</span>
+
+<pre zoom  labels="tool,js">
+<span xsmall TODO>0xcert.org</span>
+@[https://docs.0xcert.org/]
+- JavaScript framework library that provides a complete set of
+  tools for building powerful decentralized applications (dapps).
+- It enables management, digital representation, and ownership verification of
+  unique assets such as certificates, artworks, and collectibles.
+</pre>
+
+<pre zoom labels="">
+<span xsmall TODO>Yakindu</span>
+<span xsmall TODO>Eclipse IDE</span>
+@[https://yakindu.github.io/solidity-ide/]
+@[https://github.com/Yakindu/solidity-ide/issues]
+Rºbeta stateº
+- Eclipse based (Eclipse Public License)
+- context sensitive help and code proposals,
+- quick fixes, 
+- refactorings,
+- templates 
+- live validation.
+- Code navigation.
+- Language Server Protocol planned (Integerate with Atom, VSC, ...)
+</pre>
+
 </div>
 </div>
 
+<div group bggreen>
+    <span title>Scalability</span><br/>
 <div groupv>
-<span title>Scalability</span>
-<span title>Plasma (Scalability framework)</span>
+<pre zoom labels="">
+<span xsmall TODO>Casper Proof-of-Stake</span>
+@[https://media.consensys.net/blockchain-vs-distributed-ledger-technologies-1e0289a87b16]
+Ethereum Casper Proof of Stake Consensus
+
+An example of cryptoeconomic incentive layers can also be seen in Ethereum?s 
+transition to a proof of stake consensus mechanism via implementations of 
+Casper. While proof of work has its own internalized game theoretical 
+incentive structure to dissuade participants from commandeering the network, 
+the transition to proof of stake has even further internal structures for 
+disincentivizing participants from equivocating or trying to create 
+alternative instances of the blockchain when encountering forks. The staking 
+protocol creates a Byzantine Fault Tolerant environment where Ether would be 
+bonded into the consensus mechanism. What this means is that individuals 
+would be bound by a fidelity bond to behave honorably within the system.
+....
+
+Cosmos and Tendermint
+Cosmos is also building an ecosystem that relies on the Tendermint consensus 
+mechanism that relies heavily upon Byzantine Fault Tolerance algorithms. The 
+platform depends on validators that have similar roles as miners in the 
+bitcoin network. The validators have staking tokens called Atoms which are 
+used to secure the network via a proof of stake mechanism that relies upon 
+the trust generated by the bonded validators. The interplay between the 
+players in the ecosystem is also indicative of a game theoretical structure 
+where validators can lose their tokens or the tokens delegated to them if 
+discovered to be violating the protocol. Due to this bonded deposit design of 
+stakeholders within this system, the consensus mechanism allows for an 
+incentivization mechanism that secures the network. This security design 
+allows for the proper functioning of the Application Blockchain Interface
+(ABCI), the Inter-Blockchain Communication protocol (IBC) as well as the 
+varying interactions between the Cosmos hub and zones.
+....
+</pre>
+
+<span title>Plasma</span>
 <pre zoom>
 <span xsmall>Plasma.io</span>
 @[https://plasma.io/]
@@ -4182,10 +4476,19 @@ and consensus fidelity.
 @[https://leapdao.org/]
 - More Viable Plasma design with smart contract like functionality.
 </pre>
-</div>
 
+<span title>Parity Polkadot</span>
+<pre zoom labels="">
+<span xsmall TODO>Summary</span>
+(web3 project for interoperable chains) 
+</pre>
+
+</div>
+</div><!-- scalability -->
+
+<div group bgyellow>
+<span title>Enterprise Integration</span><br/>
 <div groupv>
-<span title>Enterprise Integration</span>
 <pre zoom bgorange>
   <span xsmall>Integration Layout</span>
 REF: https://medium.com/@bibryam/enterprise-integration-for-ethereum-fa67a1577d43
@@ -4679,6 +4982,12 @@ Custom ethereum client that uploads blockchain data to BigQuery
 
 <pre bgorange zoom labels="integration" >
 <span xsmall>GraphQL Interface</span>
+Extracted from @[https://graphql.org/]
+  """GraphQL is a ºquery languageº for APIs and a runtime 
+     for fulfilling those queries with your existing data. 
+     ... simplifies API evolution, and enable powerful dev
+     tools."""
+
 @[https://github.com/ConsenSys/ethql]
 (Available in Geth 1.9, Pantheon, probably other implementations)
 - Has the potential to avoid the sync from blockchain to a
@@ -4765,791 +5074,291 @@ for account "0x06012c8cf97BEaD5deAe237070F9587f8E7A266d".
     }
   }
 }
-</pre>
-</div>
 
-<div groupv>
-<span xsmall>EEA &amp; Quorum</span>
-<pre zoom>
-<span xsmall>External Links</span>
-@[https://entethalliance.org/]
-@[https://www.goquorum.com]
-Tech.documents           @[https://entethalliance.org/technical-documents/]
-                         - EEA Client Spec
-                         - EEA Off-Chain Trusted Compute Spec
-                         - EEA Architecture Stack
-                         - ....
-Slack Chat               @[https://go-quorum.slack.com/]
-Collaboration site       @[https://member.entethalliance.org/communities-all-members60/librarydocuments]
-WiKi                     @[https://github.com/jpmorganchase/quorum/wiki]
-Quorum Setup Summary     @[https://github.com/jpmorganchase/quorum/wiki/Getting-Set-Up] (WARN: use quorum-maker)
-GitHub                   @[https://github.com/jpmorganchase/quorum/tree/master/docs]
-Official Docker Images   @[https://hub.docker.com/u/quorumengineering/]
-Quorum-Maker             @[https://github.com/synechron-finlabs/quorum-maker]
-Whitepaper,design,..docs @[https://github.com/jpmorganchase/quorum/tree/master/docs]
-Releases                 @[https://github.com/jpmorganchase/quorum/releases]
-JPMorgan Quorum HomePage @[https://www.jpmorgan.com/country/ES/en/Quorum]
-7 node example           @[https://github.com/jpmorganchase/quorum-examples/tree/master/examples/7nodes]
-Quorum API               @[https://github.com/jpmorganchase/quorum/blob/master/docs/api.md]
-Roadmap                  @[https://github.com/jpmorganchase/quorum/wiki/Product-Roadmap]
-</pre>
+<pre zoom labels="">
+<span xsmall TODO>GraphQL: fetching events</span>
+@[https://medium.com/intech-conseil-expertise/create-your-graph-node-to-query-complex-data-from-blockchain-via-graphql-6f08fbd494c5]
 
-<pre zoom>
-  <span xsmall>EEA Summary</span>
-[P]SMRT-030:Enterprise Ethereum clients MUST support
-   smart contracts of at least 24,576bytes in size
-[P]SMRT-040:Enterprise Ethereum clients MUST read and enforce a size limit
-   for smartcontracts from the current network configuration (e.g. the genesis
-   block).
-[P]SMRT-050: If no contract size limit is specified in a genesis block,
-   subsequent hard fork blockor network configuration, Enterprise Ethereum
-   clients MUST enforce a size limit on smartcontracts of 24,576 bytes.
+- Identity Smart Contract 
+  - it stores "claims" == proof of a verification process
+    Ex:
+    claim type 1: id-holder is French   , attested/signed by issuer_i1
+    claim type 2: holder is over 18     , attested/signed by issuer_i1
+    claim type 3: has not bank debts    , attested/signed by issuer_i2
+    claim type 3: ...                   , attested/signed by issuer_i3
+    ...
 
-- Permissioning is the property of a system that ensures operations are
-  executed by and accessible todesignated parties. For Enterprise Ethereum,
-  permissioning refers to:
-  - the ability of a node to join an Enterprise Ethereum blockchain
-  - the ability of individual accounts or nodes to perform
-    specific functions.
-  - Ex: an Enterprise Ethereum blockchain might only allow certain nodes
-    to act as validators, and only certain accounts to instantiate smart
-    contracts.Enterprise Ethereum provides a permissioned implementation
-    of Ethereum supporting peer nodeconnectivity permissioning,
-    account permissioning, and transaction type permission.
+ºUse-Case 1: Fetch "all claims for a given identity"º
 
-7.1.1 Nodes:
-  [C] NODE-010:Enterprise Ethereum implementations MUST provide the ability
-      to specify atstartup a list of static peer nodes to establish
-      peer-to-peer connections with.
-  [C] NODE-020:Enterprise Ethereum clients MUST provide the ability to enable
-      or disable peer-to-peer node discovery.
-  [P] NODE-030:Enterprise Ethereum clients MUST provide the ability to specify
-      a whitelist of thenodes permitted to connect to a node.
-  [P] NODE-040:Enterprise Ethereum clients MAY provide the ability to specify
-      a blacklist of thenodes not permitted to connect to a node.7.1 Permissions
-      and Credentials Sublayer
-  [P] NODE-050: It MUST be possible to specify the node whitelist required by
-      NODE-030 througha transaction into a smart contract.
-  [P] NODE-060: It MUST be possible to specify the node blacklist allowed by
-      NODE-040 (ifimplemented) through a transaction into a smart contract.
-  [P] NODE-080:Enterprise Ethereum clients MUST provide the ability to specify
-      node identities ina way aligned with the concept of groups.
-  [P] NODE-090:Enterprise Ethereum clients MUST document which metadata parameters
-      (if any)can affect transaction ordering, and what the effects are.
-</pre>
-
-<pre zoom>
-<span xsmall>EEA Net Protocol Sublayer (enodes, ...)</span>
-- Nodes MUST be identified and advertised using the
-  Ethereum <a href="https://github.com/ethereum/wiki/wiki/enode-url-format">enode URL format</a>
-- Implementations SHOULD use the <a href="https://github.com/ethereum/wiki/wiki/%C3%90%CE%9EVp2p-Wire-Protocol">DEVp2p Wire Protocol</a>
-  for messaging between nodes to establish and maintain a
-  communications channel for use by higher layer protocols.
-
-- These higher layer protocols are known as capability protocols
-
-- The <a href="https://github.com/ethereum/wiki/wiki/Ethereum-Wire-Protocol">Ethereum-Wire-Protocol</a> defines the capability
-  protocols for messaging between Ethereum client nodes to
-  exchange status, including block and TX info.
-
-- messages are sent and received over an already
-  established DEVp2p connection between nodes.
-
-- Implementations SHOULD support, at a minimum,
-  Ethereum-Wire-Protocols eth/62 and eth/63
-
-- Implementations MAY add new protocols or extend
-  existing Ethereum protocols
-
-- To minimize the number of point -to-point connections
-  needed between private nodes , some private nodes
-  SHOULD be capable of relaying private TX data to
-  multiple other private nodes.
-</pre>
-
-<pre zoom>
-  <span xsmall>RºWARN:ºContract Design Considerations</span>
-- Private contracts cannot update public contracts.
-  (not all participants will be able to execute a private contract,
-  and so if that contract can update a public contract, then each
-  participant will end up with a different state for the public contract.
-- Once a contract has been made public, it can't later be made private.
-  You DO need to delete from the blockchain and create a new private contract
-</pre>
-
-<pre TODO zoom>
-<span TODO xsmall>Supported Consensus</span>
-- Probe of Authority (PoA):
-  @[https://github.com/ethereum/EIPs/issues/225]
-  @[https://github.com/ethereum/go-ethereum/blob/master/consensus/clique/clique.go]
-  @[https://github.com/NethermindEth/nethermind/tree/master/src/Nethermind/Nethermind.Clique]
-  @[https://github.com/hyperledger/besu/tree/master/consensus/clique/src/main/java/org/hyperledger/besu/consensus/clique]
-  - TestNet:
-  @[https://github.com/goerli/testnet]  @[https://goerli.net/]
-  """Görli Testnet is the first proof-of-authority cross-client testnet, synching Parity Ethereum, Geth, Nethermind,
-  Pantheon, and EthereumJS."""
-
-- RAFT:
-- IBFT: (Istambul) Bizantine Fault Tolerant
-</pre>
-<pre zoom>
-<span xsmall>IBFT</span>
-<span xsmall>(Istambul)BFT</span>
-@[https://github.com/ethereum/EIPs/issues/650]
-- Target banks and fin.instutions, replacing PoW
-  since validator scalability is not required.
-- Hash settlement finality and minimum latency.
-- Deeply inspired by Clique PoA @[https://github.com/ethereum/EIPs/issues/225]
-- also inspired by Hyperledger's SBFT, Tendermint, HydraChain, and NCCU BFT.
-
-Validator  : Block validation participant.
-Proposer   : A block validation participant that is chosen
-             to propose block in a consensus round.
-Round      : Consensus round. A round starts with the proposer creating
-             a block proposal and ends with a block commitment or round change.
-Proposal   : New block generation proposal which is undergoing consensus processing
-Sequence   : Sequence number of a proposal. A sequence number should be greater than
-             all previous sequence numbers. Currently each proposed block height is its
-             associated sequence number.
-Backlog    : The storage to keep future consensus messages due to the async nature of the
-             network.
-Round state: Consensus messages of a specific sequence and round, including pre-prepare
-             message, prepare message, and commit message.
-Consensus
-      proof: The commitment signatures of a block that can prove the block has gone
-             through the consensus process.
-Snapshot   : The validator voting state from last epoch
+  -RºWrong implementation:º 
+    - call .getClaims() on the contract. 
+    - Discouraged due to performance and cost issues.
+  
+  -Gº Correct implementation: Using eventsº
+    - Emit ClaimAdded / ClaimRemoved.
+    - fetch all logs to rebuild the current array of elements.
 
 
-ºVALIDATION ROUND LOOPº
-[validators] → [validators]:  enter ºvalidator.state NEW-ROUNDº
-[validators] → [validators]:  pick one (round-robin by default or sticky) as
-                              the OºPROPOSERº
-OºPROPOSERº  →OºPROPOSERº  :  propose new block proposal
-OºPROPOSERº  →  network    :  broadast Bºblock-proposal + PRE-PREPARE messageº
-[validators] → [validators]:  enter ºvalidator.state PRE-PREPAREDº
-[validators] → network     :  broadcast BºPREPARE messageº
-                              (make sure all validators are working on the
-                               same sequence and the same round)
-[validators] → [validators]:Bºwait for (2F + 1) PREPARE messagesº
-                              then enter ºvalidator.state PREPAREDº
-[validators] → network     :  broadcasts BºCOMMIT messageº.
-                              (inform peers that validator accepts proposed block
-                              and is going to insert the block to the chain)
-[validators] → [validators]:Bºwait for (2F + 1) COMMIT messagesº
-                              enter ºvalidator.state COMMITTEDº
-                              insert the block to the chain
-                              enter ºvalidator.state FINAL-COMMITTEDº
-[validators] → network     :  broadcasts BºROUND-CHANGE messageº
-[validators] → [validators]:Bºwait for (2F + 1) ROUND-CHANGE messagesº
-                              then enter ºvalidator.state NEW-ROUNDº
+ºUse-Case 2: "For each claim type, fetch all claims attested/signedº
+             ºby same issuer_iN"º
+
+  -GºImplementation 1, Using events and filters:º
+   - fetch all ClaimAdded events filtered by Claim Issuer
+   - Repeat for each Identity Contract instance
+   - Suboptimal in terms on network bandth ussage. 
+     All events are sent back to the client, then the client
+     filters the events.
+
+  -GºImplementation 2, Using GraphQL and the Graph protocolº
+   GraphQL main advantage is to be able to "traverse" entities,
+   minimizing the amount of data sent over the network.
+
+  º"The Graph protocol is a decentralized protocol for       º
+  º indexing and querying data from blockchains, starting    º
+  º with Ethereum. It makes it possible to query data that isº 
+  º difficult to query directly.”                            º
 
 
-ºRUNNING ISTANBUL BFT VALIDATORS&AMP;NODES:º
-| $ geth  --datadir "/eth" init "/eth/genesis.json"                  // ← Initialize the data folder as (PRE-SETUP)
-| $ geth --datadir "/eth" --mine --minerthreads 1 --syncmode "full"  // ← Start-up validators
-| $ geth --datadir "/eth"                                            // ← Start-up regular nodes
+  - Graph features:
+     -ºit knows about the entities it indexesº
+     - composed of subgraphs, carefully developed by the community
+     - There is a global instance of The Graph that accepts 
+       subgraph definition.
+ 
+ºSubgraph "Hello World!":º
 
-ºISTANBUL OPTIONS:º                                                                           |ºgenesis.jsonº
-| --istanbul.requesttimeout value  round in milliseconds (default: 10000)                     |- config field is required, and the pbft subfield must present. Ex:
-| --istanbul.blockperiod    value  Default min.difference between two consecutive             |- See also genesis.json helper tools at:
-|                                  block's timestamps in seconds (default: 1)                 |@[https://github.com/getamis/Istanbul-tools]
-                                                                                              |{
-ºNODEKEY AND VALIDATORº                                                                       |  "config": {
-|To be a validator, a node needs to meet the following conditions:                            |    "chainId": 2016,
-|- Its account (nodekey-derived) address MUST be listed in extraData's validators section     |    "istanbul": { "epoch": 30000, "policy" 0 }
-|- validator nodekey is used as priv.key to sign consensus messages                           |  },
-                                                                                              |  "timestamp": "0x0",
-ºEncoding:º                                                                                   |  "parentHash": "0x000...000",
-|Before encoding you need to define a toml file with vanity and validators fields             |  "extraData": "0x0000...000f89af85494475...aad0312b84100000...0c0",
-|to define proposer vanity and validator set. Please refer to example.toml for                |  "gasLimit": "0x47e7c4",
-|the example. The output would be a hex string which can be put into extraData                |  "mixhash": "0x6374...6e6365",
-|field directly.  Command:                                                                    |  "coinbase": "0x333...33333",
-|  $ istanbul encode --config ./config.toml                                                   |  "nonce": "0x0",
-                                                                                              |  "difficulity": "0x0",
-ºDecoding:º                                                                                   |  "alloc": {}
-|Use --extradata option to give the extraData hex string. The output would show               |}
-|the following if presents: vanity, validator set, seal, and committed seal.
-|Command:
-|$ istanbul decode --extradata <EXTRA_DATA_HEX_STRING>
-|to define proposer vanity and validator set. Please refer to example.toml for
-|the example. The output would be a hex string which can be put into extraData
-|field directly.  Command:
-|  $ istanbul encode --config ./config.toml
-</pre>
+  - PRE-SETUP
+    - An Ethereum node must be running (in http://127.0.0.1:8545 for example)
 
-<pre zoom>
-<span xsmall>Raft-based consensus</span>
-@[https://github.com/jpmorganchase/quorum/blob/master/raft/doc.md]
-$ geth --raft
-NON  BYZANTINE FAULT TOLERANCE with next advantages:
-  - faster blocktimes (milliseconds vs seconds)
-  - absence of forking
-  - Compared with QuorumChain, does NOT "unnecessarily" create empty blocks
+  -ºSTEP 1º(opinionated, using docker)
+    $ git clone https://github.com/graphprotocol/graph-node.git
+    $ cd graph-node
+    # Update the RPC Server endpoint http://127.0.0.1:8545 if needed 
+      in the environment variable @ 'docker-compose.yaml'
+    $ sudo docker-compose up # Will start up graph instance, PostgreSQL and IPFS
+      ^^^^^^^^^^^^^^^^^^^^^^
+      needs ports 4001, 5001, 8000, 8001, 8020, 8080 and 5432  open
 
-+-----------+----------------+-------------------------------------------------+
-|Transport  | Ethereum p2p   |  Raft (over HTTP)                               |
-|Layer      |                |                                                 |
-+-----------+----------------+-------------------------------------------------+
-|DATA TYPE  | communicate TXs|  communicate full blocks                        |
-+-----------+----------------+-------------------------------------------------+
-|config     |                | Minting blocks frequency:  ˂ = 50ms ,           |
-|params     |                |    (--raftblocktime (millisecs)                 |
-|           |                | --raftport newTCPPort default to 50400 )        |
-|           |                |                                                 |
-|           |                |  static-nodes.json: required                    |
-|           |                |  - initial list of nodes in the cluster         |
-|           |                |  - order ºMUST BE EQUALS ACROSS PEERSº          |
-|           |                |                                                 |
-|           |                | - ID URIs must include a raftport querystring   |
-|           |                |   param specifying the raft port for each peer: |
-|           |                |   e.g.                                          |
-|           |                |    enode://abcd@127.0.0.1:30400?raftport=50400  |
-+-----------+----------------+-------------------------------------------------+
+  - STEP 2 (opinionated, using nodeJS and yarn)
+    $ yarn init                      # ← Init NodeJS project (create 'package.json')
 
-removing a node from the cluster from the JS console:
-# raft.removePeer(raftIdx)
-                  ^
-                  "1-indexed" index in the static peer list
-
-Attaching a node to the cluster from the JS console:
-
-# raft.addPeer("enode://abcd@127.0.0.1:30400?raftport=50400")
-Then (outside the JS console) start the new geth node with the
-flag --raftjoinexisting RAFTID in addition to --raft
-</pre>
-
-<pre zoom>
-<span xsmall>TX Manager</span>
-  - Quorum’s Transaction Manager is responsible for Transaction privacy.
-     It stores and allows access to encrypted transaction data, exchanges encrypted
-     payloads with other participant's Transaction Managers but does not have
-     access to any sensitive private keys. It utilizes the Enclave for
-     cryptographic functionality (although the Enclave can optionally be
-     hosted by the Transaction Manager itself.)
-
-  - """To send a private transaction, a PrivateTransactionManager must be
-     configured. This is the service which transfers private payloads to
-     their intended recipients, performing encryption and related operations
-     in the process."""
-  - The Transaction Manager is restful/stateless and can be load balanced easily.
-
-<a href='https://github.com/jpmorganchase/quorum/wiki/Transaction-Processing'>Transaction Processing</a>
-  - 'Public Transactions' and 'Private Transactions' are a notional concept
-    only and Quorum does not introduce new Transaction Types, but rather, the
-    Ethereum Transaction Model has been extended to include an optional
-    'OºprivateForº' parameter (the population of which results in a Transaction
-    being treated as private by Quorum) and the Transaction Type has a new
-    IsPrivate method to identify such Transactions.
-  - OºprivateForº can take multiple addresses in a comma separated list.
-  - Private Transactions payload is only visible to the network
-    participants specified in the OºprivateForº parameter of the TX.
-  - Quorum Node sets the Transaction_Signature.V = 37 or 38
-    (as opposed to 27 or 28)
-
-  - prior to propagate the TX to the rest of the network,
-    mining/sender node replaces the original TX-Payload with
-    a the hash of the encrypted Payload that received from the
-    secure enclave implementation (Crux, Constellation,..).
-    Participants involved in the OºprivateForº TX
-    will have the encrypted payload associated to the hash
-    within their secure enclave.
-
-  Example priv.TX A←→B:<span bgorange>
-Party A and B belongs to TX AB, whilst C doesn't
-Party A → A.Node: TX + payload
-                TX.OºprivateForº [ pub.key A, pub.keyB]
-A.Node → A TX Manager: Request to store TX payload
-A_TX_Manager → Enclave: - Validate sender with A priv.key
-
-Enclave → Enclave:  performs TX conversion (encrypt payload)
-                    - generating [sym.key, random Nonce]
-                    - encrypting TX.payload+Nonce with sym.key
-                    - generate hash  SHA3-512 (encrypted payload)
-                    - iterate through TX recipients [A, B] encrypting
-                      sym.key with recipient's pub.key (PGP encryption)
-A_TX_Manager ← Enclave: encrypted payload, SHA3-512 hash, encrypted keys
-A_TX_Manager → A_TX_Manager: store encrypted payload, encrypted sym.key
-                             (using hash as index)
-A_TX_Manager → B_TX_Manager: (via HTTPS) hash, encrypted (payload, sym.key)
-A_TX_Manager ← B_TX_Manager: Ack
-A.Node ←  A_TX_Manager: SHA3-512 (encrypted payload)
-A.Node →  A.Node: - Replace TX.payload with TX.sha3-512
-                  - changes TX.V to 37 or 38 (indicates other nodes that
-                    hash represents priv.TX)
-A_TX_Manager → Network:  (Ethereum P2P protocol) TX encrypted payload
-Network → Network: +block containing TX AB
-Network → Node N: block containing TX AB
-Node N → Node N: Try validate TX in block
-                 - Recognise TX.V is 37 or 38
-Node N → Node N TX_Manager: Do nodes holds private TX?
-Node N ← Node N TX_Manager: YES  (continue validation)
-                         or "NotARecipient" (skip to next TX in block)
-A,B Node → A,B enclave: TX payload
-           A,B enclave: 1. validates signature
-                        2. decrypts sym.key  private key that is held
-                           in The Enclave, decrypts the Transaction Payload using
-                           the now-revealed symmetric key and returns the decrypted
-                           payload to the Transaction Manager.
-A,B TX_Manager → A,B EVM: send decrypted payload
-A,B EVM → A,B EVM: contract code execution
-                   Update Quorum Node's Private StateDB only.
-                   NOTE: code discarded once executed.
-</pre>
-
-<pre zoom>
-<span xsmall>JPMorgan Tessera</span>
-<span xsmall>(EE TX Manager)</span>
-@[https://github.com/jpmorganchase/tessera]
-- Enterprise Implementation of Quorum's transaction manager
-- stateless Java system that is used to enable the encryption,
-  decryption, and distribution of private transactions for Quorum.
-
-Each Tessera node:
-  - Generates and maintains a number of private/public key pairs
-  - Self manages and discovers all nodes in the network (i.e. their
-    public keys) by connecting to as few as one other node
-  - Provides Private and Public API interfaces for communication:
-    Private API - This is used for communication with Quorum
-    Public  API - This is used for communication between Tessera
-                  peer nodes
-  - Provides two way SSL using TLS certificates and various trust
-    models like Trust On First Use (TOFU), whitelist, certificate
-    authority, etc.
-  - Supports IP whitelist
-  - Connects to any SQL DB which supports the JDBC client
-
-<a TODO href="https://github.com/jpmorganchase/tessera/wiki/Interface-&-API">Tessera Wiki</a>
-</pre>
-
-<pre zoom>
-<span xsmall>Secure Enclave</span>
- - Distributed Ledger protocols typically leverage cryptographic techniques
-   for transaction authenticity, participant authentication, and historical
-   data preservation (i.e. through a chain of cryptographically hashed data
-   .) In order to achieve a separation of concerns, as well as to provide
-   performance improvements through parallelization of certain crypto-
-   operations, much of the cryptographic work including symmetric key
-   generation and data encryption/decryption is delegated to the Enclave.
- - The Enclave works hand in hand with the Transaction Manager to
-   strengthen privacy by managing the encryption/decryption in an isolated
-   way. It holds private keys and is essentially a “virtual HSM” isolated
-   from other components.
- - Different implementations of the enclave exists:
-   - Constellation: Original, writen in Haskell
-   - Crux         : Golang based, compatible with Constellation
-</pre>
-<pre zoom>
-<span xsmall>Constellation secure enclave</span>
-@[https://github.com/jpmorganchase/constellation]
-@[https://github.com/jpmorganchase/quorum/blob/master/docs/privacy.md]
-
-  - self-managing, peer-to-peer network of "key server+PGP+MTAs" nodes
-  - Constellation is not blockchain-specific, and potentially applicable
-     in many other types of applications
-  - Constellation's current primary application is to implement the
-    "privacy engine" for Quorum Private transactions (TX with a flag indicating
-    its pretended privacy and the addressable identifier )
-  - Hosts a number of Private/Public key pair Curve25519 - NaCl-
-  - Automatically discovers other nodes on the network after synchronizing
-    with as little as one other host.
-  - Synchronizes a directory of public keys mapped to recipient hosts with
-    other nodes on the network.
-  - Exposes public API allowing other nodes to send encrypted bytestrings to
-    your node, and to synchronize, retrieving information about the nodes
-    that your node knows about.
-  - Exposes a private API which:
-    - Allows you to send a bytestring to one or more public keys, returning
-      a content-addressable identifier. This bytestring is encrypted
-      transparently and efficiently (at symmetric encryption speeds) before
-      being transmitted over the wire to the correct recipient nodes (and only
-      those nodes.) The identifier is a hash digest of the encrypted payload
-      that every receipient node receives. Each recipient node also receives a
-      small blob encrypted for their public key which contains the Master Key
-      for the encrypted payload.
-    - Allows you to receive a decrypted bytestring based on an identifier.
-      Payloads which your node has sent or received can be decrypted and retrieved
-      in this way.
-
-    - Exposes methods for deletion, resynchronization, and other management functions.
-
-  - Supports a number of storage backends including LevelDB, BerkeleyDB, SQLite,
-    and Directory/Maildir-style file storage suitable for use with any FUSE
-    adapter, e.g. for AWS S3.
-
-  - Uses mutually-authenticated TLS with modern settings and various trust
-    models including hybrid CA/tofu (default), tofu (think OpenSSH), and
-    whitelist (only some set of public keys can connect.)
-
-  - Supports access controls like an IP whitelist.
-
-ºINSTALLATIONº
-Pre-Install supporting libraries:
-  Ubuntu : $ apt-get install libdb-dev libleveldb-dev libsodium-dev zlib1g-dev libtinfo-dev
-  Red Hat: $ dnf install libdb-devel leveldb-devel libsodium-devel zlib-devel ncurses-devel
-  MacOS  : $ brew install berkeley-db leveldb libsodium
-
-Install
-  Alt 1: Precompiled binaries:
-  <a href="https://github.com/jpmorganchase/constellation/releases">Release download</a>
-
-  Alt 2: from source
-    - First time only: Install Stack:
-      Linux: $ curl -sSL https://get.haskellstack.org/ | sh
-      MacOS: $ brew install Haskell-stack
-    - First time only: run stack setup to install GHC, the Glasgow Haskell Compiler
-    - Run stack install
-
-Post-install: Generating key pair "node":
-  $  constellation-node --generatekeys=node # generated keys can be locked with passwd
-
-ºRUNNINGº
-- can be run as stand-alone daemon via constellation-node, or
-  imported as a Haskell library, allowing to implement custom
-  storage and encryption logic.
-
-$ constellation-node "path_to_config_file" # or use ENV.VAR
-# More info at <a href="https://github.com/jpmorganchase/quorum/blob/master/private/constellation/node.go">quorum/private/constellation/node.go</a>
-
-ºCONFIGURATION FILE FORMATº
-<a href="https://github.com/jpmorganchase/constellation/blob/master/sample.conf">REF</a>
-url = "http://127.0.0.1:9001/"
-port = 9001
-workdir = "data"
-socket = "constellation.ipc"
-othernodes = ["http://127.0.0.1:9000/"]
-publickeys = ["foo.pub"]
-privatekeys = ["foo.key"]
-alwayssendto = []
-storage = "dir:storage"
-verbosity = 1
-tls = "strict"
-tlsservercert = "tls-server-cert.pem"
-tlsserverchain = []
-tlsserverkey = "tls-server-key.pem"
-tlsservertrust = "tofu"
-tlsknownclients = "tls-known-clients"
-tlsclientcert = "tls-client-cert.pem"
-tlsclientchain = []
-tlsclientkey = "tls-client-key.pem"
-tlsclienttrust = "ca-or-tofu"
-tlsknownservers = "tls-known-servers"
-</pre>
-
-<pre zoom>
-<span xsmall>Crux (Constellation alternative)</span>
-@[https://medium.com/web3labs/announcing-crux-a-secure-enclave-for-quorum-61afbfdb79e4]
-- dropin Constellation replacement
-- secure enclave  written in Golang (Constellation is written in Haskell)
-- <a href="https://github.com/blk-io/quorum-examples">7 nodes example deployment with Crux</a>
-- LevelDB used as storage (same as geth).
-  BerkeleyDB bindings available for compatibility with
-  existing Constellation instance.
-
-ºBUILDº                                          ºPRE-SETUPº
-$ git clone https://github.com/blk-io/crux.git   generate new keys using:
-$ cd crux                                        $ cruxº--generate-keysº myKey
-$ make setup ⅋⅋ make
-$ ./bin/crux
-
-ºUSSAGEº
-run it like: (almost identical to Constellation node):
-$ crux --url=http://127.0.0.1:9001/ \          | crux --help reference:
-       --port=9001 --workdir=crux \            |     crux.config              Optional config file
-       --publickeys=tm.pub \                   |     --alwayssendto string    public key List  for nodes to send all transactions to
-       --privatekeys=tm.key \                  |     --berkeleydb             switch to Berkeley DB for compatibility with Constellation data store [experimental]
-       --othernodes=https://127.0.0.1:9001/    |     --generate-keys string   Generate a new keypair
-                                               |     --othernodes string      "Boot nodes" used to discover the network
-                                               |     --port int               The local port to listen on (default -1)
-                                               |     --privatekeys string     Private keys hosted by this node
-                                               |     --publickeys string      Public keys hosted by this node
-                                               |     --socket string          IPC socket to create for access to the Private API (default "crux.ipc")
-                                               |     --storage string         Database storage file name (default "crux.db")
-                                               |     --url string             The URL to advertise to other nodes (reachable by them)
-                                               |     --verbosity int          Verbosity level of logs (default 1)
-                                               |     --workdir string         The folder to put stuff in (default: .) (default ".")
-</pre>
-
-<pre zoom>
-<span xsmall>Priv. TX Seq.</span>
-─@[https://raw.githubusercontent.com/jpmorganchase/quorum─docs/master/images/QuorumTransactionProcessing.JPG]
-                                             TxPayloadRequest
-                                        ┌──────────────────────────────┐
-  ┌─→                                   │                              │           3,10 En/De─cryption
-  │                                     │         2 TXPayloadStore ┌─────────────┐             request ┌───────────┐
-  │   ┌──────┐ 1 Private TX ┌───────────────────┐                  │             ├────────────────────→│           │
-  │   │ Dapp │      AB      │                   ├─────────────────→┼ Transaction │                     │ Enclave A │
- P│   └────────────────────→┼   Quorum Node A   │                  │ Manager A   │                     │           │
- A│                         │                   │                  │             │←────────────────────┴───────────┘
- R│                         │  Public  Private  │←───────────────────────────────┘  4,11 Tx Response
- T│                         │  State    State   │ 6 TX Hash          │       ^
- Y│       8 Block w/Tx AB   │  ┌────┐   ┌────┐  │                    │       │
-  │        ┌──────────────→ │  ├────┤   ├────┤  │                    │       │
- A│        │                │  └────┘   └────┘  │                    │       │
-  │        │                │                   │                    │       │5
-  │        │                └───────────────────┘                    │       │TXPayloadStore
-  │        │                    ^     ^                              │       │
-  │   ┌──────────┐      7 Ether │     │ 12 TxPayloadResp (TX Payload)│       │
-  └─→ │Block 123 │           TX │     └──────────────────────────────┘       │
-      ├───────── │     Standard │                                            │
-      │TxAB      │     Protocol │            9.TxPayloadRequest              │
-      └──────────┘              │          ┌──────────────────────────┐      │
-   ┌─→ │   │                    v          │                          │      v      10 En/De─cryption
-   │   │   │                ┌───────────────────┐                   ┌─v───────────┐           request  ┌───────────┐
-   │   │   │                │                   │                   │             ├───────────────────→│           │
- P │   │   │                │   Quorum Node B   │                   │ Transaction │                    │ Enclave B │
- A │   │   │                │                   │                   │ Manager B   │←───────────────────┤           │
- R │   │   │                │  Public  Private  │                   │             │11.Tx Response      └───────────┘
- T │   │   │                │  State    State   │                   └─────────────┘
- Y │   │   │                │  ┌────┐   ┌────┐  │                     │
-   │   │   └──────────────→ │  ├────┤   ├────┤  │                     │
- B │   │ 8 Block w/Tx AB    │  └────┘   └────┘  │                     │
-   │   │                    │                   │                     │
-   │   │                    └───────────────────┘                     │
-   │   │                       ^       ^                              │
-   │   │               7 Ether │       │ 12 TxPayloadResp (TX Payload)│
-   │   │                    TX │       └──────────────────────────────┘
-   └─→ │              Standard │
-       │              Protocol │             9.TxPayloadRequest
-   ┌─→ │                       │           ┌──────────────────────────┐
-   │   │                       v           │                          │
-   │   │                    ┌───────────────────┐                  ┌─────────────┐                    ┌───────────┐
- P │   │                    │                   │                  │             │                    │           │
- A │   │                    │   Quorum Node C   │                  │ Transaction │                    │ Enclave C │
- R │   │ 8 Block w/Tx AB    │                   │                  │ Manager C   │                    │           │
- T │   └──────────────────→ │  Public  Private  │                  │             │                    └───────────┘
- Y │                        │  State    State   │                  └─────────────┘
-   │                        │  ┌────┐   ┌────┐  │
- C │                        │  ├────┤   ├────┤  │
-   │                        │  └────┘   └────┘  │
-   │                        │                   │
-   │                        └───────────────────┘
-   │                     ^                           ^        ^                          ^
-   └─→                   │                           │        │                          │
-                         └───────────────────────────┘        └──────────────────────────┘
-                             Ethereum standard p2p                  CONSTELLATION
-                                Network Protocol                       NETWORK
-
-</pre>
-<pre zoom>
-<span xsmall>JS client privateFor ex.</span>
-"privateFor": indicates the list of constellation (vs Ethereum) public keys
-              of TX recipient. If not empty the TX will be private.
-web3.eth.defaultAccount = eth.accounts[0];
-var simpleSource = 'contract simplestorage { ... }'
-var simpleCompiled = web3.eth.compile.solidity(simpleSource);
-var simpleRoot = Object.keys(simpleCompiled)[0];
-var simpleContract = web3.eth.contract(
-    simpleCompiled[simpleRoot].info.abiDefinition);
-var simple = simpleContract.new(42,
-    {from:web3.eth.accounts[0],
-     data: simpleCompiled[simpleRoot].code,
-     gas: 300000,
-     privateFor: ["ROAZBWtSacxXQrOe3FGAqJDyJjFePR5ce4TSIzmJ0Bc="]
-    }, function(e, contract) {
-      if (e) { throw("err creating contract", e); }
-      if (!contract.address) {
-        console.log(contract.transactionHash + " mining...");
-        return;
+    $ yarn add --dev \               # ← Install graph* NodeJS package dependencies
+           @graphprotocol/graph-cli
+           @graphprotocol/graph-ts
+    $ vim package.json
+    {
+      "scripts" : {
+        "codegen"      : "graph codegen",
+        "create-local" : "graph create domain/graph-name --node http://127.0.0.1:8020",
+        "build"        : "graph build",
+        "deploy-local" : "graph deploy domain/graph-name --debug --ipfs http://localhost:5001 --node http://127.0.0.1:8020/",
+        "watch-local"  : "graph deploy domain/graph-name --watch --debug --node http://127.0.0.1:8020/ --ipfs http://localhost:5001"
       }
-      console.log("Contract Address: " + contract.address);
-    });
-</pre>
+    }
+                                       ^^^^^^^^^^^^^^^^^
+                              - Replace domain/graph-name to mirror
+                                the SubGraph. Ex: investorid/id 
 
-<pre zoom>
-  <span xsmall>Plugable EVM spec</span>
-@[https://ethereum.github.io/evmc/]
-@[https://github.com/ethereum/evmc]
 
-- Allows to "plug-in" different EVM implementations.
+     $ cp ${ContractABI_json} ./abis        # ← alt 1: Copy ABIs
+     $ yarn add --dev @investorid/solidity  # ← alt 2: use a package (prefered)
 
-- The EVMC is the low-level ABI between Ethereum Virtual Machines (EVMs) and
-  Ethereum Clients. On the EVM side it supports classic EVM1 and ewasm. On the
-  Client-side it defines the interface for EVM implementations to access
-  Ethereum environment and state.
+  -ºSTEP 2:ºCreate 'subgraph.yaml' describing the SubGraph:
 
-- It's currently used by the evmone project. (@[https://github.com/chfast/evmone])
-  Potentially
-  A Java-to-Native (JNI) wrapper looks to exists:
-@[https://github.com/semuxproject/evmc-jni]
-  See also:
-@[https://github.com/jnr/jnr-ffi]
-  - Java library for loading native libraries without writing JNI code by hand
+    | specVersion: 0.0.3
+    | description: Decentralized IDs over Ethereum
+    | repository: https://github.com/investorid/investorid-subgraph
+    | schema:
+    |   file: ./schema.graphql
+    | dataSources: []
 
-<span xsmall>evmONE</span>
-<span xsmall>(100x faster!!)</span>
-- EVM implementation
--@[https://github.com/ewasm/benchmarking]
+  -ºSTEP 3:ºCreate 'schema.graphql' describing the entities used
+            by the SubGraph and exposed via GraphQL.
+    | type Identity @entity {
+    |   id: ID!
+    |   address: Bytes!
+    |   keys: [Key!]! @derivedFrom(field: "identity")
+    | }
+    | 
+    | type Key @entity {
+    |   id: ID!
+    |   keyType: BigInt!
+    |   key: Bytes!
+    |   purposes: [Int!]!
+    |   identity: Identity!
+    | }
+
+
+Note the custom types added by The Graph, such as BigInt and Bytes. The Graph’s documentation of GraphQL API explains the usage of relationships and specific reverse properties such as @derivedFrom.
+(https://thegraph.com/docs/graphql-api)
+
+Note the custom types added by The Graph, such as BigInt and Bytes. The Graph’s documentation of GraphQL API explains the usage of relationships and specific reverse properties such as @derivedFrom.
+
+    Create a file in .src/handlers where the handlers will be implemented mkdir src/handlers/identity.ts.
+    Implement the event handlers (let them be no-op for now). Imports for entities and events do not exist yet but will be generated, so ignore any IDE error. The first will come from the schema.graphql file, and the later from the subgraph.yaml definition.
+
+import {
+  KeyAdded as KeyAddedEvent,
+  KeyRemoved as KeyRemovedEvent,
+} from '../../generated/Identity/Identity';
+
+import {
+  Identity,
+  Key,
+} from '../../generated/schema';
+
+export function handleKeyAdded(event: KeyAddedEvent): void {
+
+};
+
+export function handleKeyRemoved(event: KeyRemovedEvent): void {
+  
+};
+
+Declare the ABI to be used and scanned by the graph node in the subgraph.yaml file.
+Any entity used by the event handlers must be declared in the entities property.
+A list of all event to be scanned and handled must also be declared in the eventHandlers property. The eventproperty must match the exact event signature contained by the ABI (if an event is not recognized an error will be thrown displaying the list of available events to help for correction).
+
+dataSources:
+  - kind: ethereum/contract
+    name: Identity
+    network: http://localhost:8545
+    source:
+      abi: Identity
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.3
+      language: wasm/assemblyscript
+      file: ./src/handler/identity.ts
+      entities:
+        - Identity
+        - Key
+      abis:
+        - name: Identity
+          file: ./node_modules/@investorid/solidity/build/contracts/Identity.json
+      eventHandlers:
+        - event: KeyAdded(indexed bytes32,indexed uint256,indexed uint256)
+          handler: handleKeyAdded
+        - event: KeyRemoved(indexed bytes32,indexed uint256,indexed uint256)
+          handler: handleKeyRemoved
+
+Now that some entities are defined, generate the typings and the automated code parts that will allow for developing the event handlers: yarn run codegen.
+The handler file ./src/handlers/identity.ts should no longer have errors for non-existing imports.
+
+Implementation of event handlers
+
+This is where the fun starts. Time has come to create the event handlers. Refer to The Graph documentation, to learn how to write mappings. Here are the very few basics:
+
+    To create a new entity instance, call <Entity>#create(<id>). The <id> is a string that must be generated. To be able to retrieve instances from blockchain data, the IDs should be composed of addresses, hashes, etc...
+    To load an existing entity, call <Entity>#load(<id>).
+    To save a new entity or persist the update on an existing one, call <entity>.save().
+    To destroy and remove an entity from the store, call store.remove('EntityName', id) .
+
+I have made an example with Identities that you can access on the InvestorID Organization: github.com/investorid/subgraph-experiment.
+
+Here are the events handlers for the Keys event:
+import { log, store, Address, Bytes } from "@graphprotocol/graph-ts";
+
+import {
+  KeyAdded as KeyAddedEvent,
+  KeyRemoved as KeyRemovedEvent,
+} from '../../generated/Identity/Identity';
+
+import {
+  Identity,
+  Key,
+} from '../../generated/schema';
+
+export function handleKeyAdded(event: KeyAddedEvent): void {
+  let identity = Identity.load(event.address.toHexString());
+  if (identity == null) {
+    identity = new Identity(event.address.toHexString());
+    identity.address = event.address;
+
+    identity.save();
+  }
+
+  let key = Key.load(createKeyID(event.address, event.params.key));
+  if (key == null) {
+    key = new Key(createKeyID(event.address, event.params.key));
+
+    key.identity = identity.id;
+    key.key = event.params.key;
+    key.keyType = event.params.keyType;
+    key.purposes = [event.params.purpose.toI32()];
+
+    key.save();
+
+    identity.save();
+  } else {
+    let purposes = key.purposes;
+    purposes.push(event.params.purpose.toI32());
+    key.purposes = purposes;
+
+    key.save();
+    identity.save();
+  }
+}
+
+export function handleKeyRemoved(event: KeyRemovedEvent): void {
+  let identity = Identity.load(event.address.toHexString());
+  if (identity == null) {
+    return;
+  }
+
+  let key = Key.load(createKeyID(event.address, event.params.key));
+  if (key == null) {
+    return;
+  }
+
+  let keyIndex = key.purposes.indexOf(event.params.purpose.toI32());
+  if (keyIndex == -1) {
+    return;
+  }
+  let purposes = key.purposes;
+  purposes.splice(keyIndex, 1);
+  key.purposes = purposes;
+
+  if (key.purposes.length === 0) {
+    store.remove('Key', key.id);
+  } else {
+    key.save();
+  }
+}
+
+function createKeyID(identity: Address, key: Bytes): string {
+  return identity.toHexString().concat('-').concat(key.toHexString());
+}
+
+Run our subgraph
+
+    Build the SubGraph with yarn run build ✨
+    Declare the SubGraph on the local Graph node yarn run create-local
+    Deploy the SubGraph to the local Graph node yarn run deploy-local (there is also a watch start that will deploy the SubGraph after each code update yarn run watch-local. All events will be processed again with the new updated handlers.).
+    An GraphQL UI for queries is accessible at http://127.0.0.1:8000/subgraphs/name/domain/graph-name/graphql (replace domain/graph-name by the name of the subgraph). Have fun! Refer to graphQL documentation for queries syntax, especially about filters.
+
+    Note: Whenever the Ethereum network has been reseted (eg. Ganache restarted, computer rebooted…), you must DELETE the ./docker/data folder located in the graph-node folder cloned from the repository).
+    This is required to clean the existing database that checks the genesis block for the current ethereum network.
+
+Afterwords
+
+The Graph is an amazing tool that greatly reduces the amount of time required to build an API over blockchain data. The team is even working on historical exploration of the data over time.
+
+I would only recommend to any company having the need to build an intermediary API between blockchain data and its application (not especially Dapp) to give it a try, and to participate in its development. Having an open-source solution that could compete with blockchain explorers that would inevitably come from Amazon, Azure and Google would only benefit the whole community.
+
+The Graph is still young, and I would not be surprised if some breaking change appeared in the incoming months, the documentation is also still in its early stage, with a lack of fully-fledge examples. Yet it’s up to us to improve it, and I hope this article will help toward this direction.
+
+
+
+
+
 </pre>
 </div>
+</div><!-- Enterprise Integration -->
 
+<div group bgblue>
+<span title>Public Network Clients</span><br/>
 <div groupv>
-<span title>EEA DevOps</span>
-<pre zoom>
-  <span xsmall>P2P Node Identity "enode"</span>
-Extracted from <a href="https://github.com/ethereum/devp2p/blob/master/rlpx.md#network-formation">rlpx.md</a>
-"""
- OºNODE Identity:º
-   each node is expected to maintain a staticOºsecp256k1 private keyº
-   which is saved and restored between sessions.
-   It is recommended that the private key can only be reset manually,
-   for example, by deleting a file or database entry.
-
-   There are two kinds of connections which can be established.
-   A node can connect to:
-     ─ a known peer which has previously been connected to
-       and from which a corresponding session token is available for
-       authenticating the requested connection
-     ─ a new peer
-"""
-- enode uri scheme is used by theºNode discovery protocolº
-- enode uri scheme can be used in the bootnodes command line option                                                                      RºWARN:º
-  of the client or as the argument to suggestPeer(nodeURL) function                                                                      RºDNS names are NOT allowed  º
-  in the JSRE.                                                                                                                           Rº(Only IP addresses to avoidº
-                                                                                                                                         RºDNS based attacks)         º
-                                                                                                                                         └───────┬───────────────────┘
-                                                                                                                                                 │
-Extracted from: <a href="https://github.com/ethereum/wiki/wiki/enode-url-format">ethereum-wiki</a>
-                                               ┌────┴────────┐
-enode://Bº6f8a80d14311c39f35f516fa664deaaaa13e85b2f7493f37f6144d86991ec012937307647bd3b9a82abe2974e1407241d54947bbb39763a4cac9f77166ad92a0º@10.3.58.6:30303?discport=30301
-        Bº└─────────────────────────────────────────────────┬────────────────────────────────────────────────────────────────────────────┘º                └─────┬──────┘
-        Bº                                                  │                     º                                                                              │
-        Bº                                                  │                     º                                                                              │
-        Bº                   64-bytes hexadecimal encoded node ID representing theº                                                                          UDP port used
-        Bº                   secp256k1 public key                                 º                                                                          for discovery
-        Bº                   corresponding to node's private key                  º                                                                          (default to
-                                                                                                                                                           the TCP port)
-º(DevOps) GENERATE PRIVATE KEY AND ENODE ID:º
-(REF: https://kobl.one/blog/create-full-ethereum-keypair-and-address/)
-
-ºSTEP 1: Generate private keyº
-$ºopensslºecparam -name secp256k1 -genkey -noout | tee ˃OºnodePrivateKeyº
------BEGIN EC PRIVATE KEY-----
-MHQCAQEEIGLW3b7sUpzhb3I4/sLCbakIjfUz6KuBh3Xaox62beJ3oAcGBSuBBAAK
-oUQDQgAEUarn9mq43dODnfxAVcSksAxHsTbrco9FnV0A7Mzqr6guzCQlCCmgXM7k
-Kns43IkR1JfB8mwKkTfOPdykq9nGIg==
------END EC PRIVATE KEY-----
-
-
-ºSTEP 2: Show associated public-key in enode format (64 bytes hex-encoded)º
-$ catOºnodePrivateKeyº |ºopensslºec -noout -text                             | grep pub -A 5 | tail -n +2 | tr -d '\n[:space:]:' | sed 's/^04//'
-                         ^^^^^^^^^^^^^^^^^^^^^^^^                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                       - Display info with public key                         - Convert public key to enode expected format (64bytes hex-encoded)
-                       - Output will be similar to:                           - Output will be similar to:
-                         Private-Key: (256 bit)                              Bº067434d510e3e186a039583db727cd8d3daee9fc238a6d542eca03b0b7bc8528df9b4d878661f350c0ea3d5337a5831c94d84e22c5baffee7a55e9cb1f808e06º
-                       Oºpriv:                                            º
-                       Oº    00:f4:16:f5:89:3d:60:86:8a:1d:77:4d:2f:74:3b:º
-                       Oº    29:53:5b:b9:cb:f9:50:0e:38:39:24:c5:7a:a9:1b:º
-                       Oº    b7:d2:b4                                     º
-                       Bºpub:                                             º
-                       Bº    04:06:74:34:d5:10:e3:e1:86:a0:39:58:3d:b7:27:º
-                       Bº    cd:8d:3d:ae:e9:fc:23:8a:6d:54:2e:ca:03:b0:b7:º
-                       Bº    bc:85:28:df:9b:4d:87:86:61:f3:50:c0:ea:3d:53:º
-                       Bº    37:a5:83:1c:94:d8:4e:22:c5:ba:ff:ee:7a:55:e9:º
-                       Bº    cb:1f:80:8e:06                               º
-                         ASN1 OID: secp256k1
-</pre>
-
-<pre zoom>
-<span TODO xsmall>PKCS-friendly Wallet</span>
-@[https://kobl.one/blog/create-full-ethereum-keypair-and-address/]
-@[https://github.com/maandree/sha3sum] C implementation
-
- ºINPUTº        → ºTOOLSº     →  ºOUTPUTº 
-  "/dev/random"    - OpenSSL      - ECDSA private key
-                   - sha3sum      - Ethereum address
-
-WARN:
-SHA3 != keccak (Ethereum keccak-256) 
-More info at:
-@[https://ethereum.stackexchange.com/questions/550/which-cryptographic-hash-function-does-ethereum-use]
-
-
-STEP 1: Generate EC private key
-
-
-This command will print the private key in PEM format (using the wonderful ASN.1 key structure) on stdout. If you want more OpenSSL info on elliptic curves, please feel free to dig further.
-
-$ openssl ecparam        -name secp256k1 -genkey -noout  > /tmp/privateKey01
-          ^^^^^^^              ^^^^^^^^^                  ^^^^^^^^^^^^^^^^^^ 
-      create Ellip.Curve      secp256k1 curve             ASN encoded in base64
-          private key         (Same as Bitcoin)
-
-  → -----BEGIN EC PRIVATE KEY-----
-  → MHQCAQEEIFDLYO9KuwsC4ej2UsdA4SYk7s3lb8aZuW+B8rjugrMmoAcGBSuBBAAK
-  → oUQDQgAEsNjwhFoLKLXGBxfpMv3ILhzg2FeySRlFhtjfi3s8YFZzJtmckVR3N/YL
-  → JLnUV7w3orZUyAz77k0ebug0ILd1lQ==
-  → -----END EC PRIVATE KEY-----
-
-$ cat /tmp/privateKey01 | openssl ec -text -noout > /tmp/splitedKey01
-                                  ^^^^^^^^                                      
-                             display private+public key in
-                             hexadecimal format
-  → read EC key
-  → Private-Key: (256 bit)
-  → priv:
-  →     20:80:65:a2:47:ed:be:5d:f4:d8:6f:bd:c0:17:13:  ←─┐
-  →     03:f2:3a:76:96:1b:e9:f6:01:38:50:dd:2b:dc:75:    │
-  →     9b:bb                                            │
-  → pub:                                                 │
-  →     04:83:6b:35:a0:26:74:3e:82:3a:90:a0:ee:3b:91:    │
-  →     bf:61:5c:6a:75:7e:2b:60:b9:e1:dc:18:26:fd:0d:    │
-  →     d1:61:06:f7:bc:1e:81:79:f6:65:01:5f:43:c6:c8:    │
-  →     1f:39:06:2f:c2:08:6e:d8:49:62:5c:06:e0:46:97:    │
-  →     69:8b:21:85:5e                                   │
-  → ASN1 OID: secp256k1                                  │
-  ┌──────────────────────────────────────────────────────┘
-  │
-  └─ Remove any null byte (0x00) in front of the private part,
-     (this happens "sometimes"). Priv.key length must be 32 bytes
-
-     Uncompressed Public key length must be 64 bytes long 
-     (65 with the ºconstant 0x04 prefixº)
-
-STEP 2: Extract the public key and format properly for keccak-256:
-$ cat /tmp/splitedKey01 | grep pub -A 5 | tail -n +2 | 
-            tr -d '\n[:space:]:' | sed 's/^04//' \
-  > /tmp/pubKey01
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
- (example script to extract the 64 bytes in a row)
-   
- Output (/tmp/pubKey01) must look similar to:
- 836b35a026743e823a90a0ee3b91bf615c6a757e2b60b9e1dc1826fd0dd16106f7bc1e8179f665015f43c6c81f39062fc2086ed849625c06e04697698b21855e
- (hexadecimal representation of the 64 bytes)
-
-STEP 3: Calculate Ethereum address as:
-
-$ cat /tmp/pubKey01 | keccak-256sum -x -l | tr -d ' -' | tail -c 41 
-                                    ^^      ^^^^^^^^^^^^^^^^^^^^^^^ 
-                            Input are hex   keep only the last 20 bytes 
-                            char(vs string) (get rid of first 12).
-                                            20bytes = 40chars (+1 line return)
-
-  Output will be similar to
-  → 0bed7abd61247635c1973eb38474a2516ed1d884
-    0         1         2         3
-     123456789 123456789 123456789 123456789
-
-RºCAUTION!: if final address looks like 
-    *0xdcc703c0E500B653Ca82273B7BFAd8045D85a470* this means you
-     have hashed an empty public key. Sending funds to this
-     address will lock them forever!
-
-STEP 4: (Optional) Import private key to geth
-# Extract the private key and remove the leading zero byte
-$ geth account import priv "privateKey_hexFormat_no_leading_00"
-Passphrase: 
-Repeat passphrase: 
-Address: {0bed7abd61247635c1973eb38474a2516ed1d884}
-
-You're now ready to use the new account with geth. Of course, 
-it would be easier to take advantage of the geth account new feature 
-in order to quickly setup an Ethereum account. But manually doing
-it gives you the power of knowing your public and unencrypted 
-private keys. In addition, this would be useful to generate a
-secure Ethereum account completely off chain.
-</pre>
-
 <span title>Geth</span>
 <pre zoom>
 <span xsmall>Setup Node</span>
@@ -6423,6 +6232,785 @@ Warning: We’ve tried our best to squash all the bugs, but as with all major
   drastically reduce the database size.
 
 </pre>
+</div>
+
+<div groupv>
+<span title>Parity</span>
+<pre zoom labels="">
+<span xsmall>External Links</span>
+@[https://parity.io/parity.html]
+@[https://github.com/paritytech/parity]
+@[https://github.com/paritytech/parity/wiki/Coding-guide]
+@[https://github.com/paritytech/parity/wiki]
+
+<span xsmall>features</span>
+"full" Ethereum Wallet and Dapp environment with web-front-end ("http://127.0.0.1:8180"):
+- Account, address-book and multi-sig management
+- Key creation, importing and exporting
+- Web3 Ðapp browser
+- Hardware and electronic cold-wallet support
+- Name registry support
+- Contract development, deployment and interaction environment
+
+<span xsmall>Setup guide</span>
+NOTE: Parity is already supported by Puppeth that probably
+     is the best way to deploy
+@[https://github.com/paritytech/parity/wiki/Setup]
+
+- One-line binary installer
+-  building from source,...
+</pre>
+
+<pre zoom labels="">
+<span xsmall>Accounts</span>
+<span xsmall>Wallets and</span>
+<span xsmall>Vaults</span>
+Existing parity-wallet options to store tokens and Ether
+<a href='https://github.com/paritytech/parity/wiki/Accounts%2C-Wallets%2C-Vaults'>REF</a>
+- ACCOUNTS: most basic way to store assets. [public key/private key]. 
+  Ussage: used to sign transactions, enable authentication, and prove ownership.
+
+- PARITY WALLET: smart contract managing assets.
+@[https://github.com/paritytech/parity/blob/master/js/src/contracts/snippets/enhanced-wallet.sol]
+ - Can me owned by multiple accounts.
+ - Unlike accounts, contract wallets behaviour can be customized.
+ - Common use-case: multi-signature wallets, that allow for transaction logging, withdrawal limits, and rule-sets for signatures required.
+ - support in Parity web UI:
+   Go to: Account_tab → +WALLET → Multi-Sig Wallet
+   - select 2+ owners and number of signatures to withdraw funds, daily withdrawal limit, ...
+   - 'publish' the new contract singing the transaction with one of wallet-owners accounts
+- VAULTS: Offers additional privacy feature to lock away your accounts behind a second layer of protection encrypting the meta-data (e.g., the public address) and therefore hiding the accounts until you unlock the vault.
+  - support in Parity web UI:
+    Go to: Account_tab → +VAULT → +CREATE VAULT
+    - Follow instruction on the screen
+    - Go go: Account_tab and select accounts to move
+        to vault.
+        Once moved into the vault, the addresses are
+        encrypted and not stored as plain text on disk
+        anymore. Closing the vault hides accounts on
+        the public accounts tab
+</pre>
+
+<pre zoom>
+<span xsmall>parity --help</span>
+Usage:
+  parity [options]                                        Operating Options:
+  parity ui [options]                                       --mode MODE
+  parity dapp <path> [options]                              --mode-timeout SECS
+  parity daemon <pid-file> [options]                        --mode-alarm SECS
+  parity account (new | list ) [options]                    --auto-update SET
+  parity account import <path>... [options]                 --release-track TRACK
+  parity wallet import <path> --password FILE [options]     --no-download
+  parity import [ <file> ] [options]                        --no-consensus
+  parity export (blocks | state) [ <file> ] [options]       --force-direct
+  parity signer new-token [options]                         --chain CHAIN
+  parity signer list [options]                              -d --base-path PATH
+  parity signer sign [ <id> ] [ --password FILE ] [options  --db-path PATH         ]
+  parity signer reject <id> [options]                       --keys-path PATH
+  parity snapshot <file> [options]                          --identity NAME
+  parity restore [ <file> ] [options]
+  parity tools hash <file>
+  parity db kill [options]
+
+UI Options:                API and Console Options:   Secret Store Options:
+  --force-ui                 --no-jsonrpc               --no-secretstore
+  --no-ui                    --jsonrpc-port PORT        --secretstore-port PORT
+  --ui-port PORT             --jsonrpc-interface IP     --secretstore-interface IP
+  --ui-interface IP          --jsonrpc-cors URL         --secretstore-path PATH
+  --ui-path PATH             --jsonrpc-apis APIS
+  --ui-no-validation         --jsonrpc-hosts HOSTS   Snapshot Options:
+                             --no-ipc                  --at BLOCK
+Networking Options:          --ipc-path PATH           --no-periodic-snapshot
+  --no-warp                  --ipc-apis APIS
+  --port PORT                --no-dapps              Virtual Machine Options:
+  --min-peers NUM            --dapps-port PORT         --jitvm
+  --max-peers NUM            --dapps-interface IP
+  --snapshot-peers NUM       --dapps-hosts HOSTS
+  --nat METHOD               --dapps-cors URL        Internal Options:
+  --network-id INDEX         --dapps-user USERNAME     --can-restart
+  --bootnodes NODES          --dapps-pass PASSWORD
+  --no-discovery             --dapps-path PATH       Miscellaneous Options:
+  --node-key KEY             --dapps-apis-all          -c --config CONFIG
+  --reserved-peers FILE      --ipfs-api                -l --logging LOGGING
+  --reserved-only            --ipfs-api-port PORT      --log-file FILENAME
+  --allow-ips FILTER         --ipfs-api-interface IP   --no-config
+  --max-pending-peers NUM    --ipfs-api-cors URL       --no-color
+  --no-ancient-blocks        --ipfs-api-hosts HOSTS    -v --version
+                                                       -h --help
+Sealing/Mining Options:     Footprint Options:
+  --author ADDRESS            --tracing BOOL
+  --engine-signer ADDRESS     --pruning METHOD        Account Options:
+  --force-sealing             --pruning-history NUM     --unlock ACCOUNTS
+  --reseal-on-txs SET         --pruning-memory MB       --password FILE
+  --reseal-min-period MS      --cache-size-db MB        --keys-iterations NUM
+  --work-queue-size ITEMS     --cache-size-blocks MB    --no-hardware-wallets
+  --tx-gas-limit GAS          --cache-size-queue MB
+  --tx-time-limit MS          --cache-size-state MB
+  --relay-set SET             --cache-size MB
+  --usd-per-tx USD            --fast-and-loose
+  --usd-per-eth SOURCE        --db-compaction TYPE
+  --price-update-period T     --fat-db BOOL
+  --gas-floor-target GAS      --scale-verifiers
+  --gas-cap GAS               --num-verifiers INT
+  --extra-data STRING
+  --tx-queue-size LIMIT        Import/Export Options:
+  --tx-queue-gas LIMIT           --from BLOCK
+  --tx-queue-strategy S          --to BLOCK
+  --tx-queue-ban-count C         --format FORMAT
+  --tx-queue-ban-time SEC        --no-seal-check
+  --no-persistent-txqueue        --at BLOCK
+  --remove-solved                --no-storage
+  --notify-work URLS             --no-code
+  --refuse-service-transactions  --min-balance WEI
+  --stratum                      --max-balance WEI
+  --stratum-interface IP
+  --stratum-port PORT
+  --stratum-secret STRING
+</pre>
+
+
+<pre zoom>
+<span xsmall>Running</span>
+Non-Docker, simplest way with all defaults:
+$ ./target/release/parity
+</pre>
+<pre zoom>
+<span xsmall>SystemD integration</span>
+$ cp .../parity/scripts/parity.service ~/.config/systemd/user
+     To pass any argument to Parity edit
+     ARGS line at ~/.parity/parity.conf like:
+     ARGS="ui --identity MyMachine"
+</pre>
+<pre zoom>
+<span xsmall>Docker Launch</span>
+$ sudo docker run -v /var/myProject/data_parity:/data_parity
+  -p 30303:30303 -p 8545:8545 -p 8546:8546 --rm -ti
+  parity/parity:v1.6.10
+  ui
+  --jsonrpc-port 8545 --jsonrpc-interface all --jsonrpc-hosts all
+  --port 30303
+  --min-peers 0 --max-peers 0 --no-discovery
+  --chain /data_parity/dev.json
+  --db-path /data_parity
+  --author 0xa311aa60e1013bf7145454b015dda7399264c6af
+  --tx-queue-size 1
+  --tx-gas-limit 2100000000000000
+  --usd-per-tx 0.0005 --usd-per-eth 200
+  --gas-floor-target 21000
+  --cache-size 2048 --db-compaction hdd
+  -lchain,client,engine,estimate_gas,ethash,miner=trace --no-color
+</pre>
+
+<pre zoom labels="">
+<span xsmall>dev.network</span>
+<span xsmall>(Instant shield)</span>
+@[https://github.com/paritytech/parity/wiki/Private-development-chain]
+Edit ...*/data_parity/dev.json* like:
+{
+    "name": "localNetwork",
+    "engine": {
+        "instantSeal": { "params" : {} }
+    },
+    "params": {
+        "accountStartNonce": "0x0100000",
+        "maximumExtraDataSize": "0x20",
+        "minGasLimit": "0x1388",
+        "networkID" : "${CHAIN_ID}"
+    },
+    "genesis": {
+        "seal": {
+            "generic": "0x0"
+        },
+        "difficulty": "0x20000",
+        "author": "0x0000000000000000000000000000000000000000",
+        "timestamp": "0x00",
+        "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "extraData": "0x",
+        "gasLimit": "0x5B8D80000000000000000000"
+    },
+
+    "nodes": [ ],
+    "accounts": {
+        "0000000000000000000000000000000000000001": { "balance": "1", "nonce": "1048576", "builtin": { "name": "ecrecover", "pricing": { "linear": { "base": 3000, "word": 0 } } } },
+        "0000000000000000000000000000000000000002": { "balance": "1", "nonce": "1048576", "builtin": { "name": "sha256", "pricing": { "linear": { "base": 60, "word": 12 } } } },
+        "0000000000000000000000000000000000000003": { "balance": "1", "nonce": "1048576", "builtin": { "name": "ripemd160", "pricing": { "linear": { "base": 600, "word": 120 } } } },
+        "0000000000000000000000000000000000000004": { "balance": "1", "nonce": "1048576", "builtin": { "name": "identity", "pricing": { "linear": { "base": 15, "word": 3 } } } },
+        "0x${PUB_ADDRESS_1}"                        : { "balance": "1000000000000000000000", "nonce": "1048576"  }
+    }
+}
+
+- Launch parity with the option:
+  --chain */data_parity/dev.json*
+</pre>
+<span title></span>
+</div>
+</div><!-- Public Networks -->
+
+
+<div group bgbrown>
+<span title>EEA</span><br/>
+<div groupv>
+<pre zoom>
+<span xsmall>External Links</span>
+@[https://entethalliance.org/]
+@[https://www.goquorum.com]
+Tech.documents           @[https://entethalliance.org/technical-documents/]
+                         - EEA Client Spec
+                         - EEA Off-Chain Trusted Compute Spec
+                         - EEA Architecture Stack
+                         - ....
+Slack Chat               @[https://go-quorum.slack.com/]
+Collaboration site       @[https://member.entethalliance.org/communities-all-members60/librarydocuments]
+Official Docker Images   @[https://hub.docker.com/u/quorumengineering/]
+
+
+</pre>
+
+<pre zoom>
+  <span xsmall>EEA Summary</span>
+[P]SMRT-030:Enterprise Ethereum clients MUST support
+   smart contracts of at least 24,576bytes in size
+[P]SMRT-040:Enterprise Ethereum clients MUST read and enforce a size limit
+   for smartcontracts from the current network configuration (e.g. the genesis
+   block).
+[P]SMRT-050: If no contract size limit is specified in a genesis block,
+   subsequent hard fork blockor network configuration, Enterprise Ethereum
+   clients MUST enforce a size limit on smartcontracts of 24,576 bytes.
+
+- Permissioning is the property of a system that ensures operations are
+  executed by and accessible todesignated parties. For Enterprise Ethereum,
+  permissioning refers to:
+  - the ability of a node to join an Enterprise Ethereum blockchain
+  - the ability of individual accounts or nodes to perform
+    specific functions.
+  - Ex: an Enterprise Ethereum blockchain might only allow certain nodes
+    to act as validators, and only certain accounts to instantiate smart
+    contracts.Enterprise Ethereum provides a permissioned implementation
+    of Ethereum supporting peer nodeconnectivity permissioning,
+    account permissioning, and transaction type permission.
+
+7.1.1 Nodes:
+  [C] NODE-010:Enterprise Ethereum implementations MUST provide the ability
+      to specify atstartup a list of static peer nodes to establish
+      peer-to-peer connections with.
+  [C] NODE-020:Enterprise Ethereum clients MUST provide the ability to enable
+      or disable peer-to-peer node discovery.
+  [P] NODE-030:Enterprise Ethereum clients MUST provide the ability to specify
+      a whitelist of thenodes permitted to connect to a node.
+  [P] NODE-040:Enterprise Ethereum clients MAY provide the ability to specify
+      a blacklist of thenodes not permitted to connect to a node.7.1 Permissions
+      and Credentials Sublayer
+  [P] NODE-050: It MUST be possible to specify the node whitelist required by
+      NODE-030 througha transaction into a smart contract.
+  [P] NODE-060: It MUST be possible to specify the node blacklist allowed by
+      NODE-040 (ifimplemented) through a transaction into a smart contract.
+  [P] NODE-080:Enterprise Ethereum clients MUST provide the ability to specify
+      node identities ina way aligned with the concept of groups.
+  [P] NODE-090:Enterprise Ethereum clients MUST document which metadata parameters
+      (if any)can affect transaction ordering, and what the effects are.
+</pre>
+
+<pre zoom>
+<span xsmall>EEA Net Protocol Sublayer (enodes, ...)</span>
+- Nodes MUST be identified and advertised using the
+  Ethereum <a href="https://github.com/ethereum/wiki/wiki/enode-url-format">enode URL format</a>
+- Implementations SHOULD use the <a href="https://github.com/ethereum/wiki/wiki/%C3%90%CE%9EVp2p-Wire-Protocol">DEVp2p Wire Protocol</a>
+  for messaging between nodes to establish and maintain a
+  communications channel for use by higher layer protocols.
+
+- These higher layer protocols are known as capability protocols
+
+- The <a href="https://github.com/ethereum/wiki/wiki/Ethereum-Wire-Protocol">Ethereum-Wire-Protocol</a> defines the capability
+  protocols for messaging between Ethereum client nodes to
+  exchange status, including block and TX info.
+
+- messages are sent and received over an already
+  established DEVp2p connection between nodes.
+
+- Implementations SHOULD support, at a minimum,
+  Ethereum-Wire-Protocols eth/62 and eth/63
+
+- Implementations MAY add new protocols or extend
+  existing Ethereum protocols
+
+- To minimize the number of point -to-point connections
+  needed between private nodes , some private nodes
+  SHOULD be capable of relaying private TX data to
+  multiple other private nodes.
+</pre>
+
+<pre zoom>
+  <span xsmall>RºWARN:ºContract Design Considerations</span>
+- Private contracts cannot update public contracts.
+  (not all participants will be able to execute a private contract,
+  and so if that contract can update a public contract, then each
+  participant will end up with a different state for the public contract.
+- Once a contract has been made public, it can't later be made private.
+  You DO need to delete from the blockchain and create a new private contract
+</pre>
+
+<pre TODO zoom>
+<span TODO xsmall>Supported Consensus</span>
+- Probe of Authority (PoA):
+  @[https://github.com/ethereum/EIPs/issues/225]
+  @[https://github.com/ethereum/go-ethereum/blob/master/consensus/clique/clique.go]
+  @[https://github.com/NethermindEth/nethermind/tree/master/src/Nethermind/Nethermind.Clique]
+  @[https://github.com/hyperledger/besu/tree/master/consensus/clique/src/main/java/org/hyperledger/besu/consensus/clique]
+  - TestNet:
+  @[https://github.com/goerli/testnet]  @[https://goerli.net/]
+  """Görli Testnet is the first proof-of-authority cross-client testnet, synching Parity Ethereum, Geth, Nethermind,
+  Pantheon, and EthereumJS."""
+
+- RAFT:
+- IBFT: (Istambul) Bizantine Fault Tolerant
+</pre>
+<pre zoom>
+<span xsmall>IBFT</span>
+<span xsmall>(Istambul)BFT</span>
+@[https://github.com/ethereum/EIPs/issues/650]
+- Target banks and fin.instutions, replacing PoW
+  since validator scalability is not required.
+- Hash settlement finality and minimum latency.
+- Deeply inspired by Clique PoA @[https://github.com/ethereum/EIPs/issues/225]
+- also inspired by Hyperledger's SBFT, Tendermint, HydraChain, and NCCU BFT.
+
+Validator  : Block validation participant.
+Proposer   : A block validation participant that is chosen
+             to propose block in a consensus round.
+Round      : Consensus round. A round starts with the proposer creating
+             a block proposal and ends with a block commitment or round change.
+Proposal   : New block generation proposal which is undergoing consensus processing
+Sequence   : Sequence number of a proposal. A sequence number should be greater than
+             all previous sequence numbers. Currently each proposed block height is its
+             associated sequence number.
+Backlog    : The storage to keep future consensus messages due to the async nature of the
+             network.
+Round state: Consensus messages of a specific sequence and round, including pre-prepare
+             message, prepare message, and commit message.
+Consensus
+      proof: The commitment signatures of a block that can prove the block has gone
+             through the consensus process.
+Snapshot   : The validator voting state from last epoch
+
+
+ºVALIDATION ROUND LOOPº
+[validators] → [validators]:  enter ºvalidator.state NEW-ROUNDº
+[validators] → [validators]:  pick one (round-robin by default or sticky) as
+                              the OºPROPOSERº
+OºPROPOSERº  →OºPROPOSERº  :  propose new block proposal
+OºPROPOSERº  →  network    :  broadast Bºblock-proposal + PRE-PREPARE messageº
+[validators] → [validators]:  enter ºvalidator.state PRE-PREPAREDº
+[validators] → network     :  broadcast BºPREPARE messageº
+                              (make sure all validators are working on the
+                               same sequence and the same round)
+[validators] → [validators]:Bºwait for (2F + 1) PREPARE messagesº
+                              then enter ºvalidator.state PREPAREDº
+[validators] → network     :  broadcasts BºCOMMIT messageº.
+                              (inform peers that validator accepts proposed block
+                              and is going to insert the block to the chain)
+[validators] → [validators]:Bºwait for (2F + 1) COMMIT messagesº
+                              enter ºvalidator.state COMMITTEDº
+                              insert the block to the chain
+                              enter ºvalidator.state FINAL-COMMITTEDº
+[validators] → network     :  broadcasts BºROUND-CHANGE messageº
+[validators] → [validators]:Bºwait for (2F + 1) ROUND-CHANGE messagesº
+                              then enter ºvalidator.state NEW-ROUNDº
+
+
+ºRUNNING ISTANBUL BFT VALIDATORS&AMP;NODES:º
+| $ geth  --datadir "/eth" init "/eth/genesis.json"                  // ← Initialize the data folder as (PRE-SETUP)
+| $ geth --datadir "/eth" --mine --minerthreads 1 --syncmode "full"  // ← Start-up validators
+| $ geth --datadir "/eth"                                            // ← Start-up regular nodes
+
+ºISTANBUL OPTIONS:º                                                                           |ºgenesis.jsonº
+| --istanbul.requesttimeout value  round in milliseconds (default: 10000)                     |- config field is required, and the pbft subfield must present. Ex:
+| --istanbul.blockperiod    value  Default min.difference between two consecutive             |- See also genesis.json helper tools at:
+|                                  block's timestamps in seconds (default: 1)                 |@[https://github.com/getamis/Istanbul-tools]
+                                                                                              |{
+ºNODEKEY AND VALIDATORº                                                                       |  "config": {
+|To be a validator, a node needs to meet the following conditions:                            |    "chainId": 2016,
+|- Its account (nodekey-derived) address MUST be listed in extraData's validators section     |    "istanbul": { "epoch": 30000, "policy" 0 }
+|- validator nodekey is used as priv.key to sign consensus messages                           |  },
+                                                                                              |  "timestamp": "0x0",
+ºEncoding:º                                                                                   |  "parentHash": "0x000...000",
+|Before encoding you need to define a toml file with vanity and validators fields             |  "extraData": "0x0000...000f89af85494475...aad0312b84100000...0c0",
+|to define proposer vanity and validator set. Please refer to example.toml for                |  "gasLimit": "0x47e7c4",
+|the example. The output would be a hex string which can be put into extraData                |  "mixhash": "0x6374...6e6365",
+|field directly.  Command:                                                                    |  "coinbase": "0x333...33333",
+|  $ istanbul encode --config ./config.toml                                                   |  "nonce": "0x0",
+                                                                                              |  "difficulity": "0x0",
+ºDecoding:º                                                                                   |  "alloc": {}
+|Use --extradata option to give the extraData hex string. The output would show               |}
+|the following if presents: vanity, validator set, seal, and committed seal.
+|Command:
+|$ istanbul decode --extradata <EXTRA_DATA_HEX_STRING>
+|to define proposer vanity and validator set. Please refer to example.toml for
+|the example. The output would be a hex string which can be put into extraData
+|field directly.  Command:
+|  $ istanbul encode --config ./config.toml
+</pre>
+
+<pre zoom>
+<span xsmall>Raft-based consensus</span>
+@[https://github.com/jpmorganchase/quorum/blob/master/raft/doc.md]
+$ geth --raft
+NON  BYZANTINE FAULT TOLERANCE with next advantages:
+  - faster blocktimes (milliseconds vs seconds)
+  - absence of forking
+  - Compared with QuorumChain, does NOT "unnecessarily" create empty blocks
+
++-----------+----------------+-------------------------------------------------+
+|Transport  | Ethereum p2p   |  Raft (over HTTP)                               |
+|Layer      |                |                                                 |
++-----------+----------------+-------------------------------------------------+
+|DATA TYPE  | communicate TXs|  communicate full blocks                        |
++-----------+----------------+-------------------------------------------------+
+|config     |                | Minting blocks frequency:  ˂ = 50ms ,           |
+|params     |                |    (--raftblocktime (millisecs)                 |
+|           |                | --raftport newTCPPort default to 50400 )        |
+|           |                |                                                 |
+|           |                |  static-nodes.json: required                    |
+|           |                |  - initial list of nodes in the cluster         |
+|           |                |  - order ºMUST BE EQUALS ACROSS PEERSº          |
+|           |                |                                                 |
+|           |                | - ID URIs must include a raftport querystring   |
+|           |                |   param specifying the raft port for each peer: |
+|           |                |   e.g.                                          |
+|           |                |    enode://abcd@127.0.0.1:30400?raftport=50400  |
++-----------+----------------+-------------------------------------------------+
+
+removing a node from the cluster from the JS console:
+# raft.removePeer(raftIdx)
+                  ^
+                  "1-indexed" index in the static peer list
+
+Attaching a node to the cluster from the JS console:
+
+# raft.addPeer("enode://abcd@127.0.0.1:30400?raftport=50400")
+Then (outside the JS console) start the new geth node with the
+flag --raftjoinexisting RAFTID in addition to --raft
+</pre>
+
+<pre zoom>
+<span xsmall>TX Manager</span>
+  - Quorum’s Transaction Manager is responsible for Transaction privacy.
+     It stores and allows access to encrypted transaction data, exchanges encrypted
+     payloads with other participant's Transaction Managers but does not have
+     access to any sensitive private keys. It utilizes the Enclave for
+     cryptographic functionality (although the Enclave can optionally be
+     hosted by the Transaction Manager itself.)
+
+  - """To send a private transaction, a PrivateTransactionManager must be
+     configured. This is the service which transfers private payloads to
+     their intended recipients, performing encryption and related operations
+     in the process."""
+  - The Transaction Manager is restful/stateless and can be load balanced easily.
+
+<a href='https://github.com/jpmorganchase/quorum/wiki/Transaction-Processing'>Transaction Processing</a>
+  - 'Public Transactions' and 'Private Transactions' are a notional concept
+    only and Quorum does not introduce new Transaction Types, but rather, the
+    Ethereum Transaction Model has been extended to include an optional
+    'OºprivateForº' parameter (the population of which results in a Transaction
+    being treated as private by Quorum) and the Transaction Type has a new
+    IsPrivate method to identify such Transactions.
+  - OºprivateForº can take multiple addresses in a comma separated list.
+  - Private Transactions payload is only visible to the network
+    participants specified in the OºprivateForº parameter of the TX.
+  - Quorum Node sets the Transaction_Signature.V = 37 or 38
+    (as opposed to 27 or 28)
+
+  - prior to propagate the TX to the rest of the network,
+    mining/sender node replaces the original TX-Payload with
+    a the hash of the encrypted Payload that received from the
+    secure enclave implementation (Crux, Constellation,..).
+    Participants involved in the OºprivateForº TX
+    will have the encrypted payload associated to the hash
+    within their secure enclave.
+
+  Example priv.TX A←→B:<span bgorange>
+Party A and B belongs to TX AB, whilst C doesn't
+Party A → A.Node: TX + payload
+                TX.OºprivateForº [ pub.key A, pub.keyB]
+A.Node → A TX Manager: Request to store TX payload
+A_TX_Manager → Enclave: - Validate sender with A priv.key
+
+Enclave → Enclave:  performs TX conversion (encrypt payload)
+                    - generating [sym.key, random Nonce]
+                    - encrypting TX.payload+Nonce with sym.key
+                    - generate hash  SHA3-512 (encrypted payload)
+                    - iterate through TX recipients [A, B] encrypting
+                      sym.key with recipient's pub.key (PGP encryption)
+A_TX_Manager ← Enclave: encrypted payload, SHA3-512 hash, encrypted keys
+A_TX_Manager → A_TX_Manager: store encrypted payload, encrypted sym.key
+                             (using hash as index)
+A_TX_Manager → B_TX_Manager: (via HTTPS) hash, encrypted (payload, sym.key)
+A_TX_Manager ← B_TX_Manager: Ack
+A.Node ←  A_TX_Manager: SHA3-512 (encrypted payload)
+A.Node →  A.Node: - Replace TX.payload with TX.sha3-512
+                  - changes TX.V to 37 or 38 (indicates other nodes that
+                    hash represents priv.TX)
+A_TX_Manager → Network:  (Ethereum P2P protocol) TX encrypted payload
+Network → Network: +block containing TX AB
+Network → Node N: block containing TX AB
+Node N → Node N: Try validate TX in block
+                 - Recognise TX.V is 37 or 38
+Node N → Node N TX_Manager: Do nodes holds private TX?
+Node N ← Node N TX_Manager: YES  (continue validation)
+                         or "NotARecipient" (skip to next TX in block)
+A,B Node → A,B enclave: TX payload
+           A,B enclave: 1. validates signature
+                        2. decrypts sym.key  private key that is held
+                           in The Enclave, decrypts the Transaction Payload using
+                           the now-revealed symmetric key and returns the decrypted
+                           payload to the Transaction Manager.
+A,B TX_Manager → A,B EVM: send decrypted payload
+A,B EVM → A,B EVM: contract code execution
+                   Update Quorum Node's Private StateDB only.
+                   NOTE: code discarded once executed.
+</pre>
+
+
+
+<pre zoom>
+<span xsmall>Secure Enclave</span>
+ - Distributed Ledger protocols typically leverage cryptographic techniques
+   for transaction authenticity, participant authentication, and historical
+   data preservation (i.e. through a chain of cryptographically hashed data
+   .) In order to achieve a separation of concerns, as well as to provide
+   performance improvements through parallelization of certain crypto-
+   operations, much of the cryptographic work including symmetric key
+   generation and data encryption/decryption is delegated to the Enclave.
+ - The Enclave works hand in hand with the Transaction Manager to
+   strengthen privacy by managing the encryption/decryption in an isolated
+   way. It holds private keys and is essentially a “virtual HSM” isolated
+   from other components.
+ - Different implementations of the enclave exists:
+   - Constellation: Original, writen in Haskell
+   - Crux         : Golang based, compatible with Constellation
+</pre>
+
+
+
+<pre zoom>
+<span xsmall>JS client privateFor ex.</span>
+"privateFor": indicates the list of constellation (vs Ethereum) public keys
+              of TX recipient. If not empty the TX will be private.
+web3.eth.defaultAccount = eth.accounts[0];
+var simpleSource = 'contract simplestorage { ... }'
+var simpleCompiled = web3.eth.compile.solidity(simpleSource);
+var simpleRoot = Object.keys(simpleCompiled)[0];
+var simpleContract = web3.eth.contract(
+    simpleCompiled[simpleRoot].info.abiDefinition);
+var simple = simpleContract.new(42,
+    {from:web3.eth.accounts[0],
+     data: simpleCompiled[simpleRoot].code,
+     gas: 300000,
+     privateFor: ["ROAZBWtSacxXQrOe3FGAqJDyJjFePR5ce4TSIzmJ0Bc="]
+    }, function(e, contract) {
+      if (e) { throw("err creating contract", e); }
+      if (!contract.address) {
+        console.log(contract.transactionHash + " mining...");
+        return;
+      }
+      console.log("Contract Address: " + contract.address);
+    });
+</pre>
+
+<pre zoom>
+  <span xsmall>Plugable EVM spec</span>
+@[https://ethereum.github.io/evmc/]
+@[https://github.com/ethereum/evmc]
+
+- Allows to "plug-in" different EVM implementations.
+
+- The EVMC is the low-level ABI between Ethereum Virtual Machines (EVMs) and
+  Ethereum Clients. On the EVM side it supports classic EVM1 and ewasm. On the
+  Client-side it defines the interface for EVM implementations to access
+  Ethereum environment and state.
+
+- It's currently used by the evmone project. (@[https://github.com/chfast/evmone])
+  Potentially
+  A Java-to-Native (JNI) wrapper looks to exists:
+@[https://github.com/semuxproject/evmc-jni]
+  See also:
+@[https://github.com/jnr/jnr-ffi]
+  - Java library for loading native libraries without writing JNI code by hand
+
+<span xsmall>evmONE</span>
+<span xsmall>(100x faster!!)</span>
+- EVM implementation
+-@[https://github.com/ewasm/benchmarking]
+</pre>
+</div>
+
+<div groupv>
+<span title>EEA DevOps</span>
+<pre zoom>
+  <span xsmall>P2P Node Identity "enode"</span>
+Extracted from <a href="https://github.com/ethereum/devp2p/blob/master/rlpx.md#network-formation">rlpx.md</a>
+"""
+ OºNODE Identity:º
+   each node is expected to maintain a staticOºsecp256k1 private keyº
+   which is saved and restored between sessions.
+   It is recommended that the private key can only be reset manually,
+   for example, by deleting a file or database entry.
+
+   There are two kinds of connections which can be established.
+   A node can connect to:
+     ─ a known peer which has previously been connected to
+       and from which a corresponding session token is available for
+       authenticating the requested connection
+     ─ a new peer
+"""
+- enode uri scheme is used by theºNode discovery protocolº
+- enode uri scheme can be used in the bootnodes command line option                                                                      RºWARN:º
+  of the client or as the argument to suggestPeer(nodeURL) function                                                                      RºDNS names are NOT allowed  º
+  in the JSRE.                                                                                                                           Rº(Only IP addresses to avoidº
+                                                                                                                                         RºDNS based attacks)         º
+                                                                                                                                         └───────┬───────────────────┘
+                                                                                                                                                 │
+Extracted from: <a href="https://github.com/ethereum/wiki/wiki/enode-url-format">ethereum-wiki</a>
+                                               ┌────┴────────┐
+enode://Bº6f8a80d14311c39f35f516fa664deaaaa13e85b2f7493f37f6144d86991ec012937307647bd3b9a82abe2974e1407241d54947bbb39763a4cac9f77166ad92a0º@10.3.58.6:30303?discport=30301
+        Bº└─────────────────────────────────────────────────┬────────────────────────────────────────────────────────────────────────────┘º                └─────┬──────┘
+        Bº                                                  │                     º                                                                              │
+        Bº                                                  │                     º                                                                              │
+        Bº                   64-bytes hexadecimal encoded node ID representing theº                                                                          UDP port used
+        Bº                   secp256k1 public key                                 º                                                                          for discovery
+        Bº                   corresponding to node's private key                  º                                                                          (default to
+                                                                                                                                                           the TCP port)
+º(DevOps) GENERATE PRIVATE KEY AND ENODE ID:º
+(REF: https://kobl.one/blog/create-full-ethereum-keypair-and-address/)
+
+ºSTEP 1: Generate private keyº
+$ºopensslºecparam -name secp256k1 -genkey -noout | tee ˃OºnodePrivateKeyº
+-----BEGIN EC PRIVATE KEY-----
+MHQCAQEEIGLW3b7sUpzhb3I4/sLCbakIjfUz6KuBh3Xaox62beJ3oAcGBSuBBAAK
+oUQDQgAEUarn9mq43dODnfxAVcSksAxHsTbrco9FnV0A7Mzqr6guzCQlCCmgXM7k
+Kns43IkR1JfB8mwKkTfOPdykq9nGIg==
+-----END EC PRIVATE KEY-----
+
+
+ºSTEP 2: Show associated public-key in enode format (64 bytes hex-encoded)º
+$ catOºnodePrivateKeyº |ºopensslºec -noout -text                             | grep pub -A 5 | tail -n +2 | tr -d '\n[:space:]:' | sed 's/^04//'
+                         ^^^^^^^^^^^^^^^^^^^^^^^^                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                       - Display info with public key                         - Convert public key to enode expected format (64bytes hex-encoded)
+                       - Output will be similar to:                           - Output will be similar to:
+                         Private-Key: (256 bit)                              Bº067434d510e3e186a039583db727cd8d3daee9fc238a6d542eca03b0b7bc8528df9b4d878661f350c0ea3d5337a5831c94d84e22c5baffee7a55e9cb1f808e06º
+                       Oºpriv:                                            º
+                       Oº    00:f4:16:f5:89:3d:60:86:8a:1d:77:4d:2f:74:3b:º
+                       Oº    29:53:5b:b9:cb:f9:50:0e:38:39:24:c5:7a:a9:1b:º
+                       Oº    b7:d2:b4                                     º
+                       Bºpub:                                             º
+                       Bº    04:06:74:34:d5:10:e3:e1:86:a0:39:58:3d:b7:27:º
+                       Bº    cd:8d:3d:ae:e9:fc:23:8a:6d:54:2e:ca:03:b0:b7:º
+                       Bº    bc:85:28:df:9b:4d:87:86:61:f3:50:c0:ea:3d:53:º
+                       Bº    37:a5:83:1c:94:d8:4e:22:c5:ba:ff:ee:7a:55:e9:º
+                       Bº    cb:1f:80:8e:06                               º
+                         ASN1 OID: secp256k1
+</pre>
+
+<pre zoom>
+<span TODO xsmall>PKCS-friendly Wallet</span>
+@[https://kobl.one/blog/create-full-ethereum-keypair-and-address/]
+@[https://github.com/maandree/sha3sum] C implementation
+
+ ºINPUTº        → ºTOOLSº     →  ºOUTPUTº 
+  "/dev/random"    - OpenSSL      - ECDSA private key
+                   - sha3sum      - Ethereum address
+
+WARN:
+SHA3 != keccak (Ethereum keccak-256) 
+More info at:
+@[https://ethereum.stackexchange.com/questions/550/which-cryptographic-hash-function-does-ethereum-use]
+
+
+STEP 1: Generate EC private key
+
+
+This command will print the private key in PEM format (using the wonderful ASN.1 key structure) on stdout. If you want more OpenSSL info on elliptic curves, please feel free to dig further.
+
+$ openssl ecparam        -name secp256k1 -genkey -noout  > /tmp/privateKey01
+          ^^^^^^^              ^^^^^^^^^                  ^^^^^^^^^^^^^^^^^^ 
+      create Ellip.Curve      secp256k1 curve             ASN encoded in base64
+          private key         (Same as Bitcoin)
+
+  → -----BEGIN EC PRIVATE KEY-----
+  → MHQCAQEEIFDLYO9KuwsC4ej2UsdA4SYk7s3lb8aZuW+B8rjugrMmoAcGBSuBBAAK
+  → oUQDQgAEsNjwhFoLKLXGBxfpMv3ILhzg2FeySRlFhtjfi3s8YFZzJtmckVR3N/YL
+  → JLnUV7w3orZUyAz77k0ebug0ILd1lQ==
+  → -----END EC PRIVATE KEY-----
+
+$ cat /tmp/privateKey01 | openssl ec -text -noout > /tmp/splitedKey01
+                                  ^^^^^^^^                                      
+                             display private+public key in
+                             hexadecimal format
+  → read EC key
+  → Private-Key: (256 bit)
+  → priv:
+  →     20:80:65:a2:47:ed:be:5d:f4:d8:6f:bd:c0:17:13:  ←─┐
+  →     03:f2:3a:76:96:1b:e9:f6:01:38:50:dd:2b:dc:75:    │
+  →     9b:bb                                            │
+  → pub:                                                 │
+  →     04:83:6b:35:a0:26:74:3e:82:3a:90:a0:ee:3b:91:    │
+  →     bf:61:5c:6a:75:7e:2b:60:b9:e1:dc:18:26:fd:0d:    │
+  →     d1:61:06:f7:bc:1e:81:79:f6:65:01:5f:43:c6:c8:    │
+  →     1f:39:06:2f:c2:08:6e:d8:49:62:5c:06:e0:46:97:    │
+  →     69:8b:21:85:5e                                   │
+  → ASN1 OID: secp256k1                                  │
+  ┌──────────────────────────────────────────────────────┘
+  │
+  └─ Remove any null byte (0x00) in front of the private part,
+     (this happens "sometimes"). Priv.key length must be 32 bytes
+
+     Uncompressed Public key length must be 64 bytes long 
+     (65 with the ºconstant 0x04 prefixº)
+
+STEP 2: Extract the public key and format properly for keccak-256:
+$ cat /tmp/splitedKey01 | grep pub -A 5 | tail -n +2 | 
+            tr -d '\n[:space:]:' | sed 's/^04//' \
+  > /tmp/pubKey01
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ (example script to extract the 64 bytes in a row)
+   
+ Output (/tmp/pubKey01) must look similar to:
+ 836b35a026743e823a90a0ee3b91bf615c6a757e2b60b9e1dc1826fd0dd16106f7bc1e8179f665015f43c6c81f39062fc2086ed849625c06e04697698b21855e
+ (hexadecimal representation of the 64 bytes)
+
+STEP 3: Calculate Ethereum address as:
+
+$ cat /tmp/pubKey01 | keccak-256sum -x -l | tr -d ' -' | tail -c 41 
+                                    ^^      ^^^^^^^^^^^^^^^^^^^^^^^ 
+                            Input are hex   keep only the last 20 bytes 
+                            char(vs string) (get rid of first 12).
+                                            20bytes = 40chars (+1 line return)
+
+  Output will be similar to
+  → 0bed7abd61247635c1973eb38474a2516ed1d884
+    0         1         2         3
+     123456789 123456789 123456789 123456789
+
+RºCAUTION!: if final address looks like 
+    *0xdcc703c0E500B653Ca82273B7BFAd8045D85a470* this means you
+     have hashed an empty public key. Sending funds to this
+     address will lock them forever!
+
+STEP 4: (Optional) Import private key to geth
+# Extract the private key and remove the leading zero byte
+$ geth account import priv "privateKey_hexFormat_no_leading_00"
+Passphrase: 
+Repeat passphrase: 
+Address: {0bed7abd61247635c1973eb38474a2516ed1d884}
+
+You're now ready to use the new account with geth. Of course, 
+it would be easier to take advantage of the geth account new feature 
+in order to quickly setup an Ethereum account. But manually doing
+it gives you the power of knowing your public and unencrypted 
+private keys. In addition, this would be useful to generate a
+secure Ethereum account completely off chain.
+</pre>
+
+
 <pre zoom labels="tool,devops,infraestructure">
 <span xsmall>PUPPETH</span>
 @[https://www.youtube.com/watch?v=T5RcjYPTG9g] ºPUPPETHº For easy deployment of networks
@@ -6444,11 +7032,20 @@ R*WARN: initial integration (e.g. due to a “bug” in Blockscout, the Puppeth
         the explorer web interface).
 </pre>
 
-
+<pre zoom labels="">
+<span xsmall TODO>Clef</span>
+@[https://github.com/ethereum/go-ethereum/blob/master/cmd/clef/tutorial.md]
+Clef can be used to sign transactions and data and is meant as a(n eventual) 
+replacement for Geth's account management. This allows DApps to not depend on 
+Geth's account management. When a DApp wants to sign data (or a transaction), 
+it can send the content to Clef, which will then provide the user with 
+context and asks for permission to sign the content. If the users grants the 
+signing request, Clef will send the signature back to the DApp.
+</pre>
 </div>
 
 <div groupv>
-<span title>Kaleido (SaaS Quorum)</span>
+<span title>Kaleido (SaaS Pantheon)</span>
 <pre zoom labels="">
 <span xsmall>External Links</span>
 @[https://docs.kaleido.io/getting-started/about-kaleido/]
@@ -6597,6 +7194,238 @@ Eth-Connect
 </pre>
 </div>
 
+<div groupv>
+<span title>Quorum(JP Morgan)</span>
+<pre zoom labels="">
+<span xsmall>External Links</span>
+WiKi                     @[https://github.com/jpmorganchase/quorum/wiki]
+Quorum Setup Summary     @[https://github.com/jpmorganchase/quorum/wiki/Getting-Set-Up] (WARN: use quorum-maker)
+GitHub                   @[https://github.com/jpmorganchase/quorum/tree/master/docs]
+Quorum-Maker             @[https://github.com/synechron-finlabs/quorum-maker]
+Whitepaper,design,..docs @[https://github.com/jpmorganchase/quorum/tree/master/docs]
+Releases                 @[https://github.com/jpmorganchase/quorum/releases]
+JPMorgan Quorum HomePage @[https://www.jpmorgan.com/country/ES/en/Quorum]
+7 node example           @[https://github.com/jpmorganchase/quorum-examples/tree/master/examples/7nodes]
+Quorum API               @[https://github.com/jpmorganchase/quorum/blob/master/docs/api.md]
+Roadmap                  @[https://github.com/jpmorganchase/quorum/wiki/Product-Roadmap]
+</pre>
+<pre zoom>
+<span xsmall>JPMorgan Tessera</span>
+<span xsmall>(EE TX Manager)</span>
+@[https://github.com/jpmorganchase/tessera]
+- Enterprise Implementation of Quorum's transaction manager
+- stateless Java system that is used to enable the encryption,
+  decryption, and distribution of private transactions for Quorum.
+
+Each Tessera node:
+  - Generates and maintains a number of private/public key pairs
+  - Self manages and discovers all nodes in the network (i.e. their
+    public keys) by connecting to as few as one other node
+  - Provides Private and Public API interfaces for communication:
+    Private API - This is used for communication with Quorum
+    Public  API - This is used for communication between Tessera
+                  peer nodes
+  - Provides two way SSL using TLS certificates and various trust
+    models like Trust On First Use (TOFU), whitelist, certificate
+    authority, etc.
+  - Supports IP whitelist
+  - Connects to any SQL DB which supports the JDBC client
+
+<a TODO href="https://github.com/jpmorganchase/tessera/wiki/Interface-&-API">Tessera Wiki</a>
+</pre>
+<pre zoom>
+<span xsmall>Constellation secure enclave</span>
+@[https://github.com/jpmorganchase/constellation]
+@[https://github.com/jpmorganchase/quorum/blob/master/docs/privacy.md]
+
+  - self-managing, peer-to-peer network of "key server+PGP+MTAs" nodes
+  - Constellation is not blockchain-specific, and potentially applicable
+     in many other types of applications
+  - Constellation's current primary application is to implement the
+    "privacy engine" for Quorum Private transactions (TX with a flag indicating
+    its pretended privacy and the addressable identifier )
+  - Hosts a number of Private/Public key pair Curve25519 - NaCl-
+  - Automatically discovers other nodes on the network after synchronizing
+    with as little as one other host.
+  - Synchronizes a directory of public keys mapped to recipient hosts with
+    other nodes on the network.
+  - Exposes public API allowing other nodes to send encrypted bytestrings to
+    your node, and to synchronize, retrieving information about the nodes
+    that your node knows about.
+  - Exposes a private API which:
+    - Allows you to send a bytestring to one or more public keys, returning
+      a content-addressable identifier. This bytestring is encrypted
+      transparently and efficiently (at symmetric encryption speeds) before
+      being transmitted over the wire to the correct recipient nodes (and only
+      those nodes.) The identifier is a hash digest of the encrypted payload
+      that every receipient node receives. Each recipient node also receives a
+      small blob encrypted for their public key which contains the Master Key
+      for the encrypted payload.
+    - Allows you to receive a decrypted bytestring based on an identifier.
+      Payloads which your node has sent or received can be decrypted and retrieved
+      in this way.
+
+    - Exposes methods for deletion, resynchronization, and other management functions.
+
+  - Supports a number of storage backends including LevelDB, BerkeleyDB, SQLite,
+    and Directory/Maildir-style file storage suitable for use with any FUSE
+    adapter, e.g. for AWS S3.
+
+  - Uses mutually-authenticated TLS with modern settings and various trust
+    models including hybrid CA/tofu (default), tofu (think OpenSSH), and
+    whitelist (only some set of public keys can connect.)
+
+  - Supports access controls like an IP whitelist.
+
+ºINSTALLATIONº
+Pre-Install supporting libraries:
+  Ubuntu : $ apt-get install libdb-dev libleveldb-dev libsodium-dev zlib1g-dev libtinfo-dev
+  Red Hat: $ dnf install libdb-devel leveldb-devel libsodium-devel zlib-devel ncurses-devel
+  MacOS  : $ brew install berkeley-db leveldb libsodium
+
+Install
+  Alt 1: Precompiled binaries:
+  <a href="https://github.com/jpmorganchase/constellation/releases">Release download</a>
+
+  Alt 2: from source
+    - First time only: Install Stack:
+      Linux: $ curl -sSL https://get.haskellstack.org/ | sh
+      MacOS: $ brew install Haskell-stack
+    - First time only: run stack setup to install GHC, the Glasgow Haskell Compiler
+    - Run stack install
+
+Post-install: Generating key pair "node":
+  $  constellation-node --generatekeys=node # generated keys can be locked with passwd
+
+ºRUNNINGº
+- can be run as stand-alone daemon via constellation-node, or
+  imported as a Haskell library, allowing to implement custom
+  storage and encryption logic.
+
+$ constellation-node "path_to_config_file" # or use ENV.VAR
+# More info at <a href="https://github.com/jpmorganchase/quorum/blob/master/private/constellation/node.go">quorum/private/constellation/node.go</a>
+
+ºCONFIGURATION FILE FORMATº
+<a href="https://github.com/jpmorganchase/constellation/blob/master/sample.conf">REF</a>
+url = "http://127.0.0.1:9001/"
+port = 9001
+workdir = "data"
+socket = "constellation.ipc"
+othernodes = ["http://127.0.0.1:9000/"]
+publickeys = ["foo.pub"]
+privatekeys = ["foo.key"]
+alwayssendto = []
+storage = "dir:storage"
+verbosity = 1
+tls = "strict"
+tlsservercert = "tls-server-cert.pem"
+tlsserverchain = []
+tlsserverkey = "tls-server-key.pem"
+tlsservertrust = "tofu"
+tlsknownclients = "tls-known-clients"
+tlsclientcert = "tls-client-cert.pem"
+tlsclientchain = []
+tlsclientkey = "tls-client-key.pem"
+tlsclienttrust = "ca-or-tofu"
+tlsknownservers = "tls-known-servers"
+</pre>
+
+<pre zoom>
+<span xsmall>Crux (Constellation alternative)</span>
+@[https://medium.com/web3labs/announcing-crux-a-secure-enclave-for-quorum-61afbfdb79e4]
+- dropin Constellation replacement
+- secure enclave  written in Golang (Constellation is written in Haskell)
+- <a href="https://github.com/blk-io/quorum-examples">7 nodes example deployment with Crux</a>
+- LevelDB used as storage (same as geth).
+  BerkeleyDB bindings available for compatibility with
+  existing Constellation instance.
+
+ºBUILDº                                          ºPRE-SETUPº
+$ git clone https://github.com/blk-io/crux.git   generate new keys using:
+$ cd crux                                        $ cruxº--generate-keysº myKey
+$ make setup ⅋⅋ make
+$ ./bin/crux
+
+ºUSSAGEº
+run it like: (almost identical to Constellation node):
+$ crux --url=http://127.0.0.1:9001/ \          | crux --help reference:
+       --port=9001 --workdir=crux \            |     crux.config              Optional config file
+       --publickeys=tm.pub \                   |     --alwayssendto string    public key List  for nodes to send all transactions to
+       --privatekeys=tm.key \                  |     --berkeleydb             switch to Berkeley DB for compatibility with Constellation data store [experimental]
+       --othernodes=https://127.0.0.1:9001/    |     --generate-keys string   Generate a new keypair
+                                               |     --othernodes string      "Boot nodes" used to discover the network
+                                               |     --port int               The local port to listen on (default -1)
+                                               |     --privatekeys string     Private keys hosted by this node
+                                               |     --publickeys string      Public keys hosted by this node
+                                               |     --socket string          IPC socket to create for access to the Private API (default "crux.ipc")
+                                               |     --storage string         Database storage file name (default "crux.db")
+                                               |     --url string             The URL to advertise to other nodes (reachable by them)
+                                               |     --verbosity int          Verbosity level of logs (default 1)
+                                               |     --workdir string         The folder to put stuff in (default: .) (default ".")
+</pre>
+
+<pre zoom>
+<span xsmall>Priv. TX Seq.</span>
+─@[https://raw.githubusercontent.com/jpmorganchase/quorum─docs/master/images/QuorumTransactionProcessing.JPG]
+                                             TxPayloadRequest
+                                        ┌──────────────────────────────┐
+  ┌─→                                   │                              │           3,10 En/De─cryption
+  │                                     │         2 TXPayloadStore ┌─────────────┐             request ┌───────────┐
+  │   ┌──────┐ 1 Private TX ┌───────────────────┐                  │             ├────────────────────→│           │
+  │   │ Dapp │      AB      │                   ├─────────────────→┼ Transaction │                     │ Enclave A │
+ P│   └────────────────────→┼   Quorum Node A   │                  │ Manager A   │                     │           │
+ A│                         │                   │                  │             │←────────────────────┴───────────┘
+ R│                         │  Public  Private  │←───────────────────────────────┘  4,11 Tx Response
+ T│                         │  State    State   │ 6 TX Hash          │       ^
+ Y│       8 Block w/Tx AB   │  ┌────┐   ┌────┐  │                    │       │
+  │        ┌──────────────→ │  ├────┤   ├────┤  │                    │       │
+ A│        │                │  └────┘   └────┘  │                    │       │
+  │        │                │                   │                    │       │5
+  │        │                └───────────────────┘                    │       │TXPayloadStore
+  │        │                    ^     ^                              │       │
+  │   ┌──────────┐      7 Ether │     │ 12 TxPayloadResp (TX Payload)│       │
+  └─→ │Block 123 │           TX │     └──────────────────────────────┘       │
+      ├───────── │     Standard │                                            │
+      │TxAB      │     Protocol │            9.TxPayloadRequest              │
+      └──────────┘              │          ┌──────────────────────────┐      │
+   ┌─→ │   │                    v          │                          │      v      10 En/De─cryption
+   │   │   │                ┌───────────────────┐                   ┌─v───────────┐           request  ┌───────────┐
+   │   │   │                │                   │                   │             ├───────────────────→│           │
+ P │   │   │                │   Quorum Node B   │                   │ Transaction │                    │ Enclave B │
+ A │   │   │                │                   │                   │ Manager B   │←───────────────────┤           │
+ R │   │   │                │  Public  Private  │                   │             │11.Tx Response      └───────────┘
+ T │   │   │                │  State    State   │                   └─────────────┘
+ Y │   │   │                │  ┌────┐   ┌────┐  │                     │
+   │   │   └──────────────→ │  ├────┤   ├────┤  │                     │
+ B │   │ 8 Block w/Tx AB    │  └────┘   └────┘  │                     │
+   │   │                    │                   │                     │
+   │   │                    └───────────────────┘                     │
+   │   │                       ^       ^                              │
+   │   │               7 Ether │       │ 12 TxPayloadResp (TX Payload)│
+   │   │                    TX │       └──────────────────────────────┘
+   └─→ │              Standard │
+       │              Protocol │             9.TxPayloadRequest
+   ┌─→ │                       │           ┌──────────────────────────┐
+   │   │                       v           │                          │
+   │   │                    ┌───────────────────┐                  ┌─────────────┐                    ┌───────────┐
+ P │   │                    │                   │                  │             │                    │           │
+ A │   │                    │   Quorum Node C   │                  │ Transaction │                    │ Enclave C │
+ R │   │ 8 Block w/Tx AB    │                   │                  │ Manager C   │                    │           │
+ T │   └──────────────────→ │  Public  Private  │                  │             │                    └───────────┘
+ Y │                        │  State    State   │                  └─────────────┘
+   │                        │  ┌────┐   ┌────┐  │
+ C │                        │  ├────┤   ├────┤  │
+   │                        │  └────┘   └────┘  │
+   │                        │                   │
+   │                        └───────────────────┘
+   │                     ^                           ^        ^                          ^
+   └─→                   │                           │        │                          │
+                         └───────────────────────────┘        └──────────────────────────┘
+                             Ethereum standard p2p                  CONSTELLATION
+                                Network Protocol                       NETWORK
+</pre>
+
+</div>
 <div groupv>
 <span title>Besu(Pantheon)</span>
 
@@ -7041,222 +7870,11 @@ $ ./remove.sh ← Shut downa and remove all data.
     for easier network configuration.
 </pre>
 </div>
+</div> <!-- EEA -->
 
+<div group bggreen>
+<span title>Non Classified</span><br/>
 <div groupv>
-<span title>Parity</span>
-<pre zoom labels="">
-<span xsmall>External Links</span>
-@[https://parity.io/parity.html]
-@[https://github.com/paritytech/parity]
-@[https://github.com/paritytech/parity/wiki/Coding-guide]
-@[https://github.com/paritytech/parity/wiki]
-
-<span xsmall>features</span>
-"full" Ethereum Wallet and Dapp environment with web-front-end ("http://127.0.0.1:8180"):
-- Account, address-book and multi-sig management
-- Key creation, importing and exporting
-- Web3 Ðapp browser
-- Hardware and electronic cold-wallet support
-- Name registry support
-- Contract development, deployment and interaction environment
-
-<span xsmall>Setup guide</span>
-NOTE: Parity is already supported by Puppeth that probably
-     is the best way to deploy
-@[https://github.com/paritytech/parity/wiki/Setup]
-
-- One-line binary installer
--  building from source,...
-</pre>
-
-<pre zoom labels="">
-<span xsmall>Accounts</span>
-<span xsmall>Wallets and</span>
-<span xsmall>Vaults</span>
-Existing parity-wallet options to store tokens and Ether
-<a href='https://github.com/paritytech/parity/wiki/Accounts%2C-Wallets%2C-Vaults'>REF</a>
-- ACCOUNTS: most basic way to store assets. [public key/private key]. 
-  Ussage: used to sign transactions, enable authentication, and prove ownership.
-
-- PARITY WALLET: smart contract managing assets.
-@[https://github.com/paritytech/parity/blob/master/js/src/contracts/snippets/enhanced-wallet.sol]
- - Can me owned by multiple accounts.
- - Unlike accounts, contract wallets behaviour can be customized.
- - Common use-case: multi-signature wallets, that allow for transaction logging, withdrawal limits, and rule-sets for signatures required.
- - support in Parity web UI:
-   Go to: Account_tab → +WALLET → Multi-Sig Wallet
-   - select 2+ owners and number of signatures to withdraw funds, daily withdrawal limit, ...
-   - 'publish' the new contract singing the transaction with one of wallet-owners accounts
-- VAULTS: Offers additional privacy feature to lock away your accounts behind a second layer of protection encrypting the meta-data (e.g., the public address) and therefore hiding the accounts until you unlock the vault.
-  - support in Parity web UI:
-    Go to: Account_tab → +VAULT → +CREATE VAULT
-    - Follow instruction on the screen
-    - Go go: Account_tab and select accounts to move
-        to vault.
-        Once moved into the vault, the addresses are
-        encrypted and not stored as plain text on disk
-        anymore. Closing the vault hides accounts on
-        the public accounts tab
-</pre>
-
-<pre zoom>
-<span xsmall>parity --help</span>
-Usage:
-  parity [options]                                        Operating Options:
-  parity ui [options]                                       --mode MODE
-  parity dapp <path> [options]                              --mode-timeout SECS
-  parity daemon <pid-file> [options]                        --mode-alarm SECS
-  parity account (new | list ) [options]                    --auto-update SET
-  parity account import <path>... [options]                 --release-track TRACK
-  parity wallet import <path> --password FILE [options]     --no-download
-  parity import [ <file> ] [options]                        --no-consensus
-  parity export (blocks | state) [ <file> ] [options]       --force-direct
-  parity signer new-token [options]                         --chain CHAIN
-  parity signer list [options]                              -d --base-path PATH
-  parity signer sign [ <id> ] [ --password FILE ] [options  --db-path PATH         ]
-  parity signer reject <id> [options]                       --keys-path PATH
-  parity snapshot <file> [options]                          --identity NAME
-  parity restore [ <file> ] [options]
-  parity tools hash <file>
-  parity db kill [options]
-
-UI Options:                API and Console Options:   Secret Store Options:
-  --force-ui                 --no-jsonrpc               --no-secretstore
-  --no-ui                    --jsonrpc-port PORT        --secretstore-port PORT
-  --ui-port PORT             --jsonrpc-interface IP     --secretstore-interface IP
-  --ui-interface IP          --jsonrpc-cors URL         --secretstore-path PATH
-  --ui-path PATH             --jsonrpc-apis APIS
-  --ui-no-validation         --jsonrpc-hosts HOSTS   Snapshot Options:
-                             --no-ipc                  --at BLOCK
-Networking Options:          --ipc-path PATH           --no-periodic-snapshot
-  --no-warp                  --ipc-apis APIS
-  --port PORT                --no-dapps              Virtual Machine Options:
-  --min-peers NUM            --dapps-port PORT         --jitvm
-  --max-peers NUM            --dapps-interface IP
-  --snapshot-peers NUM       --dapps-hosts HOSTS
-  --nat METHOD               --dapps-cors URL        Internal Options:
-  --network-id INDEX         --dapps-user USERNAME     --can-restart
-  --bootnodes NODES          --dapps-pass PASSWORD
-  --no-discovery             --dapps-path PATH       Miscellaneous Options:
-  --node-key KEY             --dapps-apis-all          -c --config CONFIG
-  --reserved-peers FILE      --ipfs-api                -l --logging LOGGING
-  --reserved-only            --ipfs-api-port PORT      --log-file FILENAME
-  --allow-ips FILTER         --ipfs-api-interface IP   --no-config
-  --max-pending-peers NUM    --ipfs-api-cors URL       --no-color
-  --no-ancient-blocks        --ipfs-api-hosts HOSTS    -v --version
-                                                       -h --help
-Sealing/Mining Options:     Footprint Options:
-  --author ADDRESS            --tracing BOOL
-  --engine-signer ADDRESS     --pruning METHOD        Account Options:
-  --force-sealing             --pruning-history NUM     --unlock ACCOUNTS
-  --reseal-on-txs SET         --pruning-memory MB       --password FILE
-  --reseal-min-period MS      --cache-size-db MB        --keys-iterations NUM
-  --work-queue-size ITEMS     --cache-size-blocks MB    --no-hardware-wallets
-  --tx-gas-limit GAS          --cache-size-queue MB
-  --tx-time-limit MS          --cache-size-state MB
-  --relay-set SET             --cache-size MB
-  --usd-per-tx USD            --fast-and-loose
-  --usd-per-eth SOURCE        --db-compaction TYPE
-  --price-update-period T     --fat-db BOOL
-  --gas-floor-target GAS      --scale-verifiers
-  --gas-cap GAS               --num-verifiers INT
-  --extra-data STRING
-  --tx-queue-size LIMIT        Import/Export Options:
-  --tx-queue-gas LIMIT           --from BLOCK
-  --tx-queue-strategy S          --to BLOCK
-  --tx-queue-ban-count C         --format FORMAT
-  --tx-queue-ban-time SEC        --no-seal-check
-  --no-persistent-txqueue        --at BLOCK
-  --remove-solved                --no-storage
-  --notify-work URLS             --no-code
-  --refuse-service-transactions  --min-balance WEI
-  --stratum                      --max-balance WEI
-  --stratum-interface IP
-  --stratum-port PORT
-  --stratum-secret STRING
-</pre>
-
-
-<pre zoom>
-<span xsmall>Running</span>
-Non-Docker, simplest way with all defaults:
-$ ./target/release/parity
-</pre>
-<pre zoom>
-<span xsmall>SystemD integration</span>
-$ cp .../parity/scripts/parity.service ~/.config/systemd/user
-     To pass any argument to Parity edit
-     ARGS line at ~/.parity/parity.conf like:
-     ARGS="ui --identity MyMachine"
-</pre>
-<pre zoom>
-<span xsmall>Docker Launch</span>
-$ sudo docker run -v /var/myProject/data_parity:/data_parity
-  -p 30303:30303 -p 8545:8545 -p 8546:8546 --rm -ti
-  parity/parity:v1.6.10
-  ui
-  --jsonrpc-port 8545 --jsonrpc-interface all --jsonrpc-hosts all
-  --port 30303
-  --min-peers 0 --max-peers 0 --no-discovery
-  --chain /data_parity/dev.json
-  --db-path /data_parity
-  --author 0xa311aa60e1013bf7145454b015dda7399264c6af
-  --tx-queue-size 1
-  --tx-gas-limit 2100000000000000
-  --usd-per-tx 0.0005 --usd-per-eth 200
-  --gas-floor-target 21000
-  --cache-size 2048 --db-compaction hdd
-  -lchain,client,engine,estimate_gas,ethash,miner=trace --no-color
-</pre>
-
-<pre zoom labels="">
-<span xsmall>dev.network</span>
-<span xsmall>(Instant shield)</span>
-@[https://github.com/paritytech/parity/wiki/Private-development-chain]
-Edit ...*/data_parity/dev.json* like:
-{
-    "name": "localNetwork",
-    "engine": {
-        "instantSeal": { "params" : {} }
-    },
-    "params": {
-        "accountStartNonce": "0x0100000",
-        "maximumExtraDataSize": "0x20",
-        "minGasLimit": "0x1388",
-        "networkID" : "${CHAIN_ID}"
-    },
-    "genesis": {
-        "seal": {
-            "generic": "0x0"
-        },
-        "difficulty": "0x20000",
-        "author": "0x0000000000000000000000000000000000000000",
-        "timestamp": "0x00",
-        "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-        "extraData": "0x",
-        "gasLimit": "0x5B8D80000000000000000000"
-    },
-
-    "nodes": [ ],
-    "accounts": {
-        "0000000000000000000000000000000000000001": { "balance": "1", "nonce": "1048576", "builtin": { "name": "ecrecover", "pricing": { "linear": { "base": 3000, "word": 0 } } } },
-        "0000000000000000000000000000000000000002": { "balance": "1", "nonce": "1048576", "builtin": { "name": "sha256", "pricing": { "linear": { "base": 60, "word": 12 } } } },
-        "0000000000000000000000000000000000000003": { "balance": "1", "nonce": "1048576", "builtin": { "name": "ripemd160", "pricing": { "linear": { "base": 600, "word": 120 } } } },
-        "0000000000000000000000000000000000000004": { "balance": "1", "nonce": "1048576", "builtin": { "name": "identity", "pricing": { "linear": { "base": 15, "word": 3 } } } },
-        "0x${PUB_ADDRESS_1}"                        : { "balance": "1000000000000000000000", "nonce": "1048576"  }
-    }
-}
-
-- Launch parity with the option:
-  --chain */data_parity/dev.json*
-</pre>
-</div>
-
-
-<div groupv>
-<span title>Non Classified</span>
-
-
 <pre zoom>
 <span xsmall>Gemalto HSM</span>
 @[https://safenet.gemalto.com/data-encryption/hardware-security-modules-hsms/protectserver-security-module/]
@@ -7387,7 +8005,9 @@ Please give it a try. We really do want the best for you.
 @[https://blog.ethereum.org/2016/07/12/build-server-less-applications-mist/]
 - How to build server less applications for Mist
 </pre>
+</div>
 
+<div groupv>
 <pre zoom>
 <span xsmall>azure</span>
 <span xsmall>workbench</span>
@@ -7426,6 +8046,13 @@ This repository contains content and samples in number of areas, including:
 </pre>
 
 <pre zoom labels="">
+<span xsmall></span>
+<span xsmall TODO>Web3-Secret-Storage-Definition</span>
+@[https://github.com/ethereum/wiki/wiki/Web3-Secret-Storage-Definition]
+</pre>
+
+
+<pre zoom labels="">
 <span xsmall>NuCypher</span>
 @[https://www.nucypher.com/]
 nuCypher. Privacy Infrastructure for the Decentralized Web
@@ -7445,10 +8072,54 @@ NuCypher's NuFHE library enables secure, private computation on encrypted data b
 See also:
 @[https://blog.nucypher.com/numerology-fast-ecc-arithmetic-on-chain-5eb438a735d4]
 </pre>
-</div>
 
+<pre zoom labels="">
+<span xsmall>SmartCard USB HSM</span>
+@[https://blog.coinfabrik.com/using-the-cardcontact-smartcard-usb-hsm-in-an-ethereum-poa-chain/]
+Using the CardContact SmartCard USB HSM in an Ethereum PoA Chain
+</pre>
+
+<pre zoom>
+<span xsmall>ethpm-js</span>
+  <a TODO href='https://github.com/ethpm/ethpm-js'>https://github.com/ethpm/ethpm-js</a>
+      Javascript library for publishing and consuming Ethereum packages,
+      provides utilities for publishing and consuming Ethereum packages based
+      on the Ethereum Package Manager specification. It is meant to be integrated
+      directly into development tools to support their use of the Ethereum Package
+      Management ecosystem.
+
+  <a href="https://etherscan.io/pushTx">https://etherscan.io/pushTx</a>
+      Send raw-transactions
+  <a href="http://man.openbsd.org/OpenBSD-current/man1/tmux.1">tmux:</a> General (BSD/Linux/UNIX) tool for multiplexing terminals and create long-running
+      sessions that persists ssh disconnections.
+      - It allows for example to have an terminal with vim editing solidity files,
+        another one editing JS files, another one with the truffle debugger,
+        the geth console, ...
+      - Sessions will persists until the PC/server is restarted. We can disconnect
+        and reconnect to the same session repeatedly. The terminal layout will be
+        saved.
+      - It also allow different users to share the session and terminals and is
+        very efficient in terms of bandwidth (when compared to VNC or RDesktop),
+        since there are not graphics involved.
+</pre>
+
+
+</div>
+</div><!-- Non Classified -->
+
+<div group bgyellow>
+<span title>Tech.Radar</span><br/>
 <div groupv>
-<span title>Tech.Radar</span>
+<pre zoom labels="">
+<span xsmall TODO>Ethr-DIDs</span>
+<span xsmall>(uPort++)</span>
+https://medium.com/uport/goodbye-uport-dids-hello-ethr-dids-ea2e80256f54
+- Goodbye uPort DIDs, Hello Ethr-DIDs
+  We have released a major app update that enables migrating all old uPort 
+  identities created before September 2018, to the current DID architecture. 
+  Not to worry though, your old Identity data will still be available to use 
+  and all verifications issued will be available
+</pre>
 
 <pre zoom labels="qa,tool,radar">
 <span xsmall>Piet</span>
@@ -7516,19 +8187,19 @@ Markets for Anyone Anywhere on Anything
 - ...
 </pre>
 
+<pre zoom labels="">
+<span xsmall>Homomorphic Hashing</span>
+@[http://blog.notdot.net/2012/08/Damn-Cool-Algorithms-Homomorphic-Hashing]
+</pre>
+
 </div>
+</div><!-- Tech Radar -->
 </body>
 </html>
 <!--
-_________________________
-https://ethereum.stackexchange.com/questions/267/why-dont-ethereum-addresses-have-checksums
-  _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-  ICAP: Inter Exchange Client Address Protocol (ICAP) compatible
-        with IBAN account formatting.
-        https://github.com/ethereum/wiki/wiki/Inter-exchange-Client-Address-Protocol-(ICAP)
-______________________________
-Quorum TODO_Start: {{{
-____________________________________
+
+<pre zoom labels="quorum,privacy">
+<span xsmall></span>
 - Privacy layer:
   maintaining the confidentiality of the participants, data, and terms.
   Even within a single layer, there are multiple sublayers
@@ -7571,119 +8242,33 @@ ____________________________________
   - Business networks need resilience, interoperability, permissioning,
     and privacy to succeed.
 
-   These requirements, however, are out of scope for proprietary distributed ledgers, let alone traditional database technologies. The Ethereum blockchain’s granular privacy layers and public-first approach make it a powerful enterprise solution for organizations that need the flexibility of an in-house platform and that want the global reach to participate in economies of scale.
-
-Visit our Enterprise Ethereum homepage to connect with ConsenSys Solutions and learn more about how Ethereum can future-proof your organization. Stay tuned for Part 5 of this series, “The Enterprise Ethereum Infrastructure, Tool, and Application Stack.”
-
-Disclaimer: The views expressed by the authors and contributors above do not necessarily represent the views of Consensys AG. ConsenSys is a decentralized community with ConsenSys Media being a platform for members to freely express their diverse ideas and perspectives. To learn more about ConsenSys and Ethereum, please visit our website.
-Thanks to John Wolpert.
-
-    BlockchainEthereumEnterprise TechnologyTechnologyBusiness
-
-Go to the profile of ConsenSys
-ConsenSys
-
-A blockchain venture production studio building decentralized applications on Ethereum. Go to www.consensys.net and subscribe to our newsletter.
-ConsenSys Media
-ConsenSys Media
-
-News, insights, and education on all things decentralization from leaders in the blockchain industry
+   These requirements, however, are out of scope for proprietary distributed 
+ledgers, let alone traditional database technologies. The Ethereum blockchain’
+s granular privacy layers and public-first approach make it a powerful 
+enterprise solution for organizations that need the flexibility of an in-
+house platform and that want the global reach to participate in economies of scale.
 </pre>
-_________________
+
+<pre zoom labels="quorum">
+<span xsmall>JPMorgan EtherDollar</span>
 https://media.consensys.net/j-p-morgan-is-using-ethereum-to-launch-a-digital-u-s-dollar-heres-what-it-means-for-blockchain-64f0fe3e55bc?_hsenc=p2ANqtz-_G8oE25VrDDhDoGzsYJvAyJIsx8tTX8dRxqT6JFbZyn0ymF1UEmtrKqtZCCB0S24Aih9M6WMSTP3881SUa2PapCU2JD65yE0UEw1ya-ep6KMccBqs&_hsmi=69989245
-______________
-https://twitter.com/goquorum
-https://github.com/jpmorganchase/
+
+https://info.binance.com/en/research/marketresearch/img/BinanceResearch-JPMCoin.pdf
+</pre>
+
+<pre zoom labels="quorum">
+<span xsmall>External Links</span>
+@[https://twitter.com/goquorum]
+@[https://github.com/jpmorganchase/]
 Quorum Slack:
 <a href="https://clh7rniov2.execute-api.us-east-1.amazonaws.com/Express/">Quoram Slack</a>
-
-______________________
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-____________________
-<span xsmall>Callbacks</span>
-@[https://solidity.readthedocs.io/en/latest/types.html?highlight=push]
-pragma solidity ˃=0.4.22 ˂0.6.0;
-
-contract Oracle {
-  struct Request {
-    bytes data;
-    function(uint) external callback;
-  }
-  Request[] requests;
-  event NewRequest(uint);
-  function query(bytes memory data, Oºfunction(uint) external callbackº) public {
-    requests.push(Request(data, callback));
-    emit NewRequest(requests.length - 1);
-  }
-  function reply(uint requestID, uint response) public {
-    // Here goes the check that the reply comes from a trusted source
-    requests[requestID].callback(response);
-  }
-}
-
-contract OracleUser {
-  Oracle constant oracle = Oracle(0x1234567); // known contract
-  uint exchangeRate;
-  function buySomething() public {
-    oracle.query("USD", this.oracleResponse);
-  }
-  function oracleResponse(uint response) public {
-    require(
-        msg.sender == address(oracle),
-        "Only oracle can call this."
-    );
-    exchangeRate = response;
-  }
-}
-_______________________________
-<span xsmall TODO>Web3-Secret-Storage-Definition</span>
-@[https://github.com/ethereum/wiki/wiki/Web3-Secret-Storage-Definition]
-_________________________
-https://info.binance.com/en/research/marketresearch/img/BinanceResearch-JPMCoin.pdf
-_____________________________________
-http://blog.notdot.net/2012/08/Damn-Cool-Algorithms-Homomorphic-Hashing
-___________________________
-https://github.com/trufflesuite/ganache-cli/issues/154
-Topics are order-dependent. A transaction with a log with topics [A, B] will be matched by the following topic filters:
-
-[] "anything"
-[A] "A in first position (and anything after)"
-[null, B] "anything in first position AND B in second position (and anything after)"
-[A, B] "A in first position AND B in second position (and anything after)"
-[[A, B], [A, B]] "(A OR B) in first position AND (A OR B) in second position (and anything after)"
-}}}
-_________________________________
-https://medium.com/@adrianmcli/migrating-your-truffle-project-to-web3-v1-0-ed3a56f11a4
-Migrating your Truffle project to Web3 v1.0 (2019-07-13)
-_________________
-
-  <span xsmall>TXs in Solidity:</span>
-<pre zoom>
-addressInstance.balance (uint256): balance in Wei
-addressInstance.transfer(uint256 amount):
-    msg.sender →(amount in wei) → addressInstance
-    throws on failure
-
-addressInstance.send(uint256 amount): returns (bool):
-    msg.sender ->(amount in wei) ->addressInstance
-    returns true/false, does NOT throw an exception
-
-- In addressInstance.transfer (or send), if addressInstance
-  is a contract address, its code (more specifically: its fallback function, if present)
-  will be executed together with the transfer call. This is a limitation of the EVM and
-  cannot be prevented. 
-  If that execution runs out of gas or fails in any way, the Ether transfer will be
-  reverted and the current contract will stop with an exception.
 </pre>
+
 _____________________
 raw-calls do NOT rethrow exceptions:
 https://truffleframework.com/tutorials/testing-for-throws-in-solidity-tests
 ______________________________________
-https://blog.coinfabrik.com/using-the-cardcontact-smartcard-usb-hsm-in-an-ethereum-poa-chain/
-Using the CardContact SmartCard USB HSM in an Ethereum PoA Chain
-__________________________
+
 https://ethereum.stackexchange.com/questions/25484/could-address-reuse-leak-your-mnemonic-seed/25705#25705
 ______________________________
 Upgrade driven development on Ethereum with ZeppelinOS - Live Coding Workshop in New York City
@@ -7691,56 +8276,61 @@ https://www.reddit.com/r/ethdev/comments/b6z152/upgrade_driven_development_on_et
 _________________________________
 https://medium.com/@squeezer/weve-launched-our-squeezer-2-way-payment-dapp-818ae6ae57e6
 _________________________________
-TODO:(1) {{{
-______________________
-Ethereum 2019 Grants:
-- https://thematter.io/
-  Productionising ‘Plasma Ignis’ code, a SNARK-driven “roll up” that can support up to 500 transactions per second.
+TODO:(0) {{{
+<pre zoom labels="">
+<span xsmall></span>
+@[https://blog.quillhash.com/ethereum-or-hyperledger-fabric/]
+@[https://i.stack.imgur.com/7eiCt.jpg]  Ethereum Block Structure
+@[https://blog.quillhash.com/wp-content/uploads/2019/03/Ethereum-or-Hyperledger-Fabric-3.png] Fabric Block Structure
+</pre>
 
-- https://github.com/libp2p/py-libp2p
+
+}}}
+TODO:(1) {{{
+<pre zoom labels="">
+<span xsmall>Ethereum 2019 Grants</span>
+@[https://thematter.io/]
+- Productionising ‘Plasma Ignis’ code, a SNARK-driven “roll up” that can 
+  support up to 500 transactions per second.
+
+@[https://github.com/libp2p/py-libp2p]
    Python implementation of libp2p which will be used in Eth2.0 research,
    as well as in many other projects by UPenn seniors completing their capstone
    project (Zixuan Zhang, Robert Zajac, Alexander Haynes, and Aspyn Palatnick).
 
-- https://www.reddit.com/r/ethereum/comments/alnmxn/ethereum_on_arm_geth_and_parity_clients_update/
+@[https://www.reddit.com/r/ethereum/comments/alnmxn/ethereum_on_arm_geth_and_parity_clients_update/]
   Ethereum on ARM - Supporting the decentralisation of Ethereum by providing Ethereum client images on resource constrained devices, including an initial investigation into using ARM nodes for Eth2.0 staking.
 
-- https://github.com/goerli
-  Cross-client testnet spearheaded by Chainsafe and widely supported by the Ethereum community. Launched at GörliCon at the end of January.
+@[https://github.com/goerli]
+  Cross-client testnet spearheaded by Chainsafe and widely supported by the 
+  Ethereum community. Launched at GörliCon at the end of January.
 
-- https://github.com/kayagoban/shadowlands
-  Python based, TextUI rapid prototyping platform for Eth apps which breaks the paradigm that everything must be a web app.
+@[https://github.com/kayagoban/shadowlands]
+  Python based, TextUI rapid prototyping platform for Eth apps which breaks 
+  the paradigm that everything must be a web app.
 
-- https://certik.org/deepsea_blockchain.html
-  Research at Yale and Columbia to further their work on DeepSEA, a formally verified language that compiles to the EVM.
+@[https://certik.org/deepsea_blockchain.html]
+  Research at Yale and Columbia to further their work on DeepSEA, 
+  a formally verified language that compiles to the EVM.
+</pre>
+
+<pre zoom labels="">
+<span xsmall>EOSCHAIN</span>
+<span xsmall>"ERC20 for IoT"</span>
+@[https://eoschain.co/]
+ ERC20 based chain for IoT (fast micropayments?)
+</pre>
 
 
-_______________________
-https://eoschain.co/ ERC20 based chain for IoT (fast micropayments?)
-______________________________________
-http://cryptomining-blog.com/tag/intel-opencl-mining/
-_________________________________
-...
-https://media.consensys.net/blockchain-vs-distributed-ledger-technologies-1e0289a87b16
-Ethereum Casper Proof of Stake
-
-An example of cryptoeconomic incentive layers can also be seen in Ethereum?s transition to a proof of stake consensus mechanism via implementations of Casper. While proof of work has its own internalized game theoretical incentive structure to dissuade participants from commandeering the network, the transition to proof of stake has even further internal structures for disincentivizing participants from equivocating or trying to create alternative instances of the blockchain when encountering forks. The staking protocol creates a Byzantine Fault Tolerant environment where Ether would be bonded into the consensus mechanism. What this means is that individuals would be bound by a fidelity bond to behave honorably within the system.
-....
-Cosmos and Tendermint
-
-Cosmos is also building an ecosystem that relies on the Tendermint consensus mechanism that relies heavily upon Byzantine Fault Tolerance algorithms. The platform depends on validators that have similar roles as miners in the bitcoin network. The validators have staking tokens called Atoms which are used to secure the network via a proof of stake mechanism that relies upon the trust generated by the bonded validators. The interplay between the players in the ecosystem is also indicative of a game theoretical structure where validators can lose their tokens or the tokens delegated to them if discovered to be violating the protocol. Due to this bonded deposit design of stakeholders within this system, the consensus mechanism allows for an incentivization mechanism that secures the network. This security design allows for the proper functioning of the Application Blockchain Interface (ABCI), the Inter-Blockchain Communication protocol (IBC) as well as the varying interactions between the Cosmos hub and zones.
-....
 ____________________________________
-https://github.com/nucypher/nucypher
-________________________
 truffle migrations explained (Linking libraries, ...):
 https://www.youtube.com/watch?v=8i03-M_4aT0&feature=youtu.be
 ________________________
 https://solidity.readthedocs.io/en/develop/contracts.html#libraries
 ________________________
 https://github.com/ethereum/solidity/issues/3985
+ Should we clarify when library code is linked vs embedded?
 __________________________
-_________________
 https://elementsproject.org/                      ← !!!
 """"
   Built upon and extending Bitcoin\u2019s codebase, it lets developers familiar
@@ -7762,45 +8352,11 @@ The use of WebAssembly as a format for smart contracts gains a variety of benefi
 - The possibility to develop smart contracts in many traditional programming languages, such as C, C++, and Rust
 - Access to a vast developer community and the toolchain surrounding WebAssembly
 ____________________
+<pre zoom labels="">
+<span xsmall></span>
 https://software.intel.com/en-us/blogs/2019/02/22/can-a-blockchain-controlled-robot-change-the-future
-_________________________
-https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1538.md
-- This standard provides a contract architecture that makes upgradeable contracts flexible, unlimited in size, and transparent.
-- A transparent contract publicly documents the full history of all changes made to it.
-- All changes to a transparent contract are reported in a standard format.
-}}}
-____________________________
-Override max contract size limit:
-https://ethereum-magicians.org/t/removing-or-increasing-the-contract-size-limit/3045
-
-Note: Pantheon (maybe others) allows to tune max.contract size.
-__________________________
-<pre zoom>
-<span xsmall>Non Classified</span>
-  <a TODO href='https://github.com/ethpm/ethpm-js'>https://github.com/ethpm/ethpm-js</a>
-      Javascript library for publishing and consuming Ethereum packages,
-      provides utilities for publishing and consuming Ethereum packages based
-      on the Ethereum Package Manager specification. It is meant to be integrated
-      directly into development tools to support their use of the Ethereum Package
-      Management ecosystem.
-
-  <a TODO href='https://yakindu.github.io/solidity-ide/'>Yakindu Solidity IDE (Eclipse based)</a>
-
-
-  <a href="https://etherscan.io/pushTx">https://etherscan.io/pushTx</a>
-      Send raw-transactions
-  <a href="http://man.openbsd.org/OpenBSD-current/man1/tmux.1">tmux:</a> General (BSD/Linux/UNIX) tool for multiplexing terminals and create long-running
-      sessions that persists ssh disconnections.
-      - It allows for example to have an terminal with vim editing solidity files,
-        another one editing JS files, another one with the truffle debugger,
-        the geth console, ...
-      - Sessions will persists until the PC/server is restarted. We can disconnect
-        and reconnect to the same session repeatedly. The terminal layout will be
-        saved.
-      - It also allow different users to share the session and terminals and is
-        very efficient in terms of bandwidth (when compared to VNC or RDesktop),
-        since there are not graphics involved.
 </pre>
+_________________________
 
 <pre zoom>
 <span xsmall>Bonding Curves</span>
@@ -7814,18 +8370,23 @@ https://kauri.io/article/f7853f4914bd42b6bee19758a97b42ee
 https://www.reddit.com/r/ethereum/comments/bnantb/vitalik_buterin_proposes_a_consensus_algorithm/
 Vitalik Buterin Proposes a Consensus Algorithm That Requires Only 1% to Be Honest
 </pre>
-____________________________
+
+<pre zoom labels="">
+<span xsmall>ERC 777</span>
 @[https://medium.com/coinmonks/erc-777-a-new-advanced-token-standard-c841788ab3cb]
-_________________
-https://journalducoin.com/altcoins/ethereum-eth-bientot-resistant-aux-asic-grace-a-progpow/
-___________________________
-@[https://github.com/ethereum/go-ethereum/blob/master/cmd/clef/tutorial.md]
-______________________
-@[https://blog.quillhash.com/ethereum-or-hyperledger-fabric/]
-@[https://i.stack.imgur.com/7eiCt.jpg]  Ethereum Block Structure
-@[https://blog.quillhash.com/wp-content/uploads/2019/03/Ethereum-or-Hyperledger-Fabric-3.png] Fabric Block Structure
-______________________
-https://docs.dydx.exchange/#/
+</pre>
+<pre zoom labels="">
+<span xsmall></span>
+@[https://journalducoin.com/altcoins/ethereum-eth-bientot-resistant-aux-asic-grace-a-progpow/
+</pre>
+<pre zoom labels="">
+<span xsmall>dYdX</span>
+@[https://docs.dydx.exchange/#/]
+· Trustless margin trading, borrowing, and lending
+· Built on Ethereum & Web3
+</pre>
+}}}
+
 ______________________
 Proof of Authority consensus
 https://www.mattbrill.com/2019/02/21/getting-started-with-the-gorli-testnet/
@@ -7838,19 +8399,16 @@ https://marketplace.kaleido.io/
 ______________________
 https://tatum.io/
 ______________________
-
 https://www.matrix.io/
 _____________________
 
 https://media.consensys.net/mythx-pro-will-provide-the-most-robust-security-platform-in-the-ethereum-ecosystem-85c3465999b3
 ___________________
-
 OnChainID: Token "ID" for regulated exchange markets:
  - https://docs.onchainid.com/introduction/
  - https://tokeny.com/wp-content/uploads/2018/12/t-rex-whitepaper.pdf
  - https://onchainid.com/
 ___________________
-
 https://ethereum.stackexchange.com/questions/1686/ethereum-event-log-maximum-size
 Ethereum max. log size:
 According to the Yellow paper:
@@ -7859,22 +8417,20 @@ According to the Yellow paper:
   around 3,145,192 (i.e., the first seven digits of pi). According to Jonathan Patrick, logging costs 
   76 gas per byte. So I'd assume you could get in around 41kb per log event.
 ___________________
-https://medium.com/uport/goodbye-uport-dids-hello-ethr-dids-ea2e80256f54
-- Goodbye uPort DIDs, Hello Ethr-DIDs
-  We have released a major app update that enables migrating all old uPort 
-  identities created before September 2018, to the current DID architecture. 
-  Not to worry though, your old Identity data will still be available to use 
-  and all verifications issued will be available
-___________________
-https://stackoverflow.com/questions/50137954/verify-smart-contract-code-deployed-with-truffle
-https://github.com/BlockCatIO/solidity-flattener
-https://github.com/nomiclabs/buidler
-https://github.com/nomiclabs/truffle-flattener
-https://github.com/RyuuGan/sol-merger
+<pre zoom labels="">
+<span xsmall>Flattening code</span>
+@[https://stackoverflow.com/questions/50137954/verify-smart-contract-code-deployed-with-truffle]
+- https://github.com/BlockCatIO/solidity-flattener
+- https://github.com/nomiclabs/buidler
+- https://github.com/nomiclabs/truffle-flattener
+- https://github.com/RyuuGan/sol-merger
+</pre>
 ____________________________
-https://ethereum.stackexchange.com/questions/7735/bytecode-on-block-chain-different-from-the-one-used-when-deploying
-______________________
+<pre zoom TODO label="data_structure">
+<span xsmall>bytecode vs deployedBytecode</span>
+@[https://ethereum.stackexchange.com/questions/7735/bytecode-on-block-chain-different-from-the-one-used-when-deploying]
 solc appears to generate two bytecode blobs per contract, and truffle relies on both: bytecode includes the wrapper code necessary to init and deploy the contract, and deployedBytecode just contains the core, deployed code. Right now we are only generating the latter but we are calling it the former.
+</pre>
 __________________
 Ethereum SHA3 vs SHA3-NIST standard)
 
@@ -7882,14 +8438,11 @@ SHA3 Solidity  5f16f4c7f149ac4f9510d9cf8cf384038ad348b3bcdc01915f95de12df9d1b02
 Keccak-256     5f16f4c7f149ac4f9510d9cf8cf384038ad348b3bcdc01915f95de12df9d1b02
 SHA3-256-NIST) 7f5979fb78f082e8b1c676635db8795c4ac6faba03525fb708cb5fd68fd40c5e
 _______________________
-https://blog.aventus.io/stack-too-deep-error-in-solidity-5b8861891bae   !!!!!! @ma
-____________________________
 https://medium.com/coinmonks/practical-zk-snarks-for-ethereum-140cbddcb55d
 ________________________________
 EVM ASM:
 https://blog.openzeppelin.com/deconstructing-a-solidity-contract-part-i-introduction-832efd2d7737/
 Deconstructing a Solidity Contract  to ASM OPCODE
-
 https://ethervm.io/
 _____________________________
 Remix Libra Move-Language Plugin
@@ -7900,6 +8453,42 @@ _____________________________
 https://medium.com/@loredana.cirstea/dtype-decentralized-type-system-functional-programming-on-ethereum-4f7666377c9f
 https://www.youtube.com/watch?v=GZg4L2o0Nyw&feature=youtu.be
 _____________________________
-GraphQL to fetch events,...:
-https://medium.com/intech-conseil-expertise/create-your-graph-node-to-query-complex-data-from-blockchain-via-graphql-6f08fbd494c5
+https://medium.com/coinmonks/ethereum-essence-complex-consensus-operations-9d63d419950b
+__________________________
+https://ethresear.ch/t/minimal-viable-plasma/426
+__________________________
+- Serenity shards 
+__________________________
+https://medium.com/alethio/ethereum-2-0-terms-demystified-8398357429d7
+
+https://medium.com/nearprotocol/detailed-overview-of-ethereum-2-0-shard-chains-committees-proposers-and-attesters-a9992d2fd103
+________________________
+https://ethresear.ch/t/common-classes-of-contracts-and-how-they-would-handle-ongoing-storage-maintenance-fees-rent/4441
+__________________________
+light Scala based projects: {
+https://www.sbt-ethereum.io/tutorials/using-a-smart-contract-i.html
+https://github.com/swaldman/eth-command-line
+}
+__________________________
+<pre zoom labels="">
+<span xsmall>Parity</span>
+<span xsmall>Substrate</span>
+-  Designed to build custom blockchains for enterprises
+   - Right privacy level for each use case
+   - Light- client- first design for mobile applications and IoT
+   - Forkless upgrade path to keep networks together
+   - Multi-level permissioning
+   - Encrypted transactions and state
+   - Limiting to asynchronous calls optionality
+   - Account-level locking
+   - Governance tools and methods such as stakeholder referendums, 
+     approval voting, and qualified abstention biasing
+- Architected on industry-standard WebAssembly  smart contracts
+- Highly extensible Libp2p networking
+- Rust-based primary implementation for speed and reliability
+- Javascript secondary implementation for developability
+</pre>
+
+
+
 -->

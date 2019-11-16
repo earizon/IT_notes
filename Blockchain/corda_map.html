@@ -252,15 +252,21 @@ $ java -jar network-bootstrapper.jar workflows-kotlin/build/nodes
 *NODE CERTs PRE-SETUP*
 node    → node   :   generates key pair
                    + certificate signing request
-node    → doorman: Certificate signing request
-doorman → doorman: signs (or delegate sign) cert
+node    → doorman: Certificate signing request. 
+doorman → doorman: signs (or delegate sign) cert.
 doorman → node   : (root-authority-signed) certificate CERT1
 node    → node   : creates and signs (using CERT1) two more certs:
                     - TLS certificate
-                    - Signing-certificate (node's well-known-identity)
-                      - Optionally use Node CERT to create:
+                    - Signing-certificate (.../certificates/ºnode-TLSº node well-known-to-peers identity)
+                      -ºOptionallyºuse Node CERT to create:
                         - well-known   identities.
-                        - confidential identities.
+                        - confidential identitiesºfor individual transactionsº 
+                          The certificate chain linking a confidential identity to
+                          a well-known node identity or real-world legal identity 
+                          is only distributed on a need-to-know basis.
+                          This ensures that even if an attacker gets access to an
+                          unencrypted transaction, they cannot identify the transaction’s
+                          participants without additional information.
 node    → node   : builds node-info-record
                    address well-known-identity
 node    → network: register node-info-record
@@ -271,27 +277,28 @@ node    → ???    : establish TLS session using certificate
 - A Corda network is a peer-to-peer network of nodes.
 - node-to-node communication uses encrypted TLS + AMQP/1.0
   in a point-to-point approach (vs broadcasts or gossip)
-                                                 ┌───────────────────────────────┬──┐
-                                                 │ºpermissioning doorman serviceº│  │
-               Net interface with         RPC    ├───────────────────────────────┘  │
-               other nodes in a           with   │- Signs/rejects CSRs for nodeTLS  │
-               running flow            node owner└─────────────────────────────↓────┘
+                                                     ┌───────────────────────────────┬──┐
+                                                     │ºpermissioning doorman serviceº│  │
+               Net interface with                    ├───────────────────────────────┘  │
+               other nodes in a     ºclient RPCº     │- Signs/rejects CSRs for nodeTLS  │
+              ºrunning flowº        (user/pass auth) └─────────────────────────────↓────┘
                     ↕                      ↕                                 once a Node has received a valid
 ┌────────┬──────────╨──────────────────────╨────┐                            X.509 (the CSR has been signed),
 │CORDA   │─ TLS                                 │   ┌─────────────────────┬┐ it will be able to register itself
-│SOFTWARE│  certificate                         │   │ºNetwork map serviceº│← to the Network Map Service
-├────────┘  @"workspace"/certificates/*node─TLS*←── ├─────────────────────┘│ [[0ba845f3-579d-491c-b580-9f9803808117?]]
-│         - IP                                  │   │ maps each well-known │
-│         - Current time as tracked by node     │   │ node-TLS identity to │
-│         - Information on other nodes on the   │   │ its IP address       │
-│           network                             │   └──────────────────────┘
-│    @2 ┌───────────────────────────────────────┤   ┌─────────────────────────────┬─────────────────┐ ºFULL LIST OF NODE SERVICESº  @2
+│JVM NODE│  certificate                         │   │ºNetwork map serviceº│← to the Network Map Service
+├────────┘  @.../certificates/ºnode─TLSº        ←── ├─────────────────────┘│ [[0ba845f3-579d-491c-b580-9f9803808117?]]
+│   UNIQUE well-known-to-peers ID ^^^^^         │   │-maps nodes TLS to    │
+│         - IP                                  │   │ IP addresses         │
+│         - Current time as tracked by node     │   │-Shared by all nodes  │
+│         - Information on other nodes on the   │   └──────────────────────┘
+│           network                             │   
+│     @2┌───────────────────────────────────────┤   ┌─────────────────────────────┬─────────────────┐ ºFULL LIST OF NODE SERVICESº  @2
 │       │ºSTORAGE SRVº                          │   │ºNotary Pool Network Serviceº│                 │ └─ net/corda/node/services
 │       │─ stores [TXs, attachements,           │   ├─────────────────────────────┘                 │    ├─ /network
 │       │  flow─checkpoints]                    │   │- similar to the Hyperledger Fabric "orderer"  │    ├─ /schema
 │       ├───────────────────────────────────────┤   │  or a Bitcoin miner, get in charge of         │    ├─ /identity
 │       │ºVAULTº                                │   │  ordering/validating proposed TXs/state change│    ├─ /logging
-│       │─stores relevant current/histor        │   │                                               │    ├─ /rpc
+│       │─stores relevant current/historic      │   │                                               │    ├─ /rpc
 │       │ state sequences                       │   │- Keeps a list of un-spent output states.      │    ├─ /api
 │       │                                       │   │  to assure that no double-spents are commited │    ├─ /upgrade
 │       ├───────────────────────────────────────┤   │  (aka provides the ºpoint of finalityº)       │    ├─ /vault
@@ -322,8 +329,8 @@ node    → ???    : establish TLS session using certificate
  ┌─────────────────────────┐  │               ├──────────────────┘                                   │      states.
  │  CONSUMED   │  ºNONº    │  │               │@[https://docs.corda.net/api-states.html]             │    - State changes occurs after
  │ HISTORICAL  │ CONSUMED  │  │               │@KeepForDJVM                                          │      validating each contract
- │ INMUTABLE   │ INMUTABLE │  │               │@CordaSerializable                                    │      in a TXs.
- │  STATES     │ STATES    │  │               │interface ContractState {                             │      - All signatures indicated in
+ │ºINMUTABLEº  │ºINMUTABLEº│  │               │@CordaSerializable                                    │      in a TXs.
+ │º STATES  º  │ºSTATES   º│  │               │interface ContractState {                             │      - All signatures indicated in
  │─────────────┼───────────│  │               │    val participants: List˂AbstractParty˃             │        any contract in the TX
  │       B0→B1 → B_head   ←───┘               │}                                                     │        is validated.
  │A0─→A1→A2→A3 → A_head    │                  │@[https://docs.corda.net/key-concepts-states.html]    │      - The TX associates 1+ input
@@ -333,7 +340,7 @@ node    → ???    : establish TLS session using certificate
   states.                                     │                                                      │
                                               │Example  OºI owe youºstate:                           │
                                               │ ┌────────────────────────────────────┐               │
-                                              │ │─ IOU.contract.ref                  │               │
+                                              │ │─ IOU.contract.ref  ←─── reference to contract governinc the state evolution
                                               │ │─ participants=[Alice,Bob]          │               │
                                               │ │─ IOU.state.props                   │               │
                                               │ │    (From,To)    : (Alice     ,Bob) │               │
@@ -1984,6 +1991,33 @@ https://www.youtube.com/watch?v=udaL_5n8kjU&list=PLi1PppB3-YrVq5Qy_RM9Qidq0eh-nL
 
 ______________________
 https://docs.corda.net/api/kotlin/corda/net.corda.core.transactions/-filtered-transaction/index.html
+_________________________
+When creating a new transaction, the output states that the transaction will propose do not exist yet, and must therefore be created by the proposer(s) of the transaction. However, the input states already exist as the outputs of previous transactions. We therefore include them in the proposed transaction by reference.
+
+_______________
+https://docs.corda.net/_static/corda-technical-whitepaper.pdf
+__________________
+It is assumed that the time feed for a notary is GPS/NaviStar time as defined by the atomic clocks at the US Naval Observatory. This time feed is extremely accurate and available globally for free.
+_____________________________
+https://docs.corda.net/key-concepts-node.html
+https://docs.corda.net/_images/node-architecture.png
+___________________________
+. A Merkle tree is a well-known cryptographic scheme that is commonly used to provide proofs of inclusion and data integrity. Merkle trees are widely used in peer-to-peer networks, blockchain systems and git. !!!!!
+The advantage of a Merkle tree is that the parts of the transaction that were torn off when presenting the transaction to the oracle cannot later be changed without also invalidating the oracle’s digital signature.
+
+https://docs.corda.net/key-concepts-tearoffs.html
+https://docs.corda.net/_images/merkleTreeFull.png
+_______________________
+
+git clone https://github.com/corda/cordapp-template-java.git ; cd cordapp-template-java
+
+______________________
+https://github.com/chainhaus/pycorda
+
+Python analytics framework for Corda vault and node data
+Access node and vault data for analytics using pandas DataFrames. Currently only works with H2 database. We'll be adding other DBs shortly and possibly support for queryable states.
+______________________
+https://www.linkedin.com/feed/update/urn:li:activity:6565198983885570049/
 
 -->
 

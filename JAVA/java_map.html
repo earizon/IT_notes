@@ -563,6 +563,79 @@ import org.slf4j.LoggerFactory;                                     │     ˂lo
     }                                                               │
     ...                                                             │
 </pre>
+<span title>Functional</span>
+<pre zoom labels="learn_x_in_y_min">
+<span xsmall>Lambdas</span>
+Sytnax:
+(parameters) -˃ expression
+(parameters) -˃  { statements; }
+
+// takes a Long, returns a String
+Function˂Long, String˃ f = (l) -˃ l.toString();
+
+// takes nothing, gives you Thread
+Supplier˂Thread˃ s = Thread::currentThread;
+
+//  takes a string as the parameter
+Consumer˂String˃ c = System.out::println;
+
+// use lambdas in streams
+new ArrayList˂String˃().stream()....
+
+// peek: Debug streams without changes
+peek ( e -˃ System.out.println(e)). ...
+
+// map: Convert every element into something
+map ( e -˃ e.hashCode())...
+
+// filter (hc -˃ (hc % 2) == 0) ...
+
+// collect all values from the stream
+collect(Collectors.toCollection(TreeSet::new))
+</pre>
+<pre zoom labels="learn_x_in_y_min,qa">
+<span xsmall>java.utility.function</span>
+@[https://docs.oracle.com/javase/8/docs/api/java/util/function/package-summary.html
+@[https://docs.oracle.com/javase/8/docs/api/java/lang/FunctionalInterface.html]
+- JDK 1.8+
+- Incomplete but good enough to cover the "shape" of many lambda expressions and
+ method references representing abstract concepts like functions, actions, or predicates
+- The @FunctionalInterface is used to capture design intent (not needed by compiler).
+- In documenting functional interfaces, or referring to variables typed as
+  functional interfaces, it is common to refer directly to those abstract concepts,
+  for example using "this function" instead of "the function represented by this object".
+- Each functional interface has a single abstract method, called the functional method for that
+  functional interface, to which the lambda expression's parameter and return types are matched or adapted.
+- Functional interfaces can provide a target type in multiple contexts, such as assignment context, method invocation,
+  or cast context:
+  |Predicate˂String˃ p = String::isEmpty;           // Assignment context
+  |stream.filter(e -˃ e.getSize() ˃ 10)...          // Method invocation context
+  |stream.map((ToIntFunction) e -˃ e.getSize())...  // Cast context
+</pre>
+<pre zoom labels="learn_x_in_y_min">
+<span xsmall>Defined functions in 1.8</span>
+────────────────────────────────────────────┬────────────────────────────────────────────────────────────────────────────────
+           Interface Summary                │           Interface Description
+────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────
+                  BiConsumer‹T,U›           │opt. accepting two input arguments and returns no result
+  (|Double|Int|Long)Consumer‹T›             │opt. accepting a single (Object|double|int|long)input argument and returns no result
+Obj(Double|Int|Long)Consumer‹T›             │opt. accepting an object-valued and a (double|int|long)-valued argument, and returns no result
+────────────────────────────────────────────│────────────────────────────────────────────────────────────────────────────────
+        (|Double|Long|Int)Function‹(T,)R›   │func. that accepts an (T|double,long,int) argument and produces a result
+       (|Double|Long)ToIntFunction          │func. that accepts a (T|double|long)argument and produces an int-valued result
+(ToDouble|ToLong|ToInt|)BiFunction‹(T,)U,R› │func. that accepts two arguments and produces an (T,double,long,int) result.
+           To(Double|Long)Function‹T›       │func. that produces a (double|long)-valued result
+(Int|Long|Double)To(Int|Long|Double)Function│func. that accepts a (int|long|double) argument and produces a (int|long|double) result
+────────────────────────────────────────────│────────────────────────────────────────────────────────────────────────────────
+ (|Int|Long|Double)UnaryOperator‹T›         │op. on a single (T|int|long|double) operand that produces a result of the same type
+(Double|Long|Int|)BinaryOperator‹T›         │op. upon two (T|int|long|double) operands and producing a result of the same type
+────────────────────────────────────────────│────────────────────────────────────────────────────────────────────────────────
+                BiPredicate‹T,U›            │predicate (boolean-valued function) of two arguments
+(|Int|Long|Double)Predicate‹T›              │predicate (boolean-valued function) of one (T|int|long|double) argument
+────────────────────────────────────────────│────────────────────────────────────────────────────────────────────────────────
+(|Boolean|Int|Long|Double)Supplier(‹T›)     │supplier of (T|Boolean|Int|long|double) results
+────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────
+</pre>
 </div>
 
 <div groupv>
@@ -1589,6 +1662,58 @@ It can provide reports and warnings similar to:
 RºThe memory is accumulated in one instanceº of
   java.util.LinkedList$Entry loaded by 'system class loader'
 </pre>
+
+<pre zoom labels="dynamic_instrumentation,profiling">
+<span xsmall TODO>SystemTap+Java</span>
+@[https://laurent-leturgez.com/2017/12/22/profiling-java-application-with-systemtap/]
+[root@spark ~]# yum install systemtap systemtap-runtime-java
+
+JAVA                                              SystemTap Profiling script
+package com.premiseo;                             #!/usr/bin/env stap
+
+import java.lang.*;                               global counter,timespent,t
+import java.io.BufferedReader;
+import java.io.InputStreamReader;                 probe begin {
+import java.io.IOException;                         printf("Press Ctrl+C to stop profiling\n")
+                                                    counter=0
+class Example {                                     timespent=0
+   public static void                             }
+     loop_and_wait(int n)
+         throws InterruptedException{             probe java("com.premiseo.Example").class("Example").method("loop_and_wait")
+         System.out.println(                      {
+            "Waiting "+n+"ms... Tick");             counter++
+         Thread.sleep(n);                           t=gettimeofday_ms()
+     }                                            }
+
+   public static void main(String[] args) {       probe java("com.premiseo.Example").class("Example").method("loop_and_wait").return
+      System.out.println("PID = "+                {
+          java.lang.management.                     timespent+=gettimeofday_ms()-t
+              ManagementFactory.                  }
+                  getRuntimeMXBean().
+                     getName().split("@")[0]);    probe end {
+      System.out.println(                            printf("Number of calls for loop_and_wait method: %ld \n",    counter)
+              "Press key when ready ...");           printf("Time Spent in method loop_and_wait: %ld msecs \n", timespent)
+                                                  }
+      try {                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        BufferedReader in =                       profiling loop_and_wait:
+           new BufferedReader(                    counts number of times the
+              new InputStreamReader(System.in));  loop_and_wait method has been called,
+        String next = in.readLine();              and the time spent in this method execution.
+      } catch (IOException ioe) {
+        ioe.printStackTrace();
+      }
+
+      try {
+        for (int i=0;i˂10;i++) {
+           loop_and_wait(1000);
+        }
+      } catch (InterruptedException ie) {
+        ie.printStackTrace();
+      }
+   }
+}
+</pre>
+
 </div>
 
 <div groupv>
@@ -2052,6 +2177,13 @@ project Loom which should bring "native" Fiber/lightweight continuation
 support directly into JVM without the need of auxiliary library like Quasar.
 </pre>
 </div>
+
+<pre zoom labels="performance,concurrency" TODO>
+<span xsmall TODO>fast Inter-thread communication</span>
+@[https://www.infoq.com/articles/High-Performance-Java-Inter-Thread-Communications]
+</pre>
+
+
 </div>
 
 <div group>
@@ -2313,17 +2445,57 @@ Operators to Convert Observables
 Implementing new Operators:
 @[http://reactivex.io/documentation/implement-operator.html]
 </pre>
+
+<pre zoom  labels="qa,async">
+<span TODO xsmall>Awaitility</span>
+<span xsmall>Sync-the-Async</span>
+<span xsmall>Java DSL</span>
+@[https://github.com/awaitility/awaitility]
+
+Testing asynchronous systems is hard. Not only does it require handling threads,
+timeouts and concurrency issues, but the intent of the test code can be obscured
+by all these details. Awaitility is a DSL that allows you to express expectations
+of an asynchronous system in a concise and easy to read manner. For example:
+
+@Test
+public void updatesCustomerStatus() {
+  // Publish an asynchronous message to a broker (e.g. RabbitMQ):
+  messageBroker.publishMessage(updateCustomerStatusMessage);
+  // Awaitility lets you wait until the asynchronous operation completes:
+  await().atMost(5, SECONDS).until(customerStatusIsUpdated());
+  ...
+}
+</pre>
+
+<pre zoom labels="async" >
+<span xsmall>Spring Reactor</span>
+<span xsmall>Spring-Async</span>
+@[https://ordina-jworks.github.io/reactive/2016/12/12/Reactive-Programming-Spring-Reactor.html]
+@[https://spring.io/blog/2013/05/13/reactor-a-foundation-for-asynchronous-applications-on-the-jvm]
+@[https://spring.io/guides/gs/async-method/]
+"""Why Reactor when there's already RxJava2?
+   RxJava2 is java 6 while for Reactor the Spring team decided to go all in
+   and focus only on Java 8. This means that you can make use of all the new
+   and fancy Java 8 features.
+
+   If you are going to use Spring 5, Reactor might be the better option.
+
+   But if you are happy with your RxJava2, there is no direct need to migrate to Reactor."""
+
+</pre>
+
+
 </div>
 
 <div groupv>
 <span title>VertX</span>
-<pre zoom labels="">
+<pre zoom labels="vertx">
 <span xsmall>Who-is-Who</span>
 Tim Fox: Initiated VertX in 2012
 Julien Ponge: @[https://julien.ponge.org/]
 </pre>
 
-<pre zoom >
+<pre zoom labels="vertx">
 <span xsmall>Summary</span>
 - <a href='https://github.com/vert-x3/vertx-guide-for-java-devs'>Vert.X guide for java devs</a>
 - <a href='https://github.com/vert-x3/vertx-maven-starter'>VertX maven starter</a>
@@ -2459,7 +2631,7 @@ lots of concurrent networked requests.
 </pre>
 
 
-<pre zoom labels="" TODO>
+<pre zoom  labels="vertx" TODO>
 <span xsmall>Testing</span>
 @[https://github.com/vert-x3/vertx-guide-for-java-devs/blob/3.8/step-4/README.adoc]
 
@@ -2553,12 +2725,12 @@ public class WikiDatabaseVerticleTest {
 
 </pre>
 
-<pre zoom labels="aaa" TODO>
+<pre zoom labels="vertx,aaa" TODO>
 <span xsmall>HTTPS AAA</span>
 @[https://github.com/vert-x3/vertx-guide-for-java-devs/blob/3.8/step-7/README.adoc]
 </pre>
 
-<pre zoom labels="">
+<pre zoom  labels="vertx">
 <span xsmall>Maven Bootstrap</span>
 @[https://github.com/vert-x3/vertx-guide-for-java-devs/blob/3.8/step-1/README.adoc]
 @[https://github.com/vert-x3/vertx-guide-for-java-devs/tree/3.8/step-1]
@@ -2603,7 +2775,7 @@ $ mvn clean package
 $ java -jar target/project01-SNAPSHOT-fat.jar
 </pre>
 
-<pre zoom labels="">
+<pre zoom  labels="vertx">
 <span xsmall>Create HttpServer</span>
 REF:@[https://github.com/vert-x3/vertx-guide-for-java-devs/blob/3.8/step-1/src/main/java/io/vertx/guides/wiki/MainVerticle.java]
 
@@ -2648,7 +2820,7 @@ REF:@[https://github.com/vert-x3/vertx-guide-for-java-devs/blob/3.8/step-1/src/m
 
 </pre>
 
-<pre zoom labels="">
+<pre zoom  labels="vertx">
 <span xsmall>Reusable Verticles</span>
 @[https://github.com/vert-x3/vertx-guide-for-java-devs/blob/3.8/step-2/README.adoc]
 
@@ -2689,7 +2861,7 @@ Ex:
   }
 </pre>
 
-<pre zoom labels="" TODO>
+<pre zoom  labels="vertx" TODO>
 <span xsmall>RxJava Integration</span>
 @[https://github.com/vert-x3/vertx-guide-for-java-devs/blob/3.8/step-7/README.adoc]
   <!-- Refactoring some code to use reactive programming with the
@@ -2698,7 +2870,7 @@ Ex:
 
 
 <span title>Client-Side</span>
-<pre zoom labels="" TODO>
+<pre zoom  labels="vertx" TODO>
 <span xsmall>SockJS</span>
 @[https://github.com/vert-x3/vertx-guide-for-java-devs/blob/3.8/step-10/README.adoc]
 - SockJS:
@@ -2739,368 +2911,7 @@ There are many features and modules that we haven’t covered in this guide, suc
 </div>
 </div>
 
-<div groupv>
-<pre TODO zoom labels="">
-<span xsmall>JSON</span>
-- <a href='https://www.infoq.com/news/2017/03/json-processing-public-review'>REF:JSON processing public review</a>
 
-Public review of JSR 374: Java API for JSON Processing (JSON-P) version 1.1 is now open.
-This version is expected to be included in the release of J2EE 8 and keeps JSON-P current with JSON IETF standards. It includes support for:
-    - JSON Pointer
-    - JSON Patch
-    - JSON Merge Patch
-    - Query and transformation operations
-    - Java 8 streams and lambdas
-- JSON-P was introduced in 2013 with the release of J2EE 7, as
-  an alternative to Gson and Jackson. It was designed to parse, generate,
-  and query standard JSON documents.
-  SR-367: Java API for JSON Binding (JSON-B), will also be included in the release of J2EE 8.
-<span xsmall>Example</span>
-tags: [JSON Parsing, HTTP GET/POST, TLS, Basic Authorization]
-package com.mycomp.project1;
-
-import java.io.BufferedReader;
-import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.security.KeyManagementException;
-import java.security.NoSuchAlgorithmException;
-
-import javax.net.ssl.HttpsURLConnection;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSocketFactory;
-import javax.net.ssl.HostnameVerifier;
-import javax.net.ssl.SSLSession;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
-
-import org.json.JSONObject;
-
-import java.security.cert.X509Certificate;
-import java.util.Date;
-
-import java.util.Scanner;
-
-public class TestAPI˂JSONArray˃ {
-    static String userpass = "operator1:ecllqy";
-    private static SSLSocketFactory sslSocketFactory = null;
-
-    private JSONObject sendPost(String url, String post_body, String token) throws Exception
-    {
-        URL obj = new URL(url);
-        String basicAuth = "Basic " +
-            javax.xml.bind.DatatypeConverter.printBase64Binary(userpass.getBytes());
-
-        HttpsURLConnection con = (HttpsURLConnection) obj.openConnection();
-
-        setAcceptAllVerifier((HttpsURLConnection)con); // TODO: WARN Add certificate validation.
-
-        con.setRequestMethod("POST"); //add request header
-        con.setRequestProperty("Content-Type", "application/json");
-        con.setRequestProperty("Cache-Control", "no-cache");
-        if (token.isEmpty()) { con.setRequestProperty("Authorization", basicAuth);
-        } else               { con.setRequestProperty("Authorization", "Bearer "+token);
-        }
-        con.setDoOutput(true);
-        DataOutputStream wr = new DataOutputStream(con.getOutputStream());
-        wr.writeBytes(post_body);
-        wr.flush();
-        wr.close();
-        int responseCode = con.getResponseCode();
-
-        BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
-        StringBuffer response = new StringBuffer();
-        String inputLine; while ((inputLine = in.readLine()) != null) { response.append(inputLine); }
-        in.close();
-        return new JSONObject(response.toString()); //String myJSONStr
-    }
-
-
-    /*ºººººººººººººººººººººººººººººººººººººººººººººººººººººººººººººººººººººººººººººº*/
-    /**
-     * Overrides the SSL TrustManager and HostnameVerifier to allow
-     * all certs and hostnames.
-     * WARNING: This should only be used for testing, or in a "safe" (i.e. firewalled)
-     * environment.
-     *
-     * @throws NoSuchAlgorithmException
-     * @throws KeyManagementException
-     */
-    protected static void setAcceptAllVerifier(HttpsURLConnection connection) throws NoSuchAlgorithmException, KeyManagementException {
-        // Create the socket factory.
-        // Reusing the same socket factory allows sockets to be
-        // reused, supporting persistent connections.
-        if( null == sslSocketFactory) {
-            SSLContext sc = SSLContext.getInstance("SSL");
-            sc.init(null, ALL_TRUSTING_TRUST_MANAGER, new java.security.SecureRandom());
-            sslSocketFactory = sc.getSocketFactory();
-        }
-
-        connection.setSSLSocketFactory(sslSocketFactory);
-
-        // Since we may be using a cert with a different name, we need to ignore
-        // the hostname as well.
-        connection.setHostnameVerifier(ALL_TRUSTING_HOSTNAME_VERIFIER);
-    }
-
-    private static final TrustManager[] ALL_TRUSTING_TRUST_MANAGER = new TrustManager[] {
-        new X509TrustManager() {
-            public X509Certificate[] getAcceptedIssuers() {
-                return null;
-            }
-            public void checkClientTrusted(X509Certificate[] certs, String authType) {}
-            public void checkServerTrusted(X509Certificate[] certs, String authType) {}
-        }
-    };
-
-    private static final HostnameVerifier ALL_TRUSTING_HOSTNAME_VERIFIER  = new HostnameVerifier() {
-        public boolean verify(String hostname, SSLSession session) {
-            return true;
-        }
-    };
-}
-</pre>
-<pre zoom labels="qa,testing">
-<span xsmall>Restassured: JSON REST API Test</span>
-˂dependency˃
-    ˂groupId˃io.rest-assured˂/groupId˃
-    ˂artifactId˃scala-support˂/artifactId˃
-    ˂version˃3.0.6˂/version˃
-    ˂scope˃test˂/scope˃
-˂/dependency˃
-˂dependency˃
-    ˂groupId˃io.rest-assured˂/groupId˃
-    ˂artifactId˃json-schema-validator˂/artifactId˃
-    ˂version˃3.0.6˂/version˃
-    ˂scope˃test˂/scope˃
-˂/dependency˃
-___________________________
-package com.mycompany.myproject.mymodule;
-
-import static junit.framework.TestCase.assertTrue;
-import static org.hamcrest.Matchers.*;
-
-import com.everis.trinity.server.common.StatusRes˂
-
-import static io.restassured.RestAssured.given;
-
-import io.restassured.RestAssured;
-import io.restassured.config.HttpClientConfig;
-import io.restassured.path.json.JsonPath;
-import io.restassured.response.Response;
-import io.restassured.specification.RequestSpecification;
-import junit.framework.TestCase;
-import org.apache.http.client.HttpClient;
-import org.apache.http.impl.client.SystemDefaultHttpClient;
-import org.apache.http.params.HttpConnectionParams;
-import org.apache.http.params.HttpParams;
-import org.eclipse.jetty.http.HttpStatus;
-import org.junit.Ignore;
-import org.junit.Test;
-import org.junit.BeforeClass;
-
-import org.hamcrest.BaseMatcher;
-import org.hamcrest.Description;
-
-import java.util.Base64;
-import java.util.Map;
-
-// ºFullJourney == Simulate full (REST) API in expected orderº
-public class FullJourneyTest {
-
-    // Custom regex matcher for RestAssured Framework
-    public static class RegexMatcher extends BaseMatcher˂Object˃{
-        private final String regex;
-
-        public RegexMatcher(String regex){
-            this.regex = regex;
-        }
-
-        public boolean matches(Object o){
-            return ((String)o).matches(regex);
-
-        }
-
-        public void describeTo(Description description){
-            description.appendText("matches regex=");
-        }
-
-        public static RegexMatcher matches(String regex){
-            return new RegexMatcher(regex);
-        }
-    }
-
-     public static class Base64Matcher extends BaseMatcher˂Object˃{
-
-        public Base64Matcher(){}
-
-        public boolean matches(Object o){
-            try {
-                Base64.getDecoder().decode((String)o);
-                return true;
-            }catch (Exception e){
-                return false;
-            }
-        }
-
-        public void describeTo(Description description){
-            description.appendText("can be parsed as Base64");
-        }
-
-        public static Base64Matcher isBase64Encoded(){
-            return new Base64Matcher();
-        }
-    }
-    private static final String AUTH_HEADER_VALUE = "Bearer " + ServerConfig.apiKey;
-
-    protected static RequestSpecification setupCommonHeaders() {
-        return given().header("Authorization", AUTH_HEADER_VALUE)
-                      .header("Accept"       , "application/json")
-                      .header("content-type" , "application/json;charset=utf-8")
-        .log().all();
-    }
-
-
-    final String
-        NAME="COMMUNITY_1", SYMBOL="SY1";
-
-    Response response;
-    @BeforeClass
-    public static void setup() {
-        RestAssured.port     = ServerConfig.serverPort;
-        RestAssured.basePath = "/";
-        RestAssured.baseURI  = "http://localhost";
-
-        HttpClientConfig clientConfig = RestAssured.config().getHttpClientConfig();
-        clientConfig = clientConfig.httpClientFactory(new HttpClientConfig.HttpClientFactory() {
-            @Override
-            public HttpClient createHttpClient() {
-                HttpClient rv =  new SystemDefaultHttpClient();
-                HttpParams httpParams = rv.getParams();
-                //  Wait 5s max for a connection
-                HttpConnectionParams.setConnectionTimeout(httpParams, 5 * 1000);
-                // Default session is 60s
-                HttpConnectionParams.setSoTimeout(httpParams, 60 * 1000);
-                return rv;
-            }
-        });
-        // This is necessary to ensure, that the client is reused.
-        clientConfig = clientConfig.reuseHttpClientInstance();
-        RestAssured.config = RestAssured.config().httpClient(clientConfig);
-    }
-
-    @Test
-    public void A010_PutNewCommunityAndNewUserForPendingToMineCommunity() {
-        String jsonBody =
-            "{ " +
-                " \"name\": \""+NAME+"\", " +
-                " \"symbol\": \"" + SYMBOL + "\","
-            "}";
-        response = setupCommonHeaders().body(jsonBody).when().ºpost("/Route/To/REST/API/01")º;
-        System.out.println(response.body().prettyPrint());
-        response.then()
-            /* ºget sure JSON serializer do not include extra (maybe sensitive) infOº */
-            .body("size()", Oºis(5)                          º)
-            .body("id"    , Oºnot(isEmptyString())           º)
-            .body("pubkey", Oºnot(isEmptyString())           º)
-            .body("pubkey", OºRegexMatcher.matches("^º{65}$")*)
-            .body("pubkey", OºBase64Matcher.isBase64Encoded()º)
-            .body("name"  , OºequalTo(NAME)                  º)
-            .body("symbol", OºequalTo(SYMBOL)                º)
-            .statusCode(HttpStatus.ACCEPTED_202);
-        String BºNEW_ID = response.getBody().jsonPath().get("id")º;
-
-        // Next related test to execute synchronously after fetching NEW_ID
-        String jsonBody =
-            "{ " +
-                B*" \"FK_ID\": \""+NEW_ID+"\", " +*
-                ...
-            "}";
-
-        response = setupCommonHeaders().body(jsonBody).when().ºpost("/Route/To/REST/API/02")º;
-        ...
-    }
-
-}
-</pre>
-</div>
-
-<div groupv>
-<pre zoom labels="learn_x_in_y_min">
-<span xsmall>Lambdas</span>
-Sytnax:
-(parameters) -˃ expression
-(parameters) -˃  { statements; }
-
-// takes a Long, returns a String
-Function˂Long, String˃ f = (l) -˃ l.toString();
-
-// takes nothing, gives you Thread
-Supplier˂Thread˃ s = Thread::currentThread;
-
-//  takes a string as the parameter
-Consumer˂String˃ c = System.out::println;
-
-// use lambdas in streams
-new ArrayList˂String˃().stream()....
-
-// peek: Debug streams without changes
-peek ( e -˃ System.out.println(e)). ...
-
-// map: Convert every element into something
-map ( e -˃ e.hashCode())...
-
-// filter (hc -˃ (hc % 2) == 0) ...
-
-// collect all values from the stream
-collect(Collectors.toCollection(TreeSet::new))
-</pre>
-<pre zoom labels="learn_x_in_y_min,qa">
-<span xsmall>java.utility.function</span>
-@[https://docs.oracle.com/javase/8/docs/api/java/util/function/package-summary.html
-@[https://docs.oracle.com/javase/8/docs/api/java/lang/FunctionalInterface.html]
-- JDK 1.8+
-- Incomplete but good enough to cover the "shape" of many lambda expressions and
- method references representing abstract concepts like functions, actions, or predicates
-- The @FunctionalInterface is used to capture design intent (not needed by compiler).
-- In documenting functional interfaces, or referring to variables typed as
-  functional interfaces, it is common to refer directly to those abstract concepts,
-  for example using "this function" instead of "the function represented by this object".
-- Each functional interface has a single abstract method, called the functional method for that
-  functional interface, to which the lambda expression's parameter and return types are matched or adapted.
-- Functional interfaces can provide a target type in multiple contexts, such as assignment context, method invocation,
-  or cast context:
-  |Predicate˂String˃ p = String::isEmpty;           // Assignment context
-  |stream.filter(e -˃ e.getSize() ˃ 10)...          // Method invocation context
-  |stream.map((ToIntFunction) e -˃ e.getSize())...  // Cast context
-</pre>
-<pre zoom labels="learn_x_in_y_min">
-<span xsmall>Defined functions in 1.8</span>
-────────────────────────────────────────────┬────────────────────────────────────────────────────────────────────────────────
-           Interface Summary                │           Interface Description
-────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────
-                  BiConsumer‹T,U›           │opt. accepting two input arguments and returns no result
-  (|Double|Int|Long)Consumer‹T›             │opt. accepting a single (Object|double|int|long)input argument and returns no result
-Obj(Double|Int|Long)Consumer‹T›             │opt. accepting an object-valued and a (double|int|long)-valued argument, and returns no result
-────────────────────────────────────────────│────────────────────────────────────────────────────────────────────────────────
-        (|Double|Long|Int)Function‹(T,)R›   │func. that accepts an (T|double,long,int) argument and produces a result
-       (|Double|Long)ToIntFunction          │func. that accepts a (T|double|long)argument and produces an int-valued result
-(ToDouble|ToLong|ToInt|)BiFunction‹(T,)U,R› │func. that accepts two arguments and produces an (T,double,long,int) result.
-           To(Double|Long)Function‹T›       │func. that produces a (double|long)-valued result
-(Int|Long|Double)To(Int|Long|Double)Function│func. that accepts a (int|long|double) argument and produces a (int|long|double) result
-────────────────────────────────────────────│────────────────────────────────────────────────────────────────────────────────
- (|Int|Long|Double)UnaryOperator‹T›         │op. on a single (T|int|long|double) operand that produces a result of the same type
-(Double|Long|Int|)BinaryOperator‹T›         │op. upon two (T|int|long|double) operands and producing a result of the same type
-────────────────────────────────────────────│────────────────────────────────────────────────────────────────────────────────
-                BiPredicate‹T,U›            │predicate (boolean-valued function) of two arguments
-(|Int|Long|Double)Predicate‹T›              │predicate (boolean-valued function) of one (T|int|long|double) argument
-────────────────────────────────────────────│────────────────────────────────────────────────────────────────────────────────
-(|Boolean|Int|Long|Double)Supplier(‹T›)     │supplier of (T|Boolean|Int|long|double) results
-────────────────────────────────────────────┴────────────────────────────────────────────────────────────────────────────────
-</pre>
-</div>
 <div groupv>
 <span title>QA</span>
 <pre zoom labels="qa,billiondolarmistake">
@@ -3619,6 +3430,14 @@ private void runCommand(@Untainted String… commands){            Each command 
 
 </pre>
 
+<pre zoom TODO labels="qa,library">
+<span xsmall>Annotation </span>
+<span xsmall>processors JSR 269</span>
+<span xsmall>(Dagger,</span>
+<span xsmall>Data Binding,</span>
+<span xsmall>Lombok, ...)</span>
+</pre>
+
 
 </div>
 
@@ -3925,8 +3744,8 @@ ${project.version}         ← Reuse project version in POM
         ˂exclusions˃
             ˂!-- Avoid problem:
             SLF4J: Class path contains multiple SLF4J bindings.
-            SLF4J: Found binding in [jar:file:/home/azureuser/.m2/repository/org/slf4j/slf4j-jdk14/1.7.21/slf4j-jdk14-1.7.21.jar!/org/slf4j/impl/StaticLoggerBinder.class]
-            SLF4J: Found binding in [jar:file:/home/azureuser/.m2/repository/ch/qos/logback/logback-classic/1.1.7/logback-classic-1.1.7.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+            SLF4J: Found binding in [jar:file:~/.m2/repository/org/slf4j/slf4j-jdk14/1.7.21/slf4j-jdk14-1.7.21.jar!/org/slf4j/impl/StaticLoggerBinder.class]
+            SLF4J: Found binding in [jar:file:~/.m2/repository/ch/qos/logback/logback-classic/1.1.7/logback-classic-1.1.7.jar!/org/slf4j/impl/StaticLoggerBinder.class]
             --˃
             ˂exclusion˃
                 ˂groupId˃org.slf4j˂/groupId˃
@@ -4229,8 +4048,34 @@ Utilities to clean, organize, and restructure Maven POMs.
   those that are used but unspecified (ie, transitive dependencies that 
   should be direct).
 </pre>
+<pre zoom bgorange labels="devops,k8s">
+<span xsmall>Jib Image Builder</span>
+<span xsmall>Docker+mvn/gradle</span>
+@[https://www.infoq.com/news/2018/08/jib]
+@[https://github.com/GoogleContainerTools/jib]
+- Build Java Container without Docker/Dockerfile
+- Jib's build approach separates the Java application 
+  into multiple layers, so when there are any code changes,
+  only those changes are rebuilt, rather than the entire application.
+  - these layers are layered on top of a distroless base image.
+    containing only the developer's application and its runtime deps.
+    
+ºDocker build flow º
 
+│Project│ →(build)→ │JAR│
+                       │                                                                  │Container │
+                       ├───────→   │Build Context│ →(build)→ │ Container Image │ →(push)→ │Image     │
+                       │                                     │ (docker cache)  │          │(registry)│
+              │Dockerfile│
+
+
+ºJib Build Flow:º
+
+                                                                                           │Container │
+│Project│ ─────────────────────────────(Jib)──────────────────────────────────────────────→│Image     │
+                                                                                           │(registry)│
 </pre>
+
 </div>
 </div>
 
@@ -4309,7 +4154,7 @@ distributionSha256Sum=371cb9fbebbe9880d147f59bab36d61eee122854ef8c9ee1ecf12b8236
 
 
 <div groupv>
-<span title>DDBB</span>
+<span title>DDBB/persistence</span>
 <pre zoom labels="sql,qa">
 <span TODO xsmall>Jooq</span>
 <span xsmall> SQL made simple</span>
@@ -4330,6 +4175,316 @@ distributionSha256Sum=371cb9fbebbe9880d147f59bab36d61eee122854ef8c9ee1ecf12b8236
 <span xsmall TODO>OpenJPA</span>
 @[https://openjpa.apache.org/]
 </pre>
+<pre zoom TODO labels="persistence,sql" >
+<span xsmall>reladomo</span>
+<span xsmall>(Goldman Sachs)</span>
+@[https://github.com/goldmansachs/reladomo]
+- enterprise grade (ORM) object-relational mapping framework for Java.
+</pre>
+
+<pre zoom labels="persistence,performance" >
+<span xsmall>Snappy</span>
+<span xsmall>Fast</span>
+<span xsmall>de/compressor</span>
+@[https://github.com/xerial/snappy-java]
+- Java port of the snappy http://code.google.com/p/snappy/
+</pre>
+
+<span title>Cache</span>
+<pre zoom labels="cache,performance" TODO>
+<span xsmall>JCache</span>
+- Map-Like API optimized for caching.
+- 1.0 drawbacks:
+  - No async operations.
+- Implemented by Hazelcast and others
+</pre>
+
+<span title>JSON</span>
+<pre TODO zoom labels="">
+<span xsmall>JSON</span>
+- <a href='https://www.infoq.com/news/2017/03/json-processing-public-review'>REF:JSON processing public review</a>
+
+Public review of JSR 374: Java API for JSON Processing (JSON-P) version 1.1 is now open.
+This version is expected to be included in the release of J2EE 8 and keeps JSON-P current with JSON IETF standards. It includes support for:
+    - JSON Pointer
+    - JSON Patch
+    - JSON Merge Patch
+    - Query and transformation operations
+    - Java 8 streams and lambdas
+- JSON-P was introduced in 2013 with the release of J2EE 7, as
+  an alternative to Gson and Jackson. It was designed to parse, generate,
+  and query standard JSON documents.
+  SR-367: Java API for JSON Binding (JSON-B), will also be included in the release of J2EE 8.
+<span xsmall>Example</span>
+tags: [JSON Parsing, HTTP GET/POST, TLS, Basic Authorization]
+package com.mycomp.project1;
+
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+
+import org.json.JSONObject;
+
+import java.security.cert.X509Certificate;
+import java.util.Date;
+
+import java.util.Scanner;
+
+public class TestAPI˂JSONArray˃ {
+    static String userpass = "operator1:ecllqy";
+    private static SSLSocketFactory sslSocketFactory = null;
+
+    private JSONObject sendPost(String url, String post_body, String token) throws Exception
+    {
+        URL obj = new URL(url);
+        String basicAuth = "Basic " +
+            javax.xml.bind.DatatypeConverter.printBase64Binary(userpass.getBytes());
+
+        HttpsURLConnection con = (HttpsURLConnection) obj.openConnection();
+
+        setAcceptAllVerifier((HttpsURLConnection)con); // TODO: WARN Add certificate validation.
+
+        con.setRequestMethod("POST"); //add request header
+        con.setRequestProperty("Content-Type", "application/json");
+        con.setRequestProperty("Cache-Control", "no-cache");
+        if (token.isEmpty()) { con.setRequestProperty("Authorization", basicAuth);
+        } else               { con.setRequestProperty("Authorization", "Bearer "+token);
+        }
+        con.setDoOutput(true);
+        DataOutputStream wr = new DataOutputStream(con.getOutputStream());
+        wr.writeBytes(post_body);
+        wr.flush();
+        wr.close();
+        int responseCode = con.getResponseCode();
+
+        BufferedReader in = new BufferedReader(new InputStreamReader(con.getInputStream()));
+        StringBuffer response = new StringBuffer();
+        String inputLine; while ((inputLine = in.readLine()) != null) { response.append(inputLine); }
+        in.close();
+        return new JSONObject(response.toString()); //String myJSONStr
+    }
+
+
+    /*ºººººººººººººººººººººººººººººººººººººººººººººººººººººººººººººººººººººººººººººº*/
+    /**
+     * Overrides the SSL TrustManager and HostnameVerifier to allow
+     * all certs and hostnames.
+     * WARNING: This should only be used for testing, or in a "safe" (i.e. firewalled)
+     * environment.
+     *
+     * @throws NoSuchAlgorithmException
+     * @throws KeyManagementException
+     */
+    protected static void setAcceptAllVerifier(HttpsURLConnection connection) throws NoSuchAlgorithmException, KeyManagementException {
+        // Create the socket factory.
+        // Reusing the same socket factory allows sockets to be
+        // reused, supporting persistent connections.
+        if( null == sslSocketFactory) {
+            SSLContext sc = SSLContext.getInstance("SSL");
+            sc.init(null, ALL_TRUSTING_TRUST_MANAGER, new java.security.SecureRandom());
+            sslSocketFactory = sc.getSocketFactory();
+        }
+
+        connection.setSSLSocketFactory(sslSocketFactory);
+
+        // Since we may be using a cert with a different name, we need to ignore
+        // the hostname as well.
+        connection.setHostnameVerifier(ALL_TRUSTING_HOSTNAME_VERIFIER);
+    }
+
+    private static final TrustManager[] ALL_TRUSTING_TRUST_MANAGER = new TrustManager[] {
+        new X509TrustManager() {
+            public X509Certificate[] getAcceptedIssuers() {
+                return null;
+            }
+            public void checkClientTrusted(X509Certificate[] certs, String authType) {}
+            public void checkServerTrusted(X509Certificate[] certs, String authType) {}
+        }
+    };
+
+    private static final HostnameVerifier ALL_TRUSTING_HOSTNAME_VERIFIER  = new HostnameVerifier() {
+        public boolean verify(String hostname, SSLSession session) {
+            return true;
+        }
+    };
+}
+</pre>
+<pre zoom labels="qa,testing">
+<span xsmall>Restassured: JSON REST API Test</span>
+˂dependency˃
+    ˂groupId˃io.rest-assured˂/groupId˃
+    ˂artifactId˃scala-support˂/artifactId˃
+    ˂version˃3.0.6˂/version˃
+    ˂scope˃test˂/scope˃
+˂/dependency˃
+˂dependency˃
+    ˂groupId˃io.rest-assured˂/groupId˃
+    ˂artifactId˃json-schema-validator˂/artifactId˃
+    ˂version˃3.0.6˂/version˃
+    ˂scope˃test˂/scope˃
+˂/dependency˃
+___________________________
+package com.mycompany.myproject.mymodule;
+
+import static junit.framework.TestCase.assertTrue;
+import static org.hamcrest.Matchers.*;
+
+import static io.restassured.RestAssured.given;
+
+import io.restassured.RestAssured;
+import io.restassured.config.HttpClientConfig;
+import io.restassured.path.json.JsonPath;
+import io.restassured.response.Response;
+import io.restassured.specification.RequestSpecification;
+import junit.framework.TestCase;
+import org.apache.http.client.HttpClient;
+import org.apache.http.impl.client.SystemDefaultHttpClient;
+import org.apache.http.params.HttpConnectionParams;
+import org.apache.http.params.HttpParams;
+import org.eclipse.jetty.http.HttpStatus;
+import org.junit.Ignore;
+import org.junit.Test;
+import org.junit.BeforeClass;
+
+import org.hamcrest.BaseMatcher;
+import org.hamcrest.Description;
+
+import java.util.Base64;
+import java.util.Map;
+
+// ºFullJourney == Simulate full (REST) API in expected orderº
+public class FullJourneyTest {
+
+    // Custom regex matcher for RestAssured Framework
+    public static class RegexMatcher extends BaseMatcher˂Object˃{
+        private final String regex;
+
+        public RegexMatcher(String regex){
+            this.regex = regex;
+        }
+
+        public boolean matches(Object o){
+            return ((String)o).matches(regex);
+
+        }
+
+        public void describeTo(Description description){
+            description.appendText("matches regex=");
+        }
+
+        public static RegexMatcher matches(String regex){
+            return new RegexMatcher(regex);
+        }
+    }
+
+     public static class Base64Matcher extends BaseMatcher˂Object˃{
+
+        public Base64Matcher(){}
+
+        public boolean matches(Object o){
+            try {
+                Base64.getDecoder().decode((String)o);
+                return true;
+            }catch (Exception e){
+                return false;
+            }
+        }
+
+        public void describeTo(Description description){
+            description.appendText("can be parsed as Base64");
+        }
+
+        public static Base64Matcher isBase64Encoded(){
+            return new Base64Matcher();
+        }
+    }
+    private static final String AUTH_HEADER_VALUE = "Bearer " + ServerConfig.apiKey;
+
+    protected static RequestSpecification setupCommonHeaders() {
+        return given().header("Authorization", AUTH_HEADER_VALUE)
+                      .header("Accept"       , "application/json")
+                      .header("content-type" , "application/json;charset=utf-8")
+        .log().all();
+    }
+
+
+    final String
+        NAME="COMMUNITY_1", SYMBOL="SY1";
+
+    Response response;
+    @BeforeClass
+    public static void setup() {
+        RestAssured.port     = ServerConfig.serverPort;
+        RestAssured.basePath = "/";
+        RestAssured.baseURI  = "http://localhost";
+
+        HttpClientConfig clientConfig = RestAssured.config().getHttpClientConfig();
+        clientConfig = clientConfig.httpClientFactory(new HttpClientConfig.HttpClientFactory() {
+            @Override
+            public HttpClient createHttpClient() {
+                HttpClient rv =  new SystemDefaultHttpClient();
+                HttpParams httpParams = rv.getParams();
+                //  Wait 5s max for a connection
+                HttpConnectionParams.setConnectionTimeout(httpParams, 5 * 1000);
+                // Default session is 60s
+                HttpConnectionParams.setSoTimeout(httpParams, 60 * 1000);
+                return rv;
+            }
+        });
+        // This is necessary to ensure, that the client is reused.
+        clientConfig = clientConfig.reuseHttpClientInstance();
+        RestAssured.config = RestAssured.config().httpClient(clientConfig);
+    }
+
+    @Test
+    public void A010_PutNewCommunityAndNewUserForPendingToMineCommunity() {
+        String jsonBody =
+            "{ " +
+                " \"name\": \""+NAME+"\", " +
+                " \"symbol\": \"" + SYMBOL + "\","
+            "}";
+        response = setupCommonHeaders().body(jsonBody).when().ºpost("/Route/To/REST/API/01")º;
+        System.out.println(response.body().prettyPrint());
+        response.then()
+            /* ºget sure JSON serializer do not include extra (maybe sensitive) infOº */
+            .body("size()", Oºis(5)                          º)
+            .body("id"    , Oºnot(isEmptyString())           º)
+            .body("pubkey", Oºnot(isEmptyString())           º)
+            .body("pubkey", OºRegexMatcher.matches("^º{65}$")*)
+            .body("pubkey", OºBase64Matcher.isBase64Encoded()º)
+            .body("name"  , OºequalTo(NAME)                  º)
+            .body("symbol", OºequalTo(SYMBOL)                º)
+            .statusCode(HttpStatus.ACCEPTED_202);
+        String BºNEW_ID = response.getBody().jsonPath().get("id")º;
+
+        // Next related test to execute synchronously after fetching NEW_ID
+        String jsonBody =
+            "{ " +
+                B*" \"FK_ID\": \""+NEW_ID+"\", " +*
+                ...
+            "}";
+
+        response = setupCommonHeaders().body(jsonBody).when().ºpost("/Route/To/REST/API/02")º;
+        ...
+    }
+
+}
+</pre>
+</div>
+
 
 
 </div>
@@ -4526,23 +4681,76 @@ new major features:
   - jhat tool, obsoleted by superior heap visualizers and analyzers.
 </pre>
 </div>
+<div groupv>
+<pre zoom labels="">
+<span TODO xsmall>GraalVM</span>
+@[http://www.graalvm.org/]
+@[https://technology.amis.nl/2018/11/23/comparing-jvm-performance-zulu-openjdk-openjdk-oracle-jdk-graalvm-ce/]
+@[https://www.reddit.com/r/java/comments/acarqq/graalvm_in_2018/]
+
+- Graal: How to Use the New JVM JIT Compiler in Real Life
+  @[https://www.infoq.com/presentations/graal-jvm-jit/]
+</pre>
+<pre zoom>
+<span xsmall>Quarkus</span>
+<span xsmall>GraalVM</span>
+<span xsmall>Framework</span>
+@[https://quarkus.io/guides/]
+@[https://quarkus.io/guides/kogito-guide]
+@[https://quarkus.io/guides/using-vertx.html]
+..
+@[https://www.infoq.com/news/2019/03/redhat-release-quarkus]
+
+Extracted from "Hibernate with Panache" by Emmanuel Bernard.
+""" Quarkus is Supersonic Subatomic Java. extremely fast with low memory footprint""".
+@[https://quarkus.io/guides/hibernate-orm-panache-guide]
+Hibernate ORM is the de facto JPA implementation and offers you the full
+breadth of an Object Relational Mapper. It makes complex mappings possible,
+but it does not make simple and common mappings trivial. Hibernate ORM with
+Panache focuses on making your entities trivial and fun to write in Quarkus.
+</pre>
+</div>
+
+<div groupv>
+<span title>Tech Radar</span>
+<pre zoom>
+<span xsmall TODO>LMAX Disruptor</span>
+<span xsmall>High Perf Inter-Thread</span>
+<span xsmall> Messaging Library</span>
+@[https://lmax-exchange.github.io/disruptor/]
+
+See also:
+@[https://www.infoq.com/articles/High-Performance-Java-Inter-Thread-Communications/]
+
+@[https://www.infoq.com/news/2013/05/lmax-zing]
+LMAX Exchange Getting Up To 50% Improvement in Latency From Azul's Zing JVM
+Interesting points about GC tunning.
+</pre>
 
 
-<hr/>
-
-<span title style="float:left">Non-Classiffied</span>
 <pre zoom>
 <span TODO xsmall>Java Value Types proposal</span>
 @[https://www.infoq.com/news/2017/11/ValueTypesNov10]
+            ┌────────────────────────────┬───────────────────────────────────────
+            │ "NOW" (2019─12)            │ "FUTURE" 
+            │ + primitive types          │ + primitive types
+            │ + object references:       │ + object references:
+            │ ─ NO low─level mem.control │ + Value types
+            │   (deliberately)           │   
+────────────┼────────────────────────────┼───────────────────────────────────────
+PROS:       │ ─ Great simplicity         │ ─ Memory layout efficiency
+            │                            │ ─ removes the need for
+            │                            │   a full object header
+            │                            │   for each item of composite data.
+            │                            │ ─ header removal 
+            │                            │   =→ instance metadata removal
+────────────┼────────────────────────────┼───────────────────────────────────────
+CONS:       │ performance penalties      │ ─ Higher complexity
+            │ ─ indirections in arrays   │ ─ object's identity is lost
+            │ ─ cache misses.            │ ─ new bytecodes needs to be introduced
+────────────┴────────────────────────────┴───────────────────────────────────────
 </pre>
 
-<pre zoom  labels="qa,library">
-<span xsmall>Annotation processors: JSR 269</span>
-<span xsmall>(Dagger, Data Binding, Lombok, ...)</span>
-</pre>
-
-
-<div groupv>
 <pre zoom>
 <span xsmall>Tribe</span>
 <span xsmall>reliable multicast</span>
@@ -4563,22 +4771,6 @@ new major features:
   cluster communications.
 </pre>
 
-<pre zoom labels="async" >
-<span xsmall>Spring Reactor</span>
-<span xsmall>Spring-Async</span>
-@[https://ordina-jworks.github.io/reactive/2016/12/12/Reactive-Programming-Spring-Reactor.html]
-@[https://spring.io/blog/2013/05/13/reactor-a-foundation-for-asynchronous-applications-on-the-jvm]
-@[https://spring.io/guides/gs/async-method/]
-"""Why Reactor when there's already RxJava2?
-   RxJava2 is java 6 while for Reactor the Spring team decided to go all in
-   and focus only on Java 8. This means that you can make use of all the new
-   and fancy Java 8 features.
-
-   If you are going to use Spring 5, Reactor might be the better option.
-
-   But if you are happy with your RxJava2, there is no direct need to migrate to Reactor."""
-
-</pre>
 <pre zoom  labels="comparative">
 <span xsmall>Apache MINA</span>
 <span xsmall>(Netty Alter.)</span>
@@ -4602,13 +4794,14 @@ Apache MINA comes with many subprojects :
 </pre>
 </div>
 
+<div groupv>
+<span title style="float:left">Non-Classiffied</span><br/>
+<div groupv>
 
 
-<pre zoom  labels="qa,async">
-<span TODO xsmall>Awaitility</span>
-<span xsmall>Sync-the-Async</span>
-<span xsmall>Java DSL</span>
-</pre>
+</div>
+
+
 
 
 
@@ -4635,7 +4828,7 @@ contained in Dragome Web SDK,[21] Bck2Brwsr,[22] and j2js-compiler.[23]"""
 
 
 <pre zoom labels="security">
-<span xsmall TODO>Crypto.API(JCA)</a>
+<span xsmall TODO>Crypto.API(JCA)</span>
 - See also:
   <a href="./BCFipsIn100.pdf">Bounce Castle FIPS JCA provider</a>
 </pre>
@@ -4707,47 +4900,6 @@ policies among any framework you use, but leave it up to the integrations and
 performance you need alongside your team's technical judgment.
 </pre>
 
-<pre zoom labels="">
-<span TODO xsmall>GraalVM</span>
-@[http://www.graalvm.org/]
-@[https://technology.amis.nl/2018/11/23/comparing-jvm-performance-zulu-openjdk-openjdk-oracle-jdk-graalvm-ce/]
-@[https://www.reddit.com/r/java/comments/acarqq/graalvm_in_2018/]
-</pre>
-
-<pre zoom>
-<span xsmall>Quarkus</span>
-<span xsmall>GraalVM</span>
-<span xsmall>Framework</span>
-@[https://quarkus.io/guides/]
-@[https://quarkus.io/guides/kogito-guide]
-@[https://quarkus.io/guides/using-vertx.html]
-..
-@[https://www.infoq.com/news/2019/03/redhat-release-quarkus]
-
-Extracted from "Hibernate with Panache" by Emmanuel Bernard.
-""" Quarkus is Supersonic Subatomic Java. extremely fast with low memory footprint""".
-@[https://quarkus.io/guides/hibernate-orm-panache-guide]
-Hibernate ORM is the de facto JPA implementation and offers you the full
-breadth of an Object Relational Mapper. It makes complex mappings possible,
-but it does not make simple and common mappings trivial. Hibernate ORM with
-Panache focuses on making your entities trivial and fun to write in Quarkus.
-
-</pre>
-
-<pre zoom>
-<span xsmall>LMAX Disruptor</span>
-<span xsmall>High Perf Inter-Thread</span>
-<span xsmall> Messaging Library</span>
-@[https://lmax-exchange.github.io/disruptor/]
-
-See also:
-@[https://www.infoq.com/articles/High-Performance-Java-Inter-Thread-Communications/]
-
-@[https://www.infoq.com/news/2013/05/lmax-zing]
-LMAX Exchange Getting Up To 50% Improvement in Latency From Azul's Zing JVM
-Interesting points about GC tunning.
-</pre>
-
 <pre zoom>
 <span TODO xsmall>Javalin</span>
 <span xsmall>Simple Kotlin/Java</span>
@@ -4775,13 +4927,6 @@ Ex: Declare server and API in the same place
   |         ws("events", userController::webSocketEvents);
   |     });
   | }).start(port);
-</pre>
-<pre zoom labels="persistence,performance" >
-<span xsmall>Snappy</span>
-<span xsmall>Fast</span>
-<span xsmall>de/compressor</span>
-@[https://github.com/xerial/snappy-java]
-- Java port of the snappy http://code.google.com/p/snappy/
 </pre>
 
 <pre zoom labels="tool" >
@@ -4814,24 +4959,6 @@ module:
 - its data includes resources and other kinds of static information.
 </pre>
 
-<pre zoom TODO labels="persistence,sql" >
-<span xsmall>reladomo</span>
-<span xsmall>(Goldman Sachs)</span>
-@[https://github.com/goldmansachs/reladomo]
-- enterprise grade (ORM) object-relational mapping framework for Java.
-</pre>
-
-<pre zoom labels="devops,k8s">
-<span xsmall>Build Java Container without Docker/Dockerfile</span>
-- Applies to MVN/Gradle
-@[https://www.infoq.com/news/2018/08/jib]
-@[https://github.com/GoogleContainerTools/jib]
-</pre>
-
-<pre zoom labels="performance,concurrency" TODO>
-<span xsmall>fast Inter-thread communication</span>
-@[https://www.infoq.com/articles/High-Performance-Java-Inter-Thread-Communications#anch104956]
-</pre>
 
 <pre zoom labels="" TODO>
 <span xsmall>Java Erasure</span>
@@ -4894,66 +5021,8 @@ module:
       that can be leveraged system-wide.
 </pre>
 
-<pre zoom labels="cache,performance" TODO>
-<span xsmall>JCache</span>
-- Map-Like API optimized for caching.
-- 1.0 drawbacks:
-  - No async operations.
-- Implemented by Hazelcast and others
-</pre>
 
-
-<pre zoom labels="dynamic_instrumentation,profiling">
-<span xsmall TODO>SystemTap+Java</span>
-@[https://laurent-leturgez.com/2017/12/22/profiling-java-application-with-systemtap/]
-[root@spark ~]# yum install systemtap systemtap-runtime-java
-
-JAVA                                              SystemTap Profiling script
-package com.premiseo;                             #!/usr/bin/env stap
-
-import java.lang.*;                               global counter,timespent,t
-import java.io.BufferedReader;
-import java.io.InputStreamReader;                 probe begin {
-import java.io.IOException;                         printf("Press Ctrl+C to stop profiling\n")
-                                                    counter=0
-class Example {                                     timespent=0
-   public static void                             }
-     loop_and_wait(int n)
-         throws InterruptedException{             probe java("com.premiseo.Example").class("Example").method("loop_and_wait")
-         System.out.println(                      {
-            "Waiting "+n+"ms... Tick");             counter++
-         Thread.sleep(n);                           t=gettimeofday_ms()
-     }                                            }
-
-   public static void main(String[] args) {       probe java("com.premiseo.Example").class("Example").method("loop_and_wait").return
-      System.out.println("PID = "+                {
-          java.lang.management.                     timespent+=gettimeofday_ms()-t
-              ManagementFactory.                  }
-                  getRuntimeMXBean().
-                     getName().split("@")[0]);    probe end {
-      System.out.println(                            printf("Number of calls for loop_and_wait method: %ld \n",    counter)
-              "Press key when ready ...");           printf("Time Spent in method loop_and_wait: %ld msecs \n", timespent)
-                                                  }
-      try {                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-        BufferedReader in =                       profiling loop_and_wait:
-           new BufferedReader(                    counts number of times the
-              new InputStreamReader(System.in));  loop_and_wait method has been called,
-        String next = in.readLine();              and the time spent in this method execution.
-      } catch (IOException ioe) {
-        ioe.printStackTrace();
-      }
-
-      try {
-        for (int i=0;i˂10;i++) {
-           loop_and_wait(1000);
-        }
-      } catch (InterruptedException ie) {
-        ie.printStackTrace();
-      }
-   }
-}
-</pre>
-
+</div>
 </body>
 </html>
 <!--
@@ -5278,5 +5347,13 @@ The library tries hard to get the details right:
     Statement and ResultSets are carefully cleaned up when pooled Connections and Statements are checked in, to prevent resource- exhaustion when clients use the lazy but common resource-management strategy of only cleaning up their Connections. (Don't be naughty.)
     The library adopts the approach defined by the JDBC 2 and 3 specification (even where these conflict with the library author's preferences). DataSources are written in the JavaBean style, offering all the required and most of the optional properties (as well as some non-standard ones), and no-arg constructors. All JDBC-defined internal interfaces are implemented (ConnectionPoolDataSource, PooledConnection, ConnectionEvent-generating Connections, etc.) You can mix c3p0 classes with compliant third-party implementations (although not all c3p0 features will work with external implementations of ConnectionPoolDataSource).
 ____________________________
-
+https://www.asyncapi.org/
+Building the future of event-driven architectures.
+Open source tools to easily build and maintain your event-driven architecture. All powered by the AsyncAPI specification, the industry standard for defining asynchronous APIs. 
+_________________________
+https://developers.redhat.com/blog/2019/08/21/reactive-spring-boot-programming-with-vert-x/?sc_cid=701f2000000RtqCAAS
+Reactive Spring Boot programming with Vert.x
+The latest bundle of Red Hat supported Spring Boot starters was recently released. In addition to supporting the popular Red Hat products for our Spring Boot customers, the Red Hat Spring Boot team was also busy creating new ones. The most recent technical preview added is a group of Eclipse Vert.x Spring Boot starters, which provide a Spring-native vocabulary for the popular JVM reactive toolkit.
+______________________
+https://blogs.mulesoft.com/dev/mule-dev/dataweave-lambdas-for-java-programmers/
 -->

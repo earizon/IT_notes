@@ -2,7 +2,10 @@ var spb = {
   zoomDivDOM : window,
   idxZoomDivRule :-1,
   idxZoomRule:-1,
-  cellFontSize:0.05,
+  idxXSmallRule:-1,
+  idxXTitleRule:-1,
+  zoomableFontSize:0.05,
+  xsmallFontSize:0.7, // must match initial size xsmall/title in css
   zoomFontSize:1.00,
   visited:[],
   visited_idx:-1,
@@ -24,7 +27,6 @@ var spb = {
       var htmlContent = (singleLineOnly) 
            ? node.innerHTML 
            : node.innerHTML.replace(/\n/gm, '')
-// debugger;
 //    var searchFound = htmlContent.match(query)
       var searchFound = query.test(htmlContent)
       node.setAttribute("textFound", searchFound?"true":"false")
@@ -95,21 +97,38 @@ var longPress = {
 
 function onZoomOut(){
   if (spb.zoomDivDOM.innerHTML != '') {
-    spb.zoomFontSize = spb.zoomFontSize - 0.05
-    document.styleSheets[0]['cssRules'][spb.idxZoomDivRule].style['font-size']=spb.zoomFontSize+'rem';
-    return;
+    spb.zoomFontSize = (spb.zoomFontSize > 0.05) ? spb.zoomFontSize - 0.05 : 0.0001
+    document.styleSheets[0]['cssRules'][spb.idxZoomDivRule].style['font-size']=spb.zoomFontSize+'rem'
+    return
   }
-  spb.cellFontSize=spb.cellFontSize - 0.05
-  document.styleSheets[0]['cssRules'][spb.idxZoomRule].style['font-size']=spb.cellFontSize+'rem';
+  if     (spb.zoomableFontSize > 0.05) {
+     spb.zoomableFontSize = spb.zoomableFontSize - 0.05
+  } else if (spb.  xsmallFontSize > 0.4 ){
+     spb.zoomableFontSize = 0.0001 // Absolute cero causes rendering problems in Firefox.
+                                   // REF: https://bugzilla.mozilla.org/show_bug.cgi?id=1606305
+     spb.  xsmallFontSize = spb.  xsmallFontSize - 0.05
+  } else {
+     spb.zoomableFontSize = 0.0001
+     spb.  xsmallFontSize = 0.4
+  }
+  document.styleSheets[0]['cssRules'][spb.idxZoomRule  ].style['font-size']=spb.zoomableFontSize+'rem'
+  document.styleSheets[0]['cssRules'][spb.idxXSmallRule].style['font-size']=spb.  xsmallFontSize+'rem'
+  document.styleSheets[0]['cssRules'][spb.idxXTitleRule].style['font-size']=spb.  xsmallFontSize+'rem'
 }
 function onZoomIn(){
   if (spb.zoomDivDOM.innerHTML != '') {
     spb.zoomFontSize = spb.zoomFontSize + 0.05
-    document.styleSheets[0]['cssRules'][spb.idxZoomDivRule].style['font-size']=spb.zoomFontSize+'rem';
+    document.styleSheets[0]['cssRules'][spb.idxZoomDivRule].style['font-size']=spb.zoomFontSize+'rem'
     return;
   }
-  spb.cellFontSize=spb.cellFontSize + 0.05
-  document.styleSheets[0]['cssRules'][spb.idxZoomRule].style['font-size']=spb.cellFontSize+'rem';
+  if (spb.  xsmallFontSize < 1.2) {
+    spb.  xsmallFontSize = spb.  xsmallFontSize + 0.05
+  } else {
+    spb.zoomableFontSize = spb.zoomableFontSize + 0.05
+  }
+  document.styleSheets[0]['cssRules'][spb.idxZoomRule  ].style['font-size']=spb.zoomableFontSize+'rem'
+  document.styleSheets[0]['cssRules'][spb.idxXSmallRule].style['font-size']=spb.  xsmallFontSize+'rem'
+  document.styleSheets[0]['cssRules'][spb.idxXTitleRule].style['font-size']=spb.  xsmallFontSize+'rem'
 }
 
 function goBack() {
@@ -134,7 +153,6 @@ function doOpenZoom(e, isHistoric, showTimeControl, CallbackOnClose) {
       isHistoric = true 
       // spb.visited_idx == ???
   }
-// debugger;
   if(spb.visited.indexOf(e)>=0) { 
       isHistoric = true
       spb.visited_idx = spb.visited.indexOf(e)
@@ -389,6 +407,12 @@ function onPageLoaded() {
       }
       if( document.styleSheets[0]['cssRules'][idx].selectorText == "[zoom]") {
           spb.idxZoomRule=idx
+      }
+      if( document.styleSheets[0]['cssRules'][idx].selectorText == "[xsmall]") {
+          spb.idxXSmallRule=idx
+      }
+      if( document.styleSheets[0]['cssRules'][idx].selectorText == "[title]") {
+          spb.idxXTitleRule=idx
       }
   }
 

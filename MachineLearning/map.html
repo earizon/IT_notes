@@ -12,8 +12,16 @@
 <div groupv>
 <pre zoom>
 <span xsmall>External Links</span>
-- @[https://www.w3.org/wiki/Lists_of_ontologies]
+(Forcibly incomplete but still quite pertinent list of interesting Machine Learning Links)
+
 - @[https://pydata.org/]
+- @[https://www.reddit.com/r/MachineLearning/]
+- @[https://www.datasciencecentral.com/]
+  Industry's online resource for data practitioners.
+  From Statistics to Analytics to Machine Learning to AI, 
+
+- @[https://www.w3.org/wiki/Lists_of_ontologies]
+
 
 - @[https://docs.python.org/3.6/library/statistics.html]
   Basic statistics module included in Python 3.4+.
@@ -521,24 +529,160 @@ PREDICTION: BºSTEP 5)º
 
 <div groupv>
 
-<span title>Matplotlib Charts</span>
 <pre zoom labels="">
-<span xsmall>External Links</span>
+<span title>Matplotlib Charts</span>
+ºEXTERNAL LINKSº
 User's Guide   : @[https://matplotlib.org/users/index.html] 
 Git Source Code: @[https://github.com/matplotlib/matplotlib] 
-Recipes        : @[https://github.com/matplotlib/matplotlib/tree/master/examples/recipes] 
+     Python Lib: @[https://github.com/matplotlib/matplotlib/tree/master/lib/matplotlib]
+                 @[https://github.com/matplotlib/matplotlib/blob/master/lib/matplotlib/figure.py]
+                 @[https://github.com/matplotlib/matplotlib/blob/master/lib/matplotlib/axes/_axes.py]
+                 @[https://github.com/matplotlib/matplotlib/blob/master/lib/matplotlib/axis.py]
+                 @[https://github.com/matplotlib/matplotlib/blob/master/lib/matplotlib/container.py]
+
+        Recipes: @[https://github.com/matplotlib/matplotlib/tree/master/examples/recipes] 
                  - common_date_problems.py
                  - create_subplots.py 
                  - fill_between_alpha.py  
                  - placing_text_boxes.py   
                  - share_axis_lims_views.py 
 
-Python Lib: @[https://github.com/matplotlib/matplotlib/tree/master/lib/matplotlib]
-            - pyplot.py
-            - figure.py
-            - ...
+REF: @[https://matplotlib.org/tutorials/introductory/usage.html#sphx-glr-tutorials-introductory-usage-py]
 
-...
+ºARCHITECTUREº
+-Everything in matplotlib is organized in a hierarchy:
+ o) state-machine environment (matplotlib.pyplot module):
+ ^  simple element drawing functions like lines, images, text, current axes ,...
+ │
+ └─o) object-oriented interface:
+      - figure creation where the user explicitly  controls figure and axes objects.
+
+          ºArtistº ←  When the figure is rendered, all of the artists are drawn to the canvas.
+             │        Most Artists are tied to an ºAxesº; and canNOT be shared
+             │        all visible elements in a figure are subclasses of it 
+  ┌──────────┴──────┬───────────────────────────────┬─────┐
+  │                 │                               │     │
+ºFigureº 1 ←→  1+BºAxesº   1 ←───────────────→    {2,3} ºAxisº   ← RºWARN:º be aware of Axes vs Axis
+   ^        ^      ^^^^                             │    ^^^^
+ self._axstack   - takes care of the data limits    │  - number-line-like objects.
+ figsize         - primary entry point to working   │  - set graph limits
+ dpi               with the OO interface.           │  - ticks (axis marks) + ticklabels
+ facecolor       ___________                        │    ^^^^^                ^^^^^^^^^^
+ edgecolor       set_title()                        │    location determined  format determined
+ linewidth       set_xlabel()                       │    by a Locator         by a Formatter
+ frameon         set_ylabel()                       │
+ subplotpars     ___________                        │
+                 dataLim: box enclos.disply.data    │
+                 viewLim: view limits in data coor. │
+                                                    │
+                             ┌──────────────────────┘
+                             │
+  ┌────────┬────────┬────────┴────┬─────...
+ text    Line2D    Collection   Patch 
+
+                   
+RºWARN:º All of plotting functions expect input of type:
+         - ºnp.arrayº
+         - ºnp.ma.masked_arrayº
+
+         np.array-'like' objects (pandas, np.matrix) must be converted first:
+         Ex:
+         a = pandas.DataFrame(np.random.rand(4,5), columns = list('abcde'))
+         b = np.matrix([[1,2],[3,4]])
+         a_asarray = a.values      #   ←  Correct input to matplotlib
+         b_asarray = np.asarray(b) #   ←  Correct input to matplotlib
+
+ºMATPLOTLIB VS PYPLOTº
+- Matplotlib: whole package 
+- pyplot    : module of Matplotlib (matplotlib.pyplot) with simplified API:
+              - state-based MATLAB-like (vs Object Oriented based)
+              - functions in this module always have a "current" figure and axes
+                (created automatically on first request)
+              @[https://github.com/matplotlib/matplotlib/blob/master/lib/matplotlib/pyplot.py]
+
+- pyplot Example:
+  import matplotlib.pyplot as plt   # ← 
+  import numpy as np
+  from IPython.display import set_matplotlib_formats
+  set_matplotlib_formats('svg')          # ← Generate SVG (Defaults to PNG)
+
+  # Defining ranges:
+  x1 = np.linspace(0,    2,   10)         # ← generates evenly spaced numbers 
+                                          #   over (start/stop/number) interval . In this case
+                                          #   [0.0, 0.1, 0.2, 0.4, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8]
+  unused_x2 = range(0,3)                  # standard python
+  unused_x3 = np.arange(2.0)              # numpy arange
+  
+  plt.plot(x1, x1, label='linear')        # ←  Automatically creates the axes"1"
+  plt.plot(x1, x1**2, label='quadratic')  # ←  add additional lines to   axes"1"
+  plt.plot(x1, [i**3 for i in x1]  )      # ←  add additional lines to   axes"1".
+               └────────────────┘              Each plot is assigned a new color by default
+                    ^                          (if hold is set to False, each plot clears previous one)
+                    |
+         NOTE: No need for list comprenhesions with numpy
+               x1**3 would work
+
+  plt.xlabel('x label')                   # ←  set axes"1" labels
+  plt.ylabel('y label')                   # ←  "   "       " 
+  plt.title("Simple Plot")                # ←  "   "       title
+  plt.legend()                            # ←  "   "       legend
+                                          #    default behavior for axes attempts
+                                          #    to find the location that covers
+                                          #    the fewest data points (loc='best').
+                                          #    (expensive computation with big data)
+
+┌→plt.show()                              # ← · interactive  mode(ipython+pylab):
+│                                               display all figures and return to prompt.
+│                                             · NON-interactive  mode:
+│                                               display all figures andRºblockºuntil
+│                                               figures have been closed
+│      
+│  plt.axis()                             # ← show current axis x/y  (-0.1, 2.1, -0.4, 8.4)
+│  xmin,xmax,ymin,ymax=-1, 3, -1, 10      # 
+│  plt.axis([xmin,xmax,ymin,ymax])        # ← Set new x/y axis  for axes
+│      
+└─ Call signatures:
+ºplot([x_l], y_l    , [fmt], [x2_l], y2_l        , [fmt2], ...        , **kwargs) º
+ºplot([x_l], y_l    , [fmt], *                   , data=None           , **kwargs)º
+       ^^^   ^^^       ^^^                        ^^^^
+       list (_) of     FORMAT STRINGS             Useful for labelled data
+       Coord. points  '[marker][line][color]'     Supports
+                       |.      |-    |b(lue)      - python dictionary
+                       |,      |--   |g(reen)     - pandas.DataFame
+                       |o      |-.   |r(ed)       - structured numpy array.
+                       |v      |:    |c(yan)
+                       |^      |     |m(agenta)
+                       |˂      |     |y(ellow)
+                       |˃      |     |k(lack)     Other Parameters include:
+                       |1      |     |w(hite)     - scalex, scaley : bool, optional, default: True
+                       |2                           determine if the view limits are adapted to 
+                       |3                           the data limits.
+                       |4                           The values are passed on to `autoscale_view`.
+                       |s(qure)                  
+                       |p(entagon)                - **kwargs : '.Line2D' properties lik  line label 
+                       |*                           (auto legends), linewidth, antialiasing, marker
+                       |h(exagon1)                  face color. See Line2D class constructor for full list:
+                       |H(exagon2)                  lib/matplotlib/lines.py
+                       |+
+                       |x
+                       |D(iamond)
+                       |d(iamond) 
+                       ||
+<img src="./matplotlib_example1.svg" style="min-width:2rem; max-width:30em" />
+
+GºIMPROVE RENDERING PERFORMANCE FOR BIG DATAº
+  import matplotlib.style as mplstyle
+  mplstyle.use('fast')  # ← set simplification and chunking params.
+                        #   to reasonable settings to speed up 
+                        #   plotting large amounts of data.
+  mplstyle.use([        # Alt 2: If other styles are used, get
+     'dark_background', #         sure that fast is applied last in list 
+     'ggplot',          #
+     'fast'])           # 
+
+
+BºTROUBLESHOOTINGº
+- matplotlib.set_loglevel(*args, **kwargs)
 </pre>
 <pre zoom labels="">
 <span xsmall TODO bgorange>Seaborn: Statistical Graphs</span>
@@ -2116,7 +2260,6 @@ Web scraping:
 _________________________
 https://towardsdatascience.com/
 _________________________
-https://www.reddit.com/r/MachineLearning/
 _________________________
 https://www.infoq.com/news/2019/12/uber-ai-language-model/
 Uber Open-Sources Plug-and-Play Language Model for Controlling AI-Generated Text
@@ -2166,7 +2309,7 @@ scikits-learn - Classic machine learning algorithms
               - Provide simple an efficient solutions
                 to learning problems, scikit-learn.org/stable/ 
 _____________________
-
+https://www.datasciencecentral.com/profile/RubensZimbres
 
 </div>
 

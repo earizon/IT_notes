@@ -11,7 +11,6 @@
 <div groupv>
 <pre zoom>
 <span xsmall>External Refs:</span>
-/* adfaf */
 -ºKey Conceptsº
 - @[https://www.youtube.com/watch?v=CKRfVlwRl2M&list=PLi1PppB3-YrVq5Qy_RM9Qidq0eh-nL11N]
 - @[https://docs.corda.net/key-concepts.html]
@@ -43,13 +42,74 @@
 - Sample CorDapps    :@[https://www.corda.net/samples/]
 </pre>
 
-<pre zoom labels="">
+<pre zoom labels=""  bgorange>
 <span xsmall>Official Cheatsheet</span>
-<img zoom src="https://docs.corda.net/_images/cheatsheet.jpg" />
+@[https://docs.corda.net/_images/cheatsheet.jpg]
+ /----------------------------------------------------------------\ /-------------------------------------------------------------------\
+ |QºRUNNING CORDA:º                                               | |QºFLOWSº                                                           |
+ | a.Set up your dev envirnoment                                  | |  FlowLogic                                                        |
+ | @[https://docs.corda.net/getting-set-up.html]                  | |  The actions executed by one side of a flow                       |
+ | b.Clone the template app in Kotlin|Java                        | |  .initiateFlow(Party)                                             |
+ |   git clone@[https:///github.com/corda/cordapp-template-kotlin]| |  Initiates communication between two flows.                       |
+ | c.Check out the latest version(e.g. V2)                        | |  FlowSession.end(Party,Any)/FlowSession.receive(Party)            |
+ |   cd cordapp-template-kotlin                                   | |  Sends data to/receives data from the specified                   |
+ |   git checkout release-V2                                      | |  counterparty                                                     |
+ | d.Deploy the nodes                                             | |  .subFlow(FlowLogic˂R˃, Boolean)                                  |
+ |   ./gradlew clean deployNodes                                  | |  Invokes a sub-flow that may return a result                      |
+ | e.Run the nodes                                                | |  .serviceHub                                                      |
+ |   UNIX:    sh kotlin-source/build/nodes/runnodes               | |  Provides access to the node's services                           |
+ |   Winodws: call kotlin-source\build\nodes\runnodes.bat         | \_-----------------------------------------------------------------_/
+ |                                                                | /-------------------------------------------------------------------\
+ |QºSTATES:º                                                      | |QºFLOW ANNOTATIONSº                                                |
+ | ºContractStateº                                                | | º@InitiatingFlowº                                                 |
+ |  - The base class for on-ledger states                         | |  A flow that is started directly                                  |
+ |    representing a SHARED fact (1+ parties)                     | | º@InitiatingBy(KClass)º                                           |
+ | º.participantsº                                                | |  A flow that is only started by a message from                    |
+ |   The parties for which this state is relevant                 | |  an InitiatingFlow                                                |
+ | ºLinearStateº (extends ContractState)                          | | º@StartableByRPCº                                                 |
+ |  represents State evolving over time                           | |  Allows the flow to be started via RPC by the node's              |
+ |  .linearId                                                     | |  owner                                                            |
+ |  An ID shared by all evolutions of the 'shared fact'           | \_-----------------------------------------------------------------_/
+ | ºOwnableStateº (extends ContractState)                         | 
+ |  State representing fungible assets (cash, oil,...)            | |QºSERVICE HUBº                                                     |
+ | º.ownerº                                                       | | º.networkMapCacheº                                                |
+ |  The state's current owner                                     | |  Provides info on other nodes on the network (notaries,...)       |
+ |  .withNewOwner(AbstractParty)                                  | | º.vaultServiceº                                                   |
+ |  Creates a copy of the state with a new owner                  | |  Stores the node's current and historic states                    |
+ |                                                                | | º.validatedTransactionsº                                          |
+ |QºCONTRACTS:º                                                   | |  Stores all the transactions seen by the node                     |
+ | ºContractº                                                     | | º.keyManagementServiceº                                           |
+ |  Establishes which transactions are valid for a given state    | |  Manages the node's digital signing keys                          |
+ | º.verifyº(LedgerTransaction)                                   | | º.myInfoº                                                         |
+ |  Throws an exception if the TX is invalid                      | |  Other information about the node                                 |
+ |                                                                | | º.clockº                                                          |
+ |QºTRANSACTIONSº                                                 | |  Provides access to the node's internal time and date             |
+ | ºTransactionBuilderº                                           | \_-----------------------------------------------------------------_/
+ |  A mutable container for building a general transaction        | |                                                                   |
+ | º.withItemsº(varag Any)                                        | |QºPROVIDING AN APIº                                                |
+ |  Adds items (states, commands...) to the builder               | | a. Subclass WebServerPluginRegistry                               |
+ | ºServiceHub.signInitialTransaction(TransactionBuilder)º        | |    class MyWebPlugin : WebServerPluginRegistry() {...}            |
+ |  Converts the builder to a signed transaction                  | | b. Override webApis                                               |
+ | ºSignedTransactionº                                            | |    override val webApis = listOf(Function(::MyApi))               |
+ |  An inmutable transaction plus its associated digital          | | c. Register the fully qualified class name of the plugin          |
+ |  signatures                                                    | |   under .../src/main/resources/META-INF/services/WebPluginRegistry|
+ | º.verifyRequiredSignatures()º                                  | \_-----------------------------------------------------------------_/
+ |  Verify all the transaction's required signatures              |
+ | º.verifySignaturesExcept(vararg List˂PublicKey˃)º              |
+ |  Verify all the transaction's required signatures except       |
+ |  those listed                                                  |
+ | º.verify(ServiceHub, boolean)º                                 |
+ |  Verify the transaction                                        |
+ | º.toLedgerTransaction(ServiceHub, boolean)º                    |
+ |  Resolve transaction into a LedgerTransaction for extra        |
+ |  verification                                                  |
+ | ºServiceHub.addSignature(SignedTransaction)º                   |
+ |  Add a digital signature to the transaction
 </pre>
 
 <pre zoom>
 <span xsmall>Who is Who</span>
+(Forcibly incomplete but still quite pertinent list of core people)
 Richard Gendal Brown, current CTO @[https://gendal.me/"]
 Mike Hearn,                       @[https://github.com/mikehearn]
 Clinton Alexander
@@ -106,15 +166,18 @@ RºWARNº: Use JDK 1.8
 │  ├ build.gradle
 │  └ src/main/kotlin/com/example
 │    └ example
-│    Bº├ contract/IOUContract.ktº
-│    Bº├ schema  /IOUSchema.kt  º
-│    Bº└ state   /IOUState.kt   º
+│    Bº├ contract/IOUContract.ktº   ← Rules goberning state evolution,
+│      │                              invoqued as part of TXs in the context
+│      │                              of a flow.
+│    Bº├ schema  /IOUSchema.kt  º     
+│    Bº└ state   /IOUState.kt   º   ← shared fact by 1+ parties
 ├─ lib/quasar.jar  ← rewrites flows to be checkpointable
 ...
 └─ workflows-kotlin
    ├── build.gradle
 Bº └── src/integrationTest/kotlin/com/example/DriverBasedTests.ktº
-       ├ main/kotlin/com/example/flow/ExampleFlow.kt
+       ├ main/kotlin/com/example/flow/ExampleFlow.kt ← Allow parties to initiate a
+       │                                               new TX/pause/responde/...
        └ test/kotlin/com/example
          ├── NodeDriver.kt
          ├── contract/IOUContractTests.kt
@@ -243,13 +306,78 @@ $ java -jar network-bootstrapper.jar workflows-kotlin/build/nodes
 
 - After starting each node, they will "see" one another
 </pre>
+<pre zoom labels="ethereum,comparative">
+<span xsmall bgorange>Corda vs Ethereum</span>
+<span xsmall bgorange>Development Patterns</span>
+- Corda States ussually represent the internal state of an Ethereum contract
+  (balance, state-machine,...) but are external to the contract. 
+  For example in Corda the "money" in a user balance is represented by an
+  OwnableState. This state can come from periodic wage payment, a credit,
+  and bond-payment, ... but the state itself ignores it. 
+  In Ethereum the money is "embedded" in an ERC20 SmartContract token.
+  (Actually the ERC20 token is blind about who/what invoqued valid
+  TX to its public methods).
+  - While it's possible in Ethereum to develop storage contracts representing
+    only state and external contracts manipulating such state, it's up to
+    the desire and skills of the developer.
+
+- Corda contracts "approximatelly" maps to the Ethereum contract logic that
+  governs the state evolution. The main differences are:
+  - Ethereum the "next state value" is defined the execution of functions
+    defined inside the published smart-contract.  In Corda "next state value"
+    is calculated before calling the contract and the contract limits to
+    check that the transaction inputs and espected output are compatible
+    with the defined logic in the contract throwing an exception and
+    reverting the transaction flow otherwise. 
+
+- In Ethereum the required signarutes are defined by "manual" code
+  in the contract executing the transactions. In Corda, the required
+  signatures are defined while building the Transactions, and corda
+  flows are used to sign the transactions "outside" the contract logic.
+
+- Ethereum contract code is stored in the blockchain.
+  Corda contract code is not stored in the blockchain (the vault in
+  Corda terminology). It consist in JVM code stored on the nodes.
+  Only the states are stored in the blockchain. Corda Contract Code
+  is protected by digital signatures, permissioning, ....
+
+- Since states and contracts are independent in Corda, a Corda
+  contract can "consume" different types of input states and validate
+  different types of output states. (This is also theorically possible
+  in Ethereum by beeing careful of splitting states and logic but
+  again is up to each developer will and skills).
+
+- Transactions in Ethereum are signed "at will" by clients as
+  a way to invoque methods on published smart-contract.
+  Transactions in Corda are build with the help of a TransactionBuilder
+  in the context of a flow.
+
+- Transactions in Corda can be associated with TimeWindows where
+  the transaction execution will be valid. There is no such concept
+  in Ethereum.
+
+- External files and data can be attached to a Corda Transaction
+  and used by the Contract to make extra checks during the validation
+  process. This attached data is inmutable but is not part of the
+  final vault of consumed/unconsumed states.
+  Ethereum has no concept of external attached transaction data.
+
+- Both Ethereum and Corda will use "Oracles" to obtain events/facts
+  from the "outside" world. Corda can also use attached data in
+  the Transaction.
+
+- Corda TX ordering is defined by a Notary. Each new TX can define
+  a new notary with different characteristics. 
+  Ethereum TX ordering is defined by the consensus (PoW, PoS, PoA,...)
+
+</pre>
+
 </div>
 
 <div groupv>
 <span title>Building Blocks</span>
 <pre zoom labels="summary,consensus" >
-<span xsmall bgorange>NODE LAYOUT</span>
-*NODE CERTs PRE-SETUP*
+<span xsmall bgorange>NODE CERTs PRE-SETUP</span>
 node    → node   :   generates key pair
                    + certificate signing request
 node    → doorman: Certificate signing request. 
@@ -257,7 +385,7 @@ doorman → doorman: signs (or delegate sign) cert.
 doorman → node   : (root-authority-signed) certificate CERT1
 node    → node   : creates and signs (using CERT1) two more certs:
                     - TLS certificate
-                    - Signing-certificate (.../certificates/ºnode-TLSº node well-known-to-peers identity)
+                    - Signing-certificate (.../certificates/ºnode-TLSº well-known-to-peers identity)
                       -ºOptionallyºuse Node CERT to create:
                         - well-known   identities.
                         - confidential identitiesºfor individual transactionsº 
@@ -274,6 +402,7 @@ node    → network: register node-info-record
 ...
 node    → ???    : establish TLS session using certificate
 
+<span xsmall bgorange>NODE LAYOUT</span>
 - A Corda network is a peer-to-peer network of nodes.
 - node-to-node communication uses encrypted TLS + AMQP/1.0
   in a point-to-point approach (vs broadcasts or gossip)
@@ -292,23 +421,23 @@ node    → ???    : establish TLS session using certificate
 │         - Current time as tracked by node     │   │-Shared by all nodes  │
 │         - Information on other nodes on the   │   └──────────────────────┘
 │           network                             │   
-│     @2┌───────────────────────────────────────┤   ┌─────────────────────────────┬─────────────────┐ ºFULL LIST OF NODE SERVICESº  @2
-│       │ºSTORAGE SRVº                          │   │ºNotary Pool Network Serviceº│                 │ └─ net/corda/node/services
-│       │─ stores [TXs, attachements,           │   ├─────────────────────────────┘                 │    ├─ /network
-│       │  flow─checkpoints]                    │   │- similar to the Hyperledger Fabric "orderer"  │    ├─ /schema
-│       ├───────────────────────────────────────┤   │  or a Bitcoin miner, get in charge of         │    ├─ /identity
-│       │ºVAULTº                                │   │  ordering/validating proposed TXs/state change│    ├─ /logging
-│       │─stores relevant current/historic      │   │                                               │    ├─ /rpc
-│       │ state sequences                       │   │- Keeps a list of un-spent output states.      │    ├─ /api
-│       │                                       │   │  to assure that no double-spents are commited │    ├─ /upgrade
-│       ├───────────────────────────────────────┤   │  (aka provides the ºpoint of finalityº)       │    ├─ /vault
-│       │ºPLUGIN REGISTRYº                      │   │                                               │    ├─ /transactions
-│       │ of installed OºCorDappsº              │   │- issuance/genesis transactions are the only   │    ├─ /persistence
-│       │- Preinstaled plugins exists for:      │   │  not-notarized TX since they do NOT consume   │    ├─ /messaging
-│       │  - Retrieving TXs/attachments from    │   │  any previous input state.                    │    ├─ /keys
-│       │    counterparties.                    │   │                                               │    ├─ /config
-│       │  - Upgrading contracts                │   │-ºA network can have several notary pools,ºeach│    ├─ /events
-│       │  - Boradcasting agreed ledger updates │   │  running a different consensus algorithm      │    └─ /statemachine
+│     @2┌───────────────────────────────────────┤   ┌─────────────────────────────┬─────────────────┐ 
+│       │ºSTORAGE SRVº                          │   │ºNotary Pool Network Serviceº│                 │ 
+│       │─ stores [TXs, attachements,           │   ├─────────────────────────────┘                 │ 
+│       │  flow─checkpoints]                    │   │- similar to the Hyperledger Fabric "orderer"  │ 
+│       ├───────────────────────────────────────┤   │  or a Bitcoin miner, get in charge of         │ 
+│       │ºVAULTº                                │   │  ordering/validating proposed TXs/state change│ 
+│       │─stores relevant current/historic      │   │                                               │ 
+│       │ state sequences                       │   │- Keeps a list of un-spent output states.      │ 
+│       │                                       │   │  to assure that no double-spents are commited │ 
+│       ├───────────────────────────────────────┤   │  (aka provides the ºpoint of finalityº)       │ 
+│       │ºPLUGIN REGISTRYº                      │   │                                               │ 
+│       │ of installed OºCorDappsº              │   │- issuance/genesis transactions are the only   │ 
+│       │- Preinstaled plugins exists for:      │   │  not-notarized TX since they do NOT consume   │ 
+│       │  - Retrieving TXs/attachments from    │   │  any previous input state.                    │ 
+│       │    counterparties.                    │   │                                               │ 
+│       │  - Upgrading contracts                │   │-ºA network can have several notary pools,ºeach│ 
+│       │  - Boradcasting agreed ledger updates │   │  running a different consensus algorithm      │ 
 │       │    for recording counterparties       │   │  (high-speed vs bizantine-fault-tolerant,...) │
 │       ├───────────────────────────────────────┤   │                                               │
 │       ┊XXX Service                            ┊   │- The TX proporser will choose which notary    │
@@ -316,13 +445,25 @@ node    → ???    : establish TLS session using certificate
 │       ┊                                       ┊   └───────────────────────────────────────────────┘
 │       ├───────────────────────────────────────┤
 │       │ºSERVICE HUBº                          ←─ @[https://github.com/corda/corda/blob/master/core/src/main/kotlin/net/corda/core/node/ServiceHub.kt]
-│       │ of installed OºCorDappsº              │  - allows the node's flows  to call upon  the node's other services
-└───────┴───────────────────────────────────────┘  - provided next services:
-                                                     - Information on other nodes on the network and the services they offer
-                                                     - Access to the contents of the vault and the storage service
-                                                     - Access to, and generation of, the node's public-private keypairs
-                                                     - Information about the node itself
-                                                     - The current time, as tracked by the node
+│       │ of installed OºCorDappsº              │  
+└───────┴──^^^──────────────────────────────────┘  
+         - allows the node's flows  to call upon  the node's other services
+           providing next services:
+           .networkMapCache: Info on other nodes on the network and the services they offer (notaries,...)
+           .vaultService:  Access to the contents of the vault (current and historic states)
+           .validatedTransactions: Stores all the Transactions seen by the node
+           .keyManagementService: generation+Access to node's signing keypairs
+           .myInfo: Information about the node itself
+           .clock: Internal time/date of the node
+           - ºFULL LIST OF NODE SERVICESº
+            @[https://github.com/corda/corda/tree/release/os/4.4/core/src/main/kotlin/net/corda/core/node/services]
+         - vault/QueryCriteria.kt      - NetworkMapCache.kt
+         - vault/QueryCriteriaUtils.kt - NetworkParametersService.kt
+         - AttachmentStorage.kt        - PartyInfo.kt
+         - ContractUpgradeService.kt   - TimeWindowChecker.kt
+         - CordaService.kt             - TransactionStorage.kt
+         - IdentityService.kt          - TransactionVerifierService.kt
+         - KeyManagementService.kt     - VaultService.kt
 
                                               ┌──────────────────┬───────────────────────────────────┐    - The consensus (notary)
  VAULT SCHEMA:                ┌───────────────┤º(CONTRACT) STATEº│                                   │      warrants no double-spent of
@@ -1555,6 +1696,12 @@ $ ./kotlin-source/build/nodes/runnodes.sh
 Training:
   @[https://github.com/corda/corda-training-materials]
 </pre>
+<pre zoom labels="">
+<span xsmall>4.2</span>
+- Corda Enterprise 4.2 - new features explained
+@[https://www.youtube.com/watch?v=ydMMb1wcCT0&list=PLi1PppB3-YrVeHKIhNxm3_4NvO0AFSvWr]
+</pre>
+
 <pre zoom>
 <span xsmall>4.0/4.1</span>
 @[https://docs.corda.r3.com/releases/4.0/release-notes.html]
@@ -2018,6 +2165,7 @@ Python analytics framework for Corda vault and node data
 Access node and vault data for analytics using pandas DataFrames. Currently only works with H2 database. We'll be adding other DBs shortly and possibly support for queryable states.
 ______________________
 https://www.linkedin.com/feed/update/urn:li:activity:6565198983885570049/
-
+________________________
+https://www.linkedin.com/pulse/discover-corda-enterprise-43-power-accounts-mike-ward/?trackingId=ejkbzfb6TRojsrwVcanE2w%3D%3D
 -->
 

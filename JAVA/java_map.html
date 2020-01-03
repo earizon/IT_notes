@@ -14,6 +14,7 @@
 <span xsmall>Ext.Links</span>
 -<a href="https://docs.oracle.com/javase/specs/">Lang&amp;VM specs</a>
 -<a href="https://docs.oracle.com/javase/8/docs/api/index.html">API</a>
+-<a href="https://adoptopenjdk.net/">Adpot OpenJDK prebuilt binaries</a>
 https://hg.openjdk.java.net/jdk/jdk
 -<a href="https://hg.openjdk.java.net/jdk/">OpenJDK@Mercurial</a>
 - @[https://wiki.openjdk.java.net/]
@@ -1628,9 +1629,38 @@ OkHttp is an HTTP client that’s efficient by default:
 </pre>
 
 </pre>
-<pre zoom labels="tool,performance,troubleshoot">
-<span xsmall>Flight Recorder</span>
+<pre zoom labels="tool,performance,troubleshoot,comparative">
+<span xsmall bgorange>Flight Recorder</span>
+https://www.youtube.com/watch?v=azshjd5Vsv0
+- Flight Recorder is an automated black box recorder that is already
+  present inside the JVM and acts to record information.
+  - Mission Control is the visual console, run on a different system
+  that enables operators to control the black box by evaluating metrics
+  or creating performance snapshots.
+- Unlike external performance monitoring systems, JFR is built directly
+  into the JDK and can monitor performance in an accurate manner that 
+  does not mislead readers via safe points or sampling. The result of
+  JFR is accurate performance diagnostics where the act of measuring 
+  incurs only about a 2% overhead. These diagnostics provide developers 
+  and operators with the ability to gather actual performance data 
+  instead of making guesses or pointing fingers.
+  - @[http://psy-lob-saw.blogspot.com/2015/12/safepoints.html]
+  - @[http://psy-lob-saw.blogspot.com/2016/02/why-most-sampling-java-profilers-are.html]
+- While many profilers focus on high-level metrics, such as
+  request/response load times, the concept of a "web request" does
+  not exist down at the JDK’s layer. As a result the metrics provided 
+  by default in JFR are aimed more towards the JVM's raw operations.
+  One feature in particular is advanced garbage collection analysis. 
+  Unlike common tools that simply report garbage collection statistics,
+  the analysis capabilities within JFR provide details on what garbage 
+  was collected and who threw it away. This feature drives two conclusions
+  that improve performance:
+  - developers can identify specifically what to improve, 
+  - realize other when tuning garbage collection is the wrong solution.
+
 - Free of use starting with Java 11+
+- Backported to OpenJDK 8
+  @[https://www.infoq.com/news/2019/11/jfr-openjdk-8/]
 - (JEP 328)
 - profiling tool gathering diagnostics and profiling data
 - negligible performance overhead (˂1%):
@@ -1716,8 +1746,9 @@ class Example {                                     timespent=0
 
 </div>
 
+<div group>
+    <span title>Concurrent Programming</span><br/>
 <div groupv>
-<span title>Concurrent Programming</span>
 <pre zoom labels="concurrent">
 <span xsmall>External Links</span>
 @[https://cs.nyu.edu/~lerner/spring12/Preso03-JavaPrimitives.pdf]
@@ -1830,6 +1861,96 @@ TODO Concurrent
 -->
 </pre>
 <pre zoom labels="">
+<span xsmall>CountDownLatch</span>
+<span xsmall>java.util.concurrent</span>
+@[https://docs.oracle.com/javase/7/docs/api/java/util/concurrent/CountDownLatch.html]
+
+- Object allowing 1+ threads to wait until a 1+ operations are completed in other threads.
+
+
+    A CountDownLatch is a versatile synchronization tool and can be used for a number of purposes. A CountDownLatch initialized with a count of one serves as a simple on/off latch, or gate: all threads invoking await wait at the gate until it is opened by a thread invoking countDown(). A CountDownLatch initialized to N can be used to make one thread wait until N threads have completed some action, or some action has been completed N times.
+
+    A useful property of a CountDownLatch is that it doesn't require that threads calling countDown wait for the count to reach zero before proceeding, it simply prevents any thread from proceeding past an await until all threads could pass.
+
+    Sample usage: Here is a pair of classes in which a group of worker threads use two countdown latches:
+        The first is a start signal that prevents any worker from proceeding until the driver is ready for them to proceed;
+        The second is a completion signal that allows the driver to wait until all workers have completed. 
+
+     Ex. 1:
+     class Driver { // ...
+
+       class Worker implements Runnable {
+         private final CountDownLatch OºstartSignalº;
+         private final CountDownLatch BºdoneSignalº;
+         Worker(CountDownLatch OºstartSignalº, CountDownLatch BºdoneSignalº) {
+          Oºthis.startSignal = startSignalº;
+          Bºthis.doneSignal  = doneSignalº;
+         }
+         public void run() {
+            try {
+            OºstartSignalº.await();
+              doWork();
+            BºdoneSignalº.countDown();   // ← Decrease count
+            } catch (InterruptedException ex) {} // return;
+         }
+
+         void doWork() { ... }
+       }
+
+       void main() throws InterruptedException {
+         CountDownLatch OºstartSignalº= newºCountDownLatch(1);º// ← initialized with a given count
+         CountDownLatch BºdoneSignalº = newºCountDownLatch(N);º// ← "
+                                                             // ← Consider alsoºCyclicBarrierº(reset after count),
+         for (int i = 0; i ˂ thread_number ; ++i) { 
+           new Thread(
+                new Worker(
+                    OºstartSignalº,
+                    BºdoneSignalº
+           )).start();
+         }
+         ...
+       OºstartSignalº.countDown();      // ← Decrease count. count cannot be reset.
+         doSomethingElse();
+       BºdoneSignalº.await();           // ← block until current count reaches zero
+                                            Thread is released. Any subsequent invocations
+                                            return immediately.
+       }
+     }
+
+     Ex. 2:
+     - divide problem into N parts
+     - describe each part with a Runnable executing a portion,
+     - queue all Runnables to an Executor.
+     - When all sub-parts are complete, coordinating-thread will "pass" through await.
+
+     class Driver2 { // ...
+       class WorkerRunnable implements Runnable {
+         private final CountDownLatch OºdoneSignalº;
+         WorkerRunnable(
+            CountDownLatch OºdoneSignalº, ...) {
+          Oºthis.doneSignal = doneSignalº;
+         }
+
+         public void run() {
+            try {
+              doneSignal.countDown();
+            } catch (InterruptedException ex) {} // return;
+         }
+
+         void doWork() { ... }
+       }
+       void main() throws InterruptedException {
+         CountDownLatchOºdoneSignalº= new CountDownLatch(N);
+         Executor e = ...
+
+         for (int i = 0; i ˂ N; ++i) // create and start threads
+           e.execute(new WorkerRunnable(OºdoneSignalº, i));
+
+       OºdoneSignalº.await();           // wait for all to finish
+       }
+     }
+</pre>
+<pre zoom labels="">
 <span xsmall>Scheduling threads</span>
 <span xsmall>Runnables/Callables</span>
 <span xsmall>Executors</span>
@@ -1910,6 +2031,8 @@ TODO Concurrent
    }
  }
 </pre>
+</div>
+<div groupv>
 <pre zoom labels="learn_x_in_y_min">
 <span xsmall>Completable Future</span>
 @[https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/CompletableFuture.html]
@@ -2127,8 +2250,7 @@ ListenableFuture listenable = service.submit(...);   │ CompletableFuture compl
       meaningful like ChainableFuture "
 </pre>
 
-<div groupv>
-<pre zoom labels="performance">
+<pre zoom labels="performance,comparative">
 <span TODO xsmall>Loom Prj</span>
 <span TODO xsmall>Ligthweight</span>
 <span TODO xsmall>threads</span>
@@ -2162,9 +2284,7 @@ and shows why delimited continuations are a great fit for the imperative style.
 Bio
 Ron Pressler is the technical lead for Project Loom, which aims to add delimited
 continuations, fibers and tail-calls to the JVM
-</pre>
 
-<pre zoom labels="concurrency,comparative">
 <span xsmall>Quasar</span>
 <span xsmall>Java Fibers</span>
 - fast threads for java and Kotlin
@@ -2176,14 +2296,13 @@ My understanding is that Ron is currently busy working for/with Oracle on
 project Loom which should bring "native" Fiber/lightweight continuation
 support directly into JVM without the need of auxiliary library like Quasar.
 </pre>
-</div>
 
 <pre zoom labels="performance,concurrency" TODO>
 <span xsmall TODO>fast Inter-thread communication</span>
 @[https://www.infoq.com/articles/High-Performance-Java-Inter-Thread-Communications]
 </pre>
 
-
+</div>
 </div>
 
 <div group>
@@ -2236,6 +2355,147 @@ reactive libraries play.
 <pre zoom labels="qa,async">
 <span xsmall>RxJava</span>
 @[https://github.com/ReactiveX/RxJava]
+
+ºObservable/Operators/Observersº
+@[http://reactivex.io/documentation/contract.html]
+@[http://reactivex.io/documentation/observable.html]
+                                         ⇑
+                                    ˂˂Subscriber˃˃
+                                    unsubscribe  : - Observable can opt to stop
+                                                   event-emission if no more clients
+                                                   are subcribed
+ Loop-of-Observable-emitted-events:                - unsubscription will cascade back
+    Observable → ˂˂IObserver˃˃: onNext(event)      through the chain of operators
+    observer → observer  : handle event            applying to associated Observable.
+    ^^^^^^^^
+    also called
+    "subscriber"
+    "watcher"
+    "reactor"  ("reactor pattern")
+ end-loop
+ Observable → ˂˂handlerInstance˃˃: onCOmpleted()
+ observer → observer  : handle event
+
+ RºWARN:º There is no canonical naming standard in RXJava
+
+
+ ºObservable˂T˃º → operator1 → ... → operatorN → ºObserverº
+Oºpushesºobjects                                  Subscribes to
+ (events) from                                    the observable
+ any source                                       events
+ (ddbb, csv,...)                                  .onNext()     
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   .onCompleted()
+            Learning which operators to use       .onError()    
+            for a situation and how to combine    .onSubscribe(Disposable d);
+            them is the key to master RxJava      ^
+            them is the key to mastering RxJava   │
+┌─────────────────────────────────────────────────┘
+├─onSubscribe(Disposible): Free any resources created by the rxJava pipeline.
+├─onNext()     : passes each item, one at a time,   to the ºObserverº
+├─onCompleted(): communicates a completion event    to the ºObserverº
+└─onError()    : communicates an error up the chain to the ºObserverº
+                 where the Observer typically defines how to handle it.
+                 Unless retry() operator is used to intercept the error,
+                 the Observable chain typically terminates, and no
+                 more emissions will occur.
+                 See also Gºoperators 'Catch' and 'Retry'º
+
+By default, Observables execute work on the immediate thread,
+which is the thread that declared the Observer and subscribed it.
+Not all Observables will fire on the immediate thread, (Observable.interval(),...)
+
+ºcreating a source Observable:º
+  Observable˂String˃ source00 = Observableº.justº("value1",...,"valueN");
+  Observable˂String˃ source00 = Observableº.fromCallableº(() -˃ 1/0);
+                                            ^^^^^^^^^^^^        ^^^
+                                            Similar to just be errors are captured
+                                            by the rxJava "pipeline"
+
+  Observable˂String˃ source01 = Observableº.createº( emitter -˃ 
+  {
+        try {
+    emitterº.onNextº(myList.get(0));
+    emitter .onNext (myList.get(1));
+    ...
+    emitterº.onComplete()º; // ← Optional
+        } catch(Throwable e) {
+    emitterº.onError(e)º;
+        }
+  } );
+  Observable˂String˃  source02 = Observableº.fromIterableº(myIterableList);
+  Observable˂Integer˃ source03 = Observableº.rangeº(1,10);
+  Observable˂String˃  source04 = Observableº.intervalº(1, TimeUnit.SECONDS);
+                                             ^^^^^^^^
+                                             Since it operates on a timer →
+                                             needs to run on separate thread
+                                             and will run on the computation
+                                             Scheduler by default
+
+  Observable˂String˃  source05 = Observableº.fromFutureº(myFutureValue);
+  Observable˂String˃  source06 = Observableº.emptyº();
+                                             ^^^^^
+                                             calls onComplete() and ends
+
+  Observable˂String˃  source07 = Observableº.deferº( () -˃ Observable.range(start,count));
+                                             ^^^^^
+                                      Advanced factory pattern.
+                                      allows a separate state for each observer
+  Observable˂String˃  source08 = Observableº.fromCallableº( () -˃ Observable.range(start,count));
+
+ºcreating Single/Maybe/Completable "Utility" Observables:º
+ ┌─────────────────────────────┬────────────────────────────────┬─────────────────────────────────┐
+ │ Single.just("Hello")        │ Maybe.just("Hello")            │ Completable.fromRunnable(       │
+ │ .subscribe(...);            │   .subscribe(...);             │   () -˃ runProcess() )          │
+ │                             │                                │ .subscribe(...);                │
+ ├─────────────────────────────┼────────────────────────────────┼─────────────────────────────────┤
+ │ Emits a single item         │ Emits (or not)a single item    │  does not receive any emissions │
+ ├─────────────────────────────┼────────────────────────────────┼─────────────────────────────────┤
+ │ºSingleObserverº             │ ºMaybeObserverº                │ ºCompletableObserverº           │
+ │ .onSubscribe(Disposable d); │  .onSubscribe(Disposable d);   │  .onSubscribe(Disposable d);    │
+ │ .onSuccess(T value);        │  .onSuccess(T value);          │  .onComplete();                 │
+ │ .onSuccess(Throwable error);│  .onSuccess(Throwable error);  │  .onError(Throwable error);     │
+ │                             │  .onComplete();                │                                 │
+ └─────────────────────────────┴────────────────────────────────┴─────────────────────────────────┘
+
+ºCreate Test-oriented observablesº
+   Observableº.neverº();
+   Observableº.errorº();
+
+ºDerive Observables from source:º
+Observable˂Integer˃ lengths  =  sourceº.mapº   (String::length);
+Observable˂Integer˃ filtered = lengthsº.filterº(i -˃ i  = 5);
+
+ºcreating an Observer:º
+(Lambdas in the source Observable .subscribe can be used in place)
+Observer˂Integer˃ myObserver = new Observer˂Integer˃() {
+  @Override public void onSubscribe(Disposable d) { //... }
+  @Override public void onNext(Integer value)     { log.debug("RECEIVED: " + value); }
+  @Override public void onError(Throwable e)      { e.printStackTrace();}
+  @Override public void onComplete()              { log.debu("Done!"); }
+};
+
+<span xsmall>Cold/Hot Observables</span>
+- Cold: - Repeat the same content to different observers.
+        - Represent sort-of inmmutable data.
+        - A "cold" Observable waits until an observer subscribes to it
+          an observer is guaranteed to see the whole sequence of events
+- Hot : "Broadcast" to all observers at the same time.
+        - A "hot" Observable may begin emitting items as soon as it is created
+          an observer will loose all events passed before subcribing.
+        - An observer connecting "later" will loose old emissions.
+        - Representºreal-time eventsº. They are time-sensitive.
+        - Emissions will start when first observers calls connect().
+        - a cold/hot observable can generate a new hot observable by 
+          calling publish() that will return a hot ConnectableObservable.
+          Helpful to avoid the replay of data on each subscrived Observer.
+
+        - NOTE: A "Connectable" Observable: does NOT begin emitting items
+            until its Connect method is called, whether or not any observers
+            have subscribed to it.
+
+<span xsmall>About Nulls</span>
+In RxJava 2.0, Observables NO LONGER SUPPORT EMITTING null VALUES!!!
+
 <span xsmall>Decision  Tree:</span>
 @[http://reactivex.io/documentation/operators.html#tree]
 Alphabetical List of Observable Operators
@@ -2278,172 +2538,225 @@ Core API:
           |                    |its observers.
   Scheduler "==" Thread
 
+<span xsmall>External links:</span>
+- Rx Workshop: Introduction
+ @[https://channel9.msdn.com/Series/Rx-Workshop/Rx-Workshop-Introduction]
+- Introduction to Rx: IObservable
+ @[http://introtorx.com/Content/v1.0.10621.0/02_KeyTypes.html#IObservable]
+- Mastering observables (from the Couchbase Server documentation)
+ @[https://developer.couchbase.com/documentation/server/3.x/developer/java-2.0/observables.html]
+- 2 minute introduction to Rx by Andre Staltz (“Think of an Observable as an asynchronous immutable array.”)
+ @[https://medium.com/@andrestaltz/2-minute-introduction-to-rx-24c8ca793877]
+- Introducing the Observable by Jafar Husain (JavaScript Video Tutorial)
+ @[https://egghead.io/lessons/rxjs-introducing-the-observable]
+- Observable object (RxJS) by Dennis Stoyanov
+ @[http://xgrommx.github.io/rx-book/content/observable/index.html]
+- Turning a callback into an Rx Observable by @afterecho
+ @[https://afterecho.uk/blog/turning-a-callback-into-an-rx-observable.html]
 
-ºReactiveX full Journey:º
- http://reactivex.io/documentation/observable.html
-
- observer → Observable: .subscribe(˂˂IObserver˃˃);
- object                               ^^^^^^^^^^^^
-                                      onNext
-                                      onCompleted: Ended with no error
-                                      onError    : stop event stream due to error
-                                         ⇑
-                                    ˂˂Subscriber˃˃
-                                    unsubscribe  : - Observable can opt to stop
-                                                   event-emission if no more clients
-                                                   are subcribed
- Loop-of-Observable-emitted-events:                - unsubscription will cascade back
-    Observable → ˂˂IObserver˃˃: onNext(event)      through the chain of operators
-    observer → observer  : handle event            applying to associated Observable.
-    ^^^^^^^^
-    also called
-    "subscriber"
-    "watcher"
-    "reactor"  ("reactor pattern")
- end-loop
- Observable → ˂˂handlerInstance˃˃: onCOmpleted()
- observer → observer  : handle event
-
- RºWARN:º There is no canonical naming standard in RXJava
-
-º"Hot" and "Cold" Observablesº
-
-When does an Observable begin emitting its sequence of items?
-- A "hot" Observable may begin emitting items as soon as it is created
-  an observer will loose all events passed before subcribing.
-- A "cold" Observable waits until an observer subscribes to it
-  an observer is guaranteed to see the whole sequence of events
-
-NOTE: A "Connectable" Observable: does NOT begin emitting items
-  until its Connect method is called, whether or not any observers
-  have subscribed to it.
-
-External links:
-Rx Workshop: Introduction
-  https://channel9.msdn.com/Series/Rx-Workshop/Rx-Workshop-Introduction
-Introduction to Rx: IObservable
-  http://introtorx.com/Content/v1.0.10621.0/02_KeyTypes.html#IObservable
-Mastering observables (from the Couchbase Server documentation)
-  https://developer.couchbase.com/documentation/server/3.x/developer/java-2.0/observables.html
-2 minute introduction to Rx by Andre Staltz (“Think of an Observable as an asynchronous immutable array.”)
-  https://medium.com/@andrestaltz/2-minute-introduction-to-rx-24c8ca793877
-Introducing the Observable by Jafar Husain (JavaScript Video Tutorial)
-  https://egghead.io/lessons/rxjs-introducing-the-observable
-Observable object (RxJS) by Dennis Stoyanov
-  http://xgrommx.github.io/rx-book/content/observable/index.html
-Turning a callback into an Rx Observable by @afterecho
-  https://afterecho.uk/blog/turning-a-callback-into-an-rx-observable.html
-
-REF:
-Operators creating new Observables
+<span xsmall>Operator classification 1</span>
+ºOperators creating new Observablesº
 @[http://reactivex.io/documentation/operators.html#creating]
-    Create — create an Observable from scratch by calling observer methods programmatically
-    Defer — do not create the Observable until the observer subscribes, and create a fresh Observable for each observer
-    Empty/Never/Throw — create Observables that have very precise and limited behavior
-    From — convert some other object or data structure into an Observable
-    Interval — create an Observable that emits a sequence of integers spaced by a particular time interval
-    Just — convert an object or a set of objects into an Observable that emits that or those objects
-    Range — create an Observable that emits a range of sequential integers
-    Repeat — create an Observable that emits a particular item or sequence of items repeatedly
-    Start — create an Observable that emits the return value of a function
-    Timer — create an Observable that emits a single item after a given delay
-Operators Transforming emitted Items:
+   ºCreate   º create Observable from scratch programmatically
+   ºDefer    º do not create the Observable until the observer subscribes,
+               and create a fresh Observable for each observer
+   ºEmpty    º create Observables that have very precise and limited behavior
+   ºNever    º   "                                                             
+   ºThrow    º   "                                                             
+   ºFrom     º create some object or data structure 
+   ºInterval º create Observable that emits a sequence of integers spaced
+               by a particular time interval
+   ºJust     º convert an object or a set of objects into an Observable that emits that or those objects
+   ºRange    º create an Observable that emits a range of sequential integers
+   ºRepeat   º create an Observable that emits a particular item or sequence of items repeatedly
+   ºStart    º create an Observable that emits the return value of a function
+   ºTimer    º create an Observable that emits a single item after a given delay
+
+ºOperators Transforming Items:º
 @[http://reactivex.io/documentation/operators.html#transforming]
-    Buffer — periodically gather items from an Observable into bundles and emit these bundles rather than emitting the items one at a time
-    FlatMap — transform the items emitted by an Observable into Observables, then flatten the emissions from those into a single Observable
-    GroupBy — divide an Observable into a set of Observables that each emit a different group of items from the original Observable, organized by key
-    Map — transform the items emitted by an Observable by applying a function to each item
-    Scan — apply a function to each item emitted by an Observable, sequentially, and emit each successive value
-    Window — periodically subdivide items from an Observable into Observable windows and emit these windows rather than emitting the items one at a time
+   ºBuffer   º periodically gather items from input into bundles and emit
+               these bundles rather than emitting the items one at a time
 
-Operators selectively filtering emitted events from a source Observable.
+   ºFlatMap  º transform the items emitted by an Observable into Observables,
+               then flatten the emissions from those into a single Observable
+   ºGroupBy  º divide an Observable into a set of Observables that each emit a
+               different group of items from the original Observable, 
+             Gºorganized by keyº
+   ºMap      º transform each input-item by applying a function
+   ºScan     º apply a function to each item emitted by an Observable, 
+               sequentially, and emit each successive value
+   ºWindow   º periodically subdivide items from an Observable into 
+               Observable windows and emit these windows rather than emitting
+               the items one at a time
+
+ºOperators selectively filtering emitted events from a source Observableº
 @[phttp://reactivex.io/documentation/operators.html#filtering]
-    Debounce — only emit an item from an Observable if a particular timespan has passed without it emitting another item
-    Distinct — suppress duplicate items emitted by an Observable
-    ElementAt — emit only item n emitted by an Observable
-    Filter — emit only those items from an Observable that pass a predicate test
-    First — emit only the first item, or the first item that meets a condition, from an Observable
-    IgnoreElements — do not emit any items from an Observable but mirror its termination notification
-    Last — emit only the last item emitted by an Observable
-    Sample — emit the most recent item emitted by an Observable within periodic time intervals
-    Skip — suppress the first n items emitted by an Observable
-    SkipLast — suppress the last n items emitted by an Observable
-    Take — emit only the first n items emitted by an Observable
-    TakeLast — emit only the last n items emitted by an Observable
+   ºDebounce º only emit an item from an Observable if a particular timespan has passed 
+               without it emitting another item
+   ºDistinct º suppress duplicate items emitted by an Observable
+   ºElementAtº emit only item n emitted by an Observable
+   ºFilter   º emit only those items from an Observable that pass a predicate test
+   ºFirst    º emit only the first item, or the first item that meets a condition, from an Observable
+   ºIgnoreElements º do not emit any items from an Observable but mirror its termination notification
+   ºLast     º emit only the last item emitted by an Observable
+   ºSample   º emit the most recent item emitted by an Observable within periodic time intervals
+   ºSkip     º suppress the first n items emitted by an Observable
+   ºSkipLast º suppress the last n items emitted by an Observable
+   ºTake     º emit only the first n items emitted by an Observable
+   ºTakeLast º emit only the last n items emitted by an Observable
 
 
-Operators Combining multiple source Observables into a new single Observable
+ºOperators Combining multiple source Observables into a new single Observableº
 @[http://reactivex.io/documentation/operators.html#combining]
-    And/Then/When — combine sets of items emitted by two or more Observables by means of Pattern and Plan intermediaries
-    CombineLatest — when an item is emitted by either of two Observables, combine the latest item emitted by each Observable via a specified function and emit items based on the results of this function
-    Join — combine items emitted by two Observables whenever an item from one Observable is emitted during a time window defined according to an item emitted by the other Observable
-    Merge — combine multiple Observables into one by merging their emissions
-    StartWith — emit a specified sequence of items before beginning to emit the items from the source Observable
-    Switch — convert an Observable that emits Observables into a single Observable that emits the items emitted by the most-recently-emitted of those Observables
-    Zip — combine the emissions of multiple Observables together via a specified function and emit single items for each combination based on the results of this function
+   ºAnd      º combine sets of items emitted by two or more Observables by means 
+   ºThen     º of Pattern and Plan intermediaries
+   ºWhen     º
 
-Operators handling Errors and helping to recover from error-notifications
+   ºCombineLatest º when an item is emitted by either of two Observables, combine the 
+               latest item emitted by each Observable via a specified function and 
+               emit items based on the results of this function
+   ºJoin     º combine items emitted by two Observables whenever an item from one 
+               Observable is emitted during a time window defined according to an 
+               item emitted by the other Observable
+   ºMerge    º combine multiple Observables into one by merging their 
+               emissions
+   ºStartWithº emit a specified sequence of items before beginning to emit the 
+               items from the source Observable
+   ºSwitch   º convert an Observable that emits Observables into a single 
+               Observable that emits the items emitted by the most-recently-
+               emitted of those Observables
+   ºZip      º combine multiple Observables emissions together via a function 
+               function → emit single items for each input tuple
+
+ºOperators handling Errors and helping to recover from error-notificationsº
 @[http://reactivex.io/documentation/operators.html#error]
-    Catch — recover from an onError notification by continuing the sequence without error
-    Retry — if a source Observable sends an onError notification, resubscribe to it in the hopes that it will complete without error
+   ºCatch º recover from an onError notification by continuing the sequence without error
+   ºRetry º if a source Observable sends an onError notification, resubscribe to it
+            in the hopes that it will complete without error
 
-
-Utility Operators "toolbox"
+ºUtility Operators "toolbox"º
 @[http://reactivex.io/documentation/operators.html#utility]
-    Delay — shift the emissions from an Observable forward in time by a particular amount
-    Do — register an action to take upon a variety of Observable lifecycle events
-    Materialize/Dematerialize — represent both the items emitted and the notifications sent as emitted items, or reverse this process
-    ObserveOn — specify the scheduler on which an observer will observe this Observable
-    Serialize — force an Observable to make serialized calls and to be well-behaved
-    Subscribe — operate upon the emissions and notifications from an Observable
-    SubscribeOn — specify the scheduler an Observable should use when it is subscribed to
-    TimeInterval — convert an Observable that emits items into one that emits indications of the amount of time elapsed between those emissions
-    Timeout — mirror the source Observable, but issue an error notification if a particular period of time elapses without any emitted items
-    Timestamp — attach a timestamp to each item emitted by an Observable
-    Using — create a disposable resource that has the same lifespan as the Observable
+   ºDelay     º shift the emissions from an Observable forward in time by a particular amount
+   ºDo        º register an action to take upon a variety of Observable lifecycle events
 
-Conditional and Boolean Operators evaluating one or more
+   ºMaterialize  º represent both the items emitted and the notifications sent
+   ºDematerializeº  as emitted items, or reverse this process
+
+   ºObserveOn º specify the scheduler on which an observer will observe this Observable
+   ºSerialize º force an Observable to make serialized calls and to be well-behaved
+   ºSubscribe º operate upon the emissions and notifications from an Observable
+   ºSubscribeOn º specify the scheduler an Observable should use when it is subscribed to
+   ºTimeIntervalº convert an Observable that emits items into one that emits indications
+                  of the amount of time elapsed between those emissions
+   ºTimeout   º mirror the source Observable, but issue an error notification if a
+                particular period of time elapses without any emitted items
+   ºTimestamp º attach a timestamp to each item emitted by an Observable
+   ºUsing     º create a disposable resource that has the same lifespan as the Observable
+
+ºConditional and Boolean Operators evaluating one or moreº
   Observables or items emitted by Observables
 @[http://reactivex.io/documentation/operators.html#conditional]
-     All — determine whether all items emitted by an Observable meet some criteria                                     Mathematical and Aggregate Operators
-@    Amb — given two or more source Observables, emit all of the items from only the first of these Observables to emit an item[http://reactivex.io/documentation/operators.html#mathematical]
-     Contains — determine whether an Observable emits a particular item or not                                            Average, Concat, Count, Max, Min, Reduce, and Sum
-C    DefaultIfEmpty — emit items from the source Observable, or a default item if the source Observable emits nothing  onverting Observables
-@    SequenceEqual — determine whether two Observables emit the same sequence of items
-     SkipUntil — discard items emitted by an Observable until a second Observable emits an item                           To
-C    SkipWhile — discard items emitted by an Observable until a specified condition becomes false                      onnectable Observable Operators
-@    TakeUntil — discard items emitted by an Observable after a second Observable emits an item or terminates          [http://reactivex.io/documentation/operators.html#connectable]
-     TakeWhile — discard items emitted by an Observable after a specified condition becomes false                         Connect, Publish, RefCount, and Replay
+   ºAll       º determine whether all items emitted by an Observable meet some criteria
+                Mathematical and Aggregate Operators
+@  ºAmb       º given two or more source Observables, emit all of the items from only the
+                first of these Observables to emit an item
+              @[http://reactivex.io/documentation/operators.html#mathematical]
+   ºContains º determine whether an Observable emits a particular item or not
+               Average, Concat, Count, Max, Min, Reduce, and Sum
+C  ºDefaultIfEmptyº emit items from the source Observable, or a default item if the 
+               source Observable emits nothing  onverting Observables
+@  ºSequenceEqual º determine whether two Observables emit the same sequence of items
+   ºSkipUntil º discard items emitted by an Observable until a second Observable emits an item To
+C  ºSkipWhile º discard items emitted by an Observable until a specified condition becomes false 
 
-Mathematical and Aggregate Operators
-Operators that operate on the entire sequence of items emitted by an Observable
+ºConnectable Observable Operatorsº
+[http://reactivex.io/documentation/operators.html#connectable]
+@  ºTakeUntil º discard items emitted by an Observable after a second Observable emits an item or terminates
+   ºTakeWhile º discard items emitted by an Observable after a specified condition becomes false
+   ºConnect   º
+   ºPublish   º
+   ºRefCount  º
+   ºReplay    º
 
-    Average — calculates the average of numbers emitted by an Observable and emits this average
-    Concat — emit the emissions from two or more Observables without interleaving them
-    Count — count the number of items emitted by the source Observable and emit only this value
-    Max — determine, and emit, the maximum-valued item emitted by an Observable
-    Min — determine, and emit, the minimum-valued item emitted by an Observable
-    Reduce — apply a function to each item emitted by an Observable, sequentially, and emit the final value
-    Sum — calculate the sum of numbers emitted by an Observable and emit this sum
+ºMathematical and Aggregate Operatorsº
+- Operators that operate on the entire sequence of items emitted by an Observable
+   ºAverage   º calculates the average of numbers emitted by an Observable and emits this average
+   ºConcat    º emit the emissions from two or more Observables without interleaving them
+   ºCount     º count the number of items emitted by the source Observable and emit only this value
+   ºMax       º determine, and emit, the maximum-valued item emitted by an Observable
+   ºMin       º determine, and emit, the minimum-valued item emitted by an Observable
+   ºReduce    º apply a function to each item emitted by an Observable, sequentially, and emit the final value
+   ºSum       º calculate the sum of numbers emitted by an Observable and emit this sum
 
-Backpressure Operators
+ºBackpressure Operatorsº
 a variety of operators that enforce particular flow-control policies
     @[http://reactivex.io/documentation/operators/backpressure.html]
-    backpressure operators — strategies for coping with Observables that produce items more rapidly than their observers consume them
+- backpressure operators ºstrategiesº for coping with Observables that produce items more
+  rapidly than their observers consume them
 
-Connectable Observable Operators
+ºConnectable Observable Operatorsº
 Specialty Observables that have more precisely-controlled subscription dynamics
-    Connect — instruct a connectable Observable to begin emitting items to its subscribers
-    Publish — convert an ordinary Observable into a connectable Observable
-    RefCount — make a Connectable Observable behave like an ordinary Observable
-    Replay — ensure that all observers see the same sequence of emitted items, even if they subscribe after the Observable has begun emitting items
+   ºConnect º instruct a connectable Observable to begin emitting items to its subscribers
+   ºPublish º convert an ordinary Observable into a connectable Observable
+   ºRefCountº make a Connectable Observable behave like an ordinary Observable
+   ºReplay  º ensure that all observers see the same sequence of emitted items, even if they
+              subscribe after the Observable has begun emitting items
 
-Operators to Convert Observables
-    To — convert an Observable into another object or data structure
+ºOperators to Convert Observablesº
+   ºToº       convert an Observable into another object or data structure
 
+<span xsmall>Operator classification 2</span>
+- Basic Operators:
+  - Suppressing operators:
+    - filter, take, skip, takeWhile/skipWhile, distinct, distinctUntilChanged
+  - Transforming operators:
+    - map, cast, startWith, defaultIfEmpty, switchIfEmpty, sorted, deplay,repeat, scan
+  - Reducing operators:
+    - count, reduce, all, any, contains
+  - Collection operators:
+    - toList, toSortedList, toMap, toMultiMap, collect
+  - Error recovery Operators
+    - onErrorReturn, onErrorReturnItem, onErrorResumeNext, retry
+  - Action ("stream life-cicle") Operators:
+    - doOnNext, doOnComplete, doOnError, doOnSubscribe, doOnDispose
+- Combining Observables:
+  - Merging:
+    - merge, mergeWith
+    - flatMap
+  - Concatenation:
+    - concat, concatWith
+    - concatMap
+  - Ambiguous:
+    - amb
+  - Zipping
+  - Combine Latest:
+    - withLatestFrom
+  - Grouping:
+    - groupBy
+ 
+- Multicasting, Replaying and Caching:
+  ( Multicasting is helpful in preventing redundant work being done by multiple
+    Observersand instead makes all Observers subscribe to a single stream, 
+    at least to the point wherethey have operations in common)
+  - "Hot" operators. (TODO)
+  - Automatic connection:
+    - autoConnect, refCount, share
+  - replay
+  - cache
 
-Implementing new Operators:
+-<span xspam>Subjects</span>
+  - Justlike mutable variables are necessary at times even though you 
+    should strive forimmutability, Subjects are sometimes a necessary tool
+    to reconcile imperative paradigmswith reactive ones.
+  - PublishSubject
+  - Serializin Subject
+  - BehaviourSubject
+  - ReplaySubject
+  - AsyncSubject
+  - UnicastSubject
+<span xsmall>Implementing new Operators:</span>
 @[http://reactivex.io/documentation/implement-operator.html]
+
 </pre>
 
 <pre zoom  labels="qa,async">
@@ -3433,9 +3746,28 @@ private void runCommand(@Untainted String… commands){            Each command 
 <pre zoom TODO labels="qa,library">
 <span xsmall>Annotation </span>
 <span xsmall>processors JSR 269</span>
-<span xsmall>(Dagger,</span>
-<span xsmall>Data Binding,</span>
+<span xsmall>(Data Binding,</span>
 <span xsmall>Lombok, ...)</span>
+</pre>
+<pre zoom TODO labels="qa,library,comparative">
+<span xsmall>Dependency</span>
+<span xsmall>injection JSR 330</span>
+<span xsmall>Dagger,Spring,...</span>
+@[http://www.theserverside.com/feature/Spring-vs-Guice-The-Clash-of-the-IOC-Containers]
+A: t's important to realize that Dagger was created after Guice, by one
+of Guice's creators ("Crazy Bob" Lee) after his move to Square:
+  - Spring was originally released in October 2002.
+  - Google originally publicly released Guice in March 2007.
+  - JSR-330 formalized javax.inject annotations in October 2009,
+    with heavy input from Google (Bob Lee), Spring, and other industry
+    players.
+  - Square originally released Dagger 1 publicly in May 2013.
+  - Google originally released Dagger 2 publicly in April 2015.
+  - Square marked Dagger 1 as deprecated 10 days ago,
+    on September 15, 2016.
+</pre>
+
+
 </pre>
 
 
@@ -4323,7 +4655,11 @@ public class TestAPI˂JSONArray˃ {
 }
 </pre>
 <pre zoom labels="qa,testing">
-<span xsmall>Restassured: JSON REST API Test</span>
+<span xsmall>Restassured:</span>
+<span xsmall>Testing JSON REST</span>
+<span xsmall>APIs</span>
+
+ºFULL JOURNEY == Simulate full (REST) API in expected orderº
 ˂dependency˃
     ˂groupId˃io.rest-assured˂/groupId˃
     ˂artifactId˃scala-support˂/artifactId˃
@@ -4365,36 +4701,22 @@ import org.hamcrest.Description;
 import java.util.Base64;
 import java.util.Map;
 
-// ºFullJourney == Simulate full (REST) API in expected orderº
 public class FullJourneyTest {
 
     // Custom regex matcher for RestAssured Framework
-    public static class RegexMatcher extends BaseMatcher˂Object˃{
+    public static classBºRegexMatcherºextendsºBaseMatcher˂Object˃º{
         private final String regex;
-
-        public RegexMatcher(String regex){
-            this.regex = regex;
-        }
-
-        public boolean matches(Object o){
-            return ((String)o).matches(regex);
-
-        }
-
-        public void describeTo(Description description){
+        public BºRegexMatcherº(String regex){ this.regex = regex; }
+       º@Overrideºpublic booleanºmatchesº(Object o){ return ((String)o).matches(regex); }
+       º@Overrideºpublic voidºdescribeToº(Description description){
             description.appendText("matches regex=");
         }
-
-        public static RegexMatcher matches(String regex){
-            return new RegexMatcher(regex);
-        }
+        public staticBºRegexMatcherº matches(String regex){ return newBºRegexMatcherº(regex); }
     }
 
-     public static class Base64Matcher extends BaseMatcher˂Object˃{
-
+     public static classGºBase64MatcherºextendsºBaseMatcher˂Object˃º{
         public Base64Matcher(){}
-
-        public boolean matches(Object o){
+       º@Overrideºpublic booleanºmatchesº(Object o){
             try {
                 Base64.getDecoder().decode((String)o);
                 return true;
@@ -4403,7 +4725,7 @@ public class FullJourneyTest {
             }
         }
 
-        public void describeTo(Description description){
+       º@Overrideºpublic voidºdescribeToº(Description description){
             description.appendText("can be parsed as Base64");
         }
 
@@ -4425,7 +4747,7 @@ public class FullJourneyTest {
         NAME="COMMUNITY_1", SYMBOL="SY1";
 
     Response response;
-    @BeforeClass
+  Qº@BeforeClassº
     public static void setup() {
         RestAssured.port     = ServerConfig.serverPort;
         RestAssured.basePath = "/";
@@ -4449,7 +4771,7 @@ public class FullJourneyTest {
         RestAssured.config = RestAssured.config().httpClient(clientConfig);
     }
 
-    @Test
+  Qº@Testº
     public void A010_PutNewCommunityAndNewUserForPendingToMineCommunity() {
         String jsonBody =
             "{ " +
@@ -4463,7 +4785,7 @@ public class FullJourneyTest {
             .body("size()", Oºis(5)                          º)
             .body("id"    , Oºnot(isEmptyString())           º)
             .body("pubkey", Oºnot(isEmptyString())           º)
-            .body("pubkey", OºRegexMatcher.matches("^º{65}$")*)
+            .body("pubkey", BºRegexMatcherºOº.matches("^{65}$")º)
             .body("pubkey", OºBase64Matcher.isBase64Encoded()º)
             .body("name"  , OºequalTo(NAME)                  º)
             .body("symbol", OºequalTo(SYMBOL)                º)
@@ -4492,6 +4814,11 @@ public class FullJourneyTest {
 
 <div groupv>
 <span title>What's new</span>
+<pre zoom labels="">
+<span xsmall>JAVA 14 (future)</span>
+https://www.infoq.com/news/2019/12/java14-feature-freeze/
+</pre>
+
 <pre zoom>
 <span TODO xsmall>JAVA 13 (future)</span>
 @[https://www.infoq.com/news/2019/06/java13-feature-freeze/]
@@ -4831,73 +5158,6 @@ contained in Dragome Web SDK,[21] Bck2Brwsr,[22] and j2js-compiler.[23]"""
 <span xsmall TODO>Crypto.API(JCA)</span>
 - See also:
   <a href="./BCFipsIn100.pdf">Bounce Castle FIPS JCA provider</a>
-</pre>
-
-<pre zoom labels="qa,ioc,comparative">
-<span xsmall>Google Guice</span>
-<span xsmall>(Inver of Control)</span>
-http://www.theserverside.com/feature/Spring-vs-Guice-The-Clash-of-the-IOC-Containers
-""" Although Spring provides many benefits, it was created in a pre-Java-5
-world. The Guice framework takes DI to the next level, leveraging the full
-power of Java typing, especially annotations and generics"""
-
-https://stackoverflow.com/questions/39688830/why-use-develop-guice-when-you-have-spring-and-dagger
-
-Q: Why use/develop Guice, when You have Spring and Dagger? [closed]
-  To my knowledge, Dagger does generate code, while Guice and Spring rely on
-runtime processing, thus Dagger works faster, but requires more work on
-programmer side. Because of performance edge it's good for mobile (Android)
- development.
-
-However, when we are left with Guice and Spring, the latter has lots of
-integrations. What's the point of developing/using Guice, if we can use
-Spring Framework (that does basically same thing, but offers ex. easier
-database access)?
-
-Isn't Google trying to reinvent wheel by creating their own DI tool,
-instead of using (and possibly contributing to) Spring Framework?
-
-I am looking for decision tree, that guides through choosing DI tool.
-
-A: t's important to realize that Dagger was created after Guice, by one
-of Guice's creators ("Crazy Bob" Lee) after his move to Square:
-  - Spring was originally released in October 2002.
-  - Google originally publicly released Guice in March 2007.
-  - JSR-330 formalized javax.inject annotations in October 2009,
-    with heavy input from Google (Bob Lee), Spring, and other industry
-    players.
-  - Square originally released Dagger 1 publicly in May 2013.
-  - Google originally released Dagger 2 publicly in April 2015.
-  - Square marked Dagger 1 as deprecated 10 days ago,
-    on September 15, 2016.
-
-In that sense, the continued curation of Guice isn't "reinventing the
-  wheel" so much as maintenance on a long-running and widely-consumed
- software package that thoroughly predates any version of Dagger. To
-list and amend to the differences you have above:
-
-    Spring is a relatively-heavyweight framework with a lot of
- integrations, an XML configuration language, and runtime/reflective
-bindings. Applications already using Spring can use Spring's dependency
- injection framework with very little extra work.
-    Guice is a relatively-lightweight framework with fewer integrations,
- Java instance configuration, and runtime/reflective bindings. With the
- use of Java bindings, you get compile-time type checking and IDE
- autocomplete integration.
-    Dagger is a very lightweight framework with very few integrations,
- Java interface/annotation configuration, and compile-time code-generated
- bindings. The code generation aspect makes Dagger very performant
-overall and particularly in resource-limited and mobile environments.
-(Android's different VM makes reflection especially slow, so Dagger is
-especially useful here.)
-    All three of the above frameworks support JSR-330 (Dependency
-Injection for Java) , so a well-crafted library or application can
- be mostly agnostic to the DI container used.
-JSR-330:
-
-Beyond that, keep an eye out for maintenance/deprecation patterns and
-policies among any framework you use, but leave it up to the integrations and
-performance you need alongside your team's technical judgment.
 </pre>
 
 <pre zoom>
@@ -5356,4 +5616,51 @@ Reactive Spring Boot programming with Vert.x
 The latest bundle of Red Hat supported Spring Boot starters was recently released. In addition to supporting the popular Red Hat products for our Spring Boot customers, the Red Hat Spring Boot team was also busy creating new ones. The most recent technical preview added is a group of Eclipse Vert.x Spring Boot starters, which provide a Spring-native vocabulary for the popular JVM reactive toolkit.
 ______________________
 https://blogs.mulesoft.com/dev/mule-dev/dataweave-lambdas-for-java-programmers/
+
+_____________________________
+- 5 Not So Obvious Things About RxJava
+  - https://medium.com/@jagsaund/5-not-so-obvious-things-about-rxjava-c388bd19efbc
+
+- Error control
+  - https://github.com/ReactiveX/RxJava/wiki/Error-Handling-Operators
+
+- Dealing with RxJava's never-ending Observables
+  - https://tech.xing.com/dealing-with-rxjavas-never-ending-observables-1ca8f18797ff
+__________________
+What's new Java 8
+https://www.oracle.com/technetwork/java/javase/8-whats-new-2157071.html
+https://www.qwant.com/?q=what+new+java+8
+_________________
+
+inter-thread coordination in as little as 1ns.
+
+https://software.rajivprab.com/2018/04/29/myths-programmers-believe-about-cpu-caches/
+
+https://software.rajivprab.com/2018/04/29/myths-programmers-believe-about-cpu-caches/
+
+. If caches are so in-sync with one another, why do we need volatiles at all in languages like Java?
+
+That’s a very complicated question that’s better answered elsewhere, but let me just drop one partial hint. Data that’s read into CPU registers, is not kept in sync with data in cache/memory. The software compiler makes all sorts of optimizations when it comes to loading data into registers, writing it back to the cache, and even reordering of instructions. This is all done assuming that the code will be run single-threaded. Hence why any data that is at risk of race-conditions, needs to be manually protected through concurrency algorithms and language constructs such as atomics and volatiles.
+
+In the case of Java volatiles, part of the solution is to force all reads/writes to bypass the local registers, and immediately trigger cache reads/writes instead. As soon as the data is read/written to the L1 cache, the hardware-coherency protocol takes over and provides guaranteed coherency across all global threads. Thus ensuring that if multiple threads are reading/writing to the same variable, they are all kept in sync with one another. And this is how you can achieve inter-thread coordination in as little as 1ns.
+________________________
+https://gceasy.io/:
+Industry's first machine learning guided Garbage collection log analysis tool. GCeasy has in-built intelligence to auto-detect problems in the JVM & Android GC logs and recommend solutions to it.
+
+- Solve Memory & GC problems in seconds
+- Get JVM Heap settings recommendations
+- Machine Learning Algorithms
+- Trusted by 4,000+ enterprises
+- Free
+- A perfect DevOps tool!
+  Made by the developers, for the developers
+________________________
+https://fastthread.io/
+- Java Thread Dump Analyzer
+- Troubleshoot JVM crashes, slowdowns, memory leaks, freezes, CPU Spikes
+- Instant RCA (don't wait for Vendors)
+- Machine Learning
+- Trusted by 4000+ enterprises
+Free Service
+
 -->

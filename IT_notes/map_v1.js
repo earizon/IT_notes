@@ -11,7 +11,14 @@ var spb = {
   visited_idx:-1,
   CallbackOnClose:false,
   labelAndMode : true,
+  singleLineMode : false,
+  matchCaseMode : false,
+  regexQuery: "",
   labelMap : { /* label : dom_list*/ },
+  labelAndOr : { 
+      true : "←<span brown>AND</span> mode must contains <span brown>all</span> selected topics",
+      false: "←<span green>OR </span> mode must contains <span green>any</span> selected topics"
+  },
   labelMapSelected : { /* label : isSelected true|false */ },
   onKeyUp: function(e) {
     if (e.code === "Escape") {
@@ -24,10 +31,9 @@ var spb = {
     if (e.code === "F1") doHelp(); 
   },
   searchAndMark : function(node, query) {
-      var htmlContent = (singleLineOnly) 
+      var htmlContent = (spb.singleLineMode) // TODO:(test)
            ? node.innerHTML 
            : node.innerHTML.replace(/\n/gm, '')
-//    var searchFound = htmlContent.match(query)
       var searchFound = query.test(htmlContent)
       node.setAttribute("textFound", searchFound?"true":"false")
       if (searchFound) {
@@ -64,7 +70,7 @@ var longPress = {
    
      if (longPress.presstimer === null) {
        longPress.presstimer = setTimeout(function() {
-         doOpenZoom.call(self, self, false, true)
+         doOpenZoom.call(self, self, false, true, false)
          longPress.longpress = true
        }, 1000)
      }
@@ -80,7 +86,7 @@ var longPress = {
    enableDblClick : function (node) {
      let self = node
      node.addEventListener('dblclick', function() { 
-       doOpenZoom.call(self, self, false, true) 
+       doOpenZoom.call(self, self, false, true, false) 
        if (!!this.stopPropagation) { this.stopPropagation(); }
      } , true)
    },
@@ -135,23 +141,21 @@ function goBack() {
     if(spb.visited_idx == 0) return
     spb.visited_idx--
     let e = spb.visited[spb.visited_idx]
-    doOpenZoom.call(e, e, true, true);
+    doOpenZoom.call(e, e, true, true, false);
 }
 function goForward() {
     if(spb.visited_idx == spb.visited.length-1) return
     spb.visited_idx++
     let e = spb.visited[spb.visited_idx]
-    doOpenZoom.call(e, e, true, true);
+    doOpenZoom.call(e, e, true, true, false);
 }
 
 
-function doOpenZoom(e, isHistoric, showTimeControl, CallbackOnClose) {
-  // TODO:(0) Recheck spb.visited_idx 
+function doOpenZoom(e, isHistoric, showTimeControl, CallbackOnClose, strCloseLabel) {
   spb.CallbackOnClose = CallbackOnClose;
   showTimeControl = !!showTimeControl
   if(spb.visited[spb.visited.length-1] == e) { 
       isHistoric = true 
-      // spb.visited_idx == ???
   }
   if(spb.visited.indexOf(e)>=0) { 
       isHistoric = true
@@ -173,10 +177,10 @@ function doOpenZoom(e, isHistoric, showTimeControl, CallbackOnClose) {
         sLabels += renderLabel(label_i)
     })
   }
-
+  strCloseLabel = (!!strCloseLabel)?strCloseLabel:"✕ (close)"
   spb.zoomDivDOM.innerHTML = 
      "<div style='margin-bottom:0.5rem'>" 
-   + " <div id='divCloseZoom' onClick='doCloseZoom()'>✕ (close)</div>" 
+   + " <div id='divCloseZoom' onClick='doCloseZoom()'>"+strCloseLabel+"</div>" 
    + ((showTimeControl) 
        ? "<div id='historyBackFor' style='display:inline; '>" + backControl + " "+ forwControl + "</div>" 
        : ""
@@ -191,15 +195,19 @@ function doOpenZoom(e, isHistoric, showTimeControl, CallbackOnClose) {
   return false;
 }
 
+function updateRegexQuery() {
+    spb.regexQuery = this.value
+}
+
 function doExtraOptions() {
     ctx = {
         outerHTML : getSearchOptions()
     }
-    doOpenZoom.call(ctx, ctx, true, false, highlightSearch);
+    doOpenZoom.call(ctx, ctx, true, false, highlightSearch, "Search/Filter Now!")
+    document.getElementById("inputQuery"   ).addEventListener("change",  updateRegexQuery )
 }
 function onLabelClicked(e) {
     let label = e.value;
-    var newInputQuery;
     if (!e.attributes) {
          e.attributes = { selected : { value : "false" } }
     }
@@ -222,20 +230,32 @@ function renderLabel(sLabel,selected) {
          " type='button' onClick='onLabelClicked(this)' value='"+sLabel+"' />" ;
 }
 
+
+function switchANDORSearch() {
+  spb.labelAndMode=!spb.labelAndMode
+  document.getElementById("idLabelSearchAndMode").innerHTML= spb.labelAndOr[spb.labelAndMode]
+}
+function switchSingleLineMode() { spb.singleLineMode=document.getElementById("singleLineOnly").checked; }
+function switchCaseMode()       { spb.matchCaseMode=document.getElementById("caseSensitive").checked; }
+
 function getSearchOptions() {
     if (Object.keys(spb.labelMap).length == 0) {
         return "No labels found"
     }
     var result = "";
     result += ""
+      + '  <input id="inputQuery" type="text" size="20" placeholder="(regex) text search" maxlength="30" value="'+spb.regexQuery+'" />'
+      + "  <input id='singleLineOnly' type='checkbox' onClick='switchSingleLineMode()' "+(spb.singleLineMode ? "checked" :"")+" ><code>single-line</code>"
+      + "  <input id='caseSensitive'  type='checkbox' onClick='switchCaseMode      ()' "+(spb. matchCaseMode ? "checked" :"")+" ><code>Case-match </code>"
       + "<hr/>\n"
-      + "Labels: <input id='idLabelSearchAndMode' type='checkbox' "+(spb.labelAndMode?"checked":"")+" onClick='spb.labelAndMode=!spb.labelAndMode' >AND-search(uncheck for OR)<br/>\n"
+      + "Filter (Restrict search to selected topics):<br/>\n"
+      + "<input type='checkbox' "+(spb.labelAndMode?"checked":"")+" onClick='switchANDORSearch()'><span id='idLabelSearchAndMode' mono>"+spb.labelAndOr.true+"</span>"
+      + "<br/>\n"
       + "<div>\n"
     Object.keys(spb.labelMap).sort().forEach(label_i => {
         result += renderLabel(label_i)
     })
-      + "</div>\n"
-
+      + "</div>\n)"
     return result;
 }
 
@@ -265,65 +285,13 @@ function createLabelIndex() {
 }
 
 function onPageLoaded() {
-    let lenseIconSVG=
-     ''
-    +'<svg id="idLenseIcon" viewBox="0 141 68 103" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" >'
-    +'  <ellipse style="fill: none; fill-opacity:0; stroke-width: 4; stroke: #0000ff" cx="43.312" cy="165.209" rx="22" ry="22"/>'
-    +'  <ellipse style="fill: none; fill-opacity:0; stroke-width: 4; stroke: #0000ff" cx="43.312" cy="165.209" rx="22" ry="22"/>'
-    +'</g>'
-    +'  <line style="fill: none; fill-opacity:0; stroke-width: 4; stroke: #0000ff" x1="16.138" y1="45.443" x2="410.291" y2="195.409"/>'
-    +'  <line style="fill: none; fill-opacity:0; stroke-width: 12; stroke: #0000ff" x1="8.114" y1="235.317" x2="29.243" y2="190.48"/>'
-    +'  <path style="fill: none; fill-opacity:0; stroke-width: 4; stroke: #0000ff" d="M 54.448,154.894 A 14.5762,14.5762 0 0 0 28.108,160.286"/>'
-    +'</svg>'
-
-    let labelFilterIconSVG=
-      ''
-    +'<svg id="idLabelsFilter" viewBox="172 -25 81 43" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">'
-    +'  <g>'
-    +'    <polygon style="fill: #800080" points="172,-4 182,-14 192,-14 192,-4 182,6 "/>'
-    +'    <polygon style="fill: none; fill-opacity:0; stroke-width: 2.35099e-37; stroke: #00ff00" points="172,-4 182,-14 192,-14 192,-4 182,6 "/>'
-    +'  </g>'
-    +'  <g>'
-    +'    <polygon style="fill: #00ff00" points="232,-4 242,-14 252,-14 252,-4 242,6 "/>'
-    +'    <polygon style="fill: none; fill-opacity:0; stroke-width: 2.35099e-37; stroke: #00ff00" points="232,-4 242,-14 252,-14 252,-4 242,6 "/>'
-    +'  </g>'
-    +'  <g>'
-    +'    <polygon style="fill: #ff0000" points="200,-4 210,-14 220,-14 220,-4 210,6 "/>'
-    +'    <polygon style="fill: none; fill-opacity:0; stroke-width: 2.35099e-37; stroke: #ff0000" points="200,-4 210,-14 220,-14 220,-4 210,6 "/>'
-    +'  </g>'
-    +'  <g>'
-    +'    <g>'
-    +'      <ellipse style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" cx="213" cy="-3" rx="17" ry="17"/>'
-    +'      <ellipse style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" cx="213" cy="-3" rx="17" ry="17"/>'
-    +'    </g>'
-    +'    <g>'
-    +'      <ellipse style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" cx="213" cy="-3" rx="10" ry="10"/>'
-    +'      <ellipse style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" cx="213" cy="-3" rx="10" ry="10"/>'
-    +'    </g>'
-    +'    <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="192" y1="-3" x2="207" y2="-3"/>'
-    +'    <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="219" y1="-3" x2="233" y2="-3"/>'
-    +'    <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="213" y1="-10" x2="213" y2="-24"/>'
-    +'    <line style="fill: none; fill-opacity:0; stroke-width: 2; stroke: #000000" x1="213" y1="17" x2="213" y2="4"/>'
-    +'  </g>'
-    +'</svg>'
-  var UP = "../"
   var searchDiv = document.createElement('spam');
       searchDiv.innerHTML = 
      '<form action="#" method="" id="search" name="search">'
-// +  labelFilterIconSVG
    + '<img id="idLabelsFilter" src="/IT_notes/labelIcon.svg" />'
-   + '  <input name="inputQuery" id="inputQuery" type="text" size="20" placeholder="(regex) text search" maxlength="30">'
-   + '&nbsp;'
-   +  lenseIconSVG
-   + '  <div style="float:left;">'
-   + '  <input id="singleLineOnly" type="checkbox"><code xsmall>single-line</code><br/>'
-   + '  <input id="caseSensitive"  type="checkbox"><code xsmall>Case-match</code>'
-   + '  </div>'
    + '  &nbsp;<a href="../help.html" target="_blank">[HELP]</a>'
    + '  &nbsp;<div style="display:inline; color:blue" onClick="spb.onKeyUp({ code: \'Escape\'})">[show all]</div>'
    + '</form>'
-   + '<a href="'+UP+'">[FOLDER UP]</a>&nbsp;'
-   + '<a href="https://github.com/singlepagebookproject/IT_notes/issues">[Github pull requests]</a>&nbsp;'
    + '<div id="zoomDiv"></div>'
    + '<div style="position:fixed; right:0.3%; top:0;">'
    + '<b style="font-size:1.5rem" orange><a onclick="onZoomOut()">[-A]</a></b>'
@@ -332,9 +300,8 @@ function onPageLoaded() {
    + '</div>'
    + '<br/>'
   document.body.insertBefore(searchDiv,document.body.children[0])
-  document.getElementById("idLenseIcon"   ).addEventListener("click",  function() { highlightSearch() })
   document.getElementById("idLabelsFilter").addEventListener("click",  function() {  doExtraOptions() })
-  document.getElementById("search"     ).addEventListener("submit",  function(e) {e.preventDefault(); highlightSearch(); return false })
+  document.getElementById("search"     ).addEventListener("submit",  function(e) {e.preventDefault(); return false })
   
 
   spb.zoomDivDOM = document.getElementById('zoomDiv')
@@ -367,7 +334,7 @@ function onPageLoaded() {
       // Open new window with pre-recoded search:[[Troubleshooting+restorecon?]]
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(
           /\[\[([^\?]*)\?\]\]/g,
-          "<a href='#' onClick='highlightSearch(\"$1\",true)'>$1</a>"
+          "<a href='#' onClick='highlightSearch(\"$1\")'>$1</a>"
         + "<a target='_blank' href='"+window.location.href.split('?')[0]+"?query=$1&labels="+labelMapSelectedToCSV()+"'>( ⏏ )</a>"
 //        "<a href='"+window.location.href.split('?')[0]+"?query=$1'>$1</a>"
       )
@@ -418,15 +385,15 @@ function onPageLoaded() {
 
   createLabelIndex()
 
-  window.QUERY = document.getElementById("inputQuery")
   let csvLabels = getParameterByName("labels")
   label_l = (!!csvLabels) ? csvLabels.split(",") : []
   label_l.forEach(label => {
       onLabelClicked({value : label});
   })
   let query = getParameterByName("query")
+  if (!!query) { spb.regexQuery = query; }
   if (!!query || !!label_l) {
-    highlightSearch(query)
+    highlightSearch()
   }
 
 }
@@ -483,8 +450,8 @@ Array.prototype.intersection = function(a)
 
 function highlightSearch(query) {
   if (typeof query != "string") query = "";
-  if (!!query) { QUERY.value = query; }
-  var text = QUERY.value.replace(/ +/g,".*");
+  if (!!query) { spb.regexQuery = query; }
+  var text = spb.regexQuery.replace(/ +/g,".*");
   resetTextFoundAttr();
   let isEmptyQuery = /^\s*$/.test(text)
 
@@ -510,11 +477,9 @@ function highlightSearch(query) {
       // By default search inside all zoomable elements
       var innerZoom_l = document.querySelectorAll('*[zoom]')
   }
-  var caseSensitive  = document.getElementById("singleLineOnly").checked;
-  var singleLineOnly = document.getElementById("caseSensitive").checked;
   var regexFlags = "g";
-  if (!caseSensitive) regexFlags += "i";
-  if (!singleLineOnly) regexFlags += "m";
+  if (!spb.matchCaseMode) regexFlags += "i";
+  if (!spb.singleLineMode) regexFlags += "m";
   var query = (isEmptyQuery) 
         ? new RegExp(".*")
         : new RegExp("[^=>;]?(" + text + ")", regexFlags)
@@ -534,7 +499,7 @@ function highlightSearch(query) {
     }
   }
   if (numberOfMatches == 1) {
-      doOpenZoom.call(lastElementFound, lastElementFound, false, true);
+      doOpenZoom.call(lastElementFound, lastElementFound, false, true, false);
   }
   return false // avoid event propagation
 }

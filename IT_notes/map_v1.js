@@ -10,12 +10,12 @@ var spb = {
   visited:[],
   visited_idx:-1,
   CallbackOnClose:false,
-  labelAndMode : true,
+  labelANDMode : true,
   singleLineMode : false,
   matchCaseMode : false,
   regexQuery: "",
   labelMap : { /* label : dom_list*/ },
-  labelAndOr : { 
+  labelAndOrText : { 
       true : "←<span brown>AND</span> mode must contains <span brown>all</span> selected topics",
       false: "←<span green>OR </span> mode must contains <span green>any</span> selected topics"
   },
@@ -30,11 +30,14 @@ var spb = {
     }
     if (e.code === "F1") doHelp(); 
   },
-  searchAndMark : function(node, query) {
-      var htmlContent = (spb.singleLineMode) // TODO:(test)
+  searchAndMark : function(node, finalRegex) {
+      var htmlContent = (spb.singleLineMode)
            ? node.innerHTML 
-           : node.innerHTML.replace(/\n/gm, '')
-      var searchFound = query.test(htmlContent)
+           : node.innerHTML.replace(/\n/gm, ' ')
+      var searchFound = finalRegex.test(htmlContent)
+      // reset after search:
+      // REF: https://stackoverflow.com/questions/11477415/why-does-javascripts-regex-exec-not-always-return-the-same-value
+      finalRegex.lastIndex = 0;
       node.setAttribute("textFound", searchFound?"true":"false")
       if (searchFound) {
           spb.visited.push(node)
@@ -42,9 +45,8 @@ var spb = {
       }
       return searchFound
   }
-
-
 }
+
 function doCloseZoom() {
   spb.zoomDivDOM.innerHTML = ''; 
   spb.zoomDivDOM.style.display="none";
@@ -232,8 +234,8 @@ function renderLabel(sLabel,selected) {
 
 
 function switchANDORSearch() {
-  spb.labelAndMode=!spb.labelAndMode
-  document.getElementById("idLabelSearchAndMode").innerHTML= spb.labelAndOr[spb.labelAndMode]
+  spb.labelANDMode=!spb.labelANDMode
+  document.getElementById("idLabelSearchAndMode").innerHTML= spb.labelAndOrText[spb.labelANDMode]
 }
 function switchSingleLineMode() { spb.singleLineMode=document.getElementById("singleLineOnly").checked; }
 function switchCaseMode()       { spb.matchCaseMode=document.getElementById("caseSensitive").checked; }
@@ -249,7 +251,7 @@ function getSearchOptions() {
       + "  <input id='caseSensitive'  type='checkbox' onClick='switchCaseMode      ()' "+(spb. matchCaseMode ? "checked" :"")+" ><code>Case-match </code>"
       + "<hr/>\n"
       + "Filter (Restrict search to selected topics):<br/>\n"
-      + "<input type='checkbox' "+(spb.labelAndMode?"checked":"")+" onClick='switchANDORSearch()'><span id='idLabelSearchAndMode' mono>"+spb.labelAndOr.true+"</span>"
+      + "<input type='checkbox' "+(spb.labelANDMode?"checked":"")+" onClick='switchANDORSearch()'><span id='idLabelSearchAndMode' mono>"+spb.labelAndOrText[spb.labelANDMode]+"</span>"
       + "<br/>\n"
       + "<div>\n"
     Object.keys(spb.labelMap).sort().forEach(label_i => {
@@ -290,7 +292,7 @@ function onPageLoaded() {
      '<form action="#" method="" id="search" name="search">'
    + '<img id="idLabelsFilter" src="/IT_notes/labelIcon.svg" />'
    + '  &nbsp;<a href="../help.html" target="_blank">[HELP]</a>'
-   + '  &nbsp;<div style="display:inline; color:blue" onClick="spb.onKeyUp({ code: \'Escape\'})">[show all]</div>'
+   + '  &nbsp;<div style="display:inline; color:blue" onClick="resetTextFoundAttr(true)">[show all]</div>'
    + '</form>'
    + '<div id="zoomDiv"></div>'
    + '<div style="position:fixed; right:0.3%; top:0;">'
@@ -412,19 +414,20 @@ function getParameterByName(name, url) {
 
 var searchFound = false;
 
-function resetTextFoundAttr(bOnlyFalse) {
-  bOnlyFalse = !!bOnlyFalse // bOnf
-  /* if bOnlyFalse == true => remove textFound attribute only when it's false.
-   * This will still keep  highlighted content in the context of the full page
+function resetTextFoundAttr(bKeepHighlightedSearch) {
+  /*
+   * bKeepHighlightedSearch = true: => Do not reset textFound== true attribute
+   *                                  (keep highlighted content in the context of the full page)
+   *                                  Just remove textFound=false to 'unhide' non-matching zoomable content
+   *                                  (textFound==false is assigned to display none in css)
+   * bKeepHighlightedSearch = false => Reset all (remove any textFound attribute)
    */
-
   var removeNodeList = document.querySelectorAll('*[textFound]');
-  if (removeNodeList.length > 0) {
-      for (idx in removeNodeList) {
-        if (!removeNodeList[idx].setAttribute) continue; // < TODO: Check why it works fine when loading, but fails when doing a second search
-        if (bOnlyFalse && removeNodeList[idx].getAttribute("textFound") == "true") continue;
-        removeNodeList[idx].removeAttribute("textFound"); 
-    }
+  if (removeNodeList.length == 0) return; // Nothing to do.
+  for (idx in removeNodeList) {
+      if (!removeNodeList[idx].setAttribute) continue; // <- Umm: works fine at page-load, fails in following searchs
+      if (bKeepHighlightedSearch && removeNodeList[idx].getAttribute("textFound") == "true") continue;
+      removeNodeList[idx].removeAttribute("textFound"); 
   }
 }
 
@@ -451,25 +454,22 @@ Array.prototype.intersection = function(a)
 function highlightSearch(query) {
   if (typeof query != "string") query = "";
   if (!!query) { spb.regexQuery = query; }
-  var text = spb.regexQuery.replace(/ +/g,".*");
-  resetTextFoundAttr();
-  let isEmptyQuery = /^\s*$/.test(text)
+  let finalQueryRegex = spb.regexQuery.replace(/ +/g,".*");
+  resetTextFoundAttr(false);
+  let isEmptyQuery = /^\s*$/.test(finalQueryRegex)
 
-  if ((!isAnyLabelSelected()) && isEmptyQuery) {
-      resetTextFoundAttr();
-      return false; // Nothing to do
-  }
+  if ((!isAnyLabelSelected()) && isEmptyQuery) { return false; /* Nothing to do */ }
 
   // If some label has been selected then choose only those with matching labels
   document.querySelectorAll('*[zoom]').forEach(node => { 
       node.setAttribute("textFound", "false")
   })
+  var innerZoom_l = []
   if (isAnyLabelSelected()) {
-      var innerZoom_l = []
       let label_l=Object.keys(spb.labelMapSelected)
       innerZoom_l = getDomListForLabel(label_l[0]);
       for (idx=0; idx<label_l.length; idx++) {
-        innerZoom_l = spb.labelAndMode 
+        innerZoom_l = spb.labelANDMode 
               ? innerZoom_l.intersection( getDomListForLabel(label_l[idx]) )
               : innerZoom_l.union       ( getDomListForLabel(label_l[idx]) )
       }
@@ -480,9 +480,9 @@ function highlightSearch(query) {
   var regexFlags = "g";
   if (!spb.matchCaseMode) regexFlags += "i";
   if (!spb.singleLineMode) regexFlags += "m";
-  var query = (isEmptyQuery) 
+  var finalRegex = (isEmptyQuery) 
         ? new RegExp(".*")
-        : new RegExp("[^=>;]?(" + text + ")", regexFlags)
+        : new RegExp("[^=>;]?(" + finalQueryRegex + ")", regexFlags)
 
   var numberOfMatches = 0
 
@@ -491,9 +491,12 @@ function highlightSearch(query) {
   var foundElement = false
   for (idx2 in innerZoom_l) {
     var node = innerZoom_l[idx2]
+    if (false/* true => change node background in debug mode */) {
+        node.setAttribute("textFound", "debug") 
+    }
     if (node.innerHTML == null) continue
     if (!node.setAttribute    ) continue
-    if (spb.searchAndMark(node,query)) { 
+    if (spb.searchAndMark(node,finalRegex)) { 
         numberOfMatches++ 
         foundElement = true
     }

@@ -291,8 +291,8 @@ function onPageLoaded() {
       searchDiv.innerHTML = 
      '<form action="#" method="" id="search" name="search">'
    + '<img id="idLabelsFilter" src="/IT_notes/labelIcon.svg" />'
+   + '  &nbsp;<div style="display:inline; color:blue" onClick="resetTextFoundAttr(true)">[show hidden]</div>'
    + '  &nbsp;<a href="../help.html" target="_blank">[HELP]</a>'
-   + '  &nbsp;<div style="display:inline; color:blue" onClick="resetTextFoundAttr(true)">[show all]</div>'
    + '</form>'
    + '<div id="zoomDiv"></div>'
    + '<div style="position:fixed; right:0.3%; top:0;">'

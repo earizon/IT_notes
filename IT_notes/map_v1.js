@@ -252,23 +252,25 @@ function switchSingleLineMode() { spb.singleLineMode=document.getElementById("si
 function switchCaseMode()       { spb.matchCaseMode=document.getElementById("caseSensitive").checked; }
 
 function getSearchOptions() {
-    if (Object.keys(spb.labelMap).length == 0) {
-        return "No labels found"
-    }
     var result = "";
     result += ""
       + '  <input id="inputQuery" type="text" size="20" placeholder="(regex) text search" maxlength="30" value="'+spb.regexQuery+'" />'
       + "  <input id='singleLineOnly' type='checkbox' onClick='switchSingleLineMode()' "+(spb.singleLineMode ? "checked" :"")+" ><code>single-line</code>"
       + "  <input id='caseSensitive'  type='checkbox' onClick='switchCaseMode      ()' "+(spb. matchCaseMode ? "checked" :"")+" ><code>Case-match </code>"
-      + "<hr/>\n"
-      + "Filter (Restrict search to selected topics):<br/>\n"
+      + "  <hr/>"
+    if (Object.keys(spb.labelMap).length > 0) {
+        result += 
+        "Filter (Restrict search to selected topics):<br/>\n"
       + "<input type='checkbox' "+(spb.labelANDMode?"checked":"")+" onClick='switchANDORSearch()'><span id='idLabelSearchAndMode' mono>"+spb.labelAndOrText[spb.labelANDMode]+"</span>"
       + "<br/>\n"
       + "<div>\n"
-    Object.keys(spb.labelMap).sort().forEach(label_i => {
-        result += renderLabel(label_i)
-    })
-      + "</div>\n)"
+      Object.keys(spb.labelMap).sort().forEach(label_i => {
+          result += renderLabel(label_i)
+      })
+        result += "</div>\n)"
+    } else {
+        result += "(No topics found)\n"
+    }
     return result;
 }
 

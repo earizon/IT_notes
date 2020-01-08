@@ -1,5 +1,6 @@
 var spb = {
   zoomDivDOM : window,
+  zoomActive: false,
   idxZoomDivRule :-1,
   idxZoomRule:-1,
   idxXSmallRule:-1,
@@ -22,12 +23,17 @@ var spb = {
   labelMapSelected : { /* label : isSelected true|false */ },
   onKeyUp: function(e) {
     if (e.code === "Escape") {
-      if (spb.zoomDivDOM.innerHTML == '') {
-        resetTextFoundAttr(true);
+      if (spb.zoomActive === false) {
+        resetTextFoundAttr(true)
       } else {
-           doCloseZoom();
+           doCloseZoom()
       }
     }
+    if ( (e.code === "ShiftLeft" || e.code === "KeyS") ) {
+      if (spb.zoomActive === true) return
+      doExtraOptions()
+    }
+    if (e.code === "Enter") { doCloseZoom() }
     if (e.code === "F1") doHelp(); 
   },
   searchAndMark : function(node, finalRegex) {
@@ -48,6 +54,7 @@ var spb = {
 }
 
 function doCloseZoom() {
+  spb.zoomActive = false 
   spb.zoomDivDOM.innerHTML = ''; 
   spb.zoomDivDOM.style.display="none";
   if (spb.CallbackOnClose) {
@@ -105,18 +112,18 @@ var longPress = {
 
 function onZoomOut(){
   if (spb.zoomDivDOM.innerHTML != '') {
-    spb.zoomFontSize = (spb.zoomFontSize > 0.05) ? spb.zoomFontSize - 0.05 : 0.0001
+    spb.zoomFontSize = (spb.zoomFontSize > 0.05) ? spb.zoomFontSize - 0.05 : 0.0006
     document.styleSheets[0]['cssRules'][spb.idxZoomDivRule].style['font-size']=spb.zoomFontSize+'rem'
     return
   }
   if     (spb.zoomableFontSize > 0.05) {
      spb.zoomableFontSize = spb.zoomableFontSize - 0.05
   } else if (spb.  xsmallFontSize > 0.4 ){
-     spb.zoomableFontSize = 0.0001 // Absolute cero causes rendering problems in Firefox.
+     spb.zoomableFontSize = 0.0006 // Absolute cero causes rendering problems in Firefox.
                                    // REF: https://bugzilla.mozilla.org/show_bug.cgi?id=1606305
      spb.  xsmallFontSize = spb.  xsmallFontSize - 0.05
   } else {
-     spb.zoomableFontSize = 0.0001
+     spb.zoomableFontSize = 0.0006
      spb.  xsmallFontSize = 0.4
   }
   document.styleSheets[0]['cssRules'][spb.idxZoomRule  ].style['font-size']=spb.zoomableFontSize+'rem'
@@ -154,7 +161,8 @@ function goForward() {
 
 
 function doOpenZoom(e, isHistoric, showTimeControl, CallbackOnClose, strCloseLabel) {
-  spb.CallbackOnClose = CallbackOnClose;
+  spb.zoomActive = true
+  spb.CallbackOnClose = CallbackOnClose
   showTimeControl = !!showTimeControl
   if(spb.visited[spb.visited.length-1] == e) { 
       isHistoric = true 
@@ -205,8 +213,11 @@ function doExtraOptions() {
     ctx = {
         outerHTML : getSearchOptions()
     }
-    doOpenZoom.call(ctx, ctx, true, false, highlightSearch, "Search/Filter Now!")
-    document.getElementById("inputQuery"   ).addEventListener("change",  updateRegexQuery )
+    doOpenZoom.call(ctx, ctx, true, false, highlightSearch, "Search Now!")
+    domInputQuery = document.getElementById("inputQuery")
+    domInputQuery.addEventListener("change",  updateRegexQuery )
+    domInputQuery.focus()
+
 }
 function onLabelClicked(e) {
     let label = e.value;
@@ -288,12 +299,10 @@ function createLabelIndex() {
 
 function onPageLoaded() {
   var searchDiv = document.createElement('spam');
-      searchDiv.innerHTML = 
-     '<form action="#" method="" id="search" name="search">'
+      searchDiv.innerHTML = ''
    + '<img id="idLabelsFilter" src="/IT_notes/labelIcon.svg" />'
    + '  &nbsp;<div style="display:inline; color:blue" onClick="resetTextFoundAttr(true)">[show hidden]</div>'
    + '  &nbsp;<a href="../help.html" target="_blank">[HELP]</a>'
-   + '</form>'
    + '<div id="zoomDiv"></div>'
    + '<div style="position:fixed; right:0.3%; top:0;">'
    + '<b style="font-size:1.5rem" orange><a onclick="onZoomOut()">[-A]</a></b>'
@@ -303,7 +312,7 @@ function onPageLoaded() {
    + '<br/>'
   document.body.insertBefore(searchDiv,document.body.children[0])
   document.getElementById("idLabelsFilter").addEventListener("click",  function() {  doExtraOptions() })
-  document.getElementById("search"     ).addEventListener("submit",  function(e) {e.preventDefault(); return false })
+//  document.getElementById("search"     ).addEventListener("submit",  function(e) {e.preventDefault(); return false })
   
 
   spb.zoomDivDOM = document.getElementById('zoomDiv')

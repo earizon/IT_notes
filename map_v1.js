@@ -113,7 +113,7 @@ var longPress = {
 function onZoomOut(){
   if (spb.zoomDivDOM.innerHTML != '') {
     spb.zoomFontSize = (spb.zoomFontSize > 0.05) ? spb.zoomFontSize - 0.05 : 0.0006
-    document.styleSheets[0]['cssRules'][spb.idxZoomDivRule].style['font-size']=spb.zoomFontSize+'rem'
+    spb.cssRules[spb.idxZoomDivRule].style['font-size']=spb.zoomFontSize+'rem'
     return
   }
   if     (spb.zoomableFontSize > 0.05) {
@@ -126,14 +126,14 @@ function onZoomOut(){
      spb.zoomableFontSize = 0.0006
      spb.  xsmallFontSize = 0.4
   }
-  document.styleSheets[0]['cssRules'][spb.idxZoomRule  ].style['font-size']=spb.zoomableFontSize+'rem'
-  document.styleSheets[0]['cssRules'][spb.idxXSmallRule].style['font-size']=spb.  xsmallFontSize+'rem'
-  document.styleSheets[0]['cssRules'][spb.idxXTitleRule].style['font-size']=spb.  xsmallFontSize+'rem'
+  spb.cssRules[spb.idxZoomRule  ].style['font-size']=spb.zoomableFontSize+'rem'
+  spb.cssRules[spb.idxXSmallRule].style['font-size']=spb.  xsmallFontSize+'rem'
+  spb.cssRules[spb.idxXTitleRule].style['font-size']=spb.  xsmallFontSize+'rem'
 }
 function onZoomIn(){
   if (spb.zoomDivDOM.innerHTML != '') {
     spb.zoomFontSize = spb.zoomFontSize + 0.05
-    document.styleSheets[0]['cssRules'][spb.idxZoomDivRule].style['font-size']=spb.zoomFontSize+'rem'
+    spb.cssRules[spb.idxZoomDivRule].style['font-size']=spb.zoomFontSize+'rem'
     return;
   }
   if (spb.  xsmallFontSize < 1.2) {
@@ -141,9 +141,9 @@ function onZoomIn(){
   } else {
     spb.zoomableFontSize = spb.zoomableFontSize + 0.05
   }
-  document.styleSheets[0]['cssRules'][spb.idxZoomRule  ].style['font-size']=spb.zoomableFontSize+'rem'
-  document.styleSheets[0]['cssRules'][spb.idxXSmallRule].style['font-size']=spb.  xsmallFontSize+'rem'
-  document.styleSheets[0]['cssRules'][spb.idxXTitleRule].style['font-size']=spb.  xsmallFontSize+'rem'
+  spb.cssRules[spb.idxZoomRule  ].style['font-size']=spb.zoomableFontSize+'rem'
+  spb.cssRules[spb.idxXSmallRule].style['font-size']=spb.  xsmallFontSize+'rem'
+  spb.cssRules[spb.idxXTitleRule].style['font-size']=spb.  xsmallFontSize+'rem'
 }
 
 function goBack() {
@@ -300,6 +300,7 @@ function createLabelIndex() {
 }
 
 function onPageLoaded() {
+  spb.cssRules = document.styleSheets[0]['cssRules'][0].cssRules;
   var searchDiv = document.createElement('spam');
       searchDiv.innerHTML = ''
    + '<img id="idLabelsFilter" class="noprint" src="/IT_notes/labelIcon.svg" />'
@@ -380,18 +381,17 @@ function onPageLoaded() {
 //    }
   }
 
-
-  for (idx=0; idx<document.styleSheets[0]['cssRules'].length; idx++){
-      if( document.styleSheets[0]['cssRules'][idx].selectorText == "#zoomDiv") {
+  for (idx=0; idx<spb.cssRules.length; idx++){
+      if( spb.cssRules[idx].selectorText == "#zoomDiv") {
           spb.idxZoomDivRule=idx
       }
-      if( document.styleSheets[0]['cssRules'][idx].selectorText == "[zoom]") {
+      if( spb.cssRules[idx].selectorText == "[zoom]") {
           spb.idxZoomRule=idx
       }
-      if( document.styleSheets[0]['cssRules'][idx].selectorText == "[xsmall]") {
+      if( spb.cssRules[idx].selectorText == "[xsmall]") {
           spb.idxXSmallRule=idx
       }
-      if( document.styleSheets[0]['cssRules'][idx].selectorText == "[title]") {
+      if( spb.cssRules[idx].selectorText == "[title]") {
           spb.idxXTitleRule=idx
       }
   }

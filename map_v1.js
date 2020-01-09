@@ -302,11 +302,11 @@ function createLabelIndex() {
 function onPageLoaded() {
   var searchDiv = document.createElement('spam');
       searchDiv.innerHTML = ''
-   + '<img id="idLabelsFilter" src="/IT_notes/labelIcon.svg" />'
-   + '  &nbsp;<div style="display:inline; color:blue" onClick="resetTextFoundAttr(true)">[show hidden]</div>'
-   + '  &nbsp;<a href="../help.html" target="_blank">[HELP]</a>'
+   + '<img id="idLabelsFilter" class="noprint" src="/IT_notes/labelIcon.svg" />'
+   + '  &nbsp;<div style="display:inline; color:blue" class="noprint" onClick="resetTextFoundAttr(true)">[show hidden]</div>'
+   + '  &nbsp;<a href="../help.html" class="noprint" target="_blank">[HELP]</a>'
    + '<div id="zoomDiv"></div>'
-   + '<div style="position:fixed; right:0.3%; top:0;">'
+   + '<div id="zoomButtons"  class="noprint" style="position:fixed; right:0.3%; top:0;">'
    + '<b style="font-size:1.5rem" orange><a onclick="onZoomOut()">[-A]</a></b>'
    + '<b style="font-size:1.5rem"       >                                 </b>'
    + '<b style="font-size:2.0rem" orange><a onclick="onZoomIn ()">[A+]</a></b>'

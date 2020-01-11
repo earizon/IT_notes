@@ -8,6 +8,8 @@ var spb = {
   zoomableFontSize:0.05,
   xsmallFontSize:0.7, // must match initial size xsmall/title in css
   zoomFontSize:1.00,
+  zoomStepIn:0.20,
+  zoomStepOut:0.10,
   visited:[],
   visited_idx:-1,
   CallbackOnClose:false,
@@ -55,6 +57,8 @@ var spb = {
 
 function doCloseZoom() {
   spb.zoomActive = false 
+  document.getElementById("buttonZoomIn" ).innerHTML="[dive]";
+  document.getElementById("buttonZoomOut").innerHTML="[orbit]";
   spb.zoomDivDOM.innerHTML = ''; 
   spb.zoomDivDOM.style.display="none";
   if (spb.CallbackOnClose) {
@@ -112,16 +116,16 @@ var longPress = {
 
 function onZoomOut(){
   if (spb.zoomDivDOM.innerHTML != '') {
-    spb.zoomFontSize = (spb.zoomFontSize > 0.05) ? spb.zoomFontSize - 0.05 : 0.0006
+    spb.zoomFontSize = (spb.zoomFontSize > 0.05) ? spb.zoomFontSize - spb.zoomStepOut : 0.0006
     spb.cssRules[spb.idxZoomDivRule].style['font-size']=spb.zoomFontSize+'rem'
     return
   }
   if     (spb.zoomableFontSize > 0.05) {
-     spb.zoomableFontSize = spb.zoomableFontSize - 0.05
+     spb.zoomableFontSize = spb.zoomableFontSize - spb.zoomStepOut
   } else if (spb.  xsmallFontSize > 0.4 ){
      spb.zoomableFontSize = 0.0006 // Absolute cero causes rendering problems in Firefox.
                                    // REF: https://bugzilla.mozilla.org/show_bug.cgi?id=1606305
-     spb.  xsmallFontSize = spb.  xsmallFontSize - 0.05
+     spb.  xsmallFontSize = spb.  xsmallFontSize - spb.zoomStepOut
   } else {
      spb.zoomableFontSize = 0.0006
      spb.  xsmallFontSize = 0.4
@@ -132,14 +136,14 @@ function onZoomOut(){
 }
 function onZoomIn(){
   if (spb.zoomDivDOM.innerHTML != '') {
-    spb.zoomFontSize = spb.zoomFontSize + 0.05
+    spb.zoomFontSize = spb.zoomFontSize + spb.zoomStepIn
     spb.cssRules[spb.idxZoomDivRule].style['font-size']=spb.zoomFontSize+'rem'
     return;
   }
   if (spb.  xsmallFontSize < 1.2) {
-    spb.  xsmallFontSize = spb.  xsmallFontSize + 0.05
+    spb.  xsmallFontSize = spb.  xsmallFontSize + spb.zoomStepIn
   } else {
-    spb.zoomableFontSize = spb.zoomableFontSize + 0.05
+    spb.zoomableFontSize = spb.zoomableFontSize + spb.zoomStepIn
   }
   spb.cssRules[spb.idxZoomRule  ].style['font-size']=spb.zoomableFontSize+'rem'
   spb.cssRules[spb.idxXSmallRule].style['font-size']=spb.  xsmallFontSize+'rem'
@@ -163,6 +167,10 @@ function goForward() {
 function doOpenZoom(e, isHistoric, showTimeControl, CallbackOnClose, strCloseLabel) {
   spb.zoomActive = true
   spb.CallbackOnClose = CallbackOnClose
+  if (!!!spb.CallbackOnClose /* This mean showing real content. */ ) {
+    document.getElementById("buttonZoomIn" ).innerHTML="[zoom-in]";
+    document.getElementById("buttonZoomOut").innerHTML="[zoom-out]";
+  }
   showTimeControl = !!showTimeControl
   if(spb.visited[spb.visited.length-1] == e) { 
       isHistoric = true 
@@ -191,6 +199,7 @@ function doOpenZoom(e, isHistoric, showTimeControl, CallbackOnClose, strCloseLab
   spb.zoomDivDOM.innerHTML = 
      "<div style='margin-bottom:0.5rem'>" 
    + " <div id='divCloseZoom' onClick='doCloseZoom()'>"+strCloseLabel+"</div>" 
+   + " <span style='font-weight:bold' text-align='center'>"+document.title+"</span>"
    + ((showTimeControl) 
        ? "<div id='historyBackFor' style='display:inline; '>" + backControl + " "+ forwControl + "</div>" 
        : ""
@@ -213,6 +222,8 @@ function doExtraOptions() {
     ctx = {
         outerHTML : getSearchOptions()
     }
+    document.getElementById("buttonZoomIn" ).innerHTML="";
+    document.getElementById("buttonZoomOut").innerHTML="";
     doOpenZoom.call(ctx, ctx, true, false, highlightSearch, "Search Now!")
     domInputQuery = document.getElementById("inputQuery")
     domInputQuery.addEventListener("change",  updateRegexQuery )
@@ -252,25 +263,27 @@ function switchSingleLineMode() { spb.singleLineMode=document.getElementById("si
 function switchCaseMode()       { spb.matchCaseMode=document.getElementById("caseSensitive").checked; }
 
 function getSearchOptions() {
-    var result = "";
+    var result = "<div style='font-size:2rem; margin:0;'>";
     result += ""
-      + '  <input id="inputQuery" type="text" size="20" placeholder="(regex) text search" maxlength="30" value="'+spb.regexQuery+'" />'
-      + "  <input id='singleLineOnly' type='checkbox' onClick='switchSingleLineMode()' "+(spb.singleLineMode ? "checked" :"")+" ><code>single-line</code>"
-      + "  <input id='caseSensitive'  type='checkbox' onClick='switchCaseMode      ()' "+(spb. matchCaseMode ? "checked" :"")+" ><code>Case-match </code>"
+      + '  <input id="inputQuery" type="text" placeholder="(regex)search" maxlength="30" value="'+spb.regexQuery+'" />'
+      + "  <input id='singleLineOnly' type='checkbox' onClick='switchSingleLineMode()' "+(spb.singleLineMode ? "checked" :"")+" ><code style='font-size:0.7em;'>single-line</code>"
+      + "  <input id='caseSensitive'  type='checkbox' onClick='switchCaseMode      ()' "+(spb. matchCaseMode ? "checked" :"")+" ><code style='font-size:0.7em;'>Case-match </code>"
       + "  <hr/>"
     if (Object.keys(spb.labelMap).length > 0) {
         result += 
-        "Filter (Restrict search to selected topics):<br/>\n"
+        "<span style='font-weight:bold;'>Filter</span> (Restrict search to selected topics):<br/>\n"
       + "<input type='checkbox' "+(spb.labelANDMode?"checked":"")+" onClick='switchANDORSearch()'><span id='idLabelSearchAndMode' mono>"+spb.labelAndOrText[spb.labelANDMode]+"</span>"
       + "<br/>\n"
       + "<div>\n"
       Object.keys(spb.labelMap).sort().forEach(label_i => {
           result += renderLabel(label_i)
       })
-        result += "</div>\n)"
+        result += "</div><br/>\n"
     } else {
-        result += "(No topics found)\n"
+        result += "(No topics found).<br/> Add new topics in your source html and they will be displayed here automatically. <br/>Visit <a href=\"../help.html\">HelMan</a> for more details.\n"
     }
+    result += "<hr/><span style='font-weight:bold;'>☞ Press key <code brown>'S'</code> or <code brown>'/'</code> to open this search menu☜ </span>"
+    result += "</div>"
     return result;
 }
 
@@ -299,19 +312,27 @@ function createLabelIndex() {
   // console.dir(spb.labelMap)
 }
 
+function spbQuickPrint() {
+  if (window.confirm('Use browser [print...] for print-previsualization.-')) {
+      window.print()
+  }
+}
+
 function onPageLoaded() {
   spb.cssRules = document.styleSheets[0]['cssRules'][0].cssRules;
-  var searchDiv = document.createElement('spam');
+  var zoomDiv = document.createElement('div');
+      zoomDiv.setAttribute("id", "zoomDiv")
+  document.body.insertBefore(zoomDiv,document.body.children[0])
+  var searchDiv = document.createElement('div');
+      searchDiv.setAttribute("id", "upper_bar")
       searchDiv.innerHTML = ''
+    
    + '<img id="idLabelsFilter" class="noprint" src="/IT_notes/labelIcon.svg" />'
-   + '  &nbsp;<div style="display:inline; color:blue" class="noprint" onClick="resetTextFoundAttr(true)">[show hidden]</div>'
-   + '  &nbsp;<a href="../help.html" class="noprint" target="_blank">[HELP]</a>'
-   + '<div id="zoomDiv"></div>'
-   + '<div id="zoomButtons"  class="noprint" style="position:fixed; right:0.3%; top:0;">'
-   + '<b style="font-size:1.5rem" orange><a onclick="onZoomOut()">[-A]</a></b>'
-   + '<b style="font-size:1.5rem"       >                                 </b>'
-   + '<b style="font-size:2.0rem" orange><a onclick="onZoomIn ()">[A+]</a></b>'
-   + '</div>'
+   + '&nbsp;<span blue class="noprint" id="unhide" hidden style="cursor:ns-resize" onClick="resetTextFoundAttr(true)">[unhide]</span>'
+   + '&nbsp;<a href="../help.html" class="noprint" style="cursor:help" target="_blank">[HelpMan]</a>'
+   + '&nbsp;<span onClick="spbQuickPrint()" blue>[Print]</span>'
+   + '<span id="buttonZoomIn" onclick="onZoomIn ()" blue>[dive]</span>'
+   + '&nbsp;<span id="buttonZoomOut" onclick="onZoomOut()" blue>[orbit]&nbsp;&nbsp;</span>'
    + '<br/>'
   document.body.insertBefore(searchDiv,document.body.children[0])
   document.getElementById("idLabelsFilter").addEventListener("click",  function() {  doExtraOptions() })
@@ -398,7 +419,7 @@ function onPageLoaded() {
 
   createLabelIndex()
 
-  let csvLabels = getParameterByName("labels")
+  let csvLabels = getParameterByName("topics")
   label_l = (!!csvLabels) ? csvLabels.split(",") : []
   label_l.forEach(label => {
       onLabelClicked({value : label});
@@ -408,7 +429,10 @@ function onPageLoaded() {
   if (!!query || !!label_l) {
     highlightSearch()
   }
-
+  let doShowSearchMenu = getParameterByName("showSearchMenu") 
+  if (!!doShowSearchMenu || doShowSearchMenu == "") {
+    doExtraOptions();
+  }
 }
 
 window.onload = onPageLoaded 
@@ -463,6 +487,9 @@ Array.prototype.intersection = function(a)
 
 
 function highlightSearch(query) {
+  let unhideButton = document.getElementById("unhide");
+      unhideButton.setAttribute("hidden","");
+
   if (typeof query != "string") query = "";
   if (!!query) { spb.regexQuery = query; }
   let finalQueryRegex = spb.regexQuery.replace(/ +/g,".*");
@@ -515,5 +542,6 @@ function highlightSearch(query) {
   if (numberOfMatches == 1) {
       doOpenZoom.call(lastElementFound, lastElementFound, false, true, false);
   }
+  unhideButton.removeAttribute("hidden","");
   return false // avoid event propagation
 }

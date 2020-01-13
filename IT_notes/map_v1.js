@@ -269,7 +269,7 @@ function switchCaseMode()       { spb.matchCaseMode=document.getElementById("cas
 function getSearchOptions() {
     var result = "<div style='font-size:2rem; margin:0;'>";
     let selectedText = window.getSelection().toString();
-    let selectedText_l = selectedText.split();
+    let selectedText_l = selectedText.split().filter/*remove empty strings*/((el) => {return !!el});
     if (selectedText_l.length>0 && selectedText_l.length<3) spb.regexQuery = selectedText;
 
     result += ""

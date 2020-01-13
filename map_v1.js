@@ -1,6 +1,6 @@
 var spb = {
   zoomDivDOM : window,
-  zoomActive: false,
+  zoomStatus: 0, // 0 = inactive, 1 = zoomedContent, 2 = searchDialog
   idxZoomDivRule :-1,
   idxZoomRule:-1,
   idxXSmallRule:-1,
@@ -25,14 +25,14 @@ var spb = {
   labelMapSelected : { /* label : isSelected true|false */ },
   onKeyUp: function(e) {
     if (e.code === "Escape") {
-      if (spb.zoomActive === false) {
+      if (spb.zoomStatus === 0) {
         resetTextFoundAttr(true)
       } else {
            doCloseZoom()
       }
     }
     if ( (e.code === "ShiftLeft" || e.code === "KeyS") ) {
-      if (spb.zoomActive === true) return
+      if (spb.zoomStatus === 2) return
       doExtraOptions()
     }
     if (e.code === "Enter") { doCloseZoom() }
@@ -56,7 +56,7 @@ var spb = {
 }
 
 function doCloseZoom() {
-  spb.zoomActive = false 
+  spb.zoomStatus = 0 
   document.getElementById("buttonZoomIn" ).innerHTML="[dive]";
   document.getElementById("buttonZoomOut").innerHTML="[orbit]";
   spb.zoomDivDOM.innerHTML = ''; 
@@ -84,6 +84,7 @@ var longPress = {
      if (longPress.presstimer === null) {
        longPress.presstimer = setTimeout(function() {
          doOpenZoom.call(self, self, false, true, false)
+         spb.zoomStatus = 1
          longPress.longpress = true
        }, 1000)
      }
@@ -100,6 +101,7 @@ var longPress = {
      let self = node
      node.addEventListener('dblclick', function() { 
        doOpenZoom.call(self, self, false, true, false) 
+       spb.zoomStatus = 1
        if (!!this.stopPropagation) { this.stopPropagation(); }
      } , true)
    },
@@ -155,17 +157,18 @@ function goBack() {
     spb.visited_idx--
     let e = spb.visited[spb.visited_idx]
     doOpenZoom.call(e, e, true, true, false);
+    spb.zoomStatus = 1
 }
 function goForward() {
     if(spb.visited_idx == spb.visited.length-1) return
     spb.visited_idx++
     let e = spb.visited[spb.visited_idx]
     doOpenZoom.call(e, e, true, true, false);
+    spb.zoomStatus = 1
 }
 
 
 function doOpenZoom(e, isHistoric, showTimeControl, CallbackOnClose, strCloseLabel) {
-  spb.zoomActive = true
   spb.CallbackOnClose = CallbackOnClose
   if (!!!spb.CallbackOnClose /* This mean showing real content. */ ) {
     document.getElementById("buttonZoomIn" ).innerHTML="[zoom-in]";
@@ -225,6 +228,7 @@ function doExtraOptions() {
     document.getElementById("buttonZoomIn" ).innerHTML="";
     document.getElementById("buttonZoomOut").innerHTML="";
     doOpenZoom.call(ctx, ctx, true, false, highlightSearch, "Search Now!")
+    spb.zoomStatus = 2
     domInputQuery = document.getElementById("inputQuery")
     domInputQuery.addEventListener("change",  updateRegexQuery )
     domInputQuery.focus()
@@ -264,6 +268,10 @@ function switchCaseMode()       { spb.matchCaseMode=document.getElementById("cas
 
 function getSearchOptions() {
     var result = "<div style='font-size:2rem; margin:0;'>";
+    let selectedText = window.getSelection().toString();
+    let selectedText_l = selectedText.split();
+    if (selectedText_l.length>0 && selectedText_l.length<3) spb.regexQuery = selectedText;
+
     result += ""
       + '  <input id="inputQuery" type="text" placeholder="(regex)search" maxlength="30" value="'+spb.regexQuery+'" />'
       + "  <input id='singleLineOnly' type='checkbox' onClick='switchSingleLineMode()' "+(spb.singleLineMode ? "checked" :"")+" ><code style='font-size:0.7em;'>single-line</code>"
@@ -541,6 +549,7 @@ function highlightSearch(query) {
   }
   if (numberOfMatches == 1) {
       doOpenZoom.call(lastElementFound, lastElementFound, false, true, false);
+      spb.zoomStatus = 1
   }
   unhideButton.removeAttribute("hidden","");
   return false // avoid event propagation

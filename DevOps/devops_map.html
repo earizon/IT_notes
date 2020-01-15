@@ -1,15 +1,380 @@
 <!DOCTYPE html>
 <html>
    <meta charset="UTF-8">
-   <title>Ansible map (v1.0) <!-- ignore --></title>
+   <title>Jenkins/Terraform/... map<!-- ignore --></title>
 <head>
-<script src="/IT_notes/map_v1.js"></script>
-<link rel="stylesheet" type="text/css" href="/IT_notes/map_v1.css" />
+<script src="../map_v1.js"></script>
+<link rel="stylesheet" type="text/css" href="../map_v1.css" />
 </head>
 
 <body>
-<a href="https://docs.ansible.com/ansible/latest/user_guide/index.html">User Guide</a>
+<div group>
+    <span title>Jenkins</span><br/>
 <div groupv>
+<pre zoom>
+<span xsmall>External Links</span>
+@[https://jenkins.io/doc/]
+@[https://jenkins.io/doc/book/]
+@[https://jenkins.io/user-handbook.pdf]
+@[https://github.com/sahilsk/awesome-jenkins]
+
+
+@[https://jenkins.io/doc/pipeline/steps/] Pipeline Steps Reference
+
+- full list of ENV.VARs:
+  ${BASE_JENKINS_URL}/pipeline-syntax/globals#env
+</pre>
+<pre zoom labels="">
+<span xsmall>Pipeline injected ENV.VARS</span>
+- full list of ENV.VARs:
+  ${BASE_JENKINS_URL}/pipeline-syntax/globals#env
+
+$env.BUILD_ID       :
+$env.BUILD_NUMBER   
+
+$env.BUILD_TAG      : String of jenkins-${JOB_NAME}-${BUILD_NUMBER}. 
+                                                      ^^^^^^^^^^^^ .
+                      Useful to subclassify resource/jar/etc output artifacts
+
+$env.BUILD_URL      : where the results of this build can be found
+                      Ex.: http://buildserver/jenkins/job/MyJobName/17/
+
+$env.EXECUTOR_NUMBER: Unique number ID for current executor in same machine
+
+$env.JAVA_HOME      : JAVA_HOME configured for a given job
+
+$env.JENKINS_URL    :
+$env.JOB_NAME       : Name of the project of this build
+$env.NODE_NAME      : 'master', 'slave01',...
+$env.WORKSPACE      : absolute path for workspace
+</pre>
+<pre zoom labels="">
+<span xsmall>Dockerized Jenkins</span>
+    docker run \
+      --rm \
+      -u root \
+      -p 8080:8080 \
+      -v jenkins-data:/var/jenkins_home \             ← if 'jenkins-data' Docker volumen
+      \                                                  doesn't exists it will be created
+      \
+      -v /var/run/docker.sock:/var/run/docker.sock \  ← Jenkins need control of Docker to 
+      \                                                 launch new Docker instances during
+      \                                                 the build process
+      -v "$HOME":/home \ 
+      --name jenkins01 \                              ← Allows to "enter" docker with:
+      jenkinsci/blueocean                               $ docker exec -it jenkins01 bash
+</pre>
+
+</div>
+
+<div groupv>
+<span title>Jenkinsfile Pipelines</span>
+<pre zoom labels="">
+<span xsmall bgorange>Jenkinsfile</span>
+REF: @[https://jenkins.io/doc/book/pipeline/jenkinsfile/]
+
+Commented Declarative Syntax Example
+    pipeline {
+       environment {
+           T1 = 'development' ←······ Env.var with global visibility
+           CC = """${sh(      ←······ Env.var set from shell STDOUT.
+              ºreturnStdout:ºtrue, ←· trailing whitespace appended. 
+               script: 'echo "clang"' .trim() removes it.
+               )}"""
+                      
+        AWS_ACCESS_KEY_ID     =  ←··· Secret management
+         ºcredentialsº('aws-key-id')← Protected by Jenkins.
+        AWS_SECRET_ACCESS_KEY = 
+         ºcredentialsº('...')
+
+       }
+
+       parameters {  ←··············· allows to modifyºat runtimeº
+         string(name: 'Greeting',     as ${params.Greeting}
+                defaultValue: 'Hello',
+                description: 'Hi!')
+       }
+
+      agent any    ←················· allocate anºexecutor and workspaceº
+                                      It ensures that the src. repo. is imported to
+                                      the workspace for folliwing stages
+      stages {
+        stage('Build') { ←··········· transpile/compile/package/... using
+                                      (make, maven, gradle, ...) plugin
+
+            environment {    ←······· Env.var with local stage visibility,
+                                      also available to invoqued shell scripts.
+              msg1 = "Building..."
+              EXIT = """←············ Init to returned status code from shell
+              ${sh(                   execution.
+               ºreturnStatus:ºtrue,
+                script: 'exit 1'
+              )}"""
+            }
+            steps {                   
+            echo "º${msg1}º:..."←···· shell like interpolation for double-coutes
+                sh 'printenv'   ←···· msg1 and EXIT available here
+
+            }
+        }
+        stage('Test') {
+          steps {
+              echo 'Testing..'
+          }
+        }
+        stage('Deploy') {
+          when {
+            expression {
+              currentBuild.result == null
+           || currentBuild.result == 'SUCCESS'
+            }
+          }
+          steps {
+              sh 'make publish'
+          }
+        }
+      }
+      post { ←······················· BºHandling errorsº
+          always {
+              junit '**/target/*.xml'
+          }
+         ºfailureº{
+              mail to:
+                 team@example.com,
+              subject: '...'
+          }
+          unstable { ...  }
+          success  { ...  }
+          failure  { ...  }
+          changed  { ...  }
+      }
+    }
+
+──────────────   ────────────   ────────────────────────────
+    INPUT      →  PROCESSING  →  OUTPUT
+──────────────   ────────────   ────────────────────────────
+Jenkinsfile       Jenking       -ºarchived built artifactsº
+                                -ºtest resultsº
+                                -ºfull console outputº
+
+
+For complex secrets (SSH keys, binary secrets,...)
+use the realted Snippet Generators:
+  GENERATOR             PARAMS
+- SSH User Private Key  - Key File Variable 
+                        - Passphrase Variable
+                        - Username Variable
+────────────────────────────────────────────────────────────
+- Credentials           SSH priv/pub keys stored in Jenkins.
+────────────────────────────────────────────────────────────
+- (PKCS#12) Certificate - Keystore Variable 
+                          Jenkins temporary assign it to the
+                          secure location of the certificate's
+                          keystore
+                        - Password Variable (Opt) 
+                        - Alias Variable (Opt) 
+                        - Credentials: Cert.credentials stored
+                          in Jenkins. The value of this field
+                          is the credential ID, which Jenkins 
+                          writes out to the generated snippet.
+────────────────────────────────────────────────────────────
+- Docker client cert    - Handle Docker Host Cert.Auth.
+
+
+
+<span xsmall>Multiagent</span>
+Usefull from multi-target builds/tests/...
+pipeline {
+ ºagent noneº
+  stages {
+    stage('Build') {
+     ºagent anyº
+      steps { ...  }
+    }
+    stage('Linux') {
+     ºagent { label 'linux' }º
+      steps { 
+        unstash 'app' ←·········· copy named stash
+        sh '...'                  Jenkins master → Current WorkSp.
+      }                           ·
+      post { ...  }               ·
+    }                             ·
+    stage('Test on Windows') {    ·
+     ºagent { label 'windows' }º  ·
+      steps {                     ·
+        unstash 'app' ←············
+        bat '...' 
+      }
+      post { ...  }
+    }
+  }
+}
+
+<span xsmall>Groovy Syntax Tips</span>
+git  key1: 'value1', key2: 'value2'   // ← sort form
+git([key1: 'value1', key2: 'value2']) // ← long form
+
+sh          'echo hello'     // ← sort form. Valid syntax for single param
+sh([script: 'echo hello'])   // ← long form.
+
+
+<span xsmall>Parallel execution</span>
+stage('Test') {
+
+ ºparallelº ←····················· Execute linux in parallel
+ ºlinux:º{                         with windows
+    node('linux') {              
+      checkout scm               
+      try {                      
+        unstash 'app'            
+        sh 'make check'          
+      }                          
+      finally {                  
+        junit '**/target/*.xml'  
+      }                          
+    }                            
+  },                             
+ ºwindows:º{
+    node('windows') {
+      /* .. snip .. */
+    }
+  }
+}
+
+</pre>
+
+<pre zoom labels="">
+<span xsmall>End-to-End Multibranch Pl.</span>
+@[https://jenkins.io/doc/tutorials/build-a-multibranch-pipeline-project/]
+
+PREREQUISITES
+-ºGitº 
+- Docker 
+
+┌──────────────┬────────────┬────────────┐
+│ INPUT        → JENKINS    → OUTPUT     │
+│ ARTIFACTS    →            → ARTIFACTS  │
+├──────────────┼────────────┼────────────┤
+│ Node.js      │ build→test │ development│
+│ React app    │            │ production │
+│ npm          │            │            │
+└──────────────┴────────────┴────────────┘
+
+STEP 1) Setup local git repository
+ - clone:
+ $ git clone https://github.com/?????/building-a-multibranch-pipeline-project
+                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                      Forked from
+                                    @[https://github.com/jenkins-docs/building...]
+ - Creak dev/pro branches:
+   $ git branch development
+   $ git branch production
+
+STEP 2) Add 'Jenkinsfile' stub (agent, stages sections) to repo 
+       (initially in master branch) 
+
+STEP 3) Create new Pipeline in Jenkins Blue Ocean Interaface
+        browse to "http://localhost:8080/"
+          → click "Create a new Pipeline" 
+            → Choose "Git" in "In Where do you store your code?"
+              → Repository URL: "/home/.../building-a-multibranch-pipeline-project"
+                → Save
+
+    Blue Ocean will detect the presence of the "Jenkinsfile" stub 
+    in each branch and will run each Pipeline against its respective branch,
+
+
+STEP 4) Start adding functionality to the Jenkinsfile pipeline 
+        (commit to git once edited)
+    pipeline {
+        environment {
+          docker_caching = 'HOME/.m2:/root/.m2'  ←  Cache to speed-up builds
+          docker_ports   = '-p 3000:3000 -p 5000:5000'  ←  Cache to speed-up builds
+        }
+        agent {
+            docker {
+                image 'node:6-alpine'            ←   Good Enough to build simple 
+                                                     Node.js+React apps
+                args '' ←   dev/pro port where the app will 
+                                                     listen for requests. Used during
+                                                     functional testing
+                
+            }                                            
+        }                                            
+        environment {
+            CI = 'true'
+        }
+        stages {
+            stage('Build') {
+                steps {
+                    sh 'npm install'             ←  1st real build command
+                }
+            }
+            stage('Test') {
+                steps {
+                    sh './jenkins/scripts/test.sh'
+                }
+            }
+        }
+    }
+
+STEP 5) Click "run" icon of the master branch of your Pipeline project,
+        and check the result.
+
+STEP 6) Add "deliver" and "deploy" stages to the Jenkinsfile Pipeline
+        (and commit changes)
+       ºJenkins will selectively execute based on the branch that Jenkins is building fromº
+
+      + stage('Deliver for development') {
+      +    ºwhen {º
+      +    º    branch 'development'º
+      +    º}º
+      +     steps {
+      +         sh './jenkins/scripts/deliver-for-development.sh'
+      +         input message: 'Finished using the web site? (Click "Proceed" to continue)'
+      +         sh './jenkins/scripts/kill.sh'
+      +     }
+      + }
+      + stage('Deploy for production') {
+      +    ºwhen {º
+      +    º    branch 'production'º
+      +    º}º
+      +     steps {
+      +         sh './jenkins/scripts/deploy-for-production.sh'
+      +         input message: 'Finished using the web site? (Click "Proceed" to continue)'
+      +         sh './jenkins/scripts/kill.sh'
+      +     }
+      + }
+</pre>
+
+<pre zoom labels="">
+<span xsmall>Ex Pipeline script </span>
+@[https://jenkins.io/doc/pipeline/steps/pipeline-build-step/]
+build job: 'Pipeline01FromJenkinsfileAtGit', propagate: true, wait: false
+build job: 'Pipeline02FromJenkinsfileAtGit', propagate: true, wait: false
+build job: 'Pipeline03FromJenkinsfileAtGit', propagate: true, wait: false
+                                                        ^^^^
+                                result of step is that of downstream build
+                                (success, unstable, failure, not built, or aborted).
+                                
+                                false →  step succeeds even if the downstream build failed
+                                         use result property of the return value as needed. 
+
+</pre>
+</div>
+</div>
+
+
+<div group>
+<span title>Ansible</span><br/>
+
+<div groupv>
+<pre zoom>
+<span xsmall>External Links</span>
+<a href="https://docs.ansible.com/ansible/latest/user_guide/index.html">User Guide</a>
+</pre>
+
+
 <pre zoom>
 <span xsmall>Summary</span>
 ANSIBLE MAIN OBJECTIVE:
@@ -1386,10 +1751,214 @@ $ ansible-playbook myVaultProtectedPlaybook.yml \               | º--ask-vault-
 - include: handlers/site.yml
 </pre>
 </div>
+</div>
+
+<div groupv>
+    <span title>Vagrant</span><br/>
+<pre zoom labels="">
+<span xsmall>External Links</span>
+- <a href="https://www.vagrantup.com/docs/index.html">Vagrant Docs</a>
+- <a href="https://www.vagrantup.com/docs/cli/">CLI Reference</a>
+
+- <a href="https://www.vagrantup.com/intro/getting-started/index.html">Getting Started</a>
+- <a href="https://www.vagrantup.com/docs/providers/">Providers list</a>
+- <a href="https://app.vagrantup.com/boxes/search">Boxes Search</a>
+- <a TODO href="https://www.vagrantup.com/docs/networking/">Networking</a>
+</pre>
+
+
+<pre zoom>
+<span xsmall>Boxes</span>
+Instead of building a virtual machine from scratch, which would be a
+slow and tedious process, Vagrant uses a base image to quickly clone a 
+virtual machine. These base images are known as "boxes" in Vagrant, and 
+specifying the box to use for your Vagrant environment is always the first 
+step after creating a new Vagrantfile.
+
+</pre>
+
+<pre zoom>
+<span xsmall>Command List</span>
+vagrant "COMMAND" -h
+$ vagrant  # Most frequently used commands                                   | $ vagrant list-commands # (including rarely used command)
+Usage: vagrant [options] <command> [<args>]                                  | 
+Common commands:                                                             | 
+box           manages boxes: installation, removal, etc.                     | box             manages boxes: installation, removal, etc.
+destroy       stops and deletes all traces of the vagrant machine            | cap             checks and executes capability
+global-status outputs status Vagrant environments for this user              | destroy         stops and deletes all traces of the vagrant machine
+halt          stops the vagrant machine                                      | docker-exec     attach to an already-running docker container
+help          shows the help for a subcommand                                | docker-logs     outputs the logs from the Docker container
+init          initializes a new Vagrant environment by creating a Vagrantfile| docker-run      run a one-off command in the context of a container
+login         log in to HashiCorp's Vagrant Cloud                            | global-status   outputs status Vagrant environments for this user
+package       packages a running vagrant environment into a box              | halt            stops the vagrant machine
+plugin        manages plugins: install, uninstall, update, etc.              | help            shows the help for a subcommand
+port          displays information about guest port mappings                 | init            initializes a new Vagrant environment by creating a Vagrantfile
+powershell    connects to machine via powershell remoting                    | list-commands   outputs all available Vagrant subcommands, even non-primary ones
+provision     provisions the vagrant machine                                 | login           log in to HashiCorp's Vagrant Cloud
+push          deploys code in this environment to a configured destination   | package         packages a running vagrant environment into a box
+rdp           connects to machine via RDP                                    | plugin          manages plugins: install, uninstall, update, etc.
+reload        restarts vagrant machine, loads new Vagrantfile configuration  | port            displays information about guest port mappings
+resume        resume a suspended vagrant machine                             | powershell      connects to machine via powershell remoting
+snapshot      manages snapshots: saving, restoring, etc.                     | provider        show provider for this environment
+ssh           connects to machine via SSH                                    | provision       provisions the vagrant machine
+ssh-config    outputs OpenSSH valid configuration to connect to the machine  | push            deploys code in this environment to a configured destination
+status        outputs status of the vagrant machine                          | rdp             connects to machine via RDP
+suspend       suspends the machine                                           | reload          restarts vagrant machine, loads new Vagrantfile configuration
+up            starts and provisions the vagrant environment                  | resume          resume a suspended vagrant machine
+validate      validates the Vagrantfile                                      | rsync           syncs rsync synced folders to remote machine
+version       prints current and latest Vagrant version                      | rsync-auto      syncs rsync synced folders automatically when files change
+                                                                             | snapshot        manages snapshots: saving, restoring, etc.
+                                                                             | ssh             connects to machine via SSH
+                                                                             | ssh-config      outputs OpenSSH valid configuration to connect to the machine
+                                                                             | status          outputs status of the vagrant machine
+                                                                             | suspend         suspends the machine
+                                                                             | up              starts and provisions the vagrant environment
+                                                                             | validate        validates the Vagrantfile
+                                                                             | version         prints current and latest Vagrant version
+</pre>
+
+
+<pre zoom>
+<span xsmall>Quick</span>
+<span xsmall>Setup</span>
+$ mkdir vagrant_getting_started
+$ cd vagrant_getting_started
+$ vagrant init # creates new Vagrantfile 
+</pre>
+
+
+<pre zoom bgorange>
+<span xsmall>3 Virt.Box</span>
+<span xsmall>Cluster Ex</span>
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  # Use the same key for each machine
+  config.ssh.insert_key = false
+
+  config.vm.define "vagrant1" do |vagrant1|
+    vagrant1.vm.box = "ubuntu/xenial64"
+    vagrant1.vm.network "forwarded_port", guest: 80, host: 8080
+    vagrant1.vm.network "forwarded_port", guest: 443, host: 8443
+  end
+  config.vm.define "vagrant2" do |vagrant2|
+    vagrant2.vm.box = "ubuntu/xenial64"
+    vagrant2.vm.network "forwarded_port", guest: 80, host: 8081
+    vagrant2.vm.network "forwarded_port", guest: 443, host: 8444
+  end
+  config.vm.define "vagrant3" do |vagrant3|
+    vagrant3.vm.box = "ubuntu/xenial64"
+    vagrant3.vm.network "forwarded_port", guest: 80, host: 8082
+    vagrant3.vm.network "forwarded_port", guest: 443, host: 8445
+  end
+end
+
+# -º- mode: ruby -º-
+# vi: set ft=ruby :
+
+VAGRANTFILE_API_VERSION = "2"
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+        # Use the same key for each machine
+        config.ssh.insert_key = false
+
+        config.vm.define "vagrant1" do |vagrant1|
+                vagrant1.vm.box = "ubuntu/xenial64"
+                vagrant1.vm.provider :virtualbox do |v|
+                        v.customize ["modifyvm", :id, "--memory", 1024]
+                end
+                vagrant1.vm.network "forwarded_port", guest: 80, host: 8080
+                vagrant1.vm.network "forwarded_port", guest: 443, host: 8443
+                vagrant1.vm.network "private_network", ip: "192.168.0.1"
+                # Provision through custom bootstrap.sh script
+                config.vm.provision :shell, path: "bootstrap.sh"
+        end
+        config.vm.define "vagrant2" do |vagrant2|
+                vagrant2.vm.box = "ubuntu/xenial64"
+                vagrant2.vm.provider :virtualbox do |v|
+                        v.customize ["modifyvm", :id, "--memory", 2048]
+                end
+                vagrant2.vm.network "forwarded_port", guest: 80, host: 8081
+                vagrant2.vm.network "forwarded_port", guest: 443, host: 8444
+                vagrant2.vm.network "private_network", ip: "192.168.0.2"
+        end
+        config.vm.define "vagrant3" do |vagrant3|
+                vagrant3.vm.box = "ubuntu/xenial64"
+                vagrant3.vm.provider :virtualbox do |v|
+                        v.customize ["modifyvm", :id, "--memory", 2048]
+                end
+                vagrant3.vm.network "forwarded_port", guest: 80, host: 8082
+                vagrant3.vm.network "forwarded_port", guest: 443, host: 8445
+                vagrant3.vm.network "private_network", ip: "192.168.0.3"
+        end
+end
+</pre>
+</div>
+
+
 </body>
 </html>
+
 <!--
-TODO_START:
+TODO Jenkins start {{{
+https://wiki.jenkins.io/display/JENKINS/Amazon+EC2+Fleet+Plugin
+... launches Amazon EC2 Spot Instances as worker nodes 
+   for Jenkins CI server, automatically scaling the capacity with the load.
+________________________
+https://www.theguild.nl/jenkinsfiles-for-beginners-and-masochists/
+________________________
+https://jenkins.io/doc/book/using/using-credentials/
+________________________
+Using Organization FoldersOrganization  Folders  enable  Jenkins  to  monitor  an  entire  GitHub  Organization,  or  BitbucketTeam/Project  and  automatically  create  new  Multibranch  Pipelines  for  repositories  which  containbranches and pull requests containing a Jenkinsfile.Currently,  this  functionality  exists  only  for  GitHub  and  Bitbucket,  with  functionality  provided  bythe plugin:github-organization-folder[GitHub Organization Folder] and plugin:cloudbees-bitbucket-branch-source[Bitbucket Branch Source] plugins
+________________________
+<a href="https://jenkins.io/doc/book/pipeline/running-pipelines">Running Pipelines</a>
+<a href="https://jenkins.io/doc/book/pipeline/multibranch">Branches and Pull Requests</a>
+<a href="https://jenkins.io/doc/book/pipeline/docker">Using Docker with Pipeline</a>
+<a href="https://jenkins.io/doc/book/pipeline/shared-libraries">Extending with Shared Libraries</a>
+<a href="https://jenkins.io/doc/book/pipeline/development">Pipeline Development Tools</a>
+<a href="https://jenkins.io/doc/book/pipeline/syntax">Pipeline Syntax</a>
+<a href="https://jenkins.io/doc/book/pipeline/pipeline-best-practices">Pipeline Best Practices</a>
+<a href="https://jenkins.io/doc/book/pipeline/scaling-pipeline">Scaling Pipelines</a>
+<a href="https://jenkins.io/doc/book/blueocean">Blue Ocean</a>
+<a href="https://jenkins.io/doc/book/blueocean/getting-started">Getting started with Blue Ocean</a>
+<a href="https://jenkins.io/doc/book/blueocean/creating-pipelines">Creating a Pipeline</a>
+<a href="https://jenkins.io/doc/book/blueocean/dashboard">Dashboard</a>
+<a href="https://jenkins.io/doc/book/blueocean/activity">Activity View</a>
+<a href="https://jenkins.io/doc/book/blueocean/pipeline-run-details">Pipeline Run Details View</a>
+<a href="https://jenkins.io/doc/book/blueocean/pipeline-editor">Pipeline Editor</a>
+<a href="https://jenkins.io/doc/book/managing">Managing Jenkins</a>
+<a href="https://jenkins.io/doc/book/managing/system-configuration">Configuring the System</a>
+<a href="https://jenkins.io/doc/book/managing/security">Managing Security</a>
+<a href="https://jenkins.io/doc/book/managing/tools">Managing Tools</a>
+<a href="https://jenkins.io/doc/book/managing/plugins">Managing Plugins</a>
+<a href="https://jenkins.io/doc/book/managing/cli">Jenkins CLI</a>
+<a href="https://jenkins.io/doc/book/managing/script-console">Script Console</a>
+<a href="https://jenkins.io/doc/book/managing/nodes">Managing Nodes</a>
+<a href="https://jenkins.io/doc/book/managing/script-approval">In-process Script Approval</a>
+<a href="https://jenkins.io/doc/book/managing/users">Managing Users</a>
+<a href="https://jenkins.io/doc/book/system-administration">System Administration</a>
+<a href="https://jenkins.io/doc/book/system-administration/backing-up">Backing-up/Restoring Jenkins</a>
+<a href="https://jenkins.io/doc/book/system-administration/monitoring">Monitoring Jenkins</a>
+<a href="https://jenkins.io/doc/book/system-administration/security">Securing Jenkins</a>
+<a href="https://jenkins.io/doc/book/system-administration/with-chef">Managing Jenkins with Chef</a>
+<a href="https://jenkins.io/doc/book/system-administration/with-puppet">Managing Jenkins with Puppet</a>
+_____________________________
+https://medium.com/@jdrawlings/serverless-jenkins-with-jenkins-x-9134cbfe6870
+_______________________
+Jenkinsfile-runner: 
+- Executing Jenkinsfile pipeline without the need of having a Jenkin server running (and wasting memory).
+https://jenkins.io/blog/2019/02/28/serverless-jenkins/
+https://github.com/jenkinsci/jenkinsfile-runner
+________________________
+https://jenkins.io/doc/tutorials/build-a-node-js-and-react-app-with-npm/
+}}} TODO Jenkins END
+
+************************************************
+************************************************
+************************************************
+************************************************
+
+TODO Ansible Start {{{
 https://napalm-automation.net/
 
 Napalm is a vendor neutral, cross-platform open source project that provides a unified API to network devices.
@@ -1448,6 +2017,12 @@ _______________________
 https://www.redhat.com/sysadmin/navigate-ansible-documentation
 How to navigate Ansible documentation
 Ansible's documentation can be daunting. Here's a tour that might help.
-
+}}} TODO_Ansible End
+_______________________
+TODO_VAGRANT_START: {{{
+@ma https://www.vagrantup.com/intro/getting-started/share.html
+}}} TODO_VAGRANT_END
 
 -->
+
+

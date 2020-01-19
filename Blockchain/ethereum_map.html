@@ -823,6 +823,21 @@ REF:
 @[https://github.com/ethereum/EIPs/issues/191]
 
 - Ethereum uses SECP256K1 for signature.
+  Note: secp256k1 public key is composed of two integers: (r, s).
+  The standard public key in the hex format is: hex(r||s).
+  The secp256k1 ETH/BTC library, however, defines the public key as
+  (r||s||v), where v = 0 or 1. 
+         ^        ^^^^^^^^^^^                              
+   when you derive the public keyºfrom the signatureº, two solutions surge.
+   v will tell which one is the right one.
+
+
+Alen Horvat  4:06 PM
+How to check: if length of the public key is 64 bytes (not hex encoded) r||s is used, if length is 65 bytes, r||s||v is used. (if hex encoded, the length should be x2, if I remember correctly)
+
+
+
+
   The use of Curve25519 with Schnoorr signing scheme (Ed25519) is under discussion
 
 What are the v, r, s values for the TX's signature?
@@ -8320,11 +8335,13 @@ $ crux --url=http://127.0.0.1:9001/ \          | crux --help reference:
                                 Network Protocol                       NETWORK
 </pre>
 </div>
-<br/>
+</div> <!-- EEA -->
+
 <div group>
-<span title>Besu(Pantheon)</span><br/>
+<span title>EEA-Besu</span><br/>
 <div groupv>
-<pre zoom labels="besu">
+<pre zoom labels="besu,architecture,devops,network">
+(Pegasys Pantheon was renamed to Besu after joining the Hyperledger Fundation)
 <span xsmall>Chat:</span>
 @[https://chat.hyperledger.org/channel/besu]
 <span xsmall>Features</span>
@@ -8366,12 +8383,9 @@ Improving performance is a current focus... """
 <span xsmall>Core Developers</span>
 @[https://github.com/hyperledger/besu/graphs/contributors?from=2019-01-07&to=2019-05-30&type=c]
 
-</pre>
-<pre zoom labels="besu">
 <span TODO xsmall>ONchain Permissioning</span>
 https://docs.pantheon.pegasys.tech/en/latest/Permissions/Onchain-Permissioning/
-</pre>
-<pre zoom labels="besu">
+
 <span xsmall>Web3J(ava)</span>
 <span xsmall>Integration</span>
 @[https://github.com/web3j/web3j/blob/master/besu/src/test/java/org/web3j/protocol/besu/RequestTest.java]
@@ -8384,65 +8398,61 @@ Extracted from Initial Pull Request:
                 Geth's version of minerStart accepts parameter threadCount and
                 Pantheon's version does not. So unifying those two might be confusing.
 ºconor10 º: ... let’s leave the duplication in for now ...
-</pre>
 
-<pre zoom labels="besu">
+
 UUID: a4c55453-c75d-4faf-91aa-ae437ef80e97
 <span xsmall>ARCHITECTURE</span>
- ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
- │                                       JSON RPC                                                                                      │
- └─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
- ┌───────────────────────────────────────┐    ┌─────────────────────────────┐    ┌─────────────────────────────────────────────────────┐
- │                 ºCOREº                │    │   ºCHAIN PROCESSING º       │    │                   ºP2Pº                             │
- │                                       │    │                             │    │                                                     │
- │  ┌──────────────────────────────────┐ │    │ ┌─────────────────────────┐ │    │ ┌─────────────────────────────────────────────────┐ │
- │  │          SYNCHRONIZER            │ │    │ │    PROTOCOL SPEC        │ │    │ │               ETH SUB─PROTOCOL                  │ │
- │  │                                  │ │    │ │┌──────────┐  ┌─────────┐│ │    │ │                               ┌───────────────┐ │ │
- │  │                   ┌───────────┐  │ │    │ ││BLOCK     │  │TX       ││ │    │ │   ┌─────────────────────────┐ │ ┌───────────┐ │ │ │
- │  │   ┌──────────┐    │   BLOCK   │  │ │    │ ││HEADER    │  │VALIDATOR││ │    │ │ ┌─┴───────────────────────┐ │ │ │SYNC WORKER│ │ │ │
- │  │   │DOWNLOADER│    │PROPAGATION│  │ │    │ ││VALIDATOR │  │         ││ │    │ │ │       ETH PEER          │ │ │ │ EXECUTOR  │ │ │ │
- │  │   └──────────┘    │  MANAGER  │  │ │    │ │└──────────┘  └─────────┘│ │    │ │ │┌──────────┐   ┌────────┐│ │ │ └───────────┘ │ │ │
- │  │                   └───────────┘  │ │    │ │┌──────────┐  ┌─────────┐│ │    │ │ ││WIRE      │   │REQUEST ││ │ │               │ │ │
- │  └──────────────────────────────────┘ │    │ ││ BLOCK    │  │BLOCK    ││ │    │ │ ││CONNECTION│   │MANAGER ││ │ │ ┌───────────┐ │ │ │
- │  ┌──────────────────────────────────┐ │    │ ││ IMPORTER │  │PROCESSOR││ │    │ │ │└──────────┘   └────────┘│ │ │ │ TX WORKER │ │ │ │
- │  │        TX POOL                   │ │    │ │└──────────┘  └─────────┘│ │    │ │ │┌──────────┐   ┌────────┐│ │ │ │ EXECUTOR  │ │ │ │
- │  │ ┌───────────┐     ┌─────────┐    │ │    │ └─────────────────────────┘ │    │ │ ││PEER      │   │ CHAIN  ││ │ │ └───────────┘ │ │ │
- │  │ │PENDING TXs│     │TX SENDER│    │ │    └─────────────────────────────┘    │ │ ││REPUTATION│   │ STATE  ││ │ │               │ │ │
- │  │ └───────────┘     └─────────┘    │ │                                       │ │ │└──────────┘   └────────┘├─┘ │ ┌───────────┐ │ │ │
- │  └──────────────────────────────────┘ │                                       │ │ └─────────────────────────┘   │ │ SCHEDULED │ │ │ │
- │                                       │                                       │ │ ┌─────────────────────────┐   │ │ EXECUTOR  │ │ │ │
- │  ┌──────────────────────────────────┐ │                                       │ │ │   ETH MESSAGES          │   │ └───────────┘ │ │ │
- │  │       MINER                      │ │                                       │ │ └─────────────────────────┘   └───────────────┘ │ │
- │  └──────────────────────────────────┘ │                                       │ └─────────────────────────────────────────────────┘ │
- └───────────────────────────────────────┘                                       │   ┌─────────────────────────────────────────────┐   │
-  ┌──────────────────────────────────────────────────────────────────────────┐   │   │          WIRE P2P NETWORK                   │   │
-  │                                ºSTATEº                                   │   │   └─────────────────────────────────────────────┘   │
-  │                      ┌─────────┐    ┌────────────┐                       │   │   ┌─────────────────────────────────────────────┐   │
-  │                      │WORLD    │    │BLOCKCHAIN  │                       │   │   │          DISCOVERY AGENT                    │   │
-  │                      │STATE    │    └────────────┘                       │   │   └──^──────────────────────────────────────────┘   │
-  │                      │ARCHIVE  │                                         │   │      │                                              │
-  │                      └─────────┘                                         │   └──────│──────────────────────────────────────────────┘
-  │                      ┌─────────┐    ┌────────────┐                       │          │ 
-  │                      │CONSENSUS│    │ SYNC STATE │                       │        DEVp2p Peer Discovery
-  │                      └─────────┘    └────────────┘                       │        . UDP based system to discover other nodes
-  └──────────────────────────────────────────────────────────────────────────┘        . Based on a ºwell-known set of boot nodesº.
-                                                                                      . Recursively looks up new peers (neighbors) 
-pantheon/                                                                               from known peers.
-   ├──   bin  (install)                                                               
-   ├──   lib  (install)                                                               DISCOVERY PACKET EXCHANGE 
-   ├── * key  (run─time) Node Private key (config through --data-path)                - Learns of a node IP:
-   └── * ddbb (run─time) RocksDB data     (config through --data-path)                  Initiating Node  → Responding Node: Ping
-                                                                                        Initiating Node  ← Responding Node: Pong  
-  $ bin\besu --config=my.cfg \                                                        
-    --data-path=/var/lib/besu/node1 \                                                 - What other nodes do you know about?    
-    --genesis=my.genesis \                                                              Initiating Node  → Responding Node: Find Neighbors
-    --max-peers=5 \                                                                     Initiating Node  ← Responding Node: List of known nodes
+ ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+ │                             JSON RPC                                                                                      │
+ └───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+ ┌────────────────────────────────────┐ ┌─────────────────────────────┐ ┌─────────────────────────────────────────────────────┐
+ │              ºCOREº                │ │   ºCHAIN PROCESSING º       │ │                   ºP2Pº                             │
+ │                                    │ │                             │ │                                                     │
+ │  ┌───────────────────────────────┐ │ │ ┌─────────────────────────┐ │ │ ┌─────────────────────────────────────────────────┐ │
+ │  │       SYNCHRONIZER            │ │ │ │    PROTOCOL SPEC        │ │ │ │               ETH SUB─PROTOCOL                  │ │
+ │  │                               │ │ │ │┌──────────┐  ┌─────────┐│ │ │ │                               ┌───────────────┐ │ │
+ │  │                ┌───────────┐  │ │ │ ││BLOCK     │  │TX       ││ │ │ │   ┌─────────────────────────┐ │ ┌───────────┐ │ │ │
+ │  │┌──────────┐    │   BLOCK   │  │ │ │ ││HEADER    │  │VALIDATOR││ │ │ │ ┌─┴───────────────────────┐ │ │ │SYNC WORKER│ │ │ │
+ │  ││DOWNLOADER│    │PROPAGATION│  │ │ │ ││VALIDATOR │  │         ││ │ │ │ │       ETH PEER          │ │ │ │ EXECUTOR  │ │ │ │
+ │  │└──────────┘    │  MANAGER  │  │ │ │ │└──────────┘  └─────────┘│ │ │ │ │┌──────────┐   ┌────────┐│ │ │ └───────────┘ │ │ │
+ │  │                └───────────┘  │ │ │ │┌──────────┐  ┌─────────┐│ │ │ │ ││WIRE      │   │REQUEST ││ │ │               │ │ │
+ │  └───────────────────────────────┘ │ │ ││ BLOCK    │  │BLOCK    ││ │ │ │ ││CONNECTION│   │MANAGER ││ │ │ ┌───────────┐ │ │ │
+ │  ┌───────────────────────────────┐ │ │ ││ IMPORTER │  │PROCESSOR││ │ │ │ │└──────────┘   └────────┘│ │ │ │ TX WORKER │ │ │ │
+ │  │     TX POOL                   │ │ │ │└──────────┘  └─────────┘│ │ │ │ │┌──────────┐   ┌────────┐│ │ │ │ EXECUTOR  │ │ │ │
+ │  │ ┌───────────┐  ┌─────────┐    │ │ │ └─────────────────────────┘ │ │ │ ││PEER      │   │ CHAIN  ││ │ │ └───────────┘ │ │ │
+ │  │ │PENDING TXs│  │TX SENDER│    │ │ └─────────────────────────────┘ │ │ ││REPUTATION│   │ STATE  ││ │ │               │ │ │
+ │  │ └───────────┘  └─────────┘    │ │                                 │ │ │└──────────┘   └────────┘├─┘ │ ┌───────────┐ │ │ │
+ │  └───────────────────────────────┘ │                                 │ │ └─────────────────────────┘   │ │ SCHEDULED │ │ │ │
+ │                                    │                                 │ │ ┌─────────────────────────┐   │ │ EXECUTOR  │ │ │ │
+ │  ┌───────────────────────────────┐ │                                 │ │ │   ETH MESSAGES          │   │ └───────────┘ │ │ │
+ │  │       MINER                   │ │                                 │ │ └─────────────────────────┘   └───────────────┘ │ │
+ │  └───────────────────────────────┘ │                                 │ └─────────────────────────────────────────────────┘ │
+ └────────────────────────────────────┘                                 │   ┌─────────────────────────────────────────────┐   │
+  ┌────────────────────────────────────────────────────────────────┐    │   │          WIRE P2P NETWORK                   │   │
+  │                             ºSTATEº                            │    │   └─────────────────────────────────────────────┘   │
+  │                   ┌─────────┐    ┌────────────┐                │    │   ┌─────────────────────────────────────────────┐   │
+  │                   │WORLD    │    │BLOCKCHAIN  │                │    │   │          DISCOVERY AGENT                    │   │
+  │                   │STATE    │    └────────────┘                │    │   └──^──────────────────────────────────────────┘   │
+  │                   │ARCHIVE  │                                  │    │      │                                              │
+  │                   └─────────┘                                  │    └──────│──────────────────────────────────────────────┘
+  │                   ┌─────────┐    ┌────────────┐                │           │ 
+  │                   │CONSENSUS│    │ SYNC STATE │                │      DEVp2p Peer Discovery
+  │                   └─────────┘    └────────────┘                │      . UDP based system to discover other nodes
+  └────────────────────────────────────────────────────────────────┘      . Based on a ºwell-known set of boot nodesº.
+                                                                                . Recursively looks up new peers (neighbors) 
+pantheon/                                                                         from known peers.
+   ├──   bin  (install)                                                         
+   ├──   lib  (install)                                                         DISCOVERY PACKET EXCHANGE 
+   ├── * key  (run─time) Node Private key (config through --data-path)          - Learns of a node IP:
+   └── * ddbb (run─time) RocksDB data     (config through --data-path)            Initiating Node  → Responding Node: Ping
+                                                                                  Initiating Node  ← Responding Node: Pong  
+  $ bin\besu --config=my.cfg \                                                  
+    --data-path=/var/lib/besu/node1 \                                           - What other nodes do you know about?    
+    --genesis=my.genesis \                                                        Initiating Node  → Responding Node: Find Neighbors
+    --max-peers=5 \                                                               Initiating Node  ← Responding Node: List of known nodes
     --rpc-enabled
 
 LOGS go to STDOUT
-</pre>
-
-<pre zoom labels="besu">
 <span xsmall>Understanding codebase</span>
 StartUp:
 Initial bootstrap           →  Create BesuController.java             → Create Runner.java
@@ -8528,10 +8538,8 @@ Runner: Network Startup:
 
 - Gitter channel:
 @[https://gitter.im/PegaSysEng/pantheon]
-</pre>
 
-<pre zoom labels="besu">
-<span xsmall bgorange>PANTHEON STARTUP</span>
+<span xsmall bgorange>Startup Sequence</span>
 1.- Parse Command Line
 @[https://github.com/hyperledger/besu/blob/master/besu/src/main/java/org/hyperledger/besu/cli/BesuCommand.java]
 
@@ -8542,8 +8550,7 @@ Runner: Network Startup:
 4.- Parse Genesis File
 
 5.- Create PantheonController
-  https://github.com/hyperledger/besu/blob/master/besu/src/main/java/org/hyperledger/besu/controller/BesuController.java
-
+ @[https://github.com/hyperledger/besu/blob/master/besu/src/main/java/org/hyperledger/besu/controller/BesuController.java]
    - Collect all the blockchain-related config and services
    - Chain and world state DBs
      - StorageProvider: Currently supports in-memory and RocksDB
@@ -8551,7 +8558,6 @@ Runner: Network Startup:
    - Node Keypair
    - ProtocolSchedule and ProtocolSpec: Maps milestone block ranges to specific protocol logic
      Ej: https://github.com/hyperledger/besu/blob/master/ethereum/core/src/main/java/org/hyperledger/besu/ethereum/mainnet/MainnetProtocolSpecs.java
-
    - Synchronizer
    - Transaction Pool
    - Miner
@@ -8566,11 +8572,10 @@ Runner: Network Startup:
     - Data directory
 
 7.- Run the Runner instance!
-</pre>
 
-<pre zoom labels="besu">
+
 <span xsmall>Dev P2P</span>
-- Peer Discovery
+-ºPeer Discoveryº
   - UDP based system
   - Based on a well-known set of boot nodes.
   - Recursively looks up new peers (neighbors) from known peers
@@ -8585,7 +8590,7 @@ Runner: Network Startup:
   What other noedes do you know   Find Neighbors →  Receives Find Neighbors and
   about?                        ← Neighbors         responds with the list of
                                                     known nodes.
-- Wire Protocol (RLPx)
+-ºWire Protocol (RLPx)º
   - Manages which peer nodes are valid
     and best to talk to (Peer Reputation)
   - Client Capabilities
@@ -8594,7 +8599,7 @@ Runner: Network Startup:
   - Compression
   - Keep Alive
 
-- ETH Peer
+-ºETH Peerº
   Pluggable subprotocols that handle specific consensys mechanisms such as Eth, Ibft, Istanbul64protocol
   - Defines the set, and appropiate ordering of messges on the network
   - Protocol Manager
@@ -8611,7 +8616,7 @@ Runner: Network Startup:
   - BLOCK_BODIES
   - NEW_BLOCK
 
-- Syncrhonizer
+-ºSyncrhonizerº
   - Syncrhonizer
     - Manages the overall sync runtime
   - ChainDownloader Loops over:
@@ -8624,7 +8629,6 @@ Runner: Network Startup:
       - Validate and Persist blocks
     - "repeat"
 </pre>
-
 
 </div>
 <div groupv>
@@ -8822,7 +8826,7 @@ $ besu [OPTIONS] [COMMAND]
 </div>
 <div groupv>
 <span title>DevOps</span>
-<pre zoom labels="">
+<pre zoom labels="besu,devops,development,infrastructure,monitoring">
 <span xsmall bgorange>IBFT 2.0 bootstrap</span>
 ºPRE-SETUPº
   Download from @[https://github.com/hyperledger/besu/releases]
@@ -9022,8 +9026,8 @@ API:
     METHOD="ibft_getSignerMetrics"
     PARAMS='["1", "100"]'
     curl -X POST --data '{"jsonrpc":"2.0","method":"$METHOD","params":$PARAMS, "id":1}' $URL
-</pre>
-<pre zoom  labels="besu,development">
+
+<hr/>
 <span xsmall>Accounts for testing</span>
 <span xsmall>(--network=dev)</span>
 @[https://docs.pantheon.pegasys.tech/en/stable/Reference/Accounts-for-Testing/]
@@ -9045,25 +9049,21 @@ API:
        Initial balance : 0x90000000000000000000000 (2785365088392105618523029504 in decimal
 ºAlternative 2:º
 - reuse existing test accounts by editing the genesis file (--genesis-file)
-</pre>
-<pre zoom labels="besu">
-<span xsmall>Prerequisites</span>
-<span xsmall>Disk/RAM</span>
+
+
+<span xsmall>Infrastructure: Disk/RAM</span>
                           DISK Space:  RAM:
 test/private network      -200+MB      - 4+GB RAM
 mainnet/public-test-net   -1.5+TB      - 8+GB RAM
 
-
-Notes:
+Notes: 2019-01
 Testing with pantheon-quick-start and IBFT 2.0 with defaults settings
 (1 block each 5? seconds) the disk compsumption is:
 
           1 hour     1 day      1year
           2044K      47.9MB     17485.8MB
-</pre>
-
-<pre zoom labels="besu">
-<span xsmall>Monit network</span>
+<hr/>
+<span xsmall>Monit running network</span>
 <span xsmall>(Prometh.+Grafana)</span>
 Extracted from @[https://gitter.im/PegaSysEng/pantheon] on 2019-05-29 20:01
 Adrian Sutton@ajsutton
@@ -9078,8 +9078,10 @@ setting up Pantheon and Prometheus is at
 I did sneak some extra metrics into trunk yesterday so the board
 work best with a build from master or anything from 1.1.2 onwards
 once it's released.
+
+<span TODO xsmall>backup, disaster recovery</span>
 </pre>
-<pre zoom labels="besu">
+<pre zoom labels="besu,aaa,security,devops">
   <span xsmall>Minimum Private network</span>
 @[https://docs.pantheon.pegasys.tech/en/stable/Getting-Started/Run-Docker-Image/]
 @[https://docs.pantheon.pegasys.tech/en/stable/Tutorials/Create-Private-Network/]        (PoW)
@@ -9120,9 +9122,6 @@ $ ./remove.sh ← Shut downa and remove all data.
 
 </pre>
 <pre zoom labels="besu">
-  <span TODO xsmall>backup, disaster recovery</span>
-</pre>
-<pre zoom labels="besu">
   <span xsmall>set max Contract size</span>
 - Done at the network (genesis.json) config level.
 @[https://docs.pantheon.pegasys.tech/en/stable/Configuring-Pantheon/Config-Items/]
@@ -9153,8 +9152,6 @@ $ ./remove.sh ← Shut downa and remove all data.
   - Account-level Permissioning
     Limit transactions to trusted/known Ethereum accounts on your network.
 
-
-
 - Improved Privacy Groups:
   - Multiple ºprivacy groupsº with same membership can exist and be used for different purposes.
   - Names and description metadata can be embedded in privacy groups on-chain for clarity.
@@ -9176,7 +9173,6 @@ $ ./remove.sh ← Shut downa and remove all data.
 </pre>
 </div>
 </div> <!-- BESU -->
-</div> <!-- EEA -->
 
 <div group bggreen>
 <span title>Non Classified</span><br/>
@@ -9955,4 +9951,34 @@ ________________
 https://www.reddit.com/r/ethereum/
 _______________
 https://blog.ethereum.org/2019/12/30/eth1x-files-state-of-stateless-ethereum/ !!!!
+___________________
+Hyperledger Besu v1.4 will be released on February 26, and will include the following features:
+- New tracing APIs
+- Event Streaming Improvements
+- Multi-Tenancy
+- Advanced Key Management
+- Flexible privacy calls
+- New privacy APIs
+- End to end encryption with TLS links between PegaSys suite products
+https://pegasys.tech/setting-up-hyperledger-besu-in-aws/
+https://pegasys.tech/setting-up-monitoring-for-hyperledger-besu-in-aws/
+___________________________________
+
+https://github.com/hyperledger/caliper with support for:
+- blockchain performance benchmark framework.
+  test different blockchain solutions with predefined use cases,
+  and get a set of performance test results.
+  Currently supported blockchain solutions:
+  - Hyperledger Fabric v1.X
+  - Hyperledger Sawtooth 1.0+
+  - Hyperledger Iroha 1.0 beta-3
+  - Hyperledger Burrow 1.0
+  - Ethereum
+  - Hyperledger Besu, utilizing the Ethereum adapter.
+  - FISCO BCOS
+____________________________
+Monitoring Besu Performance:
+- https://lists.hyperledger.org/g/besu/message/33
+- https://lists.hyperledger.org/g/besu/message/34
+- https://lists.hyperledger.org/g/besu/message/35
 -->

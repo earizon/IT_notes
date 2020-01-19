@@ -24,6 +24,8 @@ var spb = {
   },
   labelMapSelected : { /* label : isSelected true|false */ },
   onKeyUp: function(e) {
+    if (e.key === "z") { onZoomOut(); return }
+    if (e.key === "Z") { onZoomIn (); return }
     if (e.code === "Escape") {
       if (spb.zoomStatus === 0) {
         resetTextFoundAttr(true)

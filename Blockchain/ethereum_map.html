@@ -195,8 +195,7 @@ gether                      :   1^9  ethers
 tether                      :   1^12 ethers
 </pre>
 <pre zoom >
-<span xsmall>Network</span>
-<span xsmall>Versions</span>
+<span xsmall>Network Versions</span>
 @[https://en.wikipedia.org/wiki/Ethereum#Milestones]
 ºPublic Ethereum Network versionsº
 Homestead → Metropolis → Serenity ("Ethereum 2.0")→
@@ -327,14 +326,14 @@ CHAIN_ID    Chain(s)
 <div group bggreen>
 <span title>EVM</span><br/>
 <div groupv>
-<pre zoom labels="learn_x_in_y_min">
+<pre zoom labels="learn_x_in_y_min,evm">
 <span xsmall>Accounts</span>
 @[http://www.ethdocs.org/en/latest/contracts-and-transactions/account-types-gas-and-transactions.html]
  ºAccountº  ← same address space both for contract and normal accounts
 ┌──────────────────┐           ┌──────────────────────────────────────┬───────────────────────────────────────┐
 │bytes[32]ºaddressº│           │   EXTERNALLY OWNED ACCOUNT           │          CONTRACT ACCOUNTS            │
 ├──────────────────┤┌──────────┼──────────────────────────────────────┼───────────────────────────────────────┤
-│wei      ºbalanceº││CREATION  │→ Generate random 32bytes private key │→Create smart-contract source code  *1 │
+│wei      ºbalanceº││CREATION  │→ Generate random 32bytes private key │→Create smart─contract source code  *1 │
 ├──────────────────┤│          │→ Generate Pub.Key from Priv.Key      │→Generate bytecode by compiling source │
 │Map˂256b,256b˃    ││          │→ Generate public address as:         │→Send "Contract Creation" TX for mining│
 │         ºstorageº││          │  bytes[32] pub.addr = hash(pub.addr) │→keep Contract address once "published"│
@@ -346,14 +345,24 @@ CHAIN_ID    Chain(s)
                     ├──────────┼──────────────────────────────────────┼───────────────────────────────────────┤
                     │FEATURES  │ bytes[32] address                    │ bytes[32] address *1                  │
                     │          │                                      │ Map˂256b,256b˃ storage *2             │
-                    └──────────┴──────────────────────────────────────┴───────────────────────────────────────┘
+                    ├──────────┼──────────────────────────────────────┼───────────────────────────────────────┤
+                    │ADDRESS   │ Generated deterministically from     │ Generated deterministically from      │
+                    │          │ priv.key (→ pub.key → hash(pub.key)  │ priv.key , bytecode,  TX.nonce        │
+                    └──────────┴──────────────────────────────────────┴───────────────────────────^───────────┘
+                                                                  - It's recomended to change the nonce when deploying
+                                                                    to two or more different networks, since there is 
+                                                                    a small but finite possibility, that TXs can be 
+                                                                    replayed on such networks.
+                                                                  - For private networks contracts can also be deployed
+                                                                    in the genesis.json block assigned to any arbitrary
+                                                                    (easy-to-remember) address. 
+
  *2: account.storage: Persistent memory area
      - It is not possible to enumerate storage from within a contract
      - It is comparatively costly to read and even more so, to modify storage
        in the context of an (update state) TX. (It's still free of cost during
        external query calls).
      - A contract can neither read nor write to any storage apart from its own
-
 
 Signing transactions Flow:
  - Identify the next available nonce for the sender account
@@ -362,13 +371,12 @@ Signing transactions Flow:
  - Sign the RawTransaction object
  - Send the RawTransaction object to a node for processing
 
-The nonce is an increasing numeric value which is used to uniquely identify
+Theºnonceºis an increasing numeric value which is used to uniquely identify
 transactions.ºA nonce can only be used once and until a transaction is mined,º
 it is possible to send multiple versions of a transaction with the same nonce,
 however, once mined, any subsequent submissions will be rejected.
-
 </pre>
-<pre zoom labels="learn_x_in_y_min">
+<pre zoom labels="learn_x_in_y_min,evm">
 <span xsmall>Message Calls</span>
 Message Calls
 -------------
@@ -405,7 +413,7 @@ return data
   Reusable library code that can be applied to a contract’s storage in order
   to e.g. implement a complex data structure.
 </pre>
-<pre zoom labels="learn_x_in_y_min">
+<pre zoom labels="learn_x_in_y_min,evm">
   <span xsmall>EVM Summary</span>
 - TODO: EVM Illustrated
   @[https://takenobu-hs.github.io/downloads/ethereum_evm_illustrated.pdf]
@@ -505,7 +513,7 @@ makeDup(size int64)  // make dup instruction function
 makeSwap(size int64) // make swap instruction function
 </pre>
 
-<pre zoom labels="learn_x_in_y_min" >
+<pre zoom labels="learn_x_in_y_min,evm" >
 <span xsmall>CALL/</span>
 <span xsmall>CALLCODE/</span>
 <span xsmall>DELEGATECALL</span>
@@ -535,14 +543,15 @@ In comparison to contracts:
   - Cannot recieve Ether
 </pre>
 
-<pre zoom >
+<pre zoom labels="evm">
 <span xsmall TODO>ABI Spec</span>
 Full reference:@[https://solidity.readthedocs.io/en/latest/abi-spec.html]
 
 - The encoding is not self describing and thus requires a schema in order to decode.
 - Interface functions of a contract are strongly typed
   (known at compilation time and static)
-- All contracts will have the interface definitions of any contracts they call available at compile-time.
+- All contracts will have the interface definitions of any contracts they call a
+  vailable at compile-time.
 - Data is encoded according to its type
 
 ˂b˃FUNCTION SELECTOR:˂/b˃
@@ -690,7 +699,7 @@ In effect, a log entry using this ABI is described as:
                         º  fields for full functionallity.                                  º
 </pre>
 
-<pre zoom labels="learn_x_in_y_min,transaction_event">
+<pre zoom labels="learn_x_in_y_min,transaction_event,evm">
 <span xsmall bgorange>Events ⅋ LOGS</span>
 BEST PATTERNS:
 - External clients must be able to restore current contract state
@@ -739,7 +748,7 @@ var myEventMonitor =
                                              "real-time" events
 
 myEventMonitor.watch(                  // ← Start watching
-  (err, result) => {
+  (err, result) =˃ {
     if (err) { ...    return; }
     console.log(
          "_market:"+result.args._market
@@ -752,7 +761,7 @@ myEventMonitor.stopWatching()          // ← Stop watching
 </div>
 
 <div groupv>
-<pre zoom  labels="learn_x_in_y_min">
+<pre zoom  labels="learn_x_in_y_min,transaction,evm">
 <span title>Transactions</span>
 Transaction
 -------------
@@ -823,34 +832,30 @@ REF:
 @[https://github.com/ethereum/EIPs/issues/191]
 
 - Ethereum uses SECP256K1 for signature.
-  Note: secp256k1 public key is composed of two integers: (r, s).
-  The standard public key in the hex format is: hex(r||s).
-  The secp256k1 ETH/BTC library, however, defines the public key as
-  (r||s||v), where v = 0 or 1. 
-         ^        ^^^^^^^^^^^                              
-   when you derive the public keyºfrom the signatureº, two solutions surge.
-   v will tell which one is the right one.
+  Note:
+  - secp256k1 public key is composed of two integers
+    (output of an ECDSA signature): (r, s).
+  - The secp256k1 ETH/BTC library, however, defines the public key as
+    (r||s||v), where v = 0 or 1. 
+           ^        ^^^^^^^^^^^                              
+     when you derive the public keyºfrom the signatureº, two solutions surge.
+     v will tell which one is the right one.
+     - if length of the public key is 64 bytes (not hex encoded) r||s is used.
+       if length is 65 bytes, r||s||v will be used.
+     - v is the recovery id.
+  - More info at @[https://bitcoin.stackexchange.com/questions/38351/ecdsa-v-r-s-what-is-v]
+    Ethereum makes further adjustments to v in order to prevent replay attack as explained in
+    @[https://github.com/ethereum/EIPs/issues/155]]
 
+  - In the SmartContract we can use: 
+    ecrecover Solidity Global Crypto Funct:
+    ecrecover (bytes32 hash, uint8 v, bytes32 r, bytes32 s)
+      returns (address): recover the address associated with the public key
+                         from elliptic curve signature or return zero on error
+    
+    
+  - The use of Curve25519 with Schnoorr signing scheme (Ed25519) is under discussion
 
-Alen Horvat  4:06 PM
-How to check: if length of the public key is 64 bytes (not hex encoded) r||s is used, if length is 65 bytes, r||s||v is used. (if hex encoded, the length should be x2, if I remember correctly)
-
-
-
-
-  The use of Curve25519 with Schnoorr signing scheme (Ed25519) is under discussion
-
-What are the v, r, s values for the TX's signature?
-- r and s are outputs of an ECDSA signature
-- v is the recovery id.
-<a href="https://bitcoin.stackexchange.com/questions/38351/ecdsa-v-r-s-what-is-v">Bitcoin REF</a>
-  applies also to Ethereum. Ethereum makes further adjustments to v, as explained in
-<a href="https://github.com/ethereum/EIPs/issues/155">EIP 155</a>, to prevent replay attack.
-
-ecrecover Solidity Global Crypto Funct:
-ecrecover (bytes32 hash, uint8 v, bytes32 r, bytes32 s)
-  returns (address): recover the address associated with the public key
-                     from elliptic curve signature or return zero on error
 
 <span xsmall>Ether TXs in Solidity:</span>
 addressInstance.balance (uint256): balance in Wei
@@ -872,9 +877,8 @@ addressInstance.send(uint256 amount): returns (bool):
 
 </pre>
 
-<pre zoom  labels="learn_x_in_y_min">
-<span xsmall>Gas Price</span>
-<span xsmall>TX Price</span>
+<pre zoom  labels="learn_x_in_y_min,evm">
+<span xsmall>Gas Price/TX Price</span>
 - Gas (defined in the [Ethereum-Yellow-Paper]) is a virtual pricing
   mechanism for transactions andsmart contracts that is implemented
   by Ethereum to protect against Denial of Service attacks and
@@ -990,7 +994,7 @@ byte/logs:          8 gas/byte  * 150 bytes      =  1240
                                                   ------
                                       TOTAL       103740 gas  = 103740 gas º 0.000000032 Eth/gas º 300 Euros/Eth = 0.995904 Eu
 </pre>
-<pre zoom labels="tool">
+<pre zoom labels="tool,evm">
 <span xsmall>gas price calc</span>
 Rº: WARN:º
 - Extracted from @[https://medium.com/hackernoon/costs-of-a-real-world-ethereum-contract-2033511b3214]
@@ -1050,7 +1054,7 @@ creditor account)
 (375 gas/LOG x 1LOG) + (8gas/byte x  128byte) + (375 gas/topic * 0 topic) = 375 + 1024        = 1399
 </pre>
 
-<pre zoom labels="comparative,learn_x_in_y_min">
+<pre zoom labels="comparative,learn_x_in_y_min,evm">
 <span xsmall>Calls vs TXs</span>
 Imagine a solidity code similar to:
 
@@ -1105,7 +1109,7 @@ EVM stack.
 
 
 </pre>
-<pre zoom labels="learn_x_in_y_min,transaction">
+<pre zoom labels="learn_x_in_y_min,transaction,evm">
 <span xsmall>State transition fun</span>
 APPLY (S, TX) → S'  ← S : initial global state
                     ← S': final   global state
@@ -1133,7 +1137,7 @@ APPLY (S, TX) → S'  ← S : initial global state
   miner.
 </pre>
 
-<pre zoom labels="learn_x_in_y_min,transaction">
+<pre zoom labels="learn_x_in_y_min,transaction,evm">
 <span xsmall>Offline/Online</span>
 <span xsmall>TX signing</span>
     OFFLINE TX SIGNING (RECOMENDED)           |    "ON-LINE" TX SIGNING (LESS SECURE, DISCOURAGED)
@@ -1146,7 +1150,7 @@ network node.                                 |   (but offline clients can also 
 The signed TX is then sent to the network.    |   hacked)
 </pre>
 
-<pre zoom labels="">
+<pre zoom labels="evm">
 <span xsmall>About 24K</span>
 <span xsmall>Contract Size</span>
 [https://ethereum-magicians.org/t/removing-or-increasing-the-contract-size-limit/3045]
@@ -1243,7 +1247,7 @@ Tagging @karalabe for his thoughts as he is working on reducing state size.
 
 <div groupv>
 <span title>Ether.Addresses</span>
-<pre zoom labels="">
+<pre zoom labels="evm">
 <span xsmall>Issues</span>
 REF: @[https://ethereum.stackexchange.com/questions/267/why-dont-ethereum-addresses-have-checksums]
 Initial Ethereum design didn't have support for address checksum.
@@ -1300,7 +1304,7 @@ Update: EIP55 introduces checksum in Ethereum addresses. (Still optional
 
 </pre>
 
-<pre zoom>
+<pre zoom labels="evm">
 <span TODO xsmall>Ethereum Name Service</span>
 @[https://ens.domains/]
 """No more long addresses: ENS eliminates the need to copy - and worse,
@@ -2415,11 +2419,10 @@ function () payable {
 };
 </pre>
 
-<pre bgorange zoom   labels="learn_x_in_y_min">
+<pre bgorange zoom   labels="learn_x_in_y_min,transaction,evm">
 UUID: 080d788a-24ab-4469-aec2-05c111c60db9
 
-<span xsmall>ERROR</span>
-<span xsmall>CONTROL</span>
+<span xsmall>ERROR CONTROL</span>
 @[https://solidity.readthedocs.io/en/v0.4.24/control-structures.html#error-handling-assert-require-revert-and-exceptions]
 Solidity uses state-reverting exceptions to handle errors:
  - Capturing ("catch-ing") Exceptions IS NOT (YET?) POSSIBLE (2018-06-11)!.
@@ -9062,6 +9065,19 @@ Testing with pantheon-quick-start and IBFT 2.0 with defaults settings
 
           1 hour     1 day      1year
           2044K      47.9MB     17485.8MB
+
+IBFT2 Consensus Case:
+- Each mined block has a minimum length of 648 bytes for empty blocks.
+- With a block-period configured to 5 seconds, this leads to:
+
+print( ( 648 / (1024.*1024.) ) * 12      * 60       * 24)      ~ º10.68 MBytes/dayº
+         ^^^^^^^^^^^^^^^^^^      ^         ^          ^           ^^^^^^^^^^^^^^^^
+        block-size in MBytes   blks/min  mins/hour   hours/day    Minimum ussage.
+                               5secs/blk                          Just empty blocks.
+                                                                  No indexes, external
+                                                                  logs, file-system 
+                                                                  metadata, ...
+
 <hr/>
 <span xsmall>Monit running network</span>
 <span xsmall>(Prometh.+Grafana)</span>
@@ -9135,6 +9151,29 @@ $ ./remove.sh ← Shut downa and remove all data.
 ºcontractSizeLimitº  ← free gas networks. Default is 24576 and the maximum size is 2147483647.
 ºevmStackSize     º  Maximum stack size. Specify to increase the maximum stack size in
                      private networks with very complex smart contracts. Default is 1024.
+</pre>
+<span title>What's New</span>
+<pre zoom labels="besu">
+<span xsmall>1.4</span>
+@[https://pegasys.tech/introducing-plugin-apis-in-hyperledger-besu/]
+@[https://jira.hyperledger.org/browse/BESU-91?page=com.atlassian.jira.plugin.system.issuetabpanels%3Acomment-tabpanel]
+
+Plugin API allows to fetch data from running Besu node:
+
+BESU node → (data) → (Besu 1.4+) → feed to DDBBs, kafka, ...
+            ^^^^^^    Plugin-API
+          - Blocks
+          - Balances
+          - Transactions
+          - Smart Contracts
+          - Execution Results
+          - Logs 
+          - Syncing State
+
+- In the future, along with more data being exposed via the API, users can expect 
+  Besu to compartmentalize key supporting services, eventually allowing them to 
+  be swapped via a plugin.
+  Ex: PegaSys Plus 1st release, made DDBB swappable to support encryption at rest. 
 </pre>
 
 <pre zoom  labels="besu">
@@ -9415,7 +9454,8 @@ Using the CardContact SmartCard USB HSM in an Ethereum PoA Chain
 <pre zoom labels="">
 <span xsmall TODO>Ethr-DIDs</span>
 <span xsmall>(uPort++)</span>
-https://medium.com/uport/goodbye-uport-dids-hello-ethr-dids-ea2e80256f54
+@[https://medium.com/uport/goodbye-uport-dids-hello-ethr-dids-ea2e80256f54]
+@[https://github.com/uport-project/ethr-did-registry]
 - Goodbye uPort DIDs, Hello Ethr-DIDs
   We have released a major app update that enables migrating all old uPort 
   identities created before September 2018, to the current DID architecture. 
@@ -9981,4 +10021,11 @@ Monitoring Besu Performance:
 - https://lists.hyperledger.org/g/besu/message/33
 - https://lists.hyperledger.org/g/besu/message/34
 - https://lists.hyperledger.org/g/besu/message/35
+____________________
+DevOps, Security , Cloud:
+https://blogs.sequoiainc.com/blockchain-dev-part-2-ethereum-rpc-from-aws-lambda/
+  how to interact with that node via RPC using an AWS Lambda function. This 
+  enables DApp development to leverage benefits of "serverless" software 
+  architecture while still maintaining the isolation and security of our original 
+  architecture. 
 -->

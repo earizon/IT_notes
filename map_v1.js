@@ -526,7 +526,7 @@ function highlightSearch(query) {
   if ((!isAnyLabelSelected()) && isEmptyQuery) { return false; /* Nothing to do */ }
 
   [document.querySelectorAll('body>div>[title]'),
-   document.querySelectorAll('body>div>div[title]')].forEach(nodeList => {
+   document.querySelectorAll('body>div>div>[title]')].forEach(nodeList => {
       nodeList.forEach(node => {  // @ma
           node.setAttribute("hidden", "true")
       })

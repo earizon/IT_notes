@@ -196,7 +196,7 @@ function doOpenZoom(e, isHistoric, showTimeControl, CallbackOnClose, strCloseLab
   let forwControl = "<span onClick='goForward()' style='font-family:monospace; color:blue; font-size:2.0rem'>"+forwNumber+"</span>"
   let sLabels="";
   if (e.attributes && e.attributes.labels) {
-    e.attributes.labels.value.split(",").forEach(label_i => {
+    e.attributes.labels.value.split(",").filter(e => !!e).forEach(label_i => {
         sLabels += renderLabel(label_i)
     })
   }

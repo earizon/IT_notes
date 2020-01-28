@@ -50,6 +50,15 @@ var spb = {
       finalRegex.lastIndex = 0;
       node.setAttribute("textFound", searchFound?"true":"false")
       if (searchFound) {
+          nodeListList =  (node.parentNode.parentNode.tagName != "BODY")
+            ? [node.parentNode.parentNode.querySelectorAll(':not(div)[title]'),
+               node.parentNode.querySelectorAll('[title]')]
+            : [node.parentNode.querySelectorAll('[title]')]
+          nodeListList.forEach( nodeList => {
+               nodeList.forEach( labelEl => {
+                 labelEl.removeAttribute("hidden")
+               })
+          })
           spb.visited.push(node)
           window.lastElementFound = node
       }
@@ -469,6 +478,12 @@ function resetTextFoundAttr(bKeepHighlightedSearch) {
    *                                  (textFound==false is assigned to display none in css)
    * bKeepHighlightedSearch = false => Reset all (remove any textFound attribute)
    */
+  [document.querySelectorAll('body>div>[title]'),
+   document.querySelectorAll('body>div>div[title]')].forEach(nodeList => {
+      nodeList.forEach(node => {  // @ma
+          node.removeAttribute("hidden")
+      })
+   })
   var removeNodeList = document.querySelectorAll('*[textFound]');
   if (removeNodeList.length == 0) return; // Nothing to do.
   for (idx in removeNodeList) {
@@ -510,6 +525,12 @@ function highlightSearch(query) {
 
   if ((!isAnyLabelSelected()) && isEmptyQuery) { return false; /* Nothing to do */ }
 
+  [document.querySelectorAll('body>div>[title]'),
+   document.querySelectorAll('body>div>div[title]')].forEach(nodeList => {
+      nodeList.forEach(node => {  // @ma
+          node.setAttribute("hidden", "true")
+      })
+   })
   // If some label has been selected then choose only those with matching labels
   document.querySelectorAll('*[zoom]').forEach(node => { 
       node.setAttribute("textFound", "false")

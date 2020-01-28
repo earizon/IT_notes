@@ -256,8 +256,9 @@ function onLabelClicked(e) {
 }
 
 function renderLabel(sLabel,selected) {
+  sLabel = sLabel.toLowerCase()
   return "<input class='labelButton' selected="+(!!spb.labelMapSelected[sLabel])+
-         " type='button' onClick='onLabelClicked(this)' value='"+sLabel+"' />" ;
+         " type='button' onClick='onLabelClicked(this)' value='"+sLabel+"' /><span labelcount>"+spb.labelMap[sLabel].length+"</span>" ;
 }
 
 
@@ -313,6 +314,7 @@ function createLabelIndex() {
     let csvAttributes = node.getAttribute("labels")
     if (!csvAttributes || !csvAttributes.trim()) continue;
     csvAttributes.split(",").forEach( label => {
+        if (!!! label) return
         label = label.toLowerCase()
         let list = getDomListForLabel(label)
             list.push(node)

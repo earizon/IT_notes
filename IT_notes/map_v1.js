@@ -322,13 +322,21 @@ function createLabelIndex() {
     if (!node.getAttribute    ) continue
     let csvAttributes = node.getAttribute("labels")
     if (!csvAttributes || !csvAttributes.trim()) continue;
+    labelCount = 0
     csvAttributes.split(",").forEach( label => {
         if (!!! label) return
         label = label.toLowerCase()
         let list = getDomListForLabel(label)
             list.push(node)
         spb.labelMap[label] = list
+        labelCount++
     })
+    if (labelCount>0) {
+      var countEl = document.createElement('div');
+          countEl.setAttribute("tagCount", "")
+          countEl.innerHTML = labelCount
+      node.insertBefore(countEl,node.children[0])
+    }
   }
   // console.dir(spb.labelMap)
 }
@@ -526,7 +534,7 @@ function highlightSearch(query) {
   if ((!isAnyLabelSelected()) && isEmptyQuery) { return false; /* Nothing to do */ }
 
   [document.querySelectorAll('body>div>[title]'),
-   document.querySelectorAll('body>div>div[title]')].forEach(nodeList => {
+   document.querySelectorAll('body>div>div>[title]')].forEach(nodeList => {
       nodeList.forEach(node => {  // @ma
           node.setAttribute("hidden", "true")
       })

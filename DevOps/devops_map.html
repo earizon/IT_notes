@@ -8,31 +8,242 @@
 </head>
 
 <body>
+
+
+<div group>
+    <span title>Shell</span><br/>
+<div groupv>
+<div groupv>
+<pre zoom>
+<span xsmall>Init Vars</span>
+complete Shell parameter expansion list available at:
+- @[http://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html]
+var1=$1 # init var $1 with first param
+var1=$# # init var $1 with number of params
+var1=${parameter:-word} # init $var1 with $parameter value or 'word'(or word expansion) if parameter unset or null
+var1=${parameter:=word} # init $var1 with $parameter value or 'word'(or word expansion) if parameter unset or null. Also asign word to $parameter
+var1=${parameter:?word} # If parameter is null/unset word (or word expansion) is written to the STDERR and exits.
+var1=${parameter:+word} # If parameter is null or unset, nothing is substituted, otherwise the expansion of word is substituted.
+${parameter:offset}
+${parameter:offset:length}
+# Substring Expansion. It expands to up to length characters of the value
+  of parameter starting at the character specified by offset.
+  If parameter is '@', an indexed array subscripted by '@' or '*', or an
+  associative array name, the results differ as described below.
+</pre>
+
+<pre zoom labels="">
+<span xsmall>Parse arguments</span>
+#Oº$#º number of arguments
+while [Oº$#º -gt 0 ]; do
+  echo $1
+  case "$1" in
+    -l|--list)
+      echo "list arg"
+      shift 1  # ºconsume arg         ← Oº$# = $#-1º
+      ;;
+    -p|--port)
+      export PORT="${2}:"
+      echo "port: $PORT"
+      shift 2  # ºconsume arg+valueº  ← Oº$# = $#-2º
+      ;;
+    *)
+      echo "non-recognised option"
+      shift 1  # ºconsume argº        ← Oº$# = $#-1º
+  esac
+done
+</pre>
+
+<pre zoom labels="">
+<span xsmall>Barrier synchronization</span>
+Wait for background jobs to complete example:
+(
+  ( sleep 3 ; echo "job 1 ended" ) &
+  ( sleep 1 ; echo "job 2 ended" ) &
+  ( sleep 1 ; echo "job 3 ended" ) &
+  ( sleep 9 ; echo "job 4 ended" ) &
+  wait ${!}       # alt.1: Wait for all background jobs to complete
+# wait %1 %2 %3   # alt.2: Wait for jobs 1,2,3. Do not wait for job 4
+  echo "All subjobs ended"
+) &
+</pre>
+
+
+
+<pre zoom>
+<span xsmall>bash REPL loop</span>
+REPL stands for Read-eval-print loop: More info at:
+@[https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop]
+    # Define the list of a menu item
+   ºselectºOºlanguageººinºC# Java PHP Python Bash Exit
+   ºdoº
+      #Print the selected value
+      if [[ Oº$languageº == "Exit" ]] ; then
+        exit 0
+      fi
+      echo "Selected language is $language"
+   ºdoneº
+</pre>
+
+<pre zoom labels="">
+<span xsmall>trap: Exit script cleanly</span>
+@[https://www.putorius.net/using-trap-to-exit-bash-scripts-cleanly.html]
+</pre>
+
+<pre zoom>
+<span xsmall>Bash-it</span>
+@[https://www.tecmint.com/bash-it-control-shell-scripts-aliases-in-linux/]
+- bundle of community Bash commands and scripts for Bash 3.2+,
+  which comes with autocompletion, , aliases, custom functions, ....
+- It offers a useful framework for developing, maintaining and
+  using shell scripts and custom commands for your daily work.
+</pre>
+
+
+<pre zoom labels="">
+<span xsmall>Bash 4+ Maps</span>
+#!/usr/bin/env bash
+
+declare -A animals                             # STEP !: declare associative array "animals"
+animals=( ["key1"]="value1" ["key2"]="value2") # Init with some elements
+
+
+Then use them just like normal arrays. Use animals['key']='value' to set value, "${animals[@]}" to expand the values, and "${!animals[@]}" (notice the !) to expand the keys. Don't forget to quote them:
+
+echo "${animals[moo]}"
+for sound in "${!animals[@]}"; do echo "$sound - ${animals[$sound]}"; done
+
+Bash 3
+</pre>
+
+<pre zoom labels="">
+<span xsmall>test</span>
+(man test summary from GNU coreutils)
+
+test
+
+  EXPRESSION  # ← EXPRESSION true/false sets the exit status.
+[ EXPRESSION ]
+
+-n STRING                  # STRING length ˃0
+                           # (or just STRING)
+-z STRING                  #  STRING length == 0
+STRING1 = STRING2          # String equality
+STRING1 != STRING2         # String in-equality
+
+
+INTEGER1 -eq INTEGER2      # ==
+INTEGER1 -ge INTEGER2      # ˂=
+INTEGER1 -gt INTEGER2
+INTEGER1 -le INTEGER2
+INTEGER1 -lt INTEGER2
+INTEGER1 -ne INTEGER2
+^^^^^^^^
+BºNOTE:º INTEGER can be -l STRING (length of STRING)
+
+ºFILE TEST/COMPARISIONº
+RºWARN:º Except -h/-L, all FILE-related tests dereference symbolic links.
+-e FILE                    #ºFILE existsº
+-f FILE                    # FILE exists and is a1regular fileº
+-h FILE                    # FILE exists and is aºsymbolic linkº (same as -L)
+-L FILE                    #                                     (same as -h)
+-S FILE                    # FILE exists and is aºsocketº
+-p FILE                    #ºFILE exists and is a named pipeº
+-s FILE                    # FILE exists and has aºsize greater than zeroº
+
+
+-r FILE                    # FILE exists andºread  permissionºis granted
+-w FILE                    # FILE exists andºwrite permissionºis granted
+-x FILE                    # FILE exists andºexec  permissionºis granted
+
+FILE1  -ef FILE2           # ← same device and inode numbers
+FILE1 -nt FILE2            # FILE1 is newer (modification date) than FILE2
+FILE1 -ot FILE2            # FILE1 is older (modification date) than FILE2
+-b FILE                    # FILE exists and is block special
+-c FILE                    # FILE exists and is character special
+-d FILE                    #ºFILE exists and is a directoryº
+-k FILE                    # FILE exists and has its sticky bit set
+
+
+-g FILE                    # FILE exists and is set-group-ID
+-G FILE                    # FILE exists and is owned by the effective group ID
+-O FILE                    # FILE exists and is owned by the effective user ID
+-t FD   file descriptor FD is opened on a terminal
+-u FILE FILE exists and its set-user-ID bit is set
+
+BOOLEAN ADITION
+RºWARNº: inherently ambiguous.  Use
+EXPRESSION1 -a EXPRESSION2 # AND # 'test EXPR1 ⅋⅋ test EXPR2' is prefered
+EXPRESSION1 -o EXPRESSION2 # OR  # 'test EXPR1 || test EXPR2' is prefered
+
+
+RºWARN,WARN,WARNº: your shell may have its own version of test and/or '[',
+                   which usually supersedes the version described here.
+                   Use /usr/bin/test to force non-shell ussage.
+
+Full documentation at: @[https://www.gnu.org/software/coreutils/]
+
+
+</pre>
+</div>
+</div>
+</div><!-- shell -->
+
 <div group>
     <span title>Jenkins</span><br/>
 <div groupv>
-<pre zoom labels="jenkins">
+<pre zoom labels="101,jenkins">
 <span xsmall>External Links</span>
 @[https://jenkins.io/doc/]
 @[https://jenkins.io/doc/book/]
 @[https://jenkins.io/user-handbook.pdf]
 @[https://github.com/sahilsk/awesome-jenkins]
 
-
-@[https://jenkins.io/doc/pipeline/steps/] Pipeline Steps Reference
+- @[https://jenkins.io/doc/book/using/using-credentials/]         Using credentials
+- @[https://jenkins.io/doc/book/pipeline/running-pipelines]       Running Pipelines
+- @[https://jenkins.io/doc/book/pipeline/multibranch]             Branches and Pull Requests
+- @[https://jenkins.io/doc/book/pipeline/docker]                  Using Docker with Pipeline
+- @[https://jenkins.io/doc/book/pipeline/shared-libraries]        Extending with Shared Libraries
+- @[https://jenkins.io/doc/book/pipeline/development]             Pipeline Development Tools
+- @[https://jenkins.io/doc/book/pipeline/syntax]                  Pipeline Syntax
+- @[https://jenkins.io/doc/book/pipeline/pipeline-best-practices] Pipeline Best Practices
+- @[https://jenkins.io/doc/book/pipeline/scaling-pipeline]        Scaling Pipelines
+- @[https://jenkins.io/doc/book/blueocean]                        Blue Ocean
+- @[https://jenkins.io/doc/book/blueocean/getting-started]        Getting started with Blue Ocean
+- @[https://jenkins.io/doc/book/blueocean/creating-pipelines]     Creating a Pipeline
+- @[https://jenkins.io/doc/book/blueocean/dashboard]              Dashboard
+- @[https://jenkins.io/doc/book/blueocean/activity]               Activity View
+- @[https://jenkins.io/doc/book/blueocean/pipeline-run-details]   Pipeline Run Details View
+- @[https://jenkins.io/doc/book/blueocean/pipeline-editor]        Pipeline Editor
+- @[https://jenkins.io/doc/book/managing]                         Managing Jenkins
+- @[https://jenkins.io/doc/book/managing/system-configuration]    Configuring the System
+- @[https://jenkins.io/doc/book/managing/security]                Managing Security
+- @[https://jenkins.io/doc/book/managing/tools]                   Managing Tools
+- @[https://jenkins.io/doc/book/managing/plugins]                 Managing Plugins
+- @[https://jenkins.io/doc/book/managing/cli]                     Jenkins CLI
+- @[https://jenkins.io/doc/book/managing/script-console]          Script Console
+- @[https://jenkins.io/doc/book/managing/nodes]                   Managing Nodes
+- @[https://jenkins.io/doc/book/managing/script-approval]         In-process Script Approval
+- @[https://jenkins.io/doc/book/managing/users]                   Managing Users
+- @[https://jenkins.io/doc/book/system-administration]            System Administration
+- @[https://jenkins.io/doc/book/system-administration/backing-up] Backing-up/Restoring Jenkins
+- @[https://jenkins.io/doc/book/system-administration/monitoring] Monitoring Jenkins
+- @[https://jenkins.io/doc/book/system-administration/security]   Securing Jenkins
+- @[https://jenkins.io/doc/book/system-administration/with-chef]  Managing Jenkins with Chef
+- @[https://jenkins.io/doc/book/system-administration/with-puppet]Managing Jenkins with Puppet
 
 - full list of ENV.VARs:
   ${BASE_JENKINS_URL}/pipeline-syntax/globals#env
 </pre>
-<pre zoom labels="jenkins">
+<pre zoom labels="101,jenkins">
 <span xsmall>Pipeline injected ENV.VARS</span>
 - full list of ENV.VARs:
   ${BASE_JENKINS_URL}/pipeline-syntax/globals#env
 
 $env.BUILD_ID       :
-$env.BUILD_NUMBER   
+$env.BUILD_NUMBER
 
-$env.BUILD_TAG      : String of jenkins-${JOB_NAME}-${BUILD_NUMBER}. 
+$env.BUILD_TAG      : String of jenkins-${JOB_NAME}-${BUILD_NUMBER}.
                                                       ^^^^^^^^^^^^ .
                       Useful to subclassify resource/jar/etc output artifacts
 
@@ -48,7 +259,7 @@ $env.JOB_NAME       : Name of the project of this build
 $env.NODE_NAME      : 'master', 'slave01',...
 $env.WORKSPACE      : absolute path for workspace
 </pre>
-<pre zoom labels="jenkins">
+<pre zoom labels="101,jenkins">
 <span xsmall>Dockerized Jenkins</span>
     docker run \
       --rm \
@@ -57,15 +268,15 @@ $env.WORKSPACE      : absolute path for workspace
       -v jenkins-data:/var/jenkins_home \             ← if 'jenkins-data' Docker volumen
       \                                                  doesn't exists it will be created
       \
-      -v /var/run/docker.sock:/var/run/docker.sock \  ← Jenkins need control of Docker to 
+      -v /var/run/docker.sock:/var/run/docker.sock \  ← Jenkins need control of Docker to
       \                                                 launch new Docker instances during
       \                                                 the build process
-      -v "$HOME":/home \ 
+      -v "$HOME":/home \
       --name jenkins01 \                              ← Allows to "enter" docker with:
       jenkinsci/blueocean                               $ docker exec -it jenkins01 bash
 </pre>
 
-<pre zoom labels="jenkins,backup">
+<pre zoom labels="101,jenkins,backup">
 <span xsmall>Export/import jobs</span>
 
 @[https://wiki.jenkins-ci.org/display/JENKINS/Jenkins+CLI]
@@ -76,15 +287,15 @@ $env.WORKSPACE      : absolute path for workspace
   ºPRE-REQUISITES:º
    - jenkins-cli.jar version must match Server version
    - jnlp ports need to be open
-  
+
   JENKINS_CLI="java -jar ${JENKINS_HOME}/war/WEB-INF/jenkins-cli.jar -s ${SERVER_URL}"
   ${JENKINS_CLI}    get-job job01 > job01.xml
   ${JENKINS_CLI} create-job job01 < job01.xml
                                     ^^^^^^^^^
                                 - Can be stored in git,...
-  RºWARN:º 
+  RºWARN:º
   - REF: @[https://stackoverflow.com/questions/8424228/export-import-jobs-in-jenkins]
-    There are issues with bare naked ampersands in the XML such as 
+    There are issues with bare naked ampersands in the XML such as
     when you have & in Groovy code.
 
 
@@ -94,7 +305,8 @@ $env.WORKSPACE      : absolute path for workspace
 SERVER_URL = "http://..."                      # ← Without Authentication.
 SERVER_URL = "http://${USER}:${API_TOKEN}@..." # ← With    Authentication.
 
-$ curl -s      ${SERVER_URL}/job/JOBNAME/config.xml > job01.xml #ºExportº
+$ curl -s ${SERVER_URL}/job/JOBNAME/config.xml > job01.xml #ºExportº
+                           º^^^^^^^^^^^^^^^^^^º
 
 $ curl -X POST ${SERVER_URL}/createItem?name=JOBNAME' \         #ºImportº
        --header "Content-Type: application/xml" -d  job01.xml
@@ -110,22 +322,23 @@ tar cjf _var_lib_jenkins_jobs.tar.bz2 /var/lib/jenkins/jobs
 
 <div groupv>
 <span title>Pipelines</span>
-<pre zoom labels="jenkins">
+<pre zoom labels="101,jenkins">
 <span xsmall bgorange>Jenkinsfile</span>
 REF: @[https://jenkins.io/doc/book/pipeline/jenkinsfile/]
-
+     @[https://jenkins.io/doc/pipeline/steps/] 
+     Reference of (hundreds of) Plugins compatible with Pipeline 
 Commented Declarative Syntax Example
     pipeline {
        environment {
            T1 = 'development' ←······ Env.var with global visibility
            CC = """${sh(      ←······ Env.var set from shell STDOUT.
-              ºreturnStdout:ºtrue, ←· trailing whitespace appended. 
+              ºreturnStdout:ºtrue, ←· trailing whitespace appended.
                script: 'echo "clang"' .trim() removes it.
                )}"""
-                      
+
         AWS_ACCESS_KEY_ID     =  ←··· Secret management
          ºcredentialsº('aws-key-id')← Protected by Jenkins.
-        AWS_SECRET_ACCESS_KEY = 
+        AWS_SECRET_ACCESS_KEY =
          ºcredentialsº('...')
 
        }
@@ -152,9 +365,15 @@ Commented Declarative Syntax Example
                 script: 'exit 1'
               )}"""
             }
-            steps {                   
+            steps {
             echo "º${msg1}º:..."←···· shell like interpolation for double-coutes
                 sh 'printenv'   ←···· msg1 and EXIT available here
+                sshagent (
+                  crendentials: ['key1']  ←····┬─ ssh with help of agent
+                )                              │  (ssh-agent plugin needed)
+                {                              │
+                   sh 'ssh user@remoteIP' ←····┘
+                }
 
             }
         }
@@ -202,21 +421,21 @@ Jenkinsfile       Jenking       -ºarchived built artifactsº
 For complex secrets (SSH keys, binary secrets,...)
 use the realted Snippet Generators:
   GENERATOR             PARAMS
-- SSH User Private Key  - Key File Variable 
+- SSH User Private Key  - Key File Variable
                         - Passphrase Variable
                         - Username Variable
 ────────────────────────────────────────────────────────────
 - Credentials           SSH priv/pub keys stored in Jenkins.
 ────────────────────────────────────────────────────────────
-- (PKCS#12) Certificate - Keystore Variable 
+- (PKCS#12) Certificate - Keystore Variable
                           Jenkins temporary assign it to the
                           secure location of the certificate's
                           keystore
-                        - Password Variable (Opt) 
-                        - Alias Variable (Opt) 
+                        - Password Variable (Opt)
+                        - Alias Variable (Opt)
                         - Credentials: Cert.credentials stored
                           in Jenkins. The value of this field
-                          is the credential ID, which Jenkins 
+                          is the credential ID, which Jenkins
                           writes out to the generated snippet.
 ────────────────────────────────────────────────────────────
 - Docker client cert    - Handle Docker Host Cert.Auth.
@@ -228,23 +447,35 @@ Usefull from multi-target builds/tests/...
 pipeline {
  ºagent noneº
   stages {
+    stage('clone') {
+      // REF: @[https://jenkins.io/doc/pipeline/steps/workflow-scm-step/]
+      checkout Gºscmº ←··········· checkout code from scm ("git clone ...")
+                           Gºscmº: special var. telling to use the same
+                                   repository/revision used to checkout
+                                   (git clone) the Jenkinsfile
+      checkout poll: false, scm: [$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[url: 'https://n002tbs0@ec.europa.eu/cefdigital/code/scm/ebsi/1-demo-front-ends.git', credentialsId: 'EBSI_Jara']]]
+
+    }
     stage('Build') {
      ºagent anyº
-      steps { ...  }
-    }
-    stage('Linux') {
-     ºagent { label 'linux' }º
-      steps { 
-        unstash 'app' ←·········· copy named stash
+      steps {
+        ...
+      Oºstashºincludes: '**/target/*.jar', name:º'app'º
+    }                                             ^
+   }                                              │
+   stage('Linux') {               ┌───────────────┘
+    ºagent { label 'linux' }º     │
+     steps {                      │
+      Oºunstashºº'app'º←·········· copy named stash
         sh '...'                  Jenkins master → Current WorkSp.
-      }                           ·
-      post { ...  }               ·
-    }                             ·
-    stage('Test on Windows') {    ·
-     ºagent { label 'windows' }º  ·
+      }                           · Note:Oºstashº = something put away for future use
+      post { ...  }               ·      (In practice: Named cache of generated artifacts
+    }                             ·       during same pipeline for reuse
+    stage('Test on Windows') {    ·       in further steps). Once the pipeline is
+     ºagent { label 'windows' }º  ·       finished, it is removed.
       steps {                     ·
-        unstash 'app' ←············
-        bat '...' 
+        unstashº'app'º←············
+        bat '...'
       }
       post { ...  }
     }
@@ -264,17 +495,16 @@ stage('Test') {
 
  ºparallelº ←····················· Execute linux in parallel
  ºlinux:º{                         with windows
-    node('linux') {              
-      checkout scm               
-      try {                      
-        unstash 'app'            
-        sh 'make check'          
-      }                          
-      finally {                  
-        junit '**/target/*.xml'  
-      }                          
-    }                            
-  },                             
+    node('linux') {
+      try {
+        unstash 'app' ←············· Copy
+        sh 'make check'
+      }
+      finally {
+        junit '**/target/*.xml'
+      }
+    }
+  },
  ºwindows:º{
     node('windows') {
       /* .. snip .. */
@@ -284,13 +514,13 @@ stage('Test') {
 
 </pre>
 
-<pre zoom labels="jenkins">
+<pre zoom labels="101,jenkins">
 <span xsmall>End-to-End Multibranch Pl.</span>
 @[https://jenkins.io/doc/tutorials/build-a-multibranch-pipeline-project/]
 
 PREREQUISITES
--ºGitº 
-- Docker 
+-ºGitº
+- Docker
 
 ┌──────────────┬────────────┬────────────┐
 │ INPUT        → JENKINS    → OUTPUT     │
@@ -311,21 +541,21 @@ STEP 1) Setup local git repository
    $ git branch development
    $ git branch production
 
-STEP 2) Add 'Jenkinsfile' stub (agent, stages sections) to repo 
-       (initially in master branch) 
+STEP 2) Add 'Jenkinsfile' stub (agent, stages sections) to repo
+       (initially in master branch)
 
 STEP 3) Create new Pipeline in Jenkins Blue Ocean Interaface
         browse to "http://localhost:8080/"
-          → click "Create a new Pipeline" 
+          → click "Create a new Pipeline"
             → Choose "Git" in "In Where do you store your code?"
               → Repository URL: "/home/.../building-a-multibranch-pipeline-project"
                 → Save
 
-    Blue Ocean will detect the presence of the "Jenkinsfile" stub 
+    Blue Ocean will detect the presence of the "Jenkinsfile" stub
     in each branch and will run each Pipeline against its respective branch,
 
 
-STEP 4) Start adding functionality to the Jenkinsfile pipeline 
+STEP 4) Start adding functionality to the Jenkinsfile pipeline
         (commit to git once edited)
     pipeline {
         environment {
@@ -334,14 +564,14 @@ STEP 4) Start adding functionality to the Jenkinsfile pipeline
         }
         agent {
             docker {
-                image 'node:6-alpine'            ←   Good Enough to build simple 
+                image 'node:6-alpine'            ←   Good Enough to build simple
                                                      Node.js+React apps
-                args '' ←   dev/pro port where the app will 
+                args '' ←   dev/pro port where the app will
                                                      listen for requests. Used during
                                                      functional testing
-                
-            }                                            
-        }                                            
+
+            }
+        }
         environment {
             CI = 'true'
         }
@@ -388,7 +618,7 @@ STEP 6) Add "deliver" and "deploy" stages to the Jenkinsfile Pipeline
       + }
 </pre>
 
-<pre zoom labels="jenkins">
+<pre zoom labels="101,jenkins">
 <span xsmall>Ex Pipeline script </span>
 @[https://jenkins.io/doc/pipeline/steps/pipeline-build-step/]
 build job: 'Pipeline01FromJenkinsfileAtGit', propagate: true, wait: false
@@ -397,13 +627,66 @@ build job: 'Pipeline03FromJenkinsfileAtGit', propagate: true, wait: false
                                                         ^^^^
                                 result of step is that of downstream build
                                 (success, unstable, failure, not built, or aborted).
-                                
+
                                 false →  step succeeds even if the downstream build failed
-                                         use result property of the return value as needed. 
+                                         use result property of the return value as needed.
+
+</pre>
+
+<pre zoom labels="jenkins">
+<span xsmall TODO>Jenkinless Pipeline</span>
+Jenkinsfile-runner:
+- Executing Jenkinsfile pipeline without the need of having a Jenkin server 
+  running (and wasting memory).
+@[https://jenkins.io/blog/2019/02/28/serverless-jenkins/]
+@[https://github.com/jenkinsci/jenkinsfile-runner]
+</pre>
+
+</div>
+<div groupv>
+<span title>Unordered</span>
+<pre zoom labels="jenkins,cloud,TODO">
+<span xsmall>AWS EC2 plugin</span>
+@[https://wiki.jenkins.io/display/JENKINS/Amazon+EC2+Fleet+Plugin]
+- launch Amazon EC2 Spot Instances as worker nodes
+  automatically scaling the capacity with the load.
+</pre>
+<pre zoom labels="jenkins,cloud,TODO">
+<span xsmall>Monitor GiHub/BitBucket Organization</span>
+Organization  Folders  enable  Jenkins  to  monitor  an  entire  GitHub  
+Organization,  or  BitbucketTeam/Project  and  automatically  create  new  
+Multibranch  Pipelines  for  repositories  which  contain branches and pull 
+requests containing a Jenkinsfile.Currently,  this  functionality  exists  only 
+for  GitHub  and  Bitbucket,  with  functionality  provided  by the 
+plugin:github-organization-folder[GitHub Organization Folder] and 
+plugin:cloudbees-bitbucket-branch-source[Bitbucket Branch Source] plugins
+</pre>
+<pre zoom labels="jenkins,cloud,TODO">
+<span xsmall>Serverless</span>
+@[https://medium.com/@jdrawlings/serverless-jenkins-with-jenkins-x-9134cbfe6870]
+TODO:
+</pre>
+
+<pre zoom label="jenkins,TODO">
+<span xsmall>Zuul</span>
+REF: IBM OpenStack Engineer Urges Augmenting Jenkins with Zuul for Hyperscale Projects
+[https://thenewstack.io/ibm-openstack-engineer-urges-cncf-consider-augmenting-jenkins-zuul/]
+
+@[https://zuul-ci.org/]
+- Use the same Ansible playbooks to
+  deploy your system and run your tests.
+
+
+REF:@[https://www.mediawiki.org/wiki/Continuous_integration/Zuul]
+"""...Zuul is a python daemon which acts as a gateway between
+Gerrit and Jenkins. It listens to Gerrit stream-events feed and
+trigger jobs function registered by Jenkins using the Jenkins Gearman
+plugin. The jobs triggering specification is written in YAML and
+hosted in the git repository integration/config.git as /zuul/layout.yaml """
 
 </pre>
 </div>
-</div>
+</div><!-- Jenkins -->
 
 
 <div group>
@@ -412,225 +695,763 @@ build job: 'Pipeline03FromJenkinsfileAtGit', propagate: true, wait: false
 <div groupv>
 <pre zoom labels="ansible">
 <span xsmall>External Links</span>
-<a href="https://docs.ansible.com/ansible/latest/user_guide/index.html">User Guide</a>
+- User Guide:
+@[https://docs.ansible.com/ansible/latest/user_guide/index.html]
+- Playbooks best practices:
+@[https://docs.ansible.com/ansible/latest/user_guide/playbooks_best_practices.html]
+
+Ronald Kurr has lot of very-useful and professional Ansible powered code to 
+provide JVM, Python, Desktops, ... machines. For example:
+ - Ansible Study Group Labs
+@[https://github.com/kurron/ansible-study-group-labs]
+ - An OpenVPN server in the cloud
+   https://github.com/kurron/aws-open-vpn/blob/master/ansible/playbook.yml
+ - Installation of tools than any self-respecting Operation person loves and needs.
+   https://github.com/kurron/ansible-role-operations/blob/master/tasks/main.yml
+ - Installation of tools than any self-respecting JVM developer loves and needs.
+   https://github.com/kurron/ansible-role-jvm-developer/blob/master/tasks/main.yml
+ - Installation of tools than any self-respecting AWS command-line user loves and needs.
+ @[https://github.com/kurron/ansible-role-aws/blob/master/tasks/main.yml]
+ - Connect to a Juniper VPN under Ubuntu.
+ @[https://github.com/kurron/ansible-role-jvpn/blob/master/tasks/main.yml]
+ - Installation of tools than any self-respecting Atlassian user loves and needs.
+ @[https://github.com/kurron/ansible-role-atlassian/blob/master/tasks/main.yml]
+ - Installation of tools than any self-respecting cross-platform .NET developer loves and needs.
+ @[https://github.com/kurron/ansible-role-dot-net-developer/blob/master/tasks/main.yml]
+ - Docker container that launches a pipeline of Docker containers that 
+   ultimately deploy Docker containes via Ansible into EC2 instances
+ @[https://github.com/kurron/docker-ec2-pipeline]
+ - Increase operating system limits for Database workloads.
+ @[https://github.com/kurron/ansible-role-os-limits/blob/master/tasks/main.yml]
+ - Creation of an Amazon VPC. Public and private subnets are created
+   in all availability zones.
+ @[https://github.com/kurron/ansible-role-vpc]
+
+- Command line tools
+@[https://docs.ansible.com/ansible/latest/user_guide/command_line_tools.html]
+
+- run a single task 'playbook' against a set of hosts
+@[https://docs.ansible.com/ansible/latest/cli/ansible.html]
+
+- ansible-config view, edit, and manage ansible configuration
+@[https://docs.ansible.com/ansible/latest/cli/ansible-config.html]
+
+- ansible-console  interactive console for executing ansible tasks
+@[https://docs.ansible.com/ansible/latest/cli/ansible-console.html]
+
+- ansible-doc plugin documentation tool
+@[https://docs.ansible.com/ansible/latest/cli/ansible-doc.html]
+
+- manage Ansible roles in shared repostories (default to [https://galaxy.ansible.com] )
+@[https://docs.ansible.com/ansible/latest/cli/ansible-galaxy.html]
+
+- display/dump configured inventory:
+@[https://docs.ansible.com/ansible/latest/cli/ansible-inventory.html]
+
+
+@[https://docs.ansible.com/ansible/latest/cli/ansible-pull.html]
+ansible-pull pulls playbooks from a VCS repo and executes them for the local host
+@[https://docs.ansible.com/ansible/latest/cli/ansible-vault.html]
+ansible-vault  encryption/decryption utility for Ansible data files
+
 </pre>
 
-
-<pre zoom labels="ansible">
+<pre zoom labels="ansible"  bgorange>
 <span xsmall>Summary</span>
-ANSIBLE MAIN OBJECTIVE:
-  Write ºdeclarativelyº (vs programatically) the ºdesiredº final state of install 
-  (correct packages, conf. files, permissions, running services,...) avoiding custom-scripts
-  "pitfalls"
+˂span xsmall˃layout best practices˂/span˃          ║ ºControllerº  1 ←→ N  ┌─→ ºModuleº
+(Recommended, non─mandatory)                       ║                       │
+best practice file layout approach:                ║ ºMachine   º          │  (community pre─packaged)
+────────────────────────────────────────────────   ║  ^                    │ ─ abstracts recurrent system task
+production            # inventory file             ║─ host with            │ ─ Provide the real power of Ansible
+staging               # inventory file             ║  installed Ansible    │   avoiding custom scripts
+                                                   ║  with modules         │ ─ $ ansible─doc "module_name"
+group_vars/           # ← assign vars.             ║  prepakaged ←─────────┘ ─ Ex:
+                      #   to particular groups.    ║  andºconfig.filesº        user:    name=deploy group=web
+  all.yml             # ← Ex:                      ║      └─┬────────┘         ^             ^            ^
+  │---                                             ║     1) $ANSIBLE_CONFIG  module   ensure creation of'deploy'
+  │ntp: ntp.ex1.com                                ║     2) ./ansible.cfg    name     account in 'web' group
+  │backup: bk.ex1.com                              ║     3) ~/.ansible.cfg   (executions are idempotent)
+                                                   ║     4) /etc/ansible/ansible.cfg
+  webservers.yml     # ← Ex:                       ║     Ex:
+  │---                                             ║     [defaults]
+  │apacheMaxClients: 900                           ║     inventory = hosts
+  │apacheMaxRequestsPerChild: 3000                 ║     remote_user = vagrant
+                                                   ║     private_key_file = ~/.ssh/private_key
+  dbservers.yml      # ← Ex:                       ║     host_key_checking = False
+  │---                                             ║─ "host" inventory file
+  │maxConnectionPool: 100                          ║         listing target servers,groups
+  │...                                             ║
+                                                   ║
+host_vars/                                         ║ Role   N  ←────→ 1   Playbook        1 ←─────→ N tasks
+   hostname1.yml      # ←assign variables          ║    ^                    ^                         ^
+   hostname2.yml      #  to particular systems     ║ Mechanism to          ─ main yaml defining        single proc.
+                                                   ║ share files/...         task to be executed       to execute
+library/              # (opt) custom modules       ║ for reuse *2          ─ Created by DevOps team
+module_utils/         # (opt) custom module_utils  ║@[https://docs.ansible.com/ansible/latest/user_guide/playbooks_reuse_roles.html]
+                      #       to support modules   ║
+filter_plugins/       # (opt) filter plugins       ║ºRUN SEQUENCEº
+                                                   ║ |playbook| 1←→N |Play| 1 → apply to → N |Hosts|
+webservers.yml        # ← Ex playbook:             ║                  ↑        
+│---                  #   Map                      ║                  1 
+│- hosts: webservers  # ← webservers─group         ║                  └─(contains)→ N |Task| 1→1 |Module|
+│                     #   to                       ║  ┌────────────────────────────────┘
+│  roles:             # ← roles                    ║  └→ each task is run in parallel across hosts in order
+│    - common         #                            ║     waiting until all hosts have completed the task before
+│    - webtier        #                            ║     moving to the next.(default exec.strategy, can be switched to "free") 
+                                                   ║     | - name: ....                                           
+dbservers.yml         # ← Ex playbook for db─tier  ║     |   hosts: groupTarget01                            
+site.yml              #ºmaster playbookº           ║     | Oºserial:º   # ←  Alt1: serial schedule-tunning.
+│---                    (whole infra)              ║     | Oº  - 1      # ←        first in 1 host                 
+│# file: site.yml                                  ║     | Oº  - "10%"  # ←        if OK, runs 10% simultaneously  
+│- import_playbook: webservers.yml                 ║     | Oº  - 30     # ←        finally 30 hosts in parallel
+│- import_playbook: dbservers.yml                  ║     |  tasks: ...
+                                                   ║     |#Bºstrategy: freeº ← Alt2:  Don't wait for other hosts
+                                                   ║
+˂span title˃Role layout˂/span˃                     ║º|Playbook Play|º
+roles/                                             ║  INPUT
+├ webtierRole/     # ← same layout that common     ║ |Playbook| → Oºansible─playbookº  → Gather      ────→ exec tasks
+│ ...                                              ║                ^                    host facts          │
+├ monitoringRole/  # ← same layout that common     ║                exec tasks on       (network,            v
+│ ...                                              ║                the target hostº*1º  storage,...)     async Handlers
+├─common/          # ← Common Role.                ║                                     └────┬────┘      use to:
+│ ├─tasks/         #                               ║                           Ussually gathered facts    service restart, 
+│ │ └─ main.yml    #                               ║                           are used for               ...              
+│ ├─handlers/      #                               ║                         OºConditionalºInclude. Ex:            
+│ │ └─ main.yml    #                               ║                           ...
+│ ├─templates/     #                               ║                           -Oºincludeº: Redhat.yml
+│ │ └─ ntp.conf.j2 # ← notice .j2 extension        ║                            Oºwhenº: ansible_os_family == 'Redhat'    
+│ ├─files/         #                               ║ Reminder: 
+│ │ ├─ bar.txt     # ← input to   copy─resource    ║@[https://docs.ansible.com/ansible/2.4/playbooks_reuse_includes.html]
+│ │ └─ foo.sh      # ← input to script─resource    ║ "include"        ← evaluated @ playbook parsing
+│ ├─vars/          #                               ║ "import"         ← evaluated @ playbook execution
+│ │ └─ main.yml    # ← role related vars           ║ "import_playbook"← plays⅋tasks in each playbook
+│ ├─defaults/      #                               ║ "include_tasks"                                                      
+│ │ └─ main.yml    # ← role related vars           ║ "import_tasks"
+│ │                  ← with lower priority         ║
+│ ├─meta/          #                               ║ºcommand moduleº
+│ │ └─ main.yml    # ← role dependencies           ║─ Ex:
+│ ├─library/       # (opt) custom modules          ║. $ ansible server01 -m command -a uptime
+│ ├─module_utils/  # (opt) custom module_utils     ║                     ^^^^^^^^^^
+│ └─lookup_plugins/# (opt) a given 'lookup_plugins'║                     default module. Can be ommited
+│                          is used                 ║  testserver │ success │ rc=0 ⅋⅋
+    ...                                            ║  17:14:07 up  1:16,  1 user, load average: 0.16, ...
+═══════════════════════════════════════════════════╩════════════════════════════════════════════════════════════════
+º*1:º@[https://docs.ansible.com/ansible/latest/cli/ansible-playbook.html]
 
-VOCABULARY
-  - ºControllerº 
-    ºMachineº  : machine where Ansible is installed, responsible for orchestating provisioning
-  - ºInventoryº: INI file with servers and group of server being targeted 
-  - ºPlaybookº : Main provisioning (YAML) file, defining tasks to be executed
-  - ºTaskº     : block of yaml config defined ºa single procedure to be executedº ( e.g.: install a package)
-  - ºModuleº   : typically ºabstracts a recurrent system taskº, (dealing with packages, handling files,...)
-  - ºRoleº     : ºpre-defined way for organizing playbooksº and other files in order to
-    ºº           facilitate ºsharing and reusingº portions of a provisioning
-  - ºPlayº     : a provisioning executed from start to finish 
-  - ºFactsº    : global variables with info about the system (network interfaces, volumes, ...)
-  - ºHandlersº : Handle async events triggered by ansible tasks (Used to restart OS services, ...)
+<hr/>
+<span xsmall>playbook-layout</span>
+
+                                           ºTASK vs ROLES PLAYBOOK LAYOUTº
+──────────────────────────────────────────────────────────┬───────────────────────────────────────────────────────────────────
+ PLAYBOOK YAML LAYOUT WITHºTASKSº                         │ PLAYBOOK YAML LAYOUT WITHºROLESº
+──────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────────
+---                                                       │ ºbased on a well known file structureº.
+- hosts: webservers         ← targeted (ssh) servers      │ ---
+  connection: ssh           ← :=ssh, localhost,. ..       │ - name : my list  of Task name
+                                                          │   hosts: database
+  vars:                     ← yaml-file-scoped var.list   │   vars_files:
+   - myYmlVar01 : "myVal01"                               │    - secrets.yml
+                                                          │
+  enviroment:               ← runtime-scoped env.var.list │   Bº# pre_tasks execute before roles º
+   - myEnvVar01 : "myEnv01"                               │   Bºpre_tasksº:
+                                                          │     - name: update the apt cache
+  tasks:                    ← ordered task list to        │       apt: update_cache=yes
+                              be executed                 │
+   - name: install apache2  ← task1                       │   roles:
+     apt: |                                               │    - role: BºdatabaseRoleº
+        name=apache2                                      │      # next vars override those in (vars|defaults)/main.yml
+        update_cache=yes                                  │      database_name: " {{ myProject_ddbb_name }}"
+        state=lates                                       │      database_user: " {{ myProject_ddbb_user }}"
+     notify:                                              │    - { role: consumer, when: tag | default('provider') == 'consumer'}
+       - ºrestart-apache2-idº                             │    - { role: provider, when: tag | default('provider') == 'provider'}
+   - name: next_task_to_exec                              │
+     "module": ...                                        │
+                                                          │   Bº# post_tasks execute after roles º
+  handlers:                ←  tasks triggered by events   │   Bºpost_tasksº:
+   - name: restart-apache2 ←  ºname as a Unique-IDº       │     - name: notify Slack
+     service: name=apache2 state=restarted                │       local_action: ˃
+                                                          │         slack
+- hosts: localhost                                        │         domain=acme.slack.com
+  connection: local                                       │         token={{ slack_token }}
+  gather_facts: False                                     │         msg="database {{ inventory_hostname }} configured"
+                                                          │
+  vars:                                                   │   ...
+  ...                                                     │ ===========================
+                                                          │ roles search path: ./roles → /etc/ansible/roles
+                                                          │ role file layout:
+                                                          │ roles/B*databaseRole*/tasks/main.yml
+                                                          │ roles/B*databaseRole*/files/
+                                                          │ roles/B*databaseRole*/templates/
+                                                          │ roles/B*databaseRole*/handlers/main.yml
+                                                          │ roles/B*databaseRole*/vars/main.yml     # should NO be overrriden
+                                                          │ roles/B*databaseRole*/defaults/main.yml # can be       overrriden
+                                                          │ roles/B*databaseRole*/meta/main.yml     # dependency info about role
+──────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────────
+- hosts: web_servers
+  tasks:
+     - shell: /usr/bin/foo
+     Oºregisterº:ºfoo_resultº    ←OºSTDOUT exec ouput to ansible varº
+       ignore_errors: True          Json schema output depends on module
+                                    STDOUT to .rc in case.
+     - shell: /usr/bin/bar          Use -v on each module to investigate 
+       when: ºfoo_resultº.rc == 5
 
 
-- Detailed help: $ ansible-doc "module_name"
+<span bgorange xsmall>Error Handling</span>
+-  default behavior: 
+   - take a host out of the play if a task fails
+     and continue with the other hosts.
 
-- Ansible can execute arbitrary shell commands on remote servers,
-    but real power comes from the collection of modules it ships with 
+-Oºserialº, Oºmax_fail_percentageº can be 
+   used to define a playbook-play as failed.
+ @[https://docs.ansible.com/ansible/2.5/user_guide/playbooks_delegation.html#maximum-failure-percentage]
 
-- Ansible modules are declarative: describe desired state
-    For example invoke the user module like this to ensure there was
-    an account named Bºdeployº in the Oºwebº group:
-    user: name=Bºdeployº group=Oºwebº
+- Using 'block' (task grouping) inside tasks:
 
-- Modules are also idempotent (warrants always same results)
+- hosts: app-servers
+Oºmax_fail_percentage:º"10%"  ← abort if surpassed.
+  tasks:
+  - name: Take VM out of the load balancer
+  - name: Create a VM snapshot before the app upgrade
 
-- The primary unit of reuse in the Ansible community is the module.
+  - block:  ← scope error/recovery/rollback
+    - name: Upgrade the application
+    - name: Run smoke tests
 
-- Ansible has excellent support for templating, as well as defining
-    variables at different scopes.
+ ºrescue:º
+    - name: Revert a VM to the snapshot after a failed upgrade
 
-- Ansible uses the YAML file format and the Jinja2 templating languages.
+ ºalways:º
+    - name: Re-add webserver to the loadbalancer
+    - name: Remove a VM snapshot
+
+
+<hr/>
+<span xsmall>inventory file</span>
+- Defaults to:
+  /etc/ansible/hosts
+- if marked as executable (+x) it's executed
+  and the json-output taken as effective-inventory.
+  - script must then support '--host=' and '--list=' flags
+
+Ex: hosts inventory file   ┌─→ Ex: test("ssh─ping") host in inventory
+─────────────────────────  │       using 'ping' module:
+Gºdevelopmentº   ←─────────┘   $ ansible -i ./hostsº-m pingº Gºdevelopmentº 
+Oºproductionº
+
+[all:vars]                                  <span xsmall>group patterns</span>
+ntp_server=ntp.ubuntu.com                   Other patterns:A
+                                            All hosts       Oºallº
+[Oºproductionº:vars]                        All             Oºº*
+db_primary_host=rhodeisland.example.com     Union           devOº:ºstaging
+db_replica_host=virginia.example.com        Intersection    stagingOº:⅋ºdatabase
+db_name=widget_production                   Exclusion       devOº:!ºqueue
+rabbitmq_host=pennsylvania.example.com      Wildcard        Oºº*.example.com
+                                            Range           webOº[5:10]º
+[Gºdevelopmentº:vars]                       Regex           O*~web\d+\.example\.(com|org)*
+db_primary_host=quebec.example.com
+db_name=widget_staging
+rabbitmq_host=quebec.example.com
+
+[Gºvagrantº:vars]
+db_primary_host=vagrant3
+db_name=widget_vagrant
+rabbitmq_host=vagrant3
+
+[Gºvagrantº]
+Gºvagrant1 ansible_host=127.0.0.1 ansible_port=2222º
+Gºvagrant2 ansible_host=127.0.0.1 ansible_port=2200º
+
+[web_group01]
+Oºgeorgia.example.comº
+Oºnewhampshire.example.comº
+Oºnewjersey.example.comº
+Gºvagrant1º
+
+[rabbitmq]
+Oºpennsylvania.example.comº
+Gºvagrant2º
+
+[django:children]      ← Group of groups
+web_group01
+rabbitmq
+
+[web_group02]          
+web_group01[01:20].example.com  ← ranges
+web-[a-t].example.com           ←
+
+<hr/>
+<span xsmall>variable "scopes"</span>
+Playbook Variable Main Scopes
+-ºGlobal:ºset by config, ENV.VARS and cli
+-ºPlay  :ºeach play and contained structures,
+          vars|vars_files|vars_prompt entries
+          role defaults
+-ºHost  :ºdirectly associated to a host,
+          like inventory, include_vars,
+          facts or registered task outputs
+
+Variable scope Overrinding rules:
+- The more explicit you get in scope, the more precedence
+  1    command line values (eg “-u user”) º(SMALLEST PRECEDENCE)º
+  2    role defaults
+  3 *1 inventory file || script group vars
+  4 *2 inventory group_vars/all
+  5 *2 playbook  group_vars/all
+  6 *2 inventory group_vars/*
+  7 *2 playbook  group_vars/*
+  8 *1 inventory file or script host vars
+  9 *2 inventory host_vars/*
+ 10 *2 playbook  host_vars/*
+ 11 *4 host facts || cached set_facts
+ 12    play vars
+ 13    play vars_prompt
+ 14    play vars_files
+ 15    role vars  (defined in role/vars/main.yml)
+ 16    block vars (only for tasks in block)
+ 17    task vars  (only for the task)
+ 18    include_vars
+ 19    set_facts || registered vars
+ 20    role (and include_role) params
+ 21    include params
+ 22    (-e) extra vars                     º(BIGEST PRECEDENCE)º
+    ↑
+   *1 Vars defined in inventory file or dynamic inventory
+   *2 Includes vars added by ‘vars plugins’ as well as
+      host_vars and group_vars which are added by the default
+      vars plugin shipped with Ansible.
+   *4 When created with set_facts’s cacheable option,
+      variables will have the high precedence in the play,
+      but will be the same as a host facts precedence when
+      they come from the cache.
+</PRE>
+</div>
+
+<div groupv>
+<pre zoom labels="ansible">
+<span xsmall>Must-know Modules</span>
+1) Package management
+- module for major package managers (DNF, APT, ...)
+  - install, upgrade, downgrade, remove, and list packages.
+  - dnf_module
+  - yum_module (required for Python 2 compatibility)
+  - apt_module
+  - slackpkg_module
+
+  - Ex:
+    |- name: install Apache,MariaDB
+    |  dnf:                # ← dnf,yum,
+    |    name:
+    |      - httpd
+    |      - mariadb-server
+    |    state: latest     # ← !=latest|present|...
+
+2) 'service' module
+  - start, stop, and reload installed packages;
+  - Ex:
+    |- name: Start service foo, based on running process /usr/bin/foo
+    |  service:
+    |    name: foo
+    |    pattern: /usr/bin/foo
+    |    state: started     # ← started|restarted|...
+    |    args: arg0value 
+
+3) 'copy' module
+  - copies file: local_machine → remote_machine
+  |- name: Copy a new "ntp.conf file into place, 
+  |  copy:
+  |    src: /mine/ntp.conf
+  |    dest: /etc/ntp.conf
+  |    owner: root
+  |    group: root
+  |    mode: '0644'  # or u=rw,g=r,o=r
+  |    backup: yes   # back-up original if different to new
+
+4) 'debug' module (print values to STDOUT/file during execution)
+  |- name: Display all variables/facts known for a host
+  |  debug:
+  |    var: hostvars[inventory_hostname]
+  |    verbosity: 4
+  |    dest: /tmp/foo.txt   # ← By default to STDOUT
+  |    verbosity: 2         # ← optional. Display only with
+                                $ ansible-playbook demo.yamlº-vvº
+
+5) 'file' module: manage file and its properties.
+    - set attributes of files, symlinks, or directories.
+    - removes files, symlinks, or directories.
+- Ex: 
+  |- name: Change file ownership/group/perm
+  |  file:
+  |    path: /etc/foo # ← create if needed
+  |    owner: foo
+  |    group: foo
+  |    mode: '0644'
+  |    state: file ← file*|directory|...
+
+6) 'lineinfile' module
+   - ensures that particular line is in file
+   - replaces existing line using regex.
+   - Ex:
+     |- name: Ensure SELinux is set to enforcing mode
+     |  lineinfile:
+     |    path: /etc/selinux/config
+     |    regexp: '^SELINUX='       # ← (optional) creates if not found.
+     |    line: SELINUX=enforcing   # new value, do nothing if found
+
+
+7) 'git' module
+   - manages git checkouts of repositories to deploy files or software.
+   - Ex: Create git archive from repo
+     |- git:
+     |    repo: https://github.com/ansible/ansible-examples.git
+     |    dest: /src/ansible-examples
+     |    archive: /tmp/ansible-examples.zip
+
+8) 'cli_config'
+  -  platform-agnostic way of pushing text-based configurations
+     to network devices
+     - Ex1:
+       | - name: commit with comment
+       |   cli_config:
+       |     config: set system host-name foo
+       |     commit_comment: this is a test
+     
+     - Ex2:
+       set switch-hostname and exits with a commit message.
+       |- name: configurable backup path
+       |  cli_config:
+       |    config: "{{ lookup('template', 'basic/config.j2') }}"
+       |    backup: yes
+       |    backup_options:
+       |      filename: backup.cfg
+       |      dir_path: /home/user
+
+
+9) 'archive' module
+   - create compressed archive of 1+ files.
+   - Ex:
+   |- name: Compress directory /path/to/foo/ into /path/to/foo.tgz
+   |  archive:
+   |    path:
+   |    - /path/to/foo
+   |    - /path/wong/foo
+   |    dest: /path/to/foo.tar.bz2
+   |    format: bz2
+
+10) Command
+   - takes the command name followed by a list of space-delimited arguments.
+Ex1:
+- name: return motd to registered var
+  command: cat /etc/motd .. ..  
+  become: yes            # ← "sudo"
+  become_user: db_owner  # ← effective user
+  register: mymotd       # ← STDOUT to Ansible var mymotd
+  args:                  # (optional) command-module args 
+                         # (vs executed command arguments)
+    chdir: somedir/      # ← change to dir 
+    creates: /etc/a/b    # ← Execute command if path doesn't exists
+
 </pre>
 
 <pre zoom labels="ansible">
-<a xsmall href="https://docs.ansible.com/ansible/latest/user_guide/command_line_tools.html">Command line tools</a>
-<a href="https://docs.ansible.com/ansible/latest/cli/ansible.html"          >ansible          </a> define and run a single task ‘playbook’ against a set of hosts
-<a href="https://docs.ansible.com/ansible/latest/cli/ansible-config.html"   >ansible-config   </a> view, edit, and manage ansible configuration 
-<a href="https://docs.ansible.com/ansible/latest/cli/ansible-console.html"  >ansible-console  </a> interactive console for executing ansible tasks
-<a href="https://docs.ansible.com/ansible/latest/cli/ansible-doc.html"      >ansible-doc      </a> plugin documentation tool
-<a href="https://docs.ansible.com/ansible/latest/cli/ansible-galaxy.html"   >ansible-galaxy   </a> command to manage Ansible roles in shared repostories, the default of which is Ansible Galaxy https://galaxy.ansible.com 
+@[https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html]
+<span xsmall>host fact → Play Vars</span>
+- UsingOºsetupº module at play/run-time. Ex:
 
-<a href="https://docs.ansible.com/ansible/latest/cli/ansible-inventory.html">ansible-inventory</a> used to display or dump the configured inventory as Ansible sees it
-<a href="https://docs.ansible.com/ansible/latest/cli/ansible-playbook.html" >ansible-playbook </a> runs Ansible playbooks, executing the defined tasks on the targeted hosts.
-<a href="https://docs.ansible.com/ansible/latest/cli/ansible-pull.html"     >ansible-pull     </a> pulls playbooks from a VCS repo and executes them for the local host
-<a href="https://docs.ansible.com/ansible/latest/cli/ansible-vault.html"    >ansible-vault    </a> encryption/decryption utility for Ansible data files
+  tasks:
+    - ...
+    - name: re-read facts after adding custom fact
+    Bºsetup:ºfilter=ansible_local     ← re-run Bºsetup moduleº
+
+$ ansible targetHost01 -m Oºsetupº
+(Output will be similar to)
+Next facts are available with:
+- hosts: ...
+Bºgather_facts: yesº ← Will execute the module "setup"
+
+{
+  Bº"ansible_os_family": "Debian",   º
+  Bº"ansible_pkg_mgr": "apt",        º
+  Bº"ansible_architecture": "x86_64",º
+  b*"ansible_nodename": "ubuntu2.example.com",
+    "ansible_all_ipv4_addresses": [ "REDACTED IP ADDRESS" ],
+    "ansible_all_ipv6_addresses": [ "REDACTED IPV6 ADDRESS" ],
+    "ansible_bios_date": "09/20/2012",
+    ...
+    "ansible_date_time": {
+        "date": "2013-10-02",
+        ...
+    },
+  Oº"ansible_default_ipv4": {º
+  Oº    ...                  º
+  Oº},                       º
+    ...
+    "ansible_devices": {
+        "sda": {
+            "partitions": {
+                ...
+                  Oº"size": "19.00 GB",º
+            },
+            ...
+        },
+        ...
+    },
+    ...
+    "ansible_env": {
+        "HOME": "/home/mdehaan",
+      Oº"PWD": "/root/ansible",º
+      Oº"SHELL": "/bin/bash",º
+        ...
+    },
+  Oº"ansible_fqdn": "ubuntu2.example.com",º
+  Oº"ansible_hostname": "ubuntu2",º
+    ...
+    "ansible_processor_cores": 1,
+    "ansible_ssh_host_key_dsa_public": ...
+    ...
+}
+
+<span xsmall>/etc/ansible/facts.d</span>
+(Local provided facts, 1.3+)
+Way to provide "locally supplied user values" as opposed to
+               "centrally supplied user values"  or
+               "locally dynamically determined values"
+
+If any files inside /etc/ansible/facts.d (@remotely managed host)
+ending in *.fact (JSON, INI, execs generating JSON, ...) can supply local facts
+
+Ex: /etc/ansible/facts.d/preferences.fact contains:
+[general]
+asdf=1    ← Will be available as {{ ansible_local.preferences.general.asdf }}
+bar=2       (keys are always converted to lowercase)
+
+
+To copy local facts and make the usable in current play:
+- hosts: webservers
+  tasks:
+    - name: create directory for ansible custom facts
+      file: state=directory recurse=yes path=/etc/ansible/facts.d
+
+    - name: install custom ipmi fact
+      copy: src=ipmi.fact dest=/etc/ansible/facts.d ← Copy local facts
+
+    - name: re-read facts after adding custom fact
+    Bºsetup:ºfilter=ansible_local   ← re-run Bºsetup moduleº to make
+                                    ← locals facts available in current play
+<hr/>
+<span xsmall>Lookups: Query ext.data: file sh KeyValDB ..</span>
+@[https://docs.ansible.com/ansible/latest/user_guide/playbooks_lookups.html]
+  ...
+  vars:
+    motd_value: "{{Oºlookupº(Bº'file'º, '/etc/motd') }}"
+                     ^^^^^^     ^^^^
+                     Use lookup One of:
+                     modules    - file
+                                - password
+                                - pipe     STDOUT of local exec. 
+                                - env      ENV.VAR.
+                                - template j2 tpl evaluation
+                                - csvfile  Entry in .csv file
+                                - dnstxt
+                                - redis_kv Redis key lookup
+                                - etcd     etcd key lookup
 </pre>
+
 <pre zoom labels="ansible">
-<a xsmall href="http://docs.ansible.com/ansible/latest/intro_configuration.html">ansible.cfg</a>
-Location order:
-$ANSIBLE_CONFIG → ./ansible.cfg → ~/.ansible.cfg → /etc/ansible/ansible.cfg
-Ex:
-[defaults]
-inventory = hosts
-remote_user = vagrant
-private_key_file = ~/.ssh/private_key
-host_key_checking = False
+<span xsmall>"Jinja2" template ex.</span>
+<span xsmall>nginx.conf.j2</span>
+
+server {
+        listen 80 default_server;
+        listen [::]:80 default_server ipv6only=on;
+
+        listen 443 ssl;
+
+        root /usr/share/nginx/html;
+        index index.html index.htm;
+
+        server_name         º{{º server_name º}}º;
+        ssl_certificate     º{{º cert_file   º}}º;
+        ssl_certificate_key º{{º key_file    º}}º;
+
+        location / {
+                try_files $uri $uri/ =404;
+        }
+}
+<span xsmall>templates/default.conf.tpl</span>
+templates/000_default.conf.tpl
+|˂VirtualHost *:80˃
+|    ServerAdmin webmaster@localhost
+|    DocumentRoot {{ doc_root }}
+|
+|    ˂Directory {{ doc_root }}˃
+|        AllowOverride All
+|        Require all granted
+|    ˂/Directory˃
+|˂/VirtualHost˃
+
+Task:
+|  - name: Setup default virt.host
+|    template: src=templates/default.conf.tpl dest=/etc/apache2/sites-available/000-default.conf
+
+<span xsmall>(j2) filters</span>
+Oº|º must be interpreted as the "pipe" (input) to filter, not the "or" symbol.
+# default if undefined:
+- ...
+  "HOST": "{{ database_host Oº| default('localhost')º }}"
+
+# fail after some debuging
+- ...
+  register: result
+Oºignore_errors: Trueº
+  ...
+  failed_when: resultOº| failedº
+...
+Oºfailed º True if registered value is a failed    task
+Oºchangedº True if registered value is a changed   task
+Oºsuccessº True if registered value is a succeeded task
+Oºskippedº True if registered value is a skipped   task
+
+<span xsmall>path filters</span>
+Oºbasename  º
+Oºdirname   º
+Oºexpanduserº  '~' replaced by home dir.
+Oºrealpath  º  resolves sym.links
+Ej:
+  vars:
+    homepage: /usr/share/nginx/html/index.html
+  tasks:
+  - name: copy home page
+    copy: ˂
+      src={{ homepage Oº| basenameº }}
+      dest={{ homepage }}
+
+<span xsmall>Custom filters</span>
+filter_plugins/surround_by_quotes.py
+# From http://stackoverflow.com/a/15515929/742
+def surround_by_quote(a_list):
+    return ['"%s"' % an_element for an_element in a_list]
+
+class FilterModule(object):
+    def filters(self):
+        return {'surround_by_quote': surround_by_quote}
 </pre>
 
-<pre zoom labels="ansible">
-<span xsmall>command module</span>
-$ ansible testserver -m command -a uptime
-$ ansible testserver -a uptime # (command is the default module)
+<pre zoom labels="ansible,comparative">
+<span xsmall>notify vs register</span>
+@[https://stackoverflow.com/questions/33931610/ansible-handler-notify-vs-register]
 
-testserver | success | rc=0 &gt;&gt;
-17:14:07 up  1:16,  1 user, load average: 0.16, ...
+  
+  some tasks ...                         |     some tasks ...
+ ºnotify:ºnginx_restart                  |    ºregister:ºnginx_restart
+                                         |     
+  # our handler                          |     # do this after nginx_restart changes
+  - name: nginx_restart                  |    ºwhen:ºnginx_restart|changed
+          ^^^^^^^^^^^^^
+        - only fired when 
+          tasks report changes
+        - only visible in playbook  ← With register task is displayed as skipped
+          if actually executed.       if 'when' condition is false.
+        - can be called from any
+          role.
+        - (by default) executed at
+          the end of the playbook.
+        RºThis can be dangerousºif playbook
+          fails midway, handler is NOT 
+          notified. Second run can ignore
+          the handle since task could have
+          not changed now. Actually it will
+        RºNOT be idempotentº (unless 
+          --force-handler is set ) 
+        - To fire at specific point flush
+          all handlers by defining a task like:
+          - meta: flush_handlers
+        - called only once no matter how many
+          times it was notified.
 </pre>
 </div>
+
+
 <div groupv>
-<pre zoom labels="ansible" bgorange>
-<span xsmall>Ansible File layout Best practices</span>
-(Recommended, non-mandatory) best practice file layout approach:
-----------------------------------------------------------------
-production                # inventory file for production servers
-staging                   # inventory file for staging environment
+<pre zoom labels="ansible">
+<span title>Handling secrets</span>
+@[https://docs.ansible.com/ansible/latest/user_guide/playbooks_vault.html]
+- Ansible vaults use symetric-chiper encryption 
 
-group_vars/               # here we assign variables to particular groups. Ex:
-   all.yml                # 
-   webservers.yml         # all.yml            webservers.yml                     ddbbs.yml
-   dbservers.yml          # |---               |---                             | ---            
-                          # |ntp: ntp.ex1.com  |apacheMaxClients: 900           | maxConnectionPool: 100
-                          # |backup: bk.ex1.com|apacheMaxRequestsPerChild: 3000 | ...
+  INPUT               ENCRYPTING                OUTPUT                  Ussage 
+                      COMMAND                   (can be added to SCM)   (Play.Execution)
+  ──────────────      ─────────────             ────────────────────    ──────────────────
+  external pass─┐  ┌→ $ ansible─vault \ (alt1)→ protectedPB.yml   ──┬→ $ ansible-playbook protectedPB.yml \  *1
+                │  │    create protectedPB.yml                      │   º--ask-vault-passº                ← alt.A
+  secret needed─┤(alt1)                                             │   º--vault-password-fileºpassFileº  ← alt.B_1
+  at playbook   └──┤                                                │                          ^^^^^^^^
+  execution        │                                                │                   content/exec.STDOUT
+                   │                                                │          should be a single-line-string
+                   │                                                │   export ANSIBLE_VAULT_PASSWORD_FILE=... ← alt.B_2
+                 (alt.2)                                            │
+                   │                                                │
+                   │                                                │
+                   └→ $ ansible-vault \ (alt2)→ yml to be embeded ──┘
+                        encrypt_string          into existing playbook
+                                                Ex:
+                                                → mySecretToEncrypt              
+                                                → bla bla blah(Ctrl+D)→ !vault ← C⅋P to a yml file:
+                                                →    $ANSIBLE_VAULT;1.1;AES256   - vars:
+                                                →    66386439653236336462...       - secret01: !vault |
+                                                →    64316265363035303763...                $ANSIBLE_VAULT;1.1;AES256
+                                                →           ...                             66386439653236336462...
 
-host_vars/
-   hostname1.yml          # here we assign variables to particular systems
-   hostname2.yml
-
-library/                  # (optional) if any custom modules, put them here 
-module_utils/             # (optional) if any custom module_utils to support modules, put them here
-filter_plugins/           # (optional) if any custom filter plugins, put them here
-
-webservers.yml            # playbook for webserver tier. Maps webservers group config to webserver roles:
-                          # ---
-                          # | # file: webservers.yml
-                          # | - hosts: webservers
-                          # |   roles:
-                          # |     - common
-                          # |     - webtier
-
-dbservers.yml             # playbook for dbserver tier
-site.yml                  # master playbook defines entire infraestructure. Ex:
-                          # ---
-                          # | # file: site.yml
-                          # | - import_playbook: webservers.yml
-                          # | - import_playbook: dbservers.yml
-roles/
-    common/               # this hierarchy represents a "role"
-        tasks/            #
-            main.yml      #  ← tasks file can include smaller files if warranted
-        handlers/         #
-            main.yml      #  ← handlers file
-        templates/        #  ← files for use with the template resource
-            ntp.conf.j2   #  ←----- templates end in .j2
-        files/            #
-            bar.txt       #  ← files for use with the copy resource
-            foo.sh        #  ← script files for use with the script resource
-        vars/             #
-            main.yml      #  ← variables associated with this role
-        defaults/         #
-            main.yml      #  ← default lower priority variables for this role
-        meta/             #
-            main.yml      #  ← role dependencies
-        library/          # roles can also include custom modules
-        module_utils/     # roles can also include custom module_utils
-        lookup_plugins/   # or other types of plugins, like lookup in this case
-
-    webtierRole/          # same kind of structure as "common" was above, done for the webtier role
-    monitoringRole/       # ""
-    ...
-</pre>
+*1: RºWARN:º Currently requires all files to be encrypted with same password                            
+</PRE>
 
 <pre zoom labels="ansible">
-<span xsmall>(Conditional) include</span>
-Ussually we use facts for conditionals:
-<a href="https://docs.ansible.com/ansible/2.4/playbooks_reuse_includes.html">Reminder:</a>
-   "include"               is evaluated during playbook parsing
-   "import"         (2.4+) is evaluated during playbook execution
-   "import_playbook"(2.4+) plays&and;tasks in each playbook 
-   "include_tasks"  (2.4+?) 
-   "import_tasks"   (2.4+?) 
+<span xsmall>Ex (yum install)</span>
+<span xsmall>apache@localhost</span>
+---
+# file: ansible.yml
+- hosts: localhost
+  connection: local
+  gather_facts: False
 
-- Oºincludeº: Redhat.yml
-  Oºwhenº: ansible_os_family == 'Redhat'
+  vars:
+    var_yum_prerequisites: [ 'httpd24'      , 'vim', 'tmux' ]
+    var_apt_prerequisites: [ 'apache-server', 'vim', 'tmux' ]
 
-- Oºincludeº: Debian.yml
-  Oºwhenº: ansible_os_family == 'Debian'
+  vars_files:
+    - /vars/vars_not_in_git.yml   ←  add to .gitignore
+                                     avoid sharing sensitive data
+                                     /vars/vars_not_in_git.yml will look like:
+                                     password: !vault |
+                                               $ANSIBLE_VAULT;1.1;AES256
+                                               ...
+
+
+
+
+  tasks:
+   - name: install yum pre-requisites
+     when: ansible_os_family == "RedHat"
+     become: true
+     yum:
+       name: {{ var_yum_prerequisites }}
+       state: present
+     notify:
+     - restart-apache2
+
+   - name: install apt pre-requisites
+     when: ansible_os_family == "Debian"
+     become: true
+     apt:
+       name: {{ var_apt_prerequisites }}
+       state: latest
+     notify:
+     - restart-apache2
+
+
+  handlers:
+  - name: restart-apache2
+    service: name=httpd state=restarted
 </pre>
-
-<pre zoom bgorange labels="ansible">
-<span xsmall>Ansible yaml layout</span>
-<span xsmall>(Tasks "vs" Roles)</span>
-|playbook| 1←→N |Play| 1←→N |Hosts|
-                 ↑
-                1└──────→N |Task|→|Module|
-
-ºIMPORTANT:º
-- Ansible runs each task in parallel across all hosts in the order provided by the yaml file.
-- Ansible waits until all hosts have completed a task before moving to the next task.
-  (See schedule "serial"/"free" execution to change default execution strategy)
--------------------------------------------------------------+-------------------------------------------------------------------
- PLAYBOOK YAMLºLAYOUT WITH TASKSº                            | PLAYBOOK YAMLºLAYOUT WITH ROLESº
-                                                             | @[https://docs.ansible.com/ansible/latest/user_guide/playbooks_reuse_roles.html]
-                                                             | role: primary mechanism for breaking playbooks into reusable parts
--------------------------------------------------------------+-------------------------------------------------------------------
----                                                          | ºbased on a well known file structureº.
-- hosts: webservers         ← targeted (ssh) servers         | ---
-  connection: ssh           ← :=ssh, localhost,. ..          | - name : my list  of Task name
-                                                             |   hosts: database
-  vars:                     ← yaml-file-scoped var.list      |   vars_files:
-   - myYmlVar01 : "myVal01"                                  |    - secrets.yml
-                                                             | 
-  enviroment:               ← runtime-scoped env.var.list    |   Bº# pre_tasks execute before roles º
-   - myEnvVar01 : "myEnv01"                                  |   Bºpre_tasksº:
-                                                             |     - name: update the apt cache
-  tasks:                    ← ordered task list to           |       apt: update_cache=yes
-                              be executed                    | 
-   - name: install apache2  ← task1                          |   roles:
-     apt: |                                                  |    - role: BºdatabaseRoleº
-        name=apache2                                         |      # next vars override those in (vars|defaults)/main.yml
-        update_cache=yes                                     |      database_name: " {{ myProject_ddbb_name }}"
-        state=lates                                          |      database_user: " {{ myProject_ddbb_user }}"
-     notify:                                                 |    - { role: consumer, when: tag | default('provider') == 'consumer'}
-       - ºrestart-apache2-idº                                |    - { role: provider, when: tag | default('provider') == 'provider'}
-   - name: next_task_to_exec                                 | 
-     "module": ...                                           | 
-                                                             |   Bº# post_tasks execute after roles º
-  handlers:                ←  tasks triggered by events      |   Bºpost_tasksº:
-   - name: restart-apache2 ←  ºname as a Unique-IDº          |     - name: notify Slack
-     service: name=apache2 state=restarted                   |       local_action: ˃
-                                                             |         slack
-- hosts: localhost                                           |         domain=acme.slack.com
-  connection: local                                          |         token={{ slack_token }}
-  gather_facts: False                                        |         msg="database {{ inventory_hostname }} configured"
-                                                             | 
-  vars:                                                      |   ...
-  ...                                                        | ===========================
-                                                             | roles search path: ./roles → /etc/ansible/roles
-                                                             | role file layout: 
-                                                             | roles/B*databaseRole*/tasks/main.yml 
-                                                             | roles/B*databaseRole*/files/
-                                                             | roles/B*databaseRole*/templates/
-                                                             | roles/B*databaseRole*/handlers/main.yml
-                                                             | roles/B*databaseRole*/vars/main.yml     # should NO be overrriden
-                                                             | roles/B*databaseRole*/defaults/main.yml # can be       overrriden
-                                                             | roles/B*databaseRole*/meta/main.yml     # dependency info about role
--------------------------------------------------------------+-------------------------------------------------------------------
-</pre>
-
 <pre zoom labels="ansible">
 <span xsmall>Ex: Installing nginx</span>
 web-tls.yml
@@ -668,7 +1489,7 @@ web-tls.yml
       # set attributes of file, symlink or directory
       ºfileº: ºdestº=/etc/nginx/sites-enabled/default ºsrcº={{ Bºconf_fileº }} state=link
     - name: copy index.html
-      # template → new file → remote host      
+      # template → new file → remote host
       ºtemplateº: ºsrcº=templates/index.html.j2 ºdestº=/usr/share/nginx/html/index.html
         mode=0644
 
@@ -693,681 +1514,19 @@ web-tls.yml
       ºserviceº: ºnameº=nginx ºstateº=restarted
 </pre>
 
-
-<pre zoom labels="ansible">
-<span xsmall>"hosts" inventory file</span>
-Defaults to /etc/ansible/hosts
-if "hosts" is marked as executable (+x) it's executed and the output json taken as inventory.
-This executable script must support the --host=... and --list command line flags
-
-Ex: .../playbooks/hosts
----------------------------
-Gº# developmentº
-Qº# staginº
-Oº# productionº
-
-[all:vars]
-ntp_server=ntp.ubuntu.com
-
-[Oºproductionº:vars]
-db_primary_host=rhodeisland.example.com
-db_primary_port=5432
-db_replica_host=virginia.example.com
-db_name=widget_production
-db_user=widgetuser
-db_password=pFmMxcyD;Fc6)6
-rabbitmq_host=pennsylvania.example.com
-rabbitmq_port=5672
-
-
-[Qºstagingº:vars]
-db_primary_host=quebec.example.com
-db_primary_port=5432
-db_name=widget_staging
-db_user=widgetuser
-db_password=L@4Ryz8cRUXedj
-rabbitmq_host=quebec.example.com
-rabbitmq_port=5672
-
-[Gºvagrantº:vars]
-db_primary_host=vagrant3
-db_primary_port=5432
-db_name=widget_vagrant
-db_user=widgetuser
-db_password=password
-rabbitmq_host=vagrant3
-rabbitmq_port=5672
-
-[Qºstaginº]
-Qºontario.example.comº
-Qºquebec.example.comº
-
-[Gºvagrantº]
-Gºvagrant1 ansible_host=127.0.0.1 ansible_port=2222º
-Gºvagrant2 ansible_host=127.0.0.1 ansible_port=2200º
-Gºvagrant3 ansible_host=127.0.0.1 ansible_port=2201º
-
-[lb]
-Oºdelaware.example.comº
-
-[web]
-Oºgeorgia.example.comº
-Oºnewhampshire.example.comº
-Oºnewjersey.example.comº
-Qºontario.example.comº
-Gºvagrant1º
-
-[task]
-Oºnewyork.example.comº
-Oºnorthcarolina.example.comº
-Oºmaryland.example.comº
-Qºontario.example.comº
-Gºvagrant2º
-
-[rabbitmq]
-Oºpennsylvania.example.comº
-Qºquebec.example.comº
-Gºvagrant3º
-
-[db]
-Oºrhodeisland.example.comº
-Oºvirginia.example.comº
-Qºquebec.example.comº
-Gºvagrant3º
-
-# group of gruops:
-[django:children]
-web
-task
-
-# ranges
-[webgroup2]
-web[01:20].example.com
-web-[a-t].example.com
-
-<span xsmall>test/"ssh-ping" host</span>
-  $ ansible testserver -i hosts -m ping # Test ssh connection works
-</pre>
-
-
-<pre zoom  labels="ansible">
-<span bgorange xsmall>Error Handling</span>
-  - error scenarios has always been a challenge. 
-        Historically, Ansible has been error agnostic in the sense 
-        that errors and failures may occur on a host.
-  
-  - default behavior is to take a host out of the play
-       if a task fails and continue as long as there are hosts
-       remaining that haven’t encountered errors.
-  
-  - Oºserialº and Oºmax_fail_percentageº gives some control
-    over when a play has to be declared as failed.
-    REF: @[https://docs.ansible.com/ansible/2.5/user_guide/playbooks_delegation.html#maximum-failure-percentage]
-
-  - With the blocks clause as shown in Example 8-27, Ansible advances error 
-    handling a bit further and lets us automate recovery and rollback 
-    of tasks in case of a failure.
-
-<span xsmall>"try-catch-finally"</span>
-- hosts: app-servers
-Oºmax_fail_percentage:º"10%"  ← Max. number of failed servers for tasks before aborting
-  tasks:
-  - name: Take VM out of the load balancer
-  - name: Create a VM snapshot before the app upgrade
-
-  - block:
-    - name: Upgrade the application
-    - name: Run smoke tests
-
- ºrescue:º
-    - name: Revert a VM to the snapshot after a failed upgrade
-
- ºalways:º
-    - name: Re-add webserver to the loadbalancer
-    - name: Remove a VM snapshot
-</pre>
-</div> 
-
-<div groupv>
-<pre zoom labels="ansible">
-<span xsmall>Playbook Vars</span>
-@[https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html]
-<span xsmall>Gathering (host) facts</span>
-($ Oºsetupº module)
-  example/ref. output
-
-(Use also to force facts reloading)
-  tasks:
-    - ...
-    - name: re-read facts after adding custom fact
-    Bºsetup:ºfilter=ansible_local     ← re-run Bºsetup moduleº to make
-
-$ ansible "hostname" -m Oºsetupº
-(Ansible 1.4, Ubuntu 12.04)
-Next facts are available with:
-- hosts: ...
-Bºgather_facts: yesº ← Will execute the module "setup"
-
-{
-  Bº"ansible_os_family": "Debian",   º
-  Bº"ansible_pkg_mgr": "apt",        º
-  Bº"ansible_architecture": "x86_64",º
-  b*"ansible_nodename": "ubuntu2.example.com",
-    "ansible_all_ipv4_addresses": [ "REDACTED IP ADDRESS" ],
-    "ansible_all_ipv6_addresses": [ "REDACTED IPV6 ADDRESS" ],
-    "ansible_bios_date": "09/20/2012",
-    "ansible_bios_version": "6.00",
-    "ansible_cmdline": {
-        "BOOT_IMAGE": "/boot/vmlinuz-3.5.0-23-generic",
-        "quiet": true,
-        "ro": true,
-        "root": "UUID=4195bff4-e157-4e41-8701-e93f0aec9e22",
-        "splash": true
-    },
-    "ansible_date_time": {
-        "date": "2013-10-02",
-        "day": "02",
-        "epoch": "1380756810",
-        "hour": "19",
-        "iso8601": "2013-10-02T23:33:30Z",
-        "iso8601_micro": "2013-10-02T23:33:30.036070Z",
-        "minute": "33",
-        "month": "10",
-        "second": "30",
-        "time": "19:33:30",
-        "tz": "EDT",
-        "year": "2013"
-    },
-  Oº"ansible_default_ipv4": {      º
-  Oº    "address": "REDACTED",     º
-  Oº    "alias": "eth0",           º
-  Oº    "gateway": "REDACTED",     º
-  Oº    "interface": "eth0",       º
-  Oº    "macaddress": "REDACTED",  º
-  Oº    "mtu": 1500,               º
-  Oº    "netmask": "255.255.255.0",º
-  Oº    "network": "REDACTED",     º
-  Oº    "type": "ether"            º
-  Oº},                             º
-    "ansible_default_ipv6": {},
-    "ansible_devices": {
-        "sda": {
-            "holders": [],
-            "host": "SCSI storage controller: ...Dual Ultra320 SCSI,
-            "model": "VMware Virtual S",
-            "partitions": {
-                "sda1": {
-                    "sectors": "39843840",
-                    "sectorsize": 512,
-                  Oº"size": "19.00 GB",º
-                    "start": "2048"
-                }
-            },
-            ...
-            "sectorsize": "512",
-          Oº"size": "20.00 GB",º
-            "support_discard": "0",
-            "vendor": "VMware,"
-        },
-        ...
-    },
-    "ansible_distribution": "Ubuntu",
-    "ansible_distribution_release": "precise",
-    "ansible_distribution_version": "12.04",
-    "ansible_domain": "",
-    "ansible_env": {
-        "COLORTERM": "gnome-terminal",
-        "DISPLAY": ":0",
-        "HOME": "/home/mdehaan",
-        "LANG": "C",
-        "LESSCLOSE": "/usr/bin/lesspipe %s %s",
-        "LESSOPEN": "| /usr/bin/lesspipe %s",
-        "LOGNAME": "root",
-        "LS_COLORS": "rs=0:di=01;...*.xspf=00;36:",
-        "MAIL": "/var/mail/root",
-        "OLDPWD": "/root/ansible/docsite",
-        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
-      Oº"PWD": "/root/ansible",º
-        "SHELL": "/bin/bash",
-        "SHLVL": "1",
-        "SUDO_COMMAND": "/bin/bash",
-        "SUDO_GID": "1000",
-        "SUDO_UID": "1000",
-        "SUDO_USER": "mdehaan",
-        "TERM": "xterm",
-        "USER": "root",
-        "USERNAME": "root",
-        "XAUTHORITY": "/home/mdehaan/.Xauthority",
-        "_": "/usr/local/bin/ansible"
-    },
-    "ansible_eth0": {
-        "active": true,
-        "device": "eth0",
-        "ipv4": {
-            "address": "REDACTED",
-            "netmask": "255.255.255.0",
-            "network": "REDACTED"
-        },
-        "ipv6": [ ...  ],
-        "macaddress": "REDACTED",
-        "module": "e1000",
-        "mtu": 1500,
-        "type": "ether"
-    },
-    "ansible_form_factor": "Other",
-  Oº"ansible_fqdn": "ubuntu2.example.com",º
-  Oº"ansible_hostname": "ubuntu2",º
-    "ansible_interfaces": [
-        "lo",
-        "eth0"
-    ],
-    "ansible_kernel": "3.5.0-23-generic",
-    "ansible_lo": { ...  },
-    "ansible_lsb": {
-      Oº"codename": "precise",              º
-      Oº"description": "Ubuntu 12.04.2 LTS",º
-        "id": "Ubuntu",
-        "major_release": "12",
-        "release": "12.04"
-    },
-  Oº"ansible_machine": "x86_64",º
-    "ansible_memfree_mb": 74,
-    "ansible_memtotal_mb": 991,
-    "ansible_mounts": [
-        {
-            "device": "/dev/sda1",
-            "fstype": "ext4",
-            "mount": "/",
-            "options": "rw,errors=remount-ro",
-            "size_available": 15032406016,
-            "size_total": 20079898624
-        }
-    ],
-    "ansible_processor": [ "Intel(R) Core(TM) i7 CPU ..."
-    ],
-    "ansible_processor_cores": 1,
-    "ansible_processor_count": 1,
-    "ansible_processor_threads_per_core": 1,
-    "ansible_processor_vcpus": 1,
-    "ansible_product_name": "VMware Virtual Platform",
-    "ansible_product_serial": "REDACTED",
-    "ansible_product_uuid": "REDACTED",
-    "ansible_product_version": "None",
-    "ansible_python_version": "2.7.3",
-    "ansible_selinux": false,
-    "ansible_ssh_host_key_dsa_public": "REDACTED KEY VALUE",
-    "ansible_ssh_host_key_ecdsa_public": "REDACTED KEY VALUE",
-    "ansible_ssh_host_key_rsa_public": "REDACTED KEY VALUE",
-    "ansible_swapfree_mb": 665,
-    "ansible_swaptotal_mb": 1021,
-    "ansible_system": "Linux",
-    "ansible_system_vendor": "VMware, Inc.",
-    "ansible_user_id": "root",
-    "ansible_userspace_architecture": "x86_64",
-    "ansible_userspace_bits": "64",
-    "ansible_virtualization_role": "guest",
-    "ansible_virtualization_type": "VMware"
-}
-</pre>
-
-<pre zoom labels="ansible">
-<span xsmall>/etc/ansible/facts.d</span>
-(Local provided facts, 1.3+)
-Way to provide "locally supplied user values" as opposed to 
-               "centrally supplied user values"  or 
-               "locally dynamically determined values"
-
-If 
-any files inside /etc/ansible/facts.d (@remotely managed host)
-ending in *.fact (JSON, INI, execs generating JSON, ...) can supply local facts 
-
-Ex: /etc/ansible/facts.d/preferences.fact contains:
-[general] 
-asdf=1    ← Will be available as {{ ansible_local.preferences.general.asdf }}
-bar=2       (keys are always converted to lowercase)
-
-
-To copy local facts and make the usable in current play:
-- hosts: webservers
-  tasks:
-    - name: create directory for ansible custom facts
-      file: state=directory recurse=yes path=/etc/ansible/facts.d
-
-    - name: install custom ipmi fact
-      copy: src=ipmi.fact dest=/etc/ansible/facts.d ← Copy local facts
-
-    - name: re-read facts after adding custom fact
-    Bºsetup:ºfilter=ansible_local   ← re-run Bºsetup moduleº to make
-                                    ← locals facts available in current play
-</pre>
-
-<pre zoom labels="ansible">
-<span xsmall>assign command ouput to var</span>
-Results will vary from module to module.
-Use -v to show possible values for the results.
-
-- hosts: web_servers
-  tasks:
-     - shell: /usr/bin/foo
-     Bºregister: foo_resultº
-       ignore_errors: True
-
-     - shell: /usr/bin/bar
-       when: foo_result.rc == 5  ← Using foo_result
-</pre>
-
-<pre zoom labels="ansible">
-<span xsmall>Playbook variable "scopes"</span>
-Variable Main Scopes
-
-- Global: set by config, ENV.VARS and cli
-- Play  : each play and contained structures,
-          vars|vars_files|vars_prompt entries 
-          role defaults 
-- Host  : directly associated to a host,
-          like inventory, include_vars,
-          facts or registered task outputs
-
-
-Variable scope Overrinding rules:
-
-- The more explicit you get in scope, the more precedence
-  1    command line values (eg “-u user”) º(SMALLEST PRECEDENCE)º
-  2    role defaults
-  3 *1 inventory file || script group vars 
-  4 *2 inventory group_vars/all
-  5 *2 playbook  group_vars/all
-  6 *2 inventory group_vars/* 
-  7 *2 playbook  group_vars/* 
-  8 *1 inventory file or script host vars 
-  9 *2 inventory host_vars/*
- 10 *2 playbook  host_vars/* 
- 11 *4 host facts || cached set_facts 
- 12    play vars
- 13    play vars_prompt
- 14    play vars_files
- 15    role vars  (defined in role/vars/main.yml)
- 16    block vars (only for tasks in block)
- 17    task vars  (only for the task)
- 18    include_vars
- 19    set_facts || registered vars
- 20    role (and include_role) params
- 21    include params
- 22    (-e) extra vars                     º(BIGEST PRECEDENCE)º
-    ↑  
-   *1 Vars defined in inventory file or dynamic inventory
-   *2 Includes vars added by ‘vars plugins’ as well as 
-      host_vars and group_vars which are added by the default 
-      vars plugin shipped with Ansible.
-   *4 When created with set_facts’s cacheable option, 
-      variables will have the high precedence in the play,
-      but will be the same as a host facts precedence when
-      they come from the cache.
-</pre>
-<span xsmall>Jinja2</span>
-<pre zoom labels="ansible">
-<span xsmall>"Jinja2" template ex.</span>
-<span xsmall>nginx.conf.j2</span>
-
-server {
-        listen 80 default_server;
-        listen [::]:80 default_server ipv6only=on;
-
-        listen 443 ssl;
-
-        root /usr/share/nginx/html;
-        index index.html index.htm;
-
-        server_name         º{{º server_name º}}º;
-        ssl_certificate     º{{º cert_file   º}}º;
-        ssl_certificate_key º{{º key_file    º}}º;
-
-        location / {
-                try_files $uri $uri/ =404;
-        }
-}
-</pre>
-
-<pre zoom labels="ansible">
-<span xsmall>templates/default.conf.tpl</span>
-templates/000_default.conf.tpl
-|˂VirtualHost *:80˃
-|    ServerAdmin webmaster@localhost
-|    DocumentRoot {{ doc_root }}
-|
-|    ˂Directory {{ doc_root }}˃
-|        AllowOverride All
-|        Require all granted
-|    ˂/Directory˃
-|˂/VirtualHost˃
-
-Task:
-|  - name: Setup default virt.host 
-|    template: src=templates/default.conf.tpl dest=/etc/apache2/sites-available/000-default.conf
-</pre>
-</div>
-<div groupv>
-<pre zoom labels="ansible">
-<span xsmall>changed_when / failed_when</span>
-<span xsmall>ºNONºidempotent tasks</span>
-- Used to handleºnonºidempotent tasks.
-    Example 'django_manage' always returns changed: False for
-    some "external" ddbb commands. Oºchanged_whenº is used to
-    give hints to ansible:
-- name: initialize the database
-  django_manage:
-    command: createdb --noinput --nodata
-    app_path: "{{ proj_path }}"
-    virtualenv: "{{ venv_path }}"
-  failed_when: False #  avoid stoping execution
-  register:Gºresultº
-Oºchanged_when:º Gºresult.outº is defined and '"Creating tables" in Gºresult.outº'
-
-- debug: var=result
-
-- fail:
-</pre>
-
-<pre zoom labels="ansible">
-<span xsmall>(j2) filters</span>
-Oº|º must be interpreted as the "pipe" (input) to filter, not the "or" symbol.
-# default if undefined:
-- ...
-  "HOST": "{{ database_host Oº| default('localhost')º }}"
-
-# fail after some debuging
-- ...
-  register: result
-Oºignore_errors: Trueº
-  ...
-  failed_when: resultOº| failedº
-...
-Oºfailed º True if registered value is a failed    task
-Oºchangedº True if registered value is a changed   task
-Oºsuccessº True if registered value is a succeeded task
-Oºskippedº True if registered value is a skipped   task
-</pre>
-<pre zoom labels="ansible">
-<span xsmall>path filters</span>
-Oºbasename  º 
-Oºdirname   º
-Oºexpanduserº  '~' replaced by home dir.
-Oºrealpath  º  resolves sym.links
-Ej:
-  vars:
-    homepage: /usr/share/nginx/html/index.html
-  tasks:
-  - name: copy home page
-    copy: ˂
-      src={{ homepage Oº| basenameº }}
-      dest={{ homepage }}
-</pre>
-  
-<pre zoom labels="ansible">
-<span xsmall>Custom filters</span>
-filter_plugins/surround_by_quotes.py
-# From http://stackoverflow.com/a/15515929/742
-def surround_by_quote(a_list):
-    return ['"%s"' % an_element for an_element in a_list]
-
-class FilterModule(object):
-    def filters(self):
-        return {'surround_by_quote': surround_by_quote}
-</pre>
-<pre zoom labels="ansible">
-<span xsmall>Lookups: Query ext. data</span>
-<span xsmall>(files, shells, </span>
-<span xsmall>key/val ddbbs,...)</span>
-@[https://docs.ansible.com/ansible/latest/user_guide/playbooks_lookups.html]
-
-Lookups modules allows to query data from external sources.
-  ...
-  vars:
-    motd_value: "{{Oºlookupº(Bº'file'º, '/etc/motd') }}"
-
-Existing lookup modules:
-  file     Contents of a file
-  password Randomly generate a password
-  pipe     Output of locally executed command
-  env      Environment variable
-  template Jinja2 template after evaluation
-  csvfile  Entry in a .csv file
-  dnstxt   DNS TXT record
-  redis_kv Redis key lookup
-  etcd     etcd key lookup
-  Ex:
-  ...
-</pre>
-<pre zoom labels="ansible">
-<span xsmall>group patterns</span>
-Other patterns:A
-All hosts       Oºallº
-All             Oºº*
-Union           devOº:ºstaging
-Intersection    stagingOº:⅋ºdatabase
-Exclusion       devOº:!ºqueue
-Wildcard        Oºº*.example.com
-Range           webOº[5:10]º
-Regex           O*~web\d+\.example\.(com|org)*
-</pre>
-<pre zoom labels="ansible">
-<span xsmall>Schedule "Serial" execution</span>
-- name: serialized execution
-  hosts: hostTargetGroup
-  # Run first in one host, if it works, runs 10% at a time, then 30 hosts in parallel
-Oºserial:  º
-Oº  - 1    º
-Oº  - "10%"º
-Oº  - 30   º
-  tasks:
-    ...
-</pre>
-<pre zoom labels="ansible">
-<span xsmall>Schedule "free" strategy</span>
-<span xsmall>(Don't wait for other hosts)</span>
-- hosts: all
-  connection: local
-  Oºstrategy: freeº
-    ...
-</pre>
-</div>
-
-<div groupv>
-<pre zoom labels="ansible">
-<a xsmall href="https://docs.ansible.com/ansible/latest/user_guide/playbooks_vault.html">Handling secrets with vaults</a>
-- (helps to) keep secrets in (symetric password)encrypted 
-files that can be distributed/added to SCM.
-
-ºRUNNING ANSIBLE-PLAYBOOK AGAINST VAULT PROTECTED YMLº          | ºRUNNING ANSIBLE-PLAYBOOK CONTAINING VAULT PROTECTED VARIABLE (Password, secret,...)º
-                                                                | 
-ºSTEP 1: Create the Vault protected playbook :                  | STEP 1:  Create vaulted variable:º
-   (or role or "embedded file")                                 |
-$ ansible-vault create myVaultProtectedPlaybook.yml             | $  ansible-vault ºencrypt_stringº
-                                                                | → mySecretToEncrypt                      Copy&amp;Paste to a yml file:
-                                                                | → bla bla blah(Ctrl+D)→ !vault |       ←  vars:
-                                                                | →           $ANSIBLE_VAULT;1.1;AES256     - mySecret: !vault |                 
-                                                                | →           66386439653236336462...                $ANSIBLE_VAULT;1.1;AES256
-                                                                | →           64316265363035303763...                66386439653236336462...
-                                                                | →           ...                                    64316265363035303763...
-                                                                |                                                    ...
-                                                                |
-ºSTEP 2: Use the Vault:º                                        | ºSTEP 2: (Similar to the vault protected playbook usingº                     
-$ ansible-playbook myVaultProtectedPlaybook.yml \               | º--ask-vault-pass|--vault-password-file|ANSIBLE_VAULT_PASSWORD_FILEº)
-   º--ask-vault-passº                                           | 
-   ^ prompt user for pass                                       |
-     Currently requires all files to                            |
-     be encrypted with same password                            |
-     Alternative1: use º--vault-password-file ~/.vault_pass.txtº|
-                       º                      ~/.vault_pass.pyº |
-                                              ^^^^^^^^^^^^^^^^^^|
-                                            password should be a|
-                                  string stored as a single line|
-     Alternative2:                                              |
-      export ANSIBLE_VAULT_PASSWORD_FILE=~/.vault_pass.txt      |
-</pre>
-
-<pre zoom labels="ansible">
-<span xsmall>Ex (yum install)</span>
-<span xsmall>apache@localhost</span>
----
-# file: ansible.yml
-- hosts: localhost                                                                                                                
-  connection: local
-  gather_facts: False
-  
-  vars:
-    var_yum_prerequisites: [ 'httpd24'      , 'vim', 'tmux' ]
-    var_apt_prerequisites: [ 'apache-server', 'vim', 'tmux' ]
-
-  vars_files:
-    - /vars/vars_not_in_git.yml   ←  add to .gitignore
-                                     avoid sharing sensitive data 
-                                     /vars/vars_not_in_git.yml will look like:
-                                     password: !vault |
-                                               $ANSIBLE_VAULT;1.1;AES256
-                                               ...
-                                     
-
-
-  
-  tasks:
-   - name: install yum pre-requisites
-     when: ansible_os_family == "RedHat"
-     become: true
-     yum:
-       name: {{ var_yum_prerequisites }}
-       state: present
-     notify:
-     - restart-apache2
-
-   - name: install apt pre-requisites
-     when: ansible_os_family == "Debian"
-     become: true
-     apt:
-       name: {{ var_apt_prerequisites }}
-       state: latest
-     notify:
-     - restart-apache2
-
-  
-  handlers:
-  - name: restart-apache2
-    service: name=httpd state=restarted
-</pre>
-
 <pre zoom labels="ansible">
 <a xsmall href="https://gist.github.com/marktheunissen/2979474">Insanely complet Ansible playbook</a>
 ---
 # ^^^ YAML documents must begin with the document separator "---"
 #
-#### Example docblock, I like to put a descriptive comment at the top of my 
+#### Example docblock, I like to put a descriptive comment at the top of my
 #### playbooks.
 #
 # Overview: Playbook to bootstrap a new host for configuration management.
 # Applies to: production
-# Description: 
+# Description:
 #   Ensures that a host is configured for management with Ansible.
-# 
+#
 ###########
 #
 #
@@ -1389,7 +1548,7 @@ $ ansible-playbook myVaultProtectedPlaybook.yml \               | º--ask-vault-
 #
 
 
-### 
+###
 # Notice the minus on the line below -- this starts the playbook's record
 # in the YAML document. Only one playbook is allowed per YAML file.  Indent
 # the body of the playbook.
@@ -1498,7 +1657,7 @@ $ ansible-playbook myVaultProtectedPlaybook.yml \               | º--ask-vault-
     # ansible -m setup -i /path/to/hosts.ini host1
     main_vhost: ${ansible_fqdn}
     public_ip:  ${ansible_eth0.ipv4.address}
-    
+
     # vars_files is better suited for distro-specific settings, however...
     is_ubuntu: "'${ansible_distribution}' == 'ubuntu'"
 
@@ -1611,7 +1770,7 @@ $ ansible-playbook myVaultProtectedPlaybook.yml \               | º--ask-vault-
     #
     # Ansible detects when an action changes something.  For example, the
     # file permissions change, a file's content changed, a package was
-    # just installed (or removed), a user was created (or removed).  When 
+    # just installed (or removed), a user was created (or removed).  When
     # a change is detected, Ansible can optionally notify one or more
     # Handlers.  Handlers can take any action that a Task can. Most
     # commonly they are used to restart a service when its configuration
@@ -1716,7 +1875,7 @@ $ ansible-playbook myVaultProtectedPlaybook.yml \               | º--ask-vault-
 
     ##########
     # Notify handlers when things change!
-    # 
+    #
     # Each task can optionally have one or more handlers that get called
     # when the task changes something -- creates a user, updates a file,
     # etc.
@@ -1791,8 +1950,65 @@ $ ansible-playbook myVaultProtectedPlaybook.yml \               | º--ask-vault-
     # the same as a tasks file, see the tasks section above for an example.
 - include: handlers/site.yml
 </pre>
+
+<pre zoom labels="ansible,troubleshoot">
+<span xsmall>Troubleshooting</span>
+  Problem ex:
+  'django_manage' mondule always returns 'changed: False' for
+  some "external" ddbb commands.
+  (ºnonºidempotent task)
+  Solution:
+Oº'changed_when'/'failed_when'º provides hints to Ansible at play time:
+- name: init-database
+  django_manage:
+    command: createdb --noinput --nodata
+    app_path: "{{ proj_path }}"
+    virtualenv: "{{ venv_path }}"
+Oºfailed_whenº: False # ←  avoid stoping execution
+  register:Gºresultº
+Oºchanged_when:º Gºresult.outº is defined and '"Creating tables" in Gºresult.outº'
+
+- debug: var=result
+
+- fail:
+</pre>
+</div>
+
+<div groupv>
+<span title>Non-Classifed</span>
+<pre zoom labels="ansible,cloud">
+<span xsmall TODO>Dynamic Inventory</span>
+@[https://docs.ansible.com/ansible/2.5/user_guide/intro_dynamic_inventory.html]
+(EC2, OpenStack,...)
+</pre>
+<pre zoom labels="ansible,performance">
+<span xsmall>Fact Caching</span>
+@[https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#fact-caching]
+
+- To benefit from cached facts you will set gather_facts to False in most plays.
+
+- Ansible ships with two persistent cache plugins: redis and jsonfile.
+
+- To configure fact caching using redis, enable it in ansible.cfg as follows:
+[defaults]
+gathering = smart
+fact_caching = redis
+fact_caching_timeout = 86400
+</pre>
+
+<pre zoom labels="ansible">
+<span xsmall>AWX GUI</span>
+@[https://www.howtoforge.com/ansible-awx-guide-basic-usage-and-configuration/]
+
+- AWX is an open source web application that provides a user interface, REST API, 
+  and task engine for Ansible. It's the open source version of the Ansible Tower. 
+  The AWX allows you to manage Ansible playbooks, inventories, and schedule jobs 
+  to run using the web interface. 
+</pre>
+
 </div>
 </div>
+
 <div groupv>
 <span title>Puppet</span>
 <pre zoom labels="puppet">
@@ -1805,107 +2021,130 @@ master/agent architecture:
 - PuppetºMasterº: - server holding all the configuration.
 
 - PuppetºAgent º: - Installed on each "target" server,    ºAgent Certificateº: ← - signed Master's CA.
-                    runs @ regular intervals:              ─────────────────     - Used for secure network 
+                    runs @ regular intervals:              ─────────────────     - Used for secure network
                   - Query desired state and if needed      -ºnode-nameº            communic between Master←→Agent
                     (configuration drift) update state.      ^
                                                              |
                                                   Ex. web01.myDomain.com (wildcards allowed)
                                                   Assigning/managing node names Rºcan be trickyº
                                                   in the cloud since DNS change frequently.
-┌────────────────────────────────────────────────────────────┬───────────────────────────────────────────────────────────────┐
-│OºRESOURCEº                                                 │ BºCLASSESº                                                    │
-│(Concrete resource that must be present in server)          │ - A Class is a group of Resources that                        │
-│   ┌─── user/file/package/...that must be present in server │   belong together conceptually,                               │
-│   │   (or custom resource)                                 │   fulfilling a given instalation-                             │
-│   v                         │  Ex:                         │   -requirement role.                                          │
-│OºTYPEº{ TITLE ← must unique │Oºuserº{ 'jbar':              │ - variables can be defined to customize                       │
-│      ATTRIBUTE, per Node    │      ensure  =˃ present,     │   target environments.                                        │
-│      ATTRIBUTE,             │      home    =˃ '/home/jbar',│   (test,acceptance,pre,pro,..)                                │
-│      ATTRIBUTE,             │      shell   =˃ '/bin/bash', │ - inheritance is allowed to save                              │
-│      ...                    │  }                           │   duplicated definition                                       │
-│   }  ^                             ^          ^            │                                                               │
-│      |                             |          |            │                       │ Ex:                                   │
-│      key =˃ value                 key       value          │ class BºCLASS_NAMEº { │ class Bºusersº {                      │
-│                                                            │     RESOURCE          │     user { 'tomcat':                  │
-│$ puppet resource Oºuserº                                   │     RESOURCE          │         ensure      =˃ present,       │
-│         ^^^^^^^^^^^^^^^                                    │ }                     │         home        =˃ '/home/jbauer',│
-│         Returns all users                                  │                       │         shell       =˃ '/bin/bash',   │
-│         (not just those configured/installed by Puppet)    │                       │     }                                 │
-│         (same behaviour applies to any other resource)     │                       │     user { 'nginx':                   │
-│                                                            │                       │         ...                           │
-│                                                            │                       │     }                                 │
-│                                                            │                       │     ...                               │
-│                                                            │                       │ }                                     │
-│                                                            │                       │ include Bºusersº                      │
-│                                                            │                       │ ^^^^^^^^^^^^^^^^                      │
-│                                                            │                       │ ºDon't forgetº. Otherwise class is    │
-│                                                            │                          ignored                              │
-├────────────────────────────────────────────────────────────┼───────────────────────────────────────────────────────────────┤
-│QºNODE ("Server")º                                          │                                                               │
-│- bundle of: [ class1, class2, .. , resource1,  ...]        │           QºNODEº 1 ←─────────→ NBºClassº                     │
-│                                                            │                  1                1                           │
-│                          must match Agent-Certificate.name │                   \              /                            │
-│     SYNTAX               │Ex:     ┌───────┴────────┐       │                    \            /                             │
-│node Q"NAME" {            │node Qº"web01.myDomain.com"º {   │                     N          N                              │
-│    include BºCLASS01º    │                                 │                     OºResourceº                               │
-│    include BºCLASS02º    │    include Bºtomcatº            │                                                               │
-│    include Bº...º        │    include Bºusersº             │                                                               │
-│    include OºRESOURCE01º │                                 │ YºMANIFESTº: 0+QºNODEsº, 0+BºClassesº, 0+OºResourcesº         │
-│    include OºRESOURCE02º │  Oºfileº{ '/etc/app.conf'       │                                                               │
-│    include Oº...º        │        ...                      │ GºMODULEº: 1+Manifests, 0+supporting artifacts                │
-│}                         │    }                            │            ^                                                  │
-│                          │}                                │ ($PUPPET/environments/$ENV/"module"/manifest/init.pp )        │
-│                                                            │                                                               │
-│The special name Qº"default"º will be applied to any server.│  ºSITE MANIFESTº: Separated Manifests forming the catalog     │
-│(used for example to apply common security, packages,...)   │                   (Read by the Puppet Agent)                  │
-└────────────────────────────────────────────────────────────┴───────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────┬────────────────────────────────────────────────────────────┐
+│OºRESOURCEº                                              │ BºCLASSESº                                                 │
+│(Concrete resource that must be present in server)       │ - A Class is a group of Resources that                     │
+│   ┌─── user/file/package/...that must be present in     │   belong together conceptually,                            │
+│   │    server (or custom resource)                      │   fulfilling a given instalation-                          │
+│   v                         │  Ex:                      │   -requirement role.                                       │
+│OºTYPEº{ TITLE ← must unique │Oºuserº{ 'jbar':           │ - variables can be defined to customize                    │
+│      ATTRIBUTE, per Node    │   ensure  =˃ present,     │   target environments.                                     │
+│      ATTRIBUTE,             │   home    =˃ '/home/jbar',│   (test,acceptance,pre,pro,..)                             │
+│      ATTRIBUTE,             │   shell   =˃ '/bin/bash', │ - inheritance is allowed to save                           │
+│      ...                    │  }                        │   duplicated definition                                    │
+│   }  ^                          ^          ^            │                                                            │
+│      |                          |          |            │                       │ Ex:                                │
+│      key =˃ value              key       value          │ class BºCLASS_NAMEº { │ class Bºusersº {                   │
+│                                                         │     RESOURCE          │     user { 'tomcat':               │
+│$ puppet resource Oºuserº                                │     RESOURCE          │         ensure   =˃ present,       │
+│         ^^^^^^^^^^^^^^^                                 │ }                     │         home     =˃ '/home/jbauer',│
+│         Returns all users                               │                       │         shell    =˃ '/bin/bash',   │
+│         (not just those configured/installed by Puppet) │                       │     }                              │
+│         (same behaviour applies to any other resource)  │                       │     user { 'nginx':                │
+│                                                         │                       │         ...                        │
+│                                                         │                       │     }                              │
+│                                                         │                       │     ...                            │
+│                                                         │                       │ }                                  │
+│                                                         │                       │ include Bºusersº                   │
+│                                                         │                       │ ^^^^^^^^^^^^^^^^                   │
+│                                                         │                       │ ºDon't forgetº. Otherwise class is │
+│                                                         │                          ignored                           │
+├─────────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────┤
+│QºNODE ("Server")º                                       │                                                            │
+│- bundle of: [ class1, class2, .. , resource1,  ...]     │           QºNODEº 1 ←─────────→ NBºClassº                  │
+│                                                         │                  1                1                        │
+│                        must match Agent-Certificate.name│                   \              /                         │
+│     SYNTAX               │Ex:     ┌───────┴────────┐    │                    \            /                          │
+│node Q"NAME" {            │node Qº"web01.myDomain.com"º {│                     N          N                           │
+│    include BºCLASS01º    │                              │                     OºResourceº                            │
+│    include BºCLASS02º    │    include Bºtomcatº         │                                                            │
+│    include Bº...º        │    include Bºusersº          │                                                            │
+│    include OºRESOURCE01º │                              │ YºMANIFESTº: 0+QºNODEsº, 0+BºClassesº, 0+OºResourcesº      │
+│    include OºRESOURCE02º │  Oºfileº{ '/etc/app.conf'    │                                                            │
+│    include Oº...º        │        ...                   │ GºMODULEº: 1+Manifests, 0+supporting artifacts             │
+│}                         │    }                         │            ^                                               │
+│                          │}                             │ ($PUPPET/environments/$ENV/"module"/manifest/init.pp )     │
+│                                                         │                                                            │
+│The special name Qº"default"º will be applied to any     │  ºSITE MANIFESTº: Separated Manifests forming the catalog  │
+│server (used for example to apply common security,       │                   (Read by the Puppet Agent)               │
+│packages,...)                                            │                                                            │
+└─────────────────────────────────────────────────────────┴────────────────────────────────────────────────────────────┘
 
-┌────────────────────────────────────────────────────────────┬──────────────────────────────────────────────────────────────┐
-│YºMANIFESTSº:                                               │GºMODULESº                                                    │
-│*.pp file defining OºResourcesº, BºClassesº and QºNodesº    │- reusable bundle of [ 1+ Manifests , "supporting file list" ]│
-│                                                            │- installed on Puppet Master                                  │
-│ ┌────────────────────────────────────────────────          │  (can also be installed from a central repository using      │
-│ │example.pp Manifest:                                      │   $ puppet module ... )                                      │
-│ │ // variable declarations, logic constructs, ...          │- referenced by name in other Modules or in Manifests.        │
-│ │                                                          │- Layout of                                                   │
-│ │                                                          │  ${PUPPET}/environments/${ENVIRONMENT}/modules/ºmodule01º    │
-│ │Oºuser{ 'jbauer':º                                        │                                name must                     │
-│ │      ensure      =˃ present,                             │ ºmodule01º  ←───────────────── match                         │
-│ │      home        =˃ '/home/jbauer',                      │  ├─ manifests                  vvvvvvvv                      │
-│ │      shell       =˃ '/bin/bash',                         │  │  ├ºinit.ppº ←········ classºmodule01º{  │                 │
-│ │  }                                                       │  │  │                      ...             │                 │
-│ │                                                          │  │  │                    }                 │                 │
-│ │Bºclass 'security'º{                                      │  │  │                                      │                 │
-│ │      ...                                                 │  │  ├ class01.pp (opt)←· class class01 {   │                 │
-│ │  }                                                       │  │  │                       ...                              │
-│ │                                                          │  │  │                    }                                   │
-│ │  include security                                        │  │  └ ...                      ^                             │
-│ │                                                          │  │                       module01@init.pp   can be used as   │
-│ │Bºclass 'tomcat'º{                                        │  ├─ files        (opt)   include module01                    │
-│ │  }                                                       │  ├─ templates    (opt)   class01@class01.pp can be used as   │
-│ │                                                          │  ├─ lib          (opt)   include module01::class01           │
-│ │Qºnodeº'web01.example.com' {                              │  ├─ facts.d      (opt)                                       │
-│ │      includeBºtomcatº                                    │  ├─ examples     (opt)                                       │
-│ │      ...                                                 │  └─ spec         (opt)                                       │
-│ │                                                          │                                                              │
-│ │  }                                                       │                                                              │
-└────────────────────────────────────────────────────────────┴──────────────────────────────────────────────────────────────┘
-
-┌───────────────────────────────────────────────────────────────────────────┐
-│YºSITE (MAIN) MANIFESTº                                                    │
-│- area of Puppet configurationºseparated from Modulesº.                    │
-│- By default, all Manifests contained in                                   │
-│    º${PUPPET}/environments/${ENVIRONMENT}/manifestsº                      │
-│  (vs ${PUPPET}/environments/${ENVIRONMENT}/modules/mod1...                │
-│      ${PUPPET}/environments/${ENVIRONMENT}/modules/mod2...)               │
-│- Its content is concatenated and executed as the Site Manifest.           │
-│-ºstarting pointºfor calculating the ºPUPPET catalogº ,                    │
-│  i.e., the "sum total of applicable configuration" for a node.            │
+┌─────────────────────────────────────────────────────────┬─────────────────────────────────────────────────────────────┐
+│YºMANIFESTSº:                                            │GºMODULESº                                                   │
+│*.pp file defining OºResourcesº, BºClassesº and QºNodesº │- reusable bundle of [ 1+ Manifests , "support file list" ]  │
+│                                                         │- installed on Puppet Master                                 │
+│ ┌────────────────────────────────────────────────       │  (can also be installed from a central repository using     │
+│ │example.pp Manifest:                                   │   $ puppet module ... )                                     │
+│ │ // variable declarations, logic constructs, ...       │- referenced by name in other Modules or in Manifests.       │
+│ │                                                       │- Layout of                                                  │
+│ │                                                       │  ${PUPPET}/environments/${ENVIRONMENT}/modules/ºmodule01º   │
+│ │Oºuser{ 'jbauer':º                                     │                                name must                    │
+│ │      ensure      =˃ present,                          │ ºmodule01º  ←───────────────── match                        │
+│ │      home        =˃ '/home/jbauer',                   │  ├─ manifests                  vvvvvvvv                     │
+│ │      shell       =˃ '/bin/bash',                      │  │  ├ºinit.ppº ←········ classºmodule01º{  │                │
+│ │  }                                                    │  │  │                      ...             │                │
+│ │                                                       │  │  │                    }                 │                │
+│ │Bºclass 'security'º{                                   │  │  │                                      │                │
+│ │      ...                                              │  │  ├ class01.pp (opt)←· class class01 {   │                │
+│ │  }                                                    │  │  │                       ...                             │
+│ │                                                       │  │  │                    }                                  │
+│ │  include security                                     │  │  └ ...                      ^                            │
+│ │                                                       │  │                       module01@init.pp   can be used as  │
+│ │Bºclass 'tomcat'º{                                     │  ├─ files        (opt)   include module01                   │
+│ │  }                                                    │  ├─ templates    (opt)   class01@class01.pp can be used as  │
+│ │                                                       │  ├─ lib          (opt)   include module01::class01          │
+│ │Qºnodeº'web01.example.com' {                           │  ├─ facts.d      (opt)   Retrieve storage,CPU,...before  ←─┐│
+│ │      includeBºtomcatº                                 │  │                       exec. the catalog                 ││
+│ │      ...                                              │  │@[https://puppet.com/docs/puppet/latest/core_facts.html] ││
+│ │                                                       │  ├─ examples     (opt)                                     ││
+│ │  }                                                    │  └─ spec         (opt)                                     ││
+└─────────────────────────────────────────────────────────┴────────────────────────────────────────────────────────────┼┘
+                                                                               ┌───────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────────┐  Example custom "facter":
+│YºSITE (MAIN) MANIFESTº                                                    │  $ cat ./modules/basic/facts/lib/facter/common.rb
+│- area of Puppet configurationºseparated from Modulesº.                    │  → Facter.add("hostnamePart01") do
+│- By default, all Manifests contained in                                   │  →   setcode do
+│    º${PUPPET}/environments/${ENVIRONMENT}/manifestsº                      │  →     h = Facter.value(:hostname)
+│  (vs ${PUPPET}/environments/${ENVIRONMENT}/modules/mod1...                │  →     h_a = h.split("-")[0].tr("0-9", "").chomp
+│      ${PUPPET}/environments/${ENVIRONMENT}/modules/mod2...)               │  →   end
+│- Its content is concatenated and executed as the Site Manifest.           │  → end
+│-ºstarting pointºfor calculating the ºPUPPET catalogº ,                    │  → ...
+│  i.e., the "sum total of applicable configuration" for a node.            │  →
 │- This is the information queried by the Puppet Agent instaled on each     │
 │  "satellite" server.                                                      │
 │  - any standalone Resource or Class declarations is automatically applied │
 │  - matching Nodes (Node_name vs Agent Certificate Name) are also applied  │
 └───────────────────────────────────────────────────────────────────────────┘
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ºADVANCED TOPICSº (TODO)
  - controlling the Resources order  execution
  - transient cloud servers
@@ -1931,9 +2170,9 @@ master/agent architecture:
 <pre zoom labels="vagrant">
 <span xsmall>Boxes</span>
 Instead of building a virtual machine from scratch, which would be a
-slow and tedious process, Vagrant uses a base image to quickly clone a 
-virtual machine. These base images are known as "boxes" in Vagrant, and 
-specifying the box to use for your Vagrant environment is always the first 
+slow and tedious process, Vagrant uses a base image to quickly clone a
+virtual machine. These base images are known as "boxes" in Vagrant, and
+specifying the box to use for your Vagrant environment is always the first
 step after creating a new Vagrantfile.
 
 </pre>
@@ -1942,8 +2181,8 @@ step after creating a new Vagrantfile.
 <span xsmall>Command List</span>
 vagrant "COMMAND" -h
 $ vagrant  # Most frequently used commands                                   | $ vagrant list-commands # (including rarely used command)
-Usage: vagrant [options] <command> [<args>]                                  | 
-Common commands:                                                             | 
+Usage: vagrant [options] <command> [<args>]                                  |
+Common commands:                                                             |
 box           manages boxes: installation, removal, etc.                     | box             manages boxes: installation, removal, etc.
 destroy       stops and deletes all traces of the vagrant machine            | cap             checks and executes capability
 global-status outputs status Vagrant environments for this user              | destroy         stops and deletes all traces of the vagrant machine
@@ -1984,7 +2223,7 @@ version       prints current and latest Vagrant version                      | r
 <span xsmall>Setup</span>
 $ mkdir vagrant_getting_started
 $ cd vagrant_getting_started
-$ vagrant init # creates new Vagrantfile 
+$ vagrant init # creates new Vagrantfile
 </pre>
 
 
@@ -2075,7 +2314,7 @@ end
 
 <pre zoom labels="terraform">
 <span xsmall>Terraform 101</span>
-$ mkdir project01 
+$ mkdir project01
 $ cd project01
 $ vim libvirt.tf like:      Oº# ← STEP 1:º Create tf file
    # Alt 1: Local kvm
@@ -2099,33 +2338,33 @@ $ vim libvirt.tf like:      Oº# ← STEP 1:º Create tf file
 
 # Adding default user STEP 1 {{{
    # Our centos qcow2 does not provide any default user/pass to allow logins.
-   #ºlibvirt_cloudinit_disk resourceº is used to "bootstrap" user data to 
+   #ºlibvirt_cloudinit_disk resourceº is used to "bootstrap" user data to
    # the instance.
-  
+
    data "template_file" "user_data" {
      template = "${file("${path.module}/cloud_init.cfg")}"
    }
 
-   # Use CloudInit to add the instance 
+   # Use CloudInit to add the instance
   ºresource "libvirt_cloudinit_disk"º"commoninit" {
      name = "commoninit.iso"
      user_data      = "${data.template_file.user_data.rendered}"
    }
-# }}}   
+# }}}
 
    resource "libvirt_domain" "db1" {
      name   = "db1"
      memory = "1024"
      vcpu   = 1
-   
+
      network_interface {
        network_name = "default"
      }
-   
+
      disk {
        volume_id = libvirt_volume.centos6-qcow2.id
      }
-  
+
 # Adding default user STEP 2 {{{
      cloudinit = "${libvirt_cloudinit_disk.commoninit.id}"
 # }}}
@@ -2135,7 +2374,7 @@ $ vim libvirt.tf like:      Oº# ← STEP 1:º Create tf file
        target_type = "serial"
        target_port = "0"
      }
-   
+
      graphics {
        type = "spice"
        listen_type = "address"
@@ -2189,7 +2428,7 @@ $ vim cloud_init.cfg l       Oº# ← STEP 1.2:º Create cloud_init.cf file
     list: |
        root: StrongPassword
     expire: False
-  
+
   users:
     - name: jmutai # Change me
       ssh_authorized_keys:
@@ -2197,7 +2436,7 @@ $ vim cloud_init.cfg l       Oº# ← STEP 1.2:º Create cloud_init.cf file
       sudo: ['ALL=(ALL) NOPASSWD:ALL']
       shell: /bin/bash
       groups: wheel
-  
+
       This will set root password to StrongPassword
       Add user named jmutai with specified Public SSH keys
       The user will be added to wheel group and be allowed to run sudo commands without password.
@@ -2206,9 +2445,9 @@ $ vim cloud_init.cfg l       Oº# ← STEP 1.2:º Create cloud_init.cf file
 $ terraformºinitº           Oº# ← STEP 2:º Init
 → Initializing provider plugins…
 → Terraform has been successfully initialized!
-→ You may now begin working with Terraform. Try runningº"terraform plan"ºto see any changes 
+→ You may now begin working with Terraform. Try runningº"terraform plan"ºto see any changes
 → that are required for your infrastructure. All Terraform commands should now work.
-→ 
+→
 → If you everºset or change modulesºor backend configuration for Terraform,
 → ºrerun this command to reinitializeºyour working directory. If you forget, other
 → commands will detect it and remind you to do so if n
@@ -2230,17 +2469,17 @@ $ terraformºplanº           Oº# ← STEP 3:º Check needed changes
 →        + ...
 →        + console { ...  }
 →        + disk {  ...  }
-→  
+→
 →        + graphics {
 →            + autoport       = true
 →            + listen_address = "127.0.0.1"
 →            + listen_type    = "address"
 →           º+ type           = "spice"º
 →          }
-→  
+→
 →        + network_interface { ...  }
 →      }
-→  
+→
 →    # libvirt_volume.centos7-qcow2 will be created
 →    + resource "libvirt_volume" "centos7-qcow2" {
 →        + ...
@@ -2274,7 +2513,7 @@ $ sudoºvirsh  listº                  Oº# ← STEP 5.1:º Post creation check
 $ sudoºvirsh net-dhcp-leases defaultº  # ←  OºSTEP 5.2:º Post creation check
 
  Expiry        MAC      Protocol IP       Hostname Client ID
- Time          address           address           or DUID 
+ Time          address           address           or DUID
 --------------------------------------------------------------
  .. 16:11:18   52:54:.. ipv4     192...      -     -
  .. 15:30:18   52:54:.. ipv4     192...     rhel8  ff:61:..:d1
@@ -2285,7 +2524,7 @@ $  ping -c 1 192....                Oº# ← STEP 5.3:º Post creation check
 $ cd .../project01
 $ terraformºdestroyº
 
- 
+
 <span xsmall>KVM setup</span>
 REF: @[https://computingforgeeks.com/how-to-provision-vms-on-kvm-with-terraform/]
 RºWARN:ºKVM/libvirt provider is NOT officially supported by Hashicorp
@@ -2294,17 +2533,17 @@ RºWARN:ºKVM/libvirt provider is NOT officially supported by Hashicorp
 ºKVM PRE-SETUP:º
   step 1: Install KVM hypervisor
           (consult Linux distro)
-  step 2: check install step 1 
+  step 2: check install step 1
   $ sudo systemctl start libvirtd
   $ sudo systemctl enable libvirtd
-  
+
   step 3: (Debian/Ubuntu/...?)
   $ sudo modprobe vhost_net  ← Enable vhost-net kernel module
-  $ echo vhost_net | sudo tee -a /etc/modules 
+  $ echo vhost_net | sudo tee -a /etc/modules
 
 ºTerraform KVM  provider:º
 (libvirt actually):
-  Step 3: Install 
+  Step 3: Install
 
 $ mkdir ~/.terraform.d/plugins # ←  This dir will store Terraform Plugins.
 $ cp terraform-provider-libvirt  ~/.terraform.d/plugins
@@ -2324,12 +2563,12 @@ $ cp terraform-provider-libvirt  ~/.terraform.d/plugins
  """
 </pre>
 
-<pre zoom labels="cloud-init,terraform,vagrant">
-<span xsmall TODO>cloud-init</span>
+<pre zoom labels="cloud-init,terraform,vagrant,TODO">
+<span xsmall>cloud-init</span>
 https://cloudinit.readthedocs.io/en/latest/
-"""industry standard multi-distribution method for 
-  cross-platform cloud instance initialization. It is supported across all major 
-  public cloud providers, provisioning systems for private cloud infrastructure, 
+"""industry standard multi-distribution method for
+  cross-platform cloud instance initialization. It is supported across all major
+  public cloud providers, provisioning systems for private cloud infrastructure,
   and bare-metal installations."""
 
 Cloud-init has support across all major Linux distributions and FreeBSD:
@@ -2346,8 +2585,43 @@ supported public clouds:
 supported private clouds:
     Bare metal installs , OpenStack , LXD, KVM, Metal-as-a-Service (MAAS)
 </pre>
+
+<pre zoom labels="terraform,regula,TODO">
+<span xsmall>Regula</span>
+@[https://www.helpnetsecurity.com/2020/01/16/fugue-regula/]
+Fugue open sources Regula to evaluate Terraform for security misconfigurations 
+and compliance violations
+</pre>
 </div>
 </div> <!-- terraform-->
+
+<div groupv>
+<span title>QA/Testing</span><br/>
+<pre zoom labels="qa,kayenta,TODO">
+<span TODO xsmall>Kayenta Canary Testing</span>
+@[https://github.com/spinnaker/kayenta]
+- Kayenta platform:  Automated Canary Analysis (ACA)
+</pre>
+<pre zoom labels="qa,sonarqube,TODO">
+<span xsmall>SonarQube (QA)</span>
+Apply quality metrics to source-code
+</pre>
+<pre zoom labels="qa,selenium,web,TODO">
+<span xsmall>Selenium</span>
+<span xsmall>Browser test</span>
+<span xsmall>automation</span>
+</pre>
+
+<pre zoom labels="TODO,qa,testing">
+<span xsmall>Charles Proxy</span>
+@[https://www.charlesproxy.com/]
+Charles is an HTTP proxy / HTTP monitor / Reverse Proxy that enables a 
+developer to view all of the HTTP and SSL / HTTPS traffic between their machine 
+and the Internet. This includes requests, responses and the HTTP headers (which 
+contain the cookies and caching information).
+</pre>
+
+</div> <!-- QA/Testing -->
 
 
 </body>
@@ -2355,116 +2629,14 @@ supported private clouds:
 
 <!--
 TODO Jenkins start {{{
-https://wiki.jenkins.io/display/JENKINS/Amazon+EC2+Fleet+Plugin
-... launches Amazon EC2 Spot Instances as worker nodes 
-   for Jenkins CI server, automatically scaling the capacity with the load.
-________________________
-https://www.theguild.nl/jenkinsfiles-for-beginners-and-masochists/
-________________________
-https://jenkins.io/doc/book/using/using-credentials/
-________________________
-Using Organization FoldersOrganization  Folders  enable  Jenkins  to  monitor  an  entire  GitHub  Organization,  or  BitbucketTeam/Project  and  automatically  create  new  Multibranch  Pipelines  for  repositories  which  containbranches and pull requests containing a Jenkinsfile.Currently,  this  functionality  exists  only  for  GitHub  and  Bitbucket,  with  functionality  provided  bythe plugin:github-organization-folder[GitHub Organization Folder] and plugin:cloudbees-bitbucket-branch-source[Bitbucket Branch Source] plugins
-________________________
-<a href="https://jenkins.io/doc/book/pipeline/running-pipelines">Running Pipelines</a>
-<a href="https://jenkins.io/doc/book/pipeline/multibranch">Branches and Pull Requests</a>
-<a href="https://jenkins.io/doc/book/pipeline/docker">Using Docker with Pipeline</a>
-<a href="https://jenkins.io/doc/book/pipeline/shared-libraries">Extending with Shared Libraries</a>
-<a href="https://jenkins.io/doc/book/pipeline/development">Pipeline Development Tools</a>
-<a href="https://jenkins.io/doc/book/pipeline/syntax">Pipeline Syntax</a>
-<a href="https://jenkins.io/doc/book/pipeline/pipeline-best-practices">Pipeline Best Practices</a>
-<a href="https://jenkins.io/doc/book/pipeline/scaling-pipeline">Scaling Pipelines</a>
-<a href="https://jenkins.io/doc/book/blueocean">Blue Ocean</a>
-<a href="https://jenkins.io/doc/book/blueocean/getting-started">Getting started with Blue Ocean</a>
-<a href="https://jenkins.io/doc/book/blueocean/creating-pipelines">Creating a Pipeline</a>
-<a href="https://jenkins.io/doc/book/blueocean/dashboard">Dashboard</a>
-<a href="https://jenkins.io/doc/book/blueocean/activity">Activity View</a>
-<a href="https://jenkins.io/doc/book/blueocean/pipeline-run-details">Pipeline Run Details View</a>
-<a href="https://jenkins.io/doc/book/blueocean/pipeline-editor">Pipeline Editor</a>
-<a href="https://jenkins.io/doc/book/managing">Managing Jenkins</a>
-<a href="https://jenkins.io/doc/book/managing/system-configuration">Configuring the System</a>
-<a href="https://jenkins.io/doc/book/managing/security">Managing Security</a>
-<a href="https://jenkins.io/doc/book/managing/tools">Managing Tools</a>
-<a href="https://jenkins.io/doc/book/managing/plugins">Managing Plugins</a>
-<a href="https://jenkins.io/doc/book/managing/cli">Jenkins CLI</a>
-<a href="https://jenkins.io/doc/book/managing/script-console">Script Console</a>
-<a href="https://jenkins.io/doc/book/managing/nodes">Managing Nodes</a>
-<a href="https://jenkins.io/doc/book/managing/script-approval">In-process Script Approval</a>
-<a href="https://jenkins.io/doc/book/managing/users">Managing Users</a>
-<a href="https://jenkins.io/doc/book/system-administration">System Administration</a>
-<a href="https://jenkins.io/doc/book/system-administration/backing-up">Backing-up/Restoring Jenkins</a>
-<a href="https://jenkins.io/doc/book/system-administration/monitoring">Monitoring Jenkins</a>
-<a href="https://jenkins.io/doc/book/system-administration/security">Securing Jenkins</a>
-<a href="https://jenkins.io/doc/book/system-administration/with-chef">Managing Jenkins with Chef</a>
-<a href="https://jenkins.io/doc/book/system-administration/with-puppet">Managing Jenkins with Puppet</a>
-_____________________________
-https://medium.com/@jdrawlings/serverless-jenkins-with-jenkins-x-9134cbfe6870
-_______________________
-Jenkinsfile-runner: 
-- Executing Jenkinsfile pipeline without the need of having a Jenkin server running (and wasting memory).
-https://jenkins.io/blog/2019/02/28/serverless-jenkins/
-https://github.com/jenkinsci/jenkinsfile-runner
-________________________
-https://jenkins.io/doc/tutorials/build-a-node-js-and-react-app-with-npm/
-______________________
-Import/Export Jobs:
-https://stackoverflow.com/questions/8424228/export-import-jobs-in-jenkins
 }}} TODO Jenkins END
-
+##############################################################
 TODO Ansible Start {{{
-https://napalm-automation.net/
-
-Napalm is a vendor neutral, cross-platform open source project that provides a unified API to network devices.
-
-https://stackoverflow.com/questions/33931610/ansible-handler-notify-vs-register
-
-
-https://docs.ansible.com/ansible/latest/user_guide/playbooks_best_practices.html
-
-
-https://docs.ansible.com/ansible/2.5/user_guide/intro_dynamic_inventory.html (EC2, OpenStack,...)S
-
-________________
-Ronald Kurr has lot of very-useful and professional Ansible powered code to provide JVM, Python, Desktops, ... machines. For example:
-   https://github.com/kurron/aws-open-vpn
-____________
-TODO: Provisioning new VMs to clods like EC2, Azure, Digital Ocean, 
-  Google Compute Engine, Linode, Rackspace, OVH, and any cloud
-  supporting OpenStack API (OVH, ...)
-___________________
-<a href="https://docs.ansible.com/ansible/latest/user_guide/playbooks_variables.html#fact-caching">Fact Caching</a>
-
-To benefit from cached facts you will set gather_facts to False in most plays.
-
-Ansible ships with two persistent cache plugins: redis and jsonfile.
-
-To configure fact caching using redis, enable it in ansible.cfg as follows:
-
-[defaults]
-gathering = smart
-fact_caching = redis
-fact_caching_timeout = 86400
-__________________________
 https://sysadmincasts.com/episodes/46-configuration-management-with-ansible-part-3-4
 __________________________
 https://www.howtoforge.com/ansible-guide-ad-hoc-command/
-____________________________
-https://www.howtoforge.com/ansible-awx-guide-basic-usage-and-configuration/
-
-Ansible AWX Guide: Basic Usage and Configuration
-On this page
-
-    Step 1 - Environment Setup and Configuration
-    Step 2 - Setup Credentials
-    Step 3 - Setup Inventories
-    Step 4 - Setup Projects
-    Step 5 - Create New Job Templates
-    Step 6 - Run the Job Template
-    Step 7 - Testing Target Machine
-    Reference
-
-AWX is an open source web application that provides a user interface, REST API, and task engine for Ansible. It's the open source version of the Ansible Tower. The AWX allows you to manage Ansible playbooks, inventories, and schedule jobs to run using the web interface.
 _________________________
-https://opensource.com/article/19/9/must-know-ansible-modules?utm_medium=Email&utm_campaign=weekly&sc_cid=7013a000002CxUyAAK
+
 _______________________
 https://www.redhat.com/sysadmin/navigate-ansible-documentation
 How to navigate Ansible documentation
@@ -2480,10 +2652,12 @@ TODO_CLOUD_INIT_START: {{{
 }}} TODO_CLOUD_INIT_END
 
 TODO_TERRAFORM_START: {{{
-https://www.helpnetsecurity.com/2020/01/16/fugue-regula/
-Fugue open sources Regula to evaluate Terraform for security misconfigurations and compliance violations
+
 }}} TODO_TERRAFORM_START
 
+
+
+______________________
 -->
 
 

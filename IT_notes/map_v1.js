@@ -33,6 +33,9 @@ var spb = {
            doCloseZoom()
       }
     }
+    if (e.key === "PageDown") { goForward(); return }
+    if (e.key === "PageUp"  ) { goBack   (); return }
+
     if ( (e.code === "ShiftLeft" || e.code === "KeyS") ) {
       if (spb.zoomStatus === 2) return
       doExtraOptions()
@@ -205,7 +208,8 @@ function doOpenZoom(e, isHistoric, showTimeControl, CallbackOnClose, strCloseLab
   let forwControl = "<span onClick='goForward()' style='font-family:monospace; color:blue; font-size:2.0rem'>"+forwNumber+"</span>"
   let sLabels="";
   if (e.attributes && e.attributes.labels) {
-    e.attributes.labels.value.split(",").filter(e => !!e).forEach(label_i => {
+      /* list -> Set -> array leaves non-repeated/unique elements*/
+    Array.from(new Set(e.attributes.labels.value.split(","))).filter(e => !!e).forEach(label_i => {
         sLabels += renderLabel(label_i)
     })
   }

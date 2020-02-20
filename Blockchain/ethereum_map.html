@@ -5,11 +5,8 @@
 <head>
 <script src="/IT_notes/map_v1.js"></script>
 <link rel="stylesheet" type="text/css" href="/IT_notes/map_v1.css" />
-
 </head>
-
 <body>
-
 <div group bgblue>
 <span title>About Ethereum</span> <br/>
 <div groupv>
@@ -760,7 +757,7 @@ myEventMonitor.stopWatching()          // ← Stop watching
 </div>
 
 <div groupv>
-<pre zoom  labels="101,transaction,evm">
+<pre zoom  labels="101,transaction,evm,signature,ecdsa_secp256k1">
 <span title>Transactions</span>
 Transaction
 -------------
@@ -773,7 +770,6 @@ wei gasPrice
 wei gas
 
 return data
-
 
 - Note that a TX in blockchain is an intention to modify the state of the ddbb.
   It's up to the consensus algorithm to decide when and/or whether the TX will
@@ -830,7 +826,7 @@ REF:
 @[https://medium.com/@angellopozo/ethereum-signing-and-validating-13a2d7cb0ee3]
 @[https://github.com/ethereum/EIPs/issues/191]
 
-- Ethereum uses SECP256K1 for signature.
+- Ethereum uses SECP256K1 (one of the ECDSA supported algorithms) for signature.
   Note:
   - secp256k1 public key is composed of two integers
     (output of an ECDSA signature): (r, s).
@@ -1108,7 +1104,7 @@ EVM stack.
 
 
 </pre>
-<pre zoom labels="101,transaction,evm">
+<pre zoom labels="101,transaction,evm,signature">
 <span xsmall>State transition fun</span>
 APPLY (S, TX) → S'  ← S : initial global state
                     ← S': final   global state
@@ -1136,7 +1132,7 @@ APPLY (S, TX) → S'  ← S : initial global state
   miner.
 </pre>
 
-<pre zoom labels="101,transaction,evm">
+<pre zoom labels="101,transaction,evm,signature">
 <span xsmall>Offline/Online</span>
 <span xsmall>TX signing</span>
     OFFLINE TX SIGNING (RECOMENDED)           |    "ON-LINE" TX SIGNING (LESS SECURE, DISCOURAGED)
@@ -2521,6 +2517,29 @@ contract MyToken {
 }
 </pre>
 
+<pre zoom labels="aaa,signature,ecdsa_secp256k1,auditing,security,">
+<span xsmall>Signature Verification</span>
+@[https://docs.openzeppelin.com/contracts/2.x/utilities]
+ºChecking Signatures On-Chainº
+
+- ECDSA provides functions for recovering and managing Ethereum account 
+  ECDSA signatures. These are often generated via web3.eth.sign, and 
+  are a 65 byte array (of type bytes in Solidity) arranged the follwing 
+  way: [[v (1)], [r (32)], [s (32)]].
+
+- The data signer can be recovered with ECDSA.recover, and its address 
+  compared to verify the signature. Most wallets will hash the data to 
+  sign and add the prefix '\x19Ethereum Signed Message:\n', so when 
+  attempting to recover the signer of an Ethereum signed message hash, 
+  you’ll want to use toEthSignedMessageHash.
+
+RºWARNº:
+- Getting signature verification right is not trivial: make sure you 
+  fully read and understand ECDSA's documentation.
+@[https://docs.openzeppelin.com/contracts/2.x/api/cryptography#ECDSA]
+</pre>
+
+
 </div>
 <div groupv>
 <pre zoom bgorange  labels="101,storage,qa,solidity">
@@ -2753,7 +2772,7 @@ State  s2 = State(u1)                    // ← uintXX to enum using enum constr
 @[https://github.com/vittominacori/solidity-linked-list]
 </pre>
 
-<pre zoom  labels="101,storage,qa,solidy">
+<pre zoom  labels="101,storage,qa,solidity">
 <span xsmall>Arrays</span>
 @[https://solidity.readthedocs.io/en/v0.4.24/types.html#arrays
 Syntax:
@@ -3938,7 +3957,7 @@ See also:
 </pre>
 
 <pre zoom labels="qa,TODO,development,solidity">
-<span xsmall TODO>EIP-1538 Upgradeable Contracts
+<span xsmall TODO>EIP-1538 Upgradeable Contracts</span>
 @[https://github.com/ethereum/EIPs/blob/master/EIPS/eip-1538.md]
 - This standard provides a contract architecture that makes upgradeable 
   contracts flexible, unlimited in size, and transparent.
@@ -3965,7 +3984,7 @@ Roadmap:
 <span xsmall TODO>O.Zepelling RBAC</span>
 @[https://openzeppelin.org/api/docs/ownership_rbac_RBAC.html]
 </pre>
-<pre zoom labels="qa,development,solidity,zepelin,TODO">
+<pre zoom labels="qa,development,solidity,zepellin,TODO">
 <span xsmall>Upgradable Contracts</span>
 REFS:
 - @[https://www.youtube.com/watch?v=FzmzUHLiutg] Elena Nadolinski presentation
@@ -4187,7 +4206,7 @@ Amongst others contains
 @[https://www.reddit.com/r/ethdev/comments/9jw839/long_list_of_ethereum_developer_tools_frameworks/]
 </pre>
 
-<pre zoom labels="tools,remix,ide,debug,solidity">
+<pre zoom labels="tool,remix,ide,debug,solidity">
 <span xsmall TODO>Remix IDE</span>
 @[https://remix-ide.readthedocs.io/en/latest/]
 @[https://medium.com/remix-ide/remix-ide-renewal-release-0-8-4a55da933b70]
@@ -4309,28 +4328,30 @@ $ ºtruffle initº  # ← Create a bare truffle project:
 $ vim Smart-Contract contracts/Fibonacci.sol:
     | pragma solidity ^0.4.22;
     | contract Fibonacci {
-    |     // fibseries declaration outside function
-    |     //   =˃ saved in storage (vs memory)
-    |     //    =˃ triggers TX when modified
-    |     uint[] fibseries;
-    |     // n = how many in the series to return
-    |     function generateFib(uint n) public {
-    |         // set 1st and 2nd entries
-    |         fibseries.push(1);
-    |         fibseries.push(1);
-    |
-    |         // generate subsequent entries
-    |         for (uint i=2; i ˂ n ; i++) {
-    |             fibseries.push(fibseries[i-1] +
-    |                            fibseries[i-2]);
-    |         }
-    |     }
-    | }
-$ vim migrations/2_deploy_contracts.js:
-WARN: ¡¡¡do not touch 1_initial_migration.js!!!
-    | var Fibonacci = artifacts.require("Fibonacci");
-
-    | module.exports = function(deployer) {
+    |     // fibseries declaration outside function   │ REF:
+    |     //   =˃ saved in storage (vs memory)        │ @[https://github.com/trufflesuite/truffle-deployer/blob/develop/index.js]
+    |     //    =˃ triggers TX when modified          │ function Deployer(options) {
+    |     uint[] fibseries;                           │   var self = this;
+    |     // n = how many in the series to return     │   options = options || {};
+    |     function generateFib(uint n) public {       │ 
+    |         // set 1st and 2nd entries              │   expect.options(options, [
+    |         fibseries.push(1);                      │     "provider",
+    |         fibseries.push(1);                      │     "network",
+    |                                                 │     "network_id"
+    |         // generate subsequent entries          │   ]);
+    |         for (uint i=2; i ˂ n ; i++) {           │ 
+    |             fibseries.push(fibseries[i-1] +     │   this.chain = new DeferredChain();
+    |                            fibseries[i-2]);     │   this.logger = options.logger || {log: function() {}};
+    |         }                                       │   this.known_contracts = {};
+    |     }                                           │   (options.contracts || []).forEach(function(contract) {
+    | }                                               │     self.known_contracts[contract.contract_name] = contract;
+$ vim migrations/2_deploy_contracts.js:               │   });
+WARN: ¡¡¡do not touch 1_initial_migration.js!!!       │   this.network = options.network;
+    | var Fibonacci = artifacts.require("Fibonacci"); │   this.network_id = options.network_id;
+                                                      │   this.provider = options.provider;
+    | module.exports = function(deployer) {           │   this.basePath = options.basePath || process.cwd();
+    │                           └──┬───┘              │ };
+    │                              └──────────────────┘
     |   deployer.deploy(Fibonacci);
     | };
 $ vim truffle-config.js:
@@ -5275,7 +5296,7 @@ shared security.
 <div group bgyellow>
 <span title>Enterprise Integration</span><br/>
 <div groupv>
-<pre zoom bgorange labels="eea,diagram,">
+<pre zoom bgorange labels="eea,diagram,integration,diagram">
   <span xsmall>Integration Layout</span>
 REF: https://medium.com/@bibryam/enterprise-integration-for-ethereum-fa67a1577d43
 ____________________________________________________________________________________________
@@ -5352,7 +5373,7 @@ ________________________________________________________________________________
    Standard RBAC in EEA/Quorum expected for mid/late 2019
 </pre>
 
-<pre zoom labels="auditing,monitoring,security,tool">
+<pre zoom labels="auditing,monitoring,security,tool,integration">
 <span xsmall>Alethio,Rakr</span>
 <span xsmall>(IA auditing)</span>
 @[https://aleth.io]
@@ -5423,7 +5444,7 @@ Keep an eye out for the next article by Paul Lintilhac, which will give an expos
 Alethio’s recent data science initiatives: the Ponzi Model.
 </pre>
 
-<pre zoom>
+<pre zoom labels="events,integration">
 <span xsmall>Eventeum</span>
 @[https://github.com/ConsenSys/eventeum]
 Eventeum: listen for specified (SmartContract/Blocks) event emissions
@@ -5651,14 +5672,14 @@ required to handle duplicate messages gracefully, as each
 instance will broadcast the same events.
 </pre>
 
-<pre zoom>
+<pre zoom labels="architecture,events,integration,java,TODO,">
 <span TODO xsmall>Camel Connector</span>
 @[https://github.com/bibryam/camel-web3j]
 @[https://medium.com/@bibryam/enterprise-integration-for-ethereum-fa67a1577d43]
 
 </pre>
 
-<pre zoom>
+<pre zoom labels="integration,storage,architecture,comparative,framework,infrastructure,privacy,scalability,TODO">
 <span xsmall TODO>EXTERNAL STORAGE (IPFS,...)</span>
 TODO: Compare with alternative Storage "providers": IPFS , Maidsafe, Storj
 - IPFS is just a protocol like http. It is unmotivated (don't have tokens).
@@ -5698,9 +5719,19 @@ humans) and contract accounts which are controlled by the code stored
 together with the account.
 </pre>
 
-<pre zoom>
-<span xsmall>External Inputs</span>
-<span xsmall>(Oracles)</span>
+<pre zoom labels="integration,signature,101,evm,solidity,TODO">
+<span xsmall>External Inputs (Oracles)</span>
+The evm and SmartContract by extensions just have access to internal (current-state)
+blockchain data.
+Oracles are used when we need logic that depends of external-to-blockchain events.
+
+Oracles in practices are "trusted" smart-contracts whose internal data/status
+is the result of a list of (N-of-M different) Signatures.
+For example we trust a deployed Oracle that clains that a vehicle with ID:ABCDEF had 
+an accident because map( hashOfCAR_ID =˃ carStatus) ddbbStatus is updated
+only after at least N signatures of M trusted signers have been sent claiming
+such accident is true.
+
 @[http://ethereumj.io/blog/2015/09/09/friendly-ether-bot/]
 MS.Bletchley Cryplets: @[https://azure.microsoft.com/en-us/blog/cryptletsdd/]
 ºExample Oracleº
@@ -5724,8 +5755,9 @@ public void configure() throws Exception {
 }
 </pre>
 
-<pre zoom>
- <a href="https://github.com/ethereum/wiki/wiki/Whisper">Whisper</a> <span xsmall>Dapp Protocol</span>
+<pre zoom labels="integration,privacy,architecture,scalability,TODO">
+ <span xsmall>Whisper Dapp Protocol</span>
+@[https://github.com/ethereum/wiki/wiki/Whisper]
 - communication protocol to communicate DApps with each other for off-chain Data.
 
 ºUSE CASE:º
@@ -5760,13 +5792,13 @@ the bulk transfer.
 <span TODO>Whisper Alternative: "Message Contract" and "Telehash"</span>
 </pre>
 
-<pre zoom labels="tool,integration">
+<pre zoom labels="integration,tool,scalability,TODO">
 <span xsmall>EtherQuery</span>
 @[https://github.com/Arachnid/etherquery]
 Custom ethereum client that uploads blockchain data to BigQuery
 </pre>
 
-<pre bgorange zoom labels="integration,graphql,TODO" >
+<pre bgorange zoom labels="integration,graphql,architecture,TODO" >
 <span xsmall>GraphQL Interface</span>
 Extracted from @[https://graphql.org/]
   """GraphQL is a ºquery languageº for APIs and a runtime 
@@ -6399,7 +6431,7 @@ using account NON-interactively (not connected to a geth node):
 └────────────────────────────────────────┴───────────────────────────────────────────────────
 </pre>
 
-<pre zoom labels="geth,troubleshooting,oevops" >
+<pre zoom labels="geth,troubleshooting,devops" >
 <span xsmall>Config Trouble-shoot</span>
 <a href="https://web3js.readthedocs.io/en/1.0/index.html">Full 1.0 API</a>
 console.dir(eth) does NOT work but all that needed is enter the object name in the prompt
@@ -7726,7 +7758,7 @@ $ cat Bº${publicAddres} | | keccak-256sum -x -l | tr -d ' -' | tail -c 41
 @[https://github.com/maandree/sha3sum] C implementation
 
  ºINPUTº        → ºTOOLSº     →  ºOUTPUTº 
-  "/dev/random"    - OpenSSL      - ECDSA private key
+  "/dev/random"    - OpenSSL      - ECDSA_secp256k1 private key
                    - sha3sum      - Ethereum address
 
 WARN:
@@ -9215,17 +9247,17 @@ $ sudo apt-get update
 $ sudo apt-get install solc
 </pre>
 
-<pre zoom labels="cloud,wallet,security,TODO">
+<pre zoom labels="cloud,signature,ecdsa_secp256k1,wallet,security,radar,TODO">
 <span xsmall>Azure offline signing</span>
 @[https://tomislav.tech/2018-02-05-ethereum-keyvault-signing-transactions/]
 </pre>
 
-<pre zoom labels="TODO">
+<pre zoom labels="TODO,radar">
 <span xsmall>ethereumjs-vm</span>
 @[https://github.com/ethereumjs/ethereumjs-vm]
 </pre>
 
-<pre zoom labels="TODO,tool,auditing,">
+<pre zoom labels="TODO,tool,auditing,infrastructure,monitoring,radar,">
 <span xsmall>EthVM</span>
 EthVM is an open-source Blockchain Explorer focused mainly on Ethereum
 (although other networks and forks will be supported over time)
@@ -9308,6 +9340,7 @@ Please give it a try. We really do want the best for you.
 @[https://docs.microsoft.com/en-us/azure/blockchain/workbench/]
 @[https://github.com/azure-samples/blockchain-devkit]
 @[https://docs.microsoft.com/en-us/azure/blockchain/workbench/deploy#deploy-blockchain-workbench]
+@[https://github.com/microsoft/vscode-azure-blockchain-ethereum]
 Microsoft Azure Blockchain Workbench
 This repository contains content and samples in number of areas, including:
 - Connect      : Connect various data producers and consumers to or from the blockchain
@@ -9997,5 +10030,9 @@ ___________________
 https://www.autonity.io/
 geth extension with IBFT consensus.
 _______________________
+https://docs.openzeppelin.com/contracts/2.x/utilities
+_________________________
+https://docs.openzeppelin.com/contracts/2.x/api/utils#EnumerableSet
+
 
 -->

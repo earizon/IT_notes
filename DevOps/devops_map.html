@@ -9,12 +9,675 @@
 
 <body>
 
+<div group>
+<span title>Git</span><br/>
+<div groupv>
+<pre zoom labels="git">
+<span xsmall>External Links</span>
+- @[https://git-scm.com/book/en/v2]
+- @[https://learnxinyminutes.com/docs/git/]
+
+Related:
+See UStore: Distributed Storage with rich semantics!!!
+@[https://arxiv.org/pdf/1702.02799.pdf]
+</pre>
+
+<pre zoom labels="git,TODO">
+<span xsmall>Who-is-who</span>
+  (Forcibly incomplete but still quite pertinent list of core people and companies)
+- Linus Torvald:  
+  L.T. initiated the project to fix problems with distributed
+  development of the Linux Kernel.
+- Junio C. Hamano:  lead git maintainer (+8700 commits)
+ @[https://git-blame.blogspot.com/]
+
+</pre>
+
+
+<pre zoom labels="git,">
+<span title>Full Journey</span>
+
+<span xsmall>Setup Server⅋Clients</span>
+- Non-normative ssh access to Git server
+ ──────────────────────────────────────────┬──────────────────────────────────────────────────────────
+ ºSTEP 1:º                                 │ ºSTEP 2:º
+ SSH Server                                │ remote client/s
+ ──────────────────────────────────────────┼──────────────────────────────────────────────────────────
+  #!/bin/bash                              │   GIT_SSH_COMMAND="ssh "   # ← ENV.VAR To tune SSH *1
+                                           │   GIT_SSH_COMMAND="$GIT_SSH_COMMAND Oº-oPort=1234º"
+  if [[ $EUID != 0 ]] ; then               │   GIT_SSH_COMMAND="$GIT_SSH_COMMANDGº-i ~/.ssh/key07.keyº"
+    echo "exec as root/sudo"               │   GIT_SSH_COMMAND="$GIT_SSH_COMMAND ... "
+    exit 1                                 │
+  fi                                       │   GIT_URL="myRemoteSSHServer"
+  TEAM=team01                              │ BºGIT_URL="${GIT_URL}/var/lib/my_git_team"º
+  addgroup ${TEAM}                         │ GºGIT_URL="${GIT_URL}/ourFirstProject"º
+  for USER in lyarzas earizonb ; do        │                                                         
+     grep "^${USER}:" /etc/passwd          │  ºgit cloneº GºmyUser1º@${GIT_URL}
+     if [[ $? != 0 ]]; then                │       ^^^^^
+       useradd ${USER} \                   │       create working copy of bare/non-bare repository
+          --shell=/usr/bin/git-shell \     │
+          --groups ${TEAM} \               │ºMake branch appear on shell prompt :º(☜strongly recomended)
+          --password ${SECRET}             │(Must be done just once)
+     fi                                    │ ModifyºPS1 promptº(Editing $HOME/.bashrc) to look like:
+     # Add to group                        │ PS1="\h[\$(git branch 2˃/dev/null | grep ^\* | sed 's/\*/branch:/')]@\$(pwd |rev| awk -F / '{print \$1,\$2}' | rev | sed s_\ _/_) \$ "
+     usermod -a -G ${TEAM} ${USER}         │          └─────────────    ºshow git branchº   ───────────────────┘   └────────────── show current and parent dir. only ────────┘
+  done                                     │          $(command ...): bash syntax that executes command ...
+                                           │                          and replaces standard output dynamically
+BºBASE_GIT_DIR=/var/lib/${TEAM}º           │                          in PS1
+GºPROJECT_NAME=project01º                  │  host1 $                           ← PROMPT BEFORE:                          
+  mkdir -p ${BASE_GIT_DIR}/${PROJECT_NAME} │  host01[branch: master]@dir1/dir2  ← PROMPT AFTER:
+  pushd .                                  │
+  cd ${BASE_GIT_DIR}/${PROJECT_NAME} ;     │
+  gitºinit --bareº                         │
+  popd                                     │
+  FIND="find ${BASE_GIT_DIR}"              │
+  find ${BASE_GIT_DIR}         \           │
+   -exec chown -R root:${TEAM} {} \;       ← Fix group
+  find ${BASE_GIT_DIR} -type d \           │
+   -exec chmod g+rwx {}           \;       ← Fix permissions
+  find ${BASE_GIT_DIR} -type f \           │
+   -exec chmod g+rw  {}           \;       ← Fix permissions 
+ ──────────────────────────────────────────┴──────────────────────────────────────────────────────────
+*1:@[https://stackoverflow.com/questions/5767850/git-on-custom-ssh-port/50854760#50854760]
+
+
+<span xsmall>Common flows</span>
+OºFLOW 1:º(Simplest one) no one else pushed changes before our push)
+local ─→ git status ─→ git add . ─→ºgit commitº──────────────────────────────────────────────────────────→ºgit push origin featureXº
+edit           ^             ^              ^                                                                     ^
+               │             │              │                                                                     │
+               │         add file/s         │                                                           push to remote  repository
+               │         to next commit     │                                                          (ussually origin) and branch
+               │                            │                                                          (featureX, master,...)      
+           display changes               commit
+           pending to commit             new version
+
+
+OºFlow 2:ºsomeone else pushed changed before our push but there are no conflicts (each user edited different files)
+
+local ─→ git status ─→ git add . ─→ºgit commitº─→ git pull ──────────────────────────────────────────────→ºgit push origin featureXº
+edit                                               ^
+                                                   │
+                                         - git will abort and warn that changes has been pushed
+                                           to remote repository+branch if we try to skip this step.
+                                         - Otherwise an automatic merge is done with our local
+                                           changes and any other user remote changes.
+
+OºFlow 3:ºsomeone else pushed changed before our push, but there are  conflicts (each user edited one or more common files)
+
+local ─→ git status ─→ git add . ─→ºgit commitº─→ git pull  ─→ "fix conflicts" ─→ git add ─→ git commit ─→ºgit push origin featureXº
+edit                                                                     ^                   ^      
+                                                                   │                   │      
+                                                                   │             Tell git that
+                                                                   │             conflicts were
+                                                                   │             resolved
+                                                                   │                          
+                                                           manually edit   
+                                                           conflicting changes
+
+OºFlow 4:ºAmend local commit
+local → git status ─→ git add . ─→ºgit commitº─→ git commit ─amend ─→ ... ─→ git commit ────────────────→ºgit push origin featureXº
+edit  
+
+
+OºGit-Flowº Meta-Flow using widely accepted branches rules to treat with
+            common issues when releasing software and managing versions
+            REF: @[https://nvie.com/posts/a-successful-git-branching-model/]
+ ┌────────────────┬───────────────────────────────────
+ │ Standarized    │ Intended use
+ │ Branch names   │                                
+ ]────────────────┼───────────────────────────────────
+ │feature/...     │ merged back into main body of code
+ │                │ when the developer/s are confident
+ │                │ with the code quality.
+ │                │ If asked to switch to another task just
+ │                │ commit changes to this feature/... branch
+ │                │ to continue later on.
+ ├────────────────┼───────────────────────────────────
+ │develop         │ Release Staging Area:
+ │                │ Merge here feature/... completed features
+ │                │ NOT yet been released.
+ ├────────────────┼───────────────────────────────────
+ │release         │ stable (release tagged branch)
+ ├────────────────┼───────────────────────────────────
+ │hotfix branches │ branches from a tagged release.
+ │                │ Fix quickly, merge to release
+ │                │ and tag in release with new minor version.
+ │                │ Ideally never used since our released
+ │                │ software has no bugs ;D 
+ └────────────────┴───────────────────────────────────
+
+<span xsmall>branching</span>
+Change branch (checkout)
+$ git checkout -b newBranch       ← alt 1, -b: creates new local branch
+$ git checkout    existingBranch  ← alt 2,   : switch to existing local branch 
+$ git branch -av                  ←  List (-a)ll existing branches
+$ git branch -d branchToDelete    ← -d: Delete branch
+
+$ git checkout --track "remote/branch"  ← Create  new tracking branch (TODO)
+
+<span xsmall>View Change History</span>
+$ git log -n 10           ← -n 10. See only 10 last commits.
+$ git log -p path_to_file ← See log for file with line change details (-p: Patch applied)
+
+<a xsmall href="">Tags</a>
+$ git tag                 ← List tags
+→ ...
+→ v2.1.0-rc.2
+→ v2.1.1
+→ v2.1.2
+→ ...
+$ git tag -a v1.4 -m "..." ← Create annotated tag (recomended)
+                                    ^^^^^^^^^
+                                - stored as full objects in Git database.
+                                - They’re checksummed; contain the tagger name,
+                                - email, and date; have a tagging message (-m).
+                                - can be signed and verified with GPG.
+
+$ git tag v1.4-lw          ← Create lightweight tag
+                                    ^^^^^^^^^^^    
+                                  - "alias" for a commit checksum stored in a file
+                                  - No other info is kept.
+
+$ git tag -a v1.2 9fceb02  ← Tag some commit in history
+
+ºSharing Tagsº
+WARN: git push command doesn’t transfer tags to remote servers. 
+
+$ git push origin v1.5    ← Share/push tag to remote repo
+$ git push origin --tags  ← Share/push all the tags
+$ git tag -d v1.4-lw      ← Delete local tag (remote tags will persist)
+$ git push origin --delete v1.4-lw    ← Delete remote tag. Alt 1
+$ git push origin :refs/tags/v1.4-lw  ← Delete remote tag. Alt 2
+                  ^^^^^^^^^^^^^^^^^^
+                  null value before the colon is
+                  being pushed to the remote tag name,
+                  effectively deleting it.
+$ git checkout v1.4-lw          ← Move back to (DETACHED) commit
+$ git show-ref --tags    ← Map tag to commit
+→ ...
+→ 75509731d28ddbbb6f6cbec6e6b50aeaa413df69 refs/tags/v2.1.0-rc.2
+→ 8fc0a3af313d9372fc9b8d3e5dc57b804df0588e refs/tags/v2.1.1
+→ 3e1f5b0d4d081db7b40f9817c060ee7220a51633 refs/tags/v2.1.2
+→ ...
+
+<span xsmall TODO>Comparing diffs</span>
+TODO:
+
+
+</pre>
+
+
+<pre zoom labels="git,">
+<a xsmall todo >Filter-branch</a>
+- rewrite history in Git using several of the built-in filters that the command provides.   
+  - rev-list command, which provides a way to list out revisions based on a range or criteria.
+  - filter-branch: split a subdirectory into a separate repository
+  - how to use to use filter-branch to delete a file from all versions in a repository 
+    and change the email address on versions in Git history
+</pre>
+
+<pre zoom labels="git,TODO">
+<a xsmall TODO href="https://opensource.com/article/18/11/gitbase">gitbase</a>
+</pre>
+
+<pre zoom labels="git,TODO">
+<a xsmall TODO href="https://www.systutorials.com/2845/how-to-revert-changes-in-git/">Revert Changes</a>
+</pre>
+
+<pre zoom labels="git,TODO">
+<span title>Debug Changes</span>
+<span title>grep/bisect/blame</span>
+REF: @[https://git-scm.com/book/en/v2/Appendix-C:-Git-Commands-Debugging]
+</pre>
+
+</div>
+
+<div groupv>
+<pre zoom labels="git,101,comparative">
+<span xsmall>merge vs rebase vs cherry-pick</span>
+REF:
+@[https://stackoverflow.com/questions/9339429/what-does-cherry-picking-a-commit-with-git-mean]
+@[https://git-scm.com/docs/git-cherry-pick]
+
+
+       A → B → C → D → E → HEAD branch01
+               │ 
+               └─→ H → I → J      branch02
+       ───────────────────────────────────────────────────────────────────────
+ºMERGE   º"mix" full list of commits
+
+        A → B → C → D → E → HEAD branch01        $ git checkout branch01
+                │             ↑                  $ git merge    branch02
+                └─→ H → I → J ┘  branch02
+       ───────────────────────────────────────────────────────────────────────
+ºREBASE:º"Append" full list of commits to head
+
+    A → B → C → D → E → → H → I → J →         HEAD branch01    
+                                             
+                                             $ git checkout branch01                                        
+                                             $ git merge    branch02
+
+──────────────────────────────────────────────────────────────────────────────
+ºCHERRY-PICK:º"Pick unique-commit" from branch and apply to another branch
+
+    A → B → C → D →ºEº→ → HEAD  branch01   
+            │                                $ git checkout branch02
+            └─→ H → I → J →ºEº  branch02     $ git cherry-pick -x branch02ºHEAD~2º
+                                                              └┬┘ 
+                                              - Useful is "source" branch is 
+                                                public. Generates 
+                                                standardized commit message 
+                                                allowing co-workers to still 
+                                                keep track of the origin of 
+                                                the commit avoiding merge 
+                                                conflicts in the future
+                                              - Notes attached to the commit do NOT
+                                                follow the cherry-pick. Use
+                                                $ git notes copy "from" "to"
+</pre>
+
+<pre zoom labels="git,TODO">
+<span xsmall>Notes</span>
+@[http://alblue.bandlem.com/2011/11/git-tip-of-week-git-notes.html]
+</pre>
+
+
+<pre zoom labels="git,101">
+<span xsmall>pretty branch print</span>
+@[https://stackoverflow.com/questions/1057564/pretty-git-branch-graphs]
+
+$ git log --all --decorate --oneline --graph
+
+$ git log --graph --abbrev-commit --decorate --date=relative --all
+</pre>
+
+<pre zoom labels="git,TODO">
+<a xsmall href="https://gitea.io/">Gitea (Gogs)</a>
+<a xsmall href="https://gitea.io/">painless self-hosted Git service</a>
+- Fork of gogs, since it was unmaintained.
+</pre>
+
+<pre zoom labels="git,TODO">
+<span xsmall>Quick-clone</span>
+$ git clone --depth=1 ${URL_to_Git_repo}
+            ^^^^^^^^^
+            "fast clone"
+            Create shallow clone with
+            history truncated to the
+            specified number of commits. 
+            Implies --single-branch
+            to clone submodules shallowly,
+            use also --shallow-submodules.
+
+
+<span xsmall>Quick-tag-clone</span>
+
+$ git clone --depth=1   --branch '1.3.2'   --single-branch ${URL_to_Git_repo}
+                        ^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^
+                        point to branch    Clone only history
+                        hash or tag        leading to the tip
+                        default to HEAD)   of a single branch
+
+
+
+
+</pre>
+
+<pre zoom labels="git,TODO">
+<a xsmall href="https://git-lfs.github.com/">Git LFS (Large Files extension)</a>
+- Git Large File Storage (LFS) replaces large files such as audio samples,
+  videos, datasets, and graphics with text pointers inside Git, while storing 
+  the file contents on a remote server like GitHub.com or GitHub Enterprise
+</pre>
+</div>
+<div groupv>
+<pre zoom labels="git,TODO,secret">
+<span xsmall>4 secrets encryption tools</span>
+@[https://www.linuxtoday.com/security/4-secrets-management-tools-for-git-encryption-190219145031.html]
+</pre>
+
+<pre zoom labels="git,TODO,secret">
+<span xsmall>Encrypt Git repos</span>
+@[https://www.atareao.es/como/cifrado-de-repositorios-git/]
+</pre>
+
+<pre zoom labels="git,TODO,performance">
+<span xsmall>Garbage</span>
+<span xsmall>Collector</span>
+-  Git occasionally does garbage collection as part of its normal operation, 
+by invoking git gc --auto. The pre-auto-gc hook is invoked just before the 
+garbage collection takes place, and can be used to notify you that this is 
+happening, or to abort the collection if now isn’t a good time.
+</pre>
+
+<pre zoom labels="git,TODO">
+<span xsmall>Scalable</span>
+<span xsmall>Git VFS</span>
+@[https://github.com/Microsoft/VFSForGit]
+@[https://vfsforgit.org/]
+- Microsoft project to enable managing massive Git 
+  repositories possible. (hundreds of Gigabytes).
+</pre>
+
+<pre zoom labels="git,secret,signature,TODO">
+<span xsmall>GPG signed</span>
+<span xsmall>commits</span>
+@[https://dev.to/sdmg15/gpg-signing-your-git-commits-3epc]
+</pre>
+
+<span title>Git Hooks</span>
+<pre zoom>
+<pre zoom labels="git,TODO">
+<span xsmall>Client Hooks</span>
+@[https://git-scm.com/book/en/v2/Customizing-Git-Git-Hooks]
+
+Client-Side Hooks
+- not copied when you clone a repository
+  - to enforce a policy do on the server side
+- committing-workflow hooks:
+  -ºpre-commitºhook:
+    - First script to be executed.
+    - used to inspect the snapshot that's about to be committed.
+      - Check you’ve NOT forgotten something
+      - make sure tests run
+      - Exiting non-zero from this hook aborts the commit
+    (can be bypassed with git commit --no-verify flag)
+  -ºprepare-commit-msgºhook:
+    - Params:
+      - commit_message_path (template for final commit message)
+      - type of commit
+      - commit SHA-1 (if this is an amended commit)
+    - run before the commit message editor is fired up 
+      but after the default message is created.
+    - It lets you edit the default message before the
+      commit author sees it.
+    - Used for non-normal-commits with auto-generated messages
+      - templated commit messages
+      - merge commits
+      - squashed commits
+      - amended commits
+  -ºcommit-msgºhook:
+      - commit_message_path (written by the developer)
+  -ºpost-commitºhook:
+    - (you can easily get the last commit by running git log -1 HEAD)
+    - Generally, this script is used for notification or something similar.
+
+-ºemail-workflowº hooks:
+  - invoked by ºgit amº
+                ^^^^^^
+                Apply a series of patches from a mailbox
+                prepared by git format-patch
+
+  -ºapplypatch-msgº: 
+    - Params:
+      - temp_file_path containing the proposed commit message.
+  -ºpre-applypatchº:
+    - confusingly, it is run after the patch is 
+      applied but before a commit is made.
+    - can be used it to inspect the snapshot before making the commit,
+      run tests,  inspect the working tree with this script.
+  -ºpost-applypatchº:
+    - runs after the commit is made.
+    - Useful to notify a group or the author of the patch
+      you pulled in that you’ve done so. 
+
+- Others:
+  -ºpre-rebaseºhook:
+    - runs before you rebase anything
+    - Can be used to disallow rebasing any commits
+      that have already been pushed.
+  -ºpost-rewriteºhook:
+    - Params:
+      - command_that_triggered_the_rewrite: 
+        - It receives a list of rewrites on stdin.
+    - run by commands that replace commits
+      such as 'git commit --amend' and 'git rebase'
+      (though not by git filter-branch).
+    - This hook has many of the same uses as the
+      post-checkout and post-merge hooks.
+  -ºpost-checkoutºhook:
+    - Runs after successful checkout
+    - you can use it to set up your working directory
+      properly for your project environment.
+      This may mean moving in large binary files that 
+      you don't want source controlled, auto-generating
+      documentation, or something along those lines.
+  -ºpost-mergeºhook:
+    - runs after a successful merge command.
+    - You can use it to restore data in the working tree
+      that Git can't track, such as permissions data.
+      It can likewise validate the presence of files 
+      external to Git control that you may want copied 
+      in when the working tree changes.
+  -ºpre-pushºhook:
+    - runs during git push, after the remote refs
+      have been updated but before any objects have
+      been transferred.
+    - It receives the name and location of the remote
+      as parameters, and a list of to-be-updated refs
+      through stdin.
+    - You can use it to validate a set of ref updates before
+      a push occurs (a non-zero exit code will abort the push).
+</pre>
+
+<pre zoom labels="git,TODO">
+<span xsmall bgorange>Server-Side Hooks</span>
+(system administrator only)
+- Useful to enforce nearly any kind of policy for your project.
+
+- can exit non-zero at any time to reject the push 
+  as well as print an error message back to the client; 
+
+- you can set up a push policy that's as complex as you wish.
+
+ºpre-receiveº hook:
+ - first script to run 
+ - takes a list of references that are being pushed from stdin;
+   if it exits non-zero, none of them are accepted. 
+ - You can use this hook to do things like make sure none of the updated 
+   references are non-fast-forwards, or to do access control for all the refs 
+   and files they’re modifying with the push.
+
+ºupdateº
+ - very similar to the pre-receive script, except that 
+  ºit's run once for each branch the pusher is trying to updateº.
+ - If the pusher is trying to push to multiple branches, pre-receive runs only once,
+   whereas update runs once per branch they're pushing to.
+ - Instead of reading from stdin, this script takes three arguments:
+   - the name of the reference (branch),
+   - the SHA-1 that reference pointed to before the push, 
+   - the SHA-1 the user is trying to push.
+ - If the update script exits non-zero, only that reference is rejected; 
+   other references can still be updated.
+
+ºpost-receiveº
+ - runs after the entire process is completed 
+ - can be used to update other services or notify users.
+ - It takes the same stdin data as the pre-receive hook.
+ - Examples include emailing a list, notifying a CI server,
+   or updating a ticket-tracking system 
+   You can even parse the commit messages to see if any
+   tickets need to be opened, modified, or closed.
+ - This script can't stop the push process, but the client 
+   doesn't disconnect until it has completed, so be careful
+   if you try to do anything that may take a long time.
+</pre>
+
+
+</div>
+
+<div groupv>
+<span title>Advanced</span>
+<pre zoom labels="git,TODO">
+<span xsmall>revert/rerere</span>
+</pre>
+
+<pre zoom labels="git,TODO">
+<span xsmall>Submodules</span>
+</pre>
+<pre zoom labels="git,TODO">
+<span xsmall>Subtrees</span>
+- TODO: how subtrees differ from submodules
+- how to use the subtree to create a new project from split content
+</pre>
+
+<pre zoom labels="git,TODO">
+<span xsmall>Interactive rebase</span>
+-  how to rebase functionality to alter commits in various ways.
+- how to squash multiple commits down into one. 
+</pre>
+
+<pre zoom labels="git,TODO">
+<span xsmall>Supporting files</span>
+- Git attributes file and how it can be used to identify binary files,
+  specify line endings for file types, implement custom filters, and 
+  have Git ignore specific file paths during merging.
+</pre>
+
+<pre zoom labels="git,TODO">
+<span xsmall>Cregit token level blame</span>
+@[https://www.linux.com/blog/2018/11/cregit-token-level-blame-information-linux-kernel]
+cregit: Token-Level Blame Information for the Linux Kernel
+Blame tracks lines not tokens, cgregit blames on tokens (inside a line)
+</pre>
+
+<span title>Implementations</span>
+<pre zoom labels="git,">
+<span xsmall>JGit</span>
+@[https://wiki.eclipse.org/JGit/User_Guide]
+- Eclipse Distribution License - v 1.0
+- lightweight, pure Java library implementing the Git version control system
+  - repository access routines
+  - network protocols
+  - core version control algorithms
+
+- suitable for embedding in any Java application
+</pre>
+
+<pre zoom labels="git,">
+<span xsmall>GitPython</span>
+@[https://gitpython.readthedocs.io/en/stable/tutorial.html]
+</pre>
+</div>
+
+<div groupv>
+<span title>Non-Classified</span>
+<pre zoom labels="git,TODO">
+<span xsmall TODO>git-pw</span>
+@[http://jk.ozlabs.org/projects/patchwork/]
+@[https://www.collabora.com/news-and-blog/blog/2019/04/18/quick-hack-git-pw/]
+- git-pw requires patchwork v2.0, since it uses the 
+  new REST API and other improvements, such as understanding
+  the difference between patches, series and cover letters,
+  to know exactly what to try and apply.
+
+- python-based tool that integrates git and patchwork.
+
+  $ pip install --user git-pw
+
+CONFIG:
+  $ git config pw.server https://patchwork.kernel.org/api/1.1
+  $ git config pw.token YOUR_USER_TOKEN_HERE
+
+ºDaily work exampleº
+finding and applying series
+- Alternative 1: Manually
+  - We could use patchwork web UI search engine for it.
+    - Go to "linux-rockchip" project 
+    - click on _"Show patches with" to access the filter menu.
+    - filter by submitter. 
+
+- Alternative 2: git-pw (REST API wrapper)
+  - $ git-pw --project linux-rockchip series list "dynamically"
+    → ID    Date         Name              Version   Submitter
+    → 95139 a day ago    Add support ...   3         Gaël PORTAY
+    → 93875 3 days ago   Add support ...   2         Gaël PORTAY
+    → 3039  8 months ago Add support ...   1         Enric Balletbo i Serra
+
+
+  - Get some more info:
+    $ git-pw series show 95139
+    → Property    Value
+    → ID          95139
+    → Date        2019-03-21T23:14:35
+    → Name        Add support for drm/rockchip to dynamically control the DDR frequency.
+    → URL         https://patchwork.kernel.org/project/linux-rockchip/list/?series=95139
+    → Submitter   Gaël PORTAY
+    → Project     Rockchip SoC list
+    → Version     3
+    → Received    5 of 5
+    → Complete    True
+    → Cover       10864561 [v3,0/5] Add support ....
+    → Patches     10864575 [v3,1/5] devfreq: rockchip-dfi: Move GRF definitions to a common place.
+    →     10864579 [v3,2/5] : devfreq: rk3399_dmc: Add rockchip, pmu phandle.
+    →     10864589 [v3,3/5] devfreq: rk3399_dmc: Pass ODT and auto power down parameters to TF-A.
+    →     10864591 [v3,4/5] arm64: dts: rk3399: Add dfi and dmc nodes.
+    →     10864585 [v3,5/5] arm64: dts: rockchip: Enable dmc and dfi nodes on gru.
+
+
+  - Applying the entire series (or at least trying to):
+    $ git-pw series apply 95139
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    fetch all the patches in the series, and apply them in the right order.
+</pre>
+
+<pre zoom labels="git,resource">
+<span xsmall>GIT Commit Standard Emojis</span>
+@[https://gist.github.com/parmentf/035de27d6ed1dce0b36a]
+ºCommit type               Emoji                    Graphº
+ Initial commit           :tada:                      🎉 
+ Version tag              :bookmark:                  🔖 
+ New feature              :sparkles:                  ✨ 
+ Bugfix                   :bug:                       🐛 
+ Metadata                 :card_index:                📇 
+ Documentation            :books:                     📚 
+ Documenting src          :bulb:                      💡 
+ Performance              :racehorse:                 🐎 
+ Cosmetic                 :lipstick:                  💄 
+ Tests                    :rotating_light:            🚨 
+ Adding a test            :white_check_mark:          ✅ 
+ Make a test pass        :heavy_check_mark:           ✔️  
+ General update           :zap:                       ⚡️ 
+ Improve format           :art:                       🎨 
+ /structure                                              
+ Refactor code            :hammer:                    🔨 
+ Removing stuff           :fire:                      🔥 
+ CI                       :green_heart:               💚 
+ Security                 :lock:                      🔒 
+ Upgrading deps.         :arrow_up:                   ⬆️  
+ Downgrad. deps.         :arrow_down:                 ⬇️  
+ Lint                     :shirt:                     👕 
+ Translation              :alien:                     👽 
+ Text                     :pencil:                    📝 
+ Critical hotfix          :ambulance:                 🚑 
+ Deploying stuff          :rocket:                    🚀 
+ Work in progress         :construction:              🚧 
+ Adding CI build system   :construction_worker:       👷 
+ Analytics|tracking code  :chart_with_upwards_trend:  📈 
+ Removing a dependency    :heavy_minus_sign:          ➖ 
+ Adding a dependency      :heavy_plus_sign:           ➕ 
+ Docker                   :whale:                     🐳 
+ Configuration files      :wrench:                    🔧 
+ Package.json in JS       :package:                   📦 
+ Merging branches         :twisted_rightwards_arrows: 🔀 
+ Bad code / need improv.  :hankey:                    💩 
+ Reverting changes        :rewind:                    ⏪ 
+ Breaking changes         :boom:                      💥 
+ Code review changes      :ok_hand:                   👌 
+ Accessibility            :wheelchair:                ♿️ 
+ Move/rename repository  :truck:                      🚚 
+
+</pre>
+</div>
+</div> <!-- git -->
+
 
 <div group>
     <span title>Shell</span><br/>
 <div groupv>
 <div groupv>
-<pre zoom>
+<pre zoom labels="101,shell">
 <span xsmall>Init Vars</span>
 complete Shell parameter expansion list available at:
 - @[http://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html]
@@ -30,9 +693,7 @@ ${parameter:offset:length}
   of parameter starting at the character specified by offset.
   If parameter is '@', an indexed array subscripted by '@' or '*', or an
   associative array name, the results differ as described below.
-</pre>
 
-<pre zoom labels="">
 <span xsmall>Parse arguments</span>
 #Oº$#º number of arguments
 while [Oº$#º -gt 0 ]; do
@@ -52,9 +713,14 @@ while [Oº$#º -gt 0 ]; do
       shift 1  # ºconsume argº        ← Oº$# = $#-1º
   esac
 done
+jj
+<span xsmall>Temporal Files</span>
+TMP_FIL=$(mktemp)  
+TMP_DIR=$(mktemp --directory)
+
 </pre>
 
-<pre zoom labels="">
+<pre zoom labels="shell">
 <span xsmall>Barrier synchronization</span>
 Wait for background jobs to complete example:
 (
@@ -68,9 +734,7 @@ Wait for background jobs to complete example:
 ) &
 </pre>
 
-
-
-<pre zoom>
+<pre zoom labels="shell">
 <span xsmall>bash REPL loop</span>
 REPL stands for Read-eval-print loop: More info at:
 @[https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop]
@@ -85,12 +749,12 @@ REPL stands for Read-eval-print loop: More info at:
    ºdoneº
 </pre>
 
-<pre zoom labels="">
+<pre zoom labels="shell,TODO">
 <span xsmall>trap: Exit script cleanly</span>
 @[https://www.putorius.net/using-trap-to-exit-bash-scripts-cleanly.html]
 </pre>
 
-<pre zoom>
+<pre zoom labels="shell,resource">
 <span xsmall>Bash-it</span>
 @[https://www.tecmint.com/bash-it-control-shell-scripts-aliases-in-linux/]
 - bundle of community Bash commands and scripts for Bash 3.2+,
@@ -467,8 +1131,18 @@ pipeline {
                            Gºscmº: special var. telling to use the same
                                    repository/revision used to checkout
                                    (git clone) the Jenkinsfile
-      checkout poll: false, scm: [$class: 'GitSCM', branches: [[name: 'dev']], doGenerateSubmoduleConfigurations: false, extensions: [], submoduleCfg: [], userRemoteConfigs: [[url: 'https://n002tbs0@ec.europa.eu/cefdigital/code/scm/ebsi/1-demo-front-ends.git', credentialsId: 'EBSI_Jara']]]
-
+      checkout poll: false,
+               scm: [
+                 $class: 'GitSCM',
+                 branches: [[name: 'dev']],
+                 doGenerateSubmoduleConfigurations: false,
+                 extensions: [],
+                 submoduleCfg: [],
+                 userRemoteConfigs: [
+                   [url: 'https://github.com/user01/project01.git',
+                    credentialsId: 'UserGit01']
+                 ]
+               ]
     }
     stage('Build') {
      ºagent anyº
@@ -697,8 +1371,42 @@ Gerrit and Jenkins. It listens to Gerrit stream-events feed and
 trigger jobs function registered by Jenkins using the Jenkins Gearman
 plugin. The jobs triggering specification is written in YAML and
 hosted in the git repository integration/config.git as /zuul/layout.yaml """
-
 </pre>
+
+<pre zoom labels="jenkins,history,">
+<span xsmall>Customize History Saving Policy</span>
+@[https://stackoverflow.com/questions/60391327/is-it-possible-in-jenkins-to-keep-just-first-and-last-failures-in-a-row-of-con]
+
+Use Case: We are just interesing in keeping "build" changes when the execution
+   changes from "success execution" to "failure". That's is, if w  have a history like:
+
+   t1  t2  t3  t4  t5  t6  t7  t8  t9  t10 t11 t12 t13 t14 t15
+   -----------------------------------------------------------
+   OK, OK, OK, OK, KO, KO, KO, KO, OK, OK, OK, OK, KO, KO, OK
+   ^               ^               ^               ^       ^
+   status          status          status          status  status
+   change          change          change          change  change
+
+
+   We want to keep history just for:
+   t1              t5              t9              t13     t15
+   -----------------------------------------------------------
+   OK,             KO,             OK,             KO,     OK
+
+To allow this history saving policy a groovy job-post-build step is needed:
+
+ Ex: discard all successful builds of a job except for the last 3 ones
+     (since typically, you're more interested in the failed runs)
+
+     def allSuccessfulBuilds = manager.build.project.getBuilds().findAll {
+         it.result?.isBetterOrEqualTo( hudson.model.Result.SUCCESS )
+     }
+     
+     allSuccessfulBuilds.drop(3).each {
+       it.delete()
+     }
+</pre>
+
 </div>
 </div><!-- Jenkins -->
 
@@ -1529,7 +2237,8 @@ web-tls.yml
 </pre>
 
 <pre zoom labels="ansible">
-<a xsmall href="https://gist.github.com/marktheunissen/2979474">Insanely complet Ansible playbook</a>
+<span  xsmall>Insanely complet Ansible playbook</span>
+@[https://gist.github.com/marktheunissen/2979474]
 ---
 # ^^^ YAML documents must begin with the document separator "---"
 #
@@ -2642,7 +3351,74 @@ contain the cookies and caching information).
 </html>
 
 <!--
+TODO GIT start {{{
+    https://github.com/awslabs/git-secrets#synopsis
+    - - - - - - - - - - - - - - - - - - - - - - - - 
+
+
+https://dev.to/sdmg15/gpg-signing-your-git-commits-3epc
+    _______________
+MurmurHash is a non-cryptographic hash function suitable for general hash-based lookup.[1] It was created by Austin Appleby in 2008[2] and is currently hosted on GitHub along with its test suite named 'SMHasher'. It also exists in a number of variants,[3] all of which have been released into the public domain. The name comes from two basic operations, multiply (MU) and rotate (R), used in its inner loop. 
+___________________
+https://github.blog/2019-08-16-highlights-from-git-2-23
+
+______________________
+https://www.linuxuprising.com/2019/11/forgit-interactive-git-commands-with.html
+forgit: Interactive Git Commands With Previews Powered By fzf Fuzzy Finder 
+__________________________
+https://isomorphic-git.org/ !!!
+_______________________
+What is the Sign Off feature in Git for?
+https://stackoverflow.com/questions/1962094/what-is-the-sign-off-feature-in-git-for
+_______________________
+
+<pre zoom labels="">
+<span xsmall>Source{d}</span>
+@[https://www.linux.com/blog/holberton/2018/10/sourced-engine-simple-elegant-way-analyze-your-code]
+
+source{d} Engine: A Simple, Elegant Way to Analyze your Code
+- With the recent advances in machine learning technology, it is only a 
+matter of time before developers can expect to run full diagnostics and 
+information retrieval on their own source code. This can include 
+autocompletion, auto-generated user tests, more robust linters, automated 
+code reviews and more. I recently reviewed a new product in this sphere : the 
+source{d} Engine.
+source{d} offers a suite of applications that uses machine learning on code 
+to complete source code analysis and assisted code reviews. Chief among them 
+is the source{d} Engine, now in public beta; it uses a suite of open source 
+tools (such as Gitbase, Babelfish, and Enry) to enable large-scale source 
+code analysis. Some key uses of the source{d} Engine include language 
+identification, parsing code into abstract syntax trees, and performing SQL 
+Queries on your source code such as:
+  - What are the top repositories in a codebase based on number of commits?
+  - What is the most recent commit message in a given repository?
+  - Who are the most prolific contributors in a repository
+</pre>
+_____________________________
+https://www.infoq.com/news/2020/01/git-2-25-sparse-checkout/
+Git maintainer Junio C Hamano announced the latest release of Git, version 
+2.25, including over 500 changes since 2.24. Most notably, Git 2.25 adds a new 
+command to manage sparse checkouts, mostly useful with huge or monolithic 
+repositories.
+
+Sparse checkouts are one of several approaches Git supports to improve 
+performance when working with big repositories. Specifically, sparse checkouts 
+are useful to keep your working directory clean by specifying which directories 
+to keep. This is useful, for example, with repositories containing thousands of 
+directories.
+_____________________________
+(Big) Monorepos in Git:
+https://www.infoq.com/presentations/monorepos/
+https://www.atlassian.com/git/tutorials/big-repositories
+______________________
+https://learngitbranching.js.org/?demo   Learn Git interactively.
+________________________
+https://stackoverflow.com/questions/4986000/whats-the-recommended-usage-of-a-git-symbolic-reference
+
+}}} TODO GIT END
+##############################################################
 TODO Jenkins start {{{
+https://stackoverflow.com/questions/45456564/jenkins-declarative-pipeline-conditional-post-action
 }}} TODO Jenkins END
 ##############################################################
 TODO Ansible Start {{{
@@ -2654,19 +3430,20 @@ https://www.redhat.com/sysadmin/navigate-ansible-documentation
 How to navigate Ansible documentation
 Ansible's documentation can be daunting. Here's a tour that might help.
 }}} TODO_Ansible End
-_______________________
+
+##############################################################
 TODO_VAGRANT_START: {{{
 @ma https://www.vagrantup.com/intro/getting-started/share.html
 }}} TODO_VAGRANT_END
-_______________________
+##############################################################
 TODO_CLOUDINIT_START: {{{
 
 }}} TODO_CLOUDINIT_END
-_______________________
+##############################################################
 TODO_TERRAFORM_START: {{{
 
 }}} TODO_TERRAFORM_START
-_______________________
+##############################################################
 TODO_AZURE_PIPELINES: {{{
 https://azure.microsoft.com/es-es/services/devops/pipelines/
 }}} TODO_AZURE_PIPELINES

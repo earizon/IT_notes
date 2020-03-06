@@ -326,32 +326,46 @@ CHAIN_ID    Chain(s)
 <span xsmall>Accounts</span>
 @[http://www.ethdocs.org/en/latest/contracts-and-transactions/account-types-gas-and-transactions.html]
  ºAccountº  ← same address space both for contract and normal accounts
-┌──────────────────┐           ┌──────────────────────────────────────┬───────────────────────────────────────┐
-│bytes[32]ºaddressº│           │   EXTERNALLY OWNED ACCOUNT           │          CONTRACT ACCOUNTS            │
-├──────────────────┤┌──────────┼──────────────────────────────────────┼───────────────────────────────────────┤
-│wei      ºbalanceº││CREATION  │→ Generate random 32bytes private key │→Create smart─contract source code  *1 │
-├──────────────────┤│          │→ Generate Pub.Key from Priv.Key      │→Generate bytecode by compiling source │
-│Map˂256b,256b˃    ││          │→ Generate public address as:         │→Send "Contract Creation" TX for mining│
-│         ºstorageº││          │  bytes[32] pub.addr = hash(pub.addr) │→keep Contract address once "published"│
-└──────────────────┘│          │                                      │ (determined from nonce)               │
-                    ├──────────┼──────────────────────────────────────┼───────────────────────────────────────┤
-                    │CONTROLLED│Private Key: Only the (human) owner of│ BYTECODE                              │
-                    │BY        │the ºsecretº private key can decrease │                                       │
-                    │          │the balance by signing a new TX       │                                       │
-                    ├──────────┼──────────────────────────────────────┼───────────────────────────────────────┤
-                    │FEATURES  │ bytes[32] address                    │ bytes[32] address *1                  │
-                    │          │                                      │ Map˂256b,256b˃ storage *2             │
-                    ├──────────┼──────────────────────────────────────┼───────────────────────────────────────┤
-                    │ADDRESS   │ Generated deterministically from     │ Generated deterministically from      │
-                    │          │ priv.key (→ pub.key → hash(pub.key)  │ priv.key , bytecode,  TX.nonce        │
-                    └──────────┴──────────────────────────────────────┴───────────────────────────^───────────┘
-                                                                  - It's recomended to change the nonce when deploying
-                                                                    to two or more different networks, since there is 
-                                                                    a small but finite possibility, that TXs can be 
-                                                                    replayed on such networks.
-                                                                  - For private networks contracts can also be deployed
-                                                                    in the genesis.json block assigned to any arbitrary
-                                                                    (easy-to-remember) address. 
+
+┌─────────────────────────┐
+│bytes[32]      ºaddressº │
+├─────────────────────────┤
+│wei            ºbalanceº │
+├─────────────────────────┤
+│Map˂256b,256b˃ ºstorageº │
+└─────────────────────────┘
+                    
+         ┌────────────────────────────────────┬───────────────────────────────────────┐
+         │   EXTERNALLY OWNED ACCOUNT         │          CONTRACT ACCOUNTS            │
+┌────────┼────────────────────────────────────┼───────────────────────────────────────┤
+│CREATION│→ Generate random 32bytes priv. key │→Create smart─contract source code  *1 │
+│        │→ Generate Pub.Key from Priv.Key    │→Generate bytecode by compiling source │
+│        │→ Generate public address as:       │→Send "Contract Creation" TX for mining│
+│        │  bytes[32] pub.addr= hash(pub.addr)│→keep Contract address once "published"│
+│        │                                    │ (determined from nonce)               │
+├────────┼────────────────────────────────────┼───────────────────────────────────────┤
+│CONTROL │Private Key: Only the (human) owner │ BYTECODE                              │
+│BY      │of the ºsecretº private key can     │                                       │
+│        │decrease the balance by signing new │                                       │
+│        │TX                                  │                                       │
+├────────┼────────────────────────────────────┼───────────────────────────────────────┤
+│FEATURES│ bytes[32] address                  │ bytes[32] address *1                  │
+│        │                                    │ Map˂256b,256b˃ storage *2             │
+├────────┼────────────────────────────────────┼───────────────────────────────────────┤
+│ADDRESS │ Generated deterministically from   │ Generated deterministically from      │
+│        │ priv.key (→ pub.key → hash(pub.key)│ priv.key , bytecode,  TX.nonce        │
+└────────┴────────────────────────────────────┴───────────────────────────^───────────┘
+                                  ┌───────────────────────────────────────┘
+                                  ├─It's recomended to change the nonce when deploying
+                                  │ to two or more different networks, since there is 
+                                  │ a small but finite possibility, that TXs can be 
+                                  │ replayed on such networks.
+                                  └─For private networks contracts can also be deployed
+                                    in the genesis.json block assigned to any arbitrary
+                                    (easy-to-remember) address. 
+
+
+
 
  *2: account.storage: Persistent memory area
      - It is not possible to enumerate storage from within a contract
@@ -1397,13 +1411,10 @@ such as serving an infrequently changed address for a name.
 <div group bgyellow >
 <span title>Solidity</span><br/>
 <div groupv>
-<pre zoom labels="101,solidity">
+<pre zoom labels="101,solidity,TODO">
 <span xsmall>Learn X in Y min</span>
-
-@[https://learnxinyminutes.com/docs/solidity/]
-Where X=Solidity
+Summary from @[https://learnxinyminutes.com/docs/solidity/]
 - statically typed.
-
 - OOP: a contract ("class")  contains state variables, private/public functions
 
 -ºEvent-stream oriented:º
@@ -1414,37 +1425,23 @@ Where X=Solidity
     accepted ("mined") blocks. 
     Each TXs can also create new inmutable logs that are also
     propagated back with the new mined block propagation.
+    (See "events" topic for related info)
 
   First Important different when compared with standard languages:
   - A function invoqued "outside" the network (from a new 
     signed TX pending to be mined) can return values, but
-    those values will be mostly ignored (except, maybe by the
+    those values will be ignored (except, maybe by the
     debugger during the development phase). Events are used
     to inform the client about application-layer data.
     (Some low level-EVM data can be directly extracted from the
     TX receipt, like the gas spent, hash, ...).
 
-// Allows deposits, withdrawals, and balance checks
-
-// simple_bank.sol (note .sol extension)
-/* **** START EXAMPLE **** */
-
-
-// ** END EXAMPLE **
-
-
-// Now, the basics of Solidity
-
-// 1. DATA TYPES AND ASSOCIATED METHODS
-// uint used for currency amount (there are no doubles
-//  or floats) and for dates (in unix time)
-uint x;
-
-// int of 256 bits, cannot be changed after instantiation
-int constant a = 8;
-int256 constant a = 8; // same effect as line above, here the 256 is explicit
-uint constant VERSION_ID = 0x123A1; // A hex constant
-// with 'constant', compiler replaces each occurrence with actual value
+º1. DATA TYPES AND ASSOCIATED METHODSº
+// there are no doubles or floats. 
+uint    constant a = 8; // 32 bytes (256bits)
+uint256 constant a = 8; // same effect
+ int    constant a = 8; // 32 bytes signed int
+ int    constant a = 0x123A1; // hex notation
 
 // All state variables (those outside a function)
 // are by default 'internal' and accessible inside contract
@@ -1461,7 +1458,7 @@ uint248 e;
 // Be careful that you don't overflow, and protect against attacks that do
 // For example, for an addition, you'd do:
 uint256 c = a + b;
-assert(c >= a); // assert tests for internal invariants; require is used for user inputs
+assert(c ˃= a); // assert tests for internal invariants; require is used for user inputs
 // For more examples of common arithmetic issues, see Zeppelin's SafeMath library
 // https://github.com/OpenZeppelin/zeppelin-solidity/blob/master/contracts/math/SafeMath.sol
 
@@ -1549,7 +1546,7 @@ names.length = 1; // lengths can be set (for dynamic arrays in storage only)
 uint x[][5]; // arr with 5 dynamic array elements (opp order of most languages)
 
 // Dictionaries (any type to any other type)
-mapping (string => uint) public balances;
+mapping (string =˃ uint) public balances;
 balances["charles"] = 1;
 // balances["ada"] result is 0, all non-set key values return zeroes
 // 'public' allows following from another contract
@@ -1560,7 +1557,7 @@ function balances(string _account) returns (uint balance) {
 }
 
 // Nested mappings
-mapping (address => mapping (address => uint)) public custodians;
+mapping (address =˃ mapping (address =˃ uint)) public custodians;
 
 // To delete
 delete balances["John"];
@@ -1744,7 +1741,7 @@ Coin.LogSent().watch({}, '', function(error, result) {
 
 // '_' (underscore) often included as last line in body, and indicates
 // function being called should be placed there
-modifier onlyAfter(uint _time) { require (now >= _time); _; }
+modifier onlyAfter(uint _time) { require (now ˃= _time); _; }
 modifier onlyOwner { require(msg.sender == owner) _; }
 // commonly used with state machines
 modifier onlyIfStateA (State currState) { require(currState == State.A) _; }
@@ -1762,7 +1759,7 @@ onlyIfState(State.A)
 // but explicitly returning will skip, so use carefully
 modifier checkValue(uint amount) {
     _;
-    if (msg.value > amount) {
+    if (msg.value ˃ amount) {
         uint amountToRefund = amount - msg.value;
         msg.sender.transfer(amountToRefund);
     }
@@ -2034,12 +2031,12 @@ contract CrowdFunder {
     function checkIfFundingCompleteOrExpired()
     public
     {
-        if (totalRaised > minimumToRaise) {
+        if (totalRaised ˃ minimumToRaise) {
             state = State.Successful;
             payOut();
 
             // could incentivize sender who initiated state change here
-        } else if ( now > raiseBy )  {
+        } else if ( now ˃ raiseBy )  {
             state = State.ExpiredRefund; // backers can now collect refunds by calling getRefund(id)
         }
         completeAt = now;
@@ -2058,7 +2055,7 @@ contract CrowdFunder {
     public
     returns(bool)
     {
-        require(contributions.length > id && id >= 0 && contributions[id].amount != 0 );
+        require(contributions.length ˃ id && id ˃= 0 && contributions[id].amount != 0 );
 
         uint256 amountToRefund = contributions[id].amount;
         contributions[id].amount = 0;
@@ -2147,53 +2144,60 @@ someContractAddress.callcode('function_name');
 /// @param someParam Some description of what the param does
 /// @return Description of the return value
 
-Additional resources
+</pre>
 
-    Solidity Docs
-    Smart Contract Best Practices
-    Superblocks Lab - Browser based IDE for Solidity
-    EthFiddle - The JsFiddle for Solidity
-    Browser-based Solidity Editor
-    Gitter Solidity Chat room
-    Modular design strategies for Ethereum Contracts
+<pre zoom labels="solidity,events,scalability,troubleshooting,java,js,python,c#">
+<span xsmall>Retrieve events quickly</span>
+- Imagine theºcommon problemº:
+  - A given contract emits a given event sparsely, with 
+    an average of 1 event each 10.000 blocks.
+  - We want to retrieve all events.
+  - By default the client needs to query from block-zero
+    to latest block. This can means query-times of more than
+    a minute even in dedicated hardware.
+ ºSOLUTIONº:
+  - Save as contract state the block when an event has been
+    emitted.
+    The on the event add the information for the previous
+    block where such event was emitted.
+  - On client code run backward from last-to-first even
+    using the state to retrieve the latest block, and then
+    the event information to "jump" to the previous block.
 
-Important libraries
-
-    Zeppelin: Libraries that provide common contract patterns (crowdfuding, safemath, etc)
-
-Sample contracts
-
-    Dapp Bin
-    Solidity Baby Step Contracts
-    ConsenSys Contracts
-    State of Dapps
-
-Security
-
-    Thinking About Smart Contract Security
-    Smart Contract Security
-    Hacking Distributed Blog
-
-Style
-
-    Solidity Style Guide: Ethereum’s style guide is heavily derived from Python’s PEP 8 style guide.
-
-Editors
-
-    Emacs Solidity Mode
-    Vim Solidity
-    Editor Snippets (Ultisnips format)
-
-Future To Dos
-
-    New keywords: protected, inheritable
-    List of common design patterns (throttling, RNG, version upgrade)
-    Common security anti patterns
-
-Feel free to send a pull request with any edits - or email nemild -/at-/ gmail
-
+ºSOLIDITY:º                                                                                               
+contract MyContract {
+   uint GºpreviousBlockº= 0;
+   
+   event MyEvent01(address indexed A,..., uint GºpreviousBlockº);
+   //                                            └──────┬─────┘  
+   //               pointer to last event block helpsi ←┘
+   //               external clients(etherjs,web3j,...)
+   //               search quickly.
+   
+   function ....(...) ... {
+     emit REC(msg.sender,... , GºpreviousBlockº);
+     lastBlockDREC = block.number;
+   }
+}
+ 
+ºCLIENT-SIDE :º
+(javascript pseudo-code example)
+   /*
+    * GºRun events backward, from last to firstº
+    */
+   async function getFilters(LAST_BLOCK) {
+     var LAST_BLOCK = await CONTRACT.GºpreviousBlockº()
+     while ( LAST_BLOCK ˃ 0 ) { 
+       value = await CONTRACT.getFilter(/*1st block=*/LAST_BLOCK, LAST_BLOCK) 
+       console.log(value.toString());
+        LAST_BLOCK = value.previousBlock
+     }
+   }
+   getFilters(LAST_BLOCK)
+}
 </pre>
 </div>
+
 <div groupv>
 <pre zoom labels="solidity,resource">
 <span xsmall>External Links</span>
@@ -2414,7 +2418,7 @@ function () payable {
 };
 </pre>
 
-<pre bgorange zoom   labels="101,solidity,transaction,evm,diagram">
+<pre bgorange zoom   labels="101,solidity,transaction,evm,diagram,debug,besu,events,testing,transaction,web3j">
 UUID: 080d788a-24ab-4469-aec2-05c111c60db9
 
 <span xsmall>ERROR CONTROL</span>
@@ -2422,7 +2426,7 @@ UUID: 080d788a-24ab-4469-aec2-05c111c60db9
 Solidity uses state-reverting exceptions to handle errors:
  - Capturing ("catch-ing") Exceptions IS NOT (YET?) POSSIBLE (2018-06-11)!.
  - EVM rollbacks any stat change in current call and all its sub-calls
-   including events pending to register.
+  ºincluding any events emitted up until the rollback.º
    (there is no safe way to continue execution while warrantying atomicity
     and reproducibility of results)
  - TX is still mined and TXReceipt status flaged with "fail" error
@@ -2515,6 +2519,47 @@ contract MyToken {
   }
   ...
 }
+
+Related. Extracted from:
+@[https://besu.hyperledger.org/en/stable/HowTo/Send-Transactions/Revert-Reason/]
+
+besu requires the flag '--revert-reason-enabled' to include the revert reason in
+the TX receipt
+Rº: It may use a significant amount of memory when connected to public  netsº
+
+- When revert reason is enabled, the revert reason is included as an
+ ABI-encoded string in the transaction receipt returned by eth_getTransactionReceipt.
+
+RºImportantº: 
+  revert reason is not included in the transactions receipts root hash.
+  This means that the revert reason is only available to nodes that execute the
+  transaction when importing the block.  That is, the revert reason is 
+RºNOT available if using fast syncº
+
+Example TX Receipt:
+{ 
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+     "from": "0x6273...57",
+     "blockHash": "0xe72...0a",
+     ...
+   Oº"revertReason"º:"0x08c379a.....000"
+   }                     ^
+ }                       │
+┌────────────────────────┘
+└─ Format: (Official  Solidity documentation),
+   - ABI-encoded string consisting of:
+     0x08c379a0                                                         // Error-Func.Sel.(string)
+     0x0000000000000000000000000000000000000000000000000000000000000020 // Data offset
+     0x000000000000000000000000000000000000000000000000000000000000001a // String length
+     0x4e6f7420656e6f7567682045746865722070726f76696465642e000000000000 // String data
+       ^ Decodes to: "Not enough Ether provided"
+
+RºWARNº: Some client libraries (notably web3j) do NOT support extracting the 
+         revert reason from the transaction receipt. To extract the revert
+         reason client Dapp must interact directly with Besu using a custom
+         JSON → Object converter.
 </pre>
 
 <pre zoom labels="aaa,signature,ecdsa_secp256k1,auditing,security,">
@@ -3365,8 +3410,8 @@ See also:
   @[https://github.com/dmuhs/PythX]
 </pre>
 
-<pre zoom labels="tool,qa,development,solidity">
-<span TODO xsmall>QA: FORMAL PROBES</span>
+<pre zoom labels="tool,qa,development,solidity,TODO">
+<span TODO xsmall>FORMAL PROBES</span>
 FORMAL Verification
 https://github.com/pirapira/eth-isabelle
 https://github.com/pirapira/ethereum-formal-verification-overview
@@ -3435,7 +3480,7 @@ See also:
 @[http://www.cs.umd.edu/~aseem/solidetherplas.pdf]
 </pre>
 
-<pre zoom labels="qa,radar,solidity">
+<pre zoom labels="qa,radar,solidity,TODO">
 <span xsmall TODO>Moonad</span>
 @[https://github.com/moonad/roadmap]
 Moonad Roadmap
@@ -4315,7 +4360,6 @@ eth_getTransactionByBlockNumberAndIndex                web3_sha3
 </div>
 
 <div groupv>
-
 <span title>Truffle</span>
 <pre zoom labels="truffle,tool,solidity,js,development,testing,qa,debug">
 <span xsmall>"Full Journey"</span>
@@ -6196,7 +6240,7 @@ and I hope this article will help toward this direction.
 
 <span title>Public Network Clients</span><br/>
 <div groupv>
-<span xsmall>Geth</span>
+<span title>Geth</span>
 <pre zoom labels="geth,devops">
 <span xsmall>Setup Node</span>
 <a href="https://github.com/ethereum/go-ethereum">REF</a>
@@ -7293,7 +7337,7 @@ Edit ...*/data_parity/dev.json* like:
 <pre zoom labels="eea">
 <span xsmall>External Links</span>
 @[https://entethalliance.org/]
-@[https://www.goquorum.com]
+@[https://github.com/EntEthAlliance/]
 Tech.documents           @[https://entethalliance.org/technical-documents/]
                          - EEA Client Spec
                          - EEA Off-Chain Trusted Compute Spec
@@ -8113,6 +8157,7 @@ truffle(development)˃ Greeter.deployed().then(function(contractInstance) {contr
 <span title>Quorum(JP Morgan)</span>
 <pre zoom labels="quorum">
 <span xsmall>External Links</span>
+Home Page                @[https://www.goquorum.com]
 WiKi                     @[https://github.com/jpmorganchase/quorum/wiki]
 Quorum Setup Summary     @[https://github.com/jpmorganchase/quorum/wiki/Getting-Set-Up] (WARN: use quorum-maker)
 GitHub                   @[https://github.com/jpmorganchase/quorum/tree/master/docs]
@@ -10033,6 +10078,33 @@ _______________________
 https://docs.openzeppelin.com/contracts/2.x/utilities
 _________________________
 https://docs.openzeppelin.com/contracts/2.x/api/utils#EnumerableSet
+___________________________
+Scalability:
+https://medium.com/plasma-group/introducing-the-ovm-db253287af50
+In this post we describe the Optimistic Virtual Machine (OVM): a virtual 
+machine designed to support all layer 2 (L2) protocols. Its generality comes 
+from a reframing of L2 as an “optimistic” fork choice rule layered on top 
+of Ethereum. The formalization borrows heavily from CBC Casper research, and 
+describes layer 2 as a direct extension to layer 1 consensus. This implies a 
+possible unification of all “layer 2 scalability” constructions (Lightning, 
+Plasma, etc) under a single theory and virtual machine: the OVM.
+___________________________
+https://medium.com/plasma-group/ethereum-smart-contracts-in-l2-optimistic-rollup-2c1cef2ec537
+Ethereum Smart Contracts in L2: Optimistic Rollup
+This post outlines optimistic rollup: a construction which enables autonomous 
+smart contracts on layer 2 (L2) using the OVM. The construction borrows heavily 
+from both plasma and zkRollup designs, and builds on shadow chains as described 
+by Vitalik. This construction resembles plasma but trades off some scalability 
+to enable running fully general (eg. Solidity) smart contracts in layer 2, 
+secured by layer 1. Scalability is proportional to the bandwidth of data 
+availability oracles which include Eth1, Eth2, or even Bitcoin Cash or ETC — 
+providing a near term scalable EVM-like chain in layer 2.
+__________________________
+https://ethereum.stackexchange.com/questions/3151/how-to-make-miner-to-mine-only-when-there-are-pending-transactions
 
-
+- How to make miner to mine only when there are Pending Transactions?
+  As of now the geth miner running on my system mines even empty blocks. 
+____________________
+Genesis: Distributed Arch. testing:
+https://github.com/EntEthAlliance/genesis/branches
 -->

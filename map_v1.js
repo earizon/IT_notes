@@ -362,7 +362,7 @@ function onPageLoaded() {
       searchDiv.setAttribute("id", "upper_bar")
       searchDiv.innerHTML = ''
     
-   + '<img id="idLabelsFilter" class="noprint" src="/IT_notes/labelIcon.svg" />'
+   + '<img id="idLabelsFilter" class="noprint" src="/labelIcon.svg" />'
    + '&nbsp;<span blue class="noprint" id="unhide" hidden style="cursor:ns-resize" onClick="resetTextFoundAttr(true)">[unhide]</span>'
    + '&nbsp;<a href="../help.html" class="noprint" style="cursor:help" target="_blank">[HelpMan]</a>'
    + '&nbsp;<span onClick="spbQuickPrint()" blue>[Print]</span>'

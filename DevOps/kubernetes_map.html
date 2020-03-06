@@ -10,192 +10,140 @@
 <body>
 
 <div groupv>
-<pre zoom>
-<span xsmall>Summary</span>
-- k8s orchestates pools of CPUs, storage and networks
-- ºKubernet Masterº is responsible for managing the cluster, coordinates
-   all activities in your cluster, such as scheduling applications,
-   maintaining applications' desired state, scaling applications, and rolling
-   out new updates
-- orchestation offers:
-  {
-  - Load balancing a set of containers with or without session affinity
-  - Mounting persistent storage inside of the containers
-  - Placement and scheduling of containers on the infrastructure
-  - Rolling deployments and operational considerations that traditional
-      developers are not experts on
-  }
 
-- A ºnodeº is a (VM) computer serving as a worker machine. Each node has a Kubelet agent plus tools like Docker or rkt.
-- A cluster handling ºproduction trafficº should have a ºminimum of three nodesº(3,5,..."odd" number) 
-  since <a href="https://raft.github.io/">Raft("voting")</a> consensus is used.
-</pre>
-<pre zoom>
+<pre zoom labels="101,">
 <span xsmall>External Links</span>
-- <a href="https://kubernetes.io/">Kubernetes</a>
-- <a href="https://kubernetes.io/docs/reference/">Source Generated Reference</a>
-  API, API Client, CLI, Config,  Design Docs
-- <a xsmall href="https://www.youtube.com/watch?v=PH-2FfFD2PU">Desired State management"</a>
-- <a xsmall href="https://kubernetes.io/docs/reference/glossary/">Standardized Glossary</a>
-- <a xsmall href="https://kubernetes.io/docs/reference/tools/">Tools</a>
-- <a href="https://kubectl.docs.kubernetes.io/">Book</a>
-- Most voted questions k8s on serverfault:
-  <a href="https://serverfault.com/questions/tagged/kubernetes?sort=votes">[k8s]@severfault</a>
-- Most voted questions k8s on stackoverflow:
-- <a href="https://stackoverflow.com/questions/tagged/kubernetes?sort=votes">[k8s]@stackoverflow</a>
-- <a href="https://github.com/kubernetes/examples">Real app Examples</a>
-- <a TODO href="https://www.nomadproject.io/intro/vs/kubernetes.html">k8s vs Nomad</a>
+- About Desired State management   @[https://www.youtube.com/watch?v=PH-2FfFD2PU]
 
-ºk8s Issues:º
-  - <a href="https://kubernetes.io/docs/reference/issues-security/issues/">Kubernetes Issue Tracker</a>
-  - <a href="https://kubernetes.io/docs/reference/issues-security/security/">Kubernetes Security and Disclosure Information</a>
-
-ºk8s Enhancementsº
-  - <a href="https://github.com/kubernetes/enhancements">Enhancement Tracking and Backlog</a>
-</pre>
-
-<pre zoom>
-<span xsmall>Online training</span>
+- Online training:
 @[https://www.katacoda.com/courses/kubernetes/playground]
 @[https://labs.play-with-k8s.com/]
+
+- @[https://kubernetes.io/]
+- @[https://kubectl.docs.kubernetes.io/]   ← Book
+- @[https://kubernetes.io/docs/reference/] (Generated from source)
+- @[https://kubernetes.io/docs/reference/glossary/]
+- @[https://kubernetes.io/docs/reference/tools/]
+
+- Most voted questions k8s on serverfault:
+@[https://serverfault.com/questions/tagged/kubernetes?sort=votes]
+- Most voted questions k8s on stackoverflow:
+@[https://stackoverflow.com/questions/tagged/kubernetes?sort=votes]
+- Real app Examples:
+@[https://github.com/kubernetes/examples]
+
+ºk8s Issues:º
+- @[https://kubernetes.io/docs/reference/issues-security/issues/]
+- @[https://kubernetes.io/docs/reference/issues-security/security/]
+
+ºk8s Enhancements/Backlogº
+- @[https://github.com/kubernetes/enhancements]
 </pre>
 
-<pre zoom>
-<span xsmall>cluster components</span>
+<pre zoom  bgorange labels="in5minutes,101,namespace,master,node,etcd,deployment,pod,diagram,sdn,">
+<span xsmall>Summary</span>
 ref:@[https://kubernetes.io/docs/concepts/overview/components/]
     @[https://kubernetes.io/docs/reference/#config-reference]
 
-MASTER/S COMPONENTS:
+- k8s orchestates pools of CPUs, storage and networks
 
-    |ºEtcdº                          |º(REST)API Server:º
-    |- distributed key-value store   | - cluster main management entry point.
-    |- used for Service Registration | - Implemented by the kube-apiserver
-    |  and discovery                 |   component running on the master/s
-    |- See ref1                      | - Offers APIs to configure:
-    |                                |   - (many of)K8s workloads
-    |                                |   - organizational units
-    |                                | - validates and configures data for API objects
-
-    |ºController Manager Serviceº                |ºScheduler Serviceº                      | ºcloud-controller-managerº
-    | -ºhandles a number of controllers that:º   | - Assigns workloads to nodes            | - Kubernetes 1.6Rºalpha featureº
-    |   - regulate the state of the cluster      | - tracks resource utilization on hosts  | - runs controllers that interact
-    |   - and perform routine tasks              | - tracks total resources available on   |   with the underlying cloud providers.
-    |     - ensures number of replicas for       |   each server as well as the resources  | - affected controllers
-    |       a service,                           |   allocated to existing workloads       |   - Node Controller
-    |     - ...                                  |   assigned on each server.              |   - Route Controller
-    | - Implemented byºkube-controller-managerº  | - Manages availability, performance and |   - Service Controller
-    | - embeds k8s core control loops                capacity                              |   - Volume Controller
-
-
-    |ºfederation-apiserveRº                  |ºfederation-controller-managerº
-    |- API server for federated clusters.    |- embeds the core control loops shipped
-                                             |  with Kubernetes federation.
-
-ºNODE/S COMPONENTS:º
-
-    |ºkubeletº                             |ºContainer Runtime Interface (CRI)º      |ºkube-proxyº
-    |- run on each node                    |- Docker, ...                            |- network service abstraction
-    |- takes a set of PodSpecs and ensures |                                         |  enabling SDNs
-    |  thate described containers are      |                                         |- Can do simple TCP/UDP stream forwarding 
-    |  running and healthy.                |                                         |  or round-robin TCP/UDP forwarding across
-                                           |                                         |  a set of back-ends.
+Kubernetes Cluster Components:
+│ºetcdº:                      │    ºMasterº:                         │ºnodeº (Pool):
+│- High availability key/value│    (Or cluster of masters)           │- (VM) computer serving as 
+│ddbb used to save the cluster│     - manages the cluster.           │  a worker machine where pods      
+│metadata, service registrat. │     - keeps tracks of:               │  are scheduled for execution.   takes a set of PodSpecs and ensures
+│and discovery                │       - desired state.               │- Contains k8s services:         thate described containers are     
+└─────────────────────────────┘       ─ application scalation        │  ─ Kubelet agent        ←------ running and healthy.               
+                                      - rolling updates              │  - Container runtime Iface
+                                    - Raft consensus used in         │    (Docker or rkt)
+                                      multimaster mode               │- kube-proxy:(Gº"SDN enabler"º)
+                                      (requires 1,3,5,... masters    │  simple or round-robin TCP/UDP 
+                                     @[https://raft.github.io/])     │  stream forwarding across set 
+                                     └────────┬─────────────────┘    │  of back-ends.
+                                              │                      └─────────────────────────────
+      ┌──────────────────┬───────────┬────────┴──────────────────────┬────────┬──────────────────────────────────────┐
+ºkube─apiserver:º        │ ºkube─controller─managerº                 │ ºScheduler Serviceº                       ºcloud─controller─managerº
+ ─ (REST) Wrapper around │  ─Oº:EMBEDS K8S CORE CONTROL LOOPS!!!º    │  ─ Assigns workloads to nodes              ─ Kubernetes 1.6Rºalpha featureº
+   k8s objects           │  ─ºhandles a number of controllers that:º │  ─ tracks resource utilization on hosts    ─ runs controllers that interact
+                         │    ─ regulate the state of the cluster    │  ─ tracks total resources available on       with the underlying cloud providers.
+                         │    ─ and perform routine tasks            │    each server as well as the resources    ─ affected controllers
+                         │      ─ ensures number of replicas for     │    allocated to existing workloads           ─ Node Controller
+                         │        a service,                         │    assigned on each server.                  ─ Route Controller
+                         │      ─ ...                                │  ─ Manages availability, performance and     ─ Service Controller
+                         │                                           │    capacity                                  ─ Volume ControllerCluster
+                         │                                           │
+                ºfederation-apiserveRº                   ºfederation-controller-managerº
+                - API server for federated               - embeds the core control loops shipped
+                  clusters                                 with Kubernetes federation.
 
 
-ref1:
- @[https://kubernetes.io/docs/Architecture/architecture_map.html?query=service+registration+discovery]
+K8S
+CLUSTER  1 ←───→ N Namespace  1 ←─┬─→  N Deployment       1 ←───→ N Pods
+───────           "Virtual        │      "Application"             Minimum 
+─ etcd             cluster"       │                                Unit of
+─ Master          Can be assigned │      ─ Load balancing          Exec/Sched.
+─ Node Pool       max Memory/CPU  │        with(out) session
+                  Quotas          │        affinity
+                                  │      ─ Persistence storage
+                                  │      ─ Scheduing of pods into
+                                  │        node pool
+                                  │      ─ Rolling deployments
+                                  │
+                                  └──  N "Other" Controllers
+                                         (ReplicaSet, ...)
 
-- Nodes are created before k8s is running (hardware, virt.machine,...)
-- A k8s node object just represents an existing node. k8s will remove
-  the object if no pods can be instantiated.  
-         ┌───────────┐
-         │Node Status│
-         ├───────────┤
-         │Addresses  ←─(HostName, ExternalIP, InternalIP)
- ┌───────→Capacity   │                        ^^^^^^^^^^
- │ ┌─────→Condition  │                        Typically visible
- │ │ ┌───→Info       │                        within cluster
- │ │ │   └───────────┘
- │ │ºInfoº
- │ │ General information like
- │ │ kernel/k8s/docker version, OS name,...
- │ │  
- │ºConditionº
- │  status ofºallºRunning nodes.
- │  Node               Description
- │  OutOfDisk          True → insufficient free space on the node for adding new pods
- │  Ready              True → node is healthy and ready to accept pods
- │                     if not True after ºpod─eviction─timeoutº (5 minutes by default)
- │                     an argument is passed to the kube─controller─manager and all Pods
- │  
- │  MemoryPressure     True → pressure exists on the node memory
- │  PIDPressure        True → pressure exists on the processes
- │  DiskPressure       True → pressure exists on the disk size
- │  NetworkUnavailable True → node network not correctly configured
- │ 
-ºCapacityº
-─ Describes the resources available
-  ─ CPU
-  ─ memory 
-  ─ max.number of pods supported
-</pre>
+ 
+REF: @[https://kubernetes.io/docs/Architecture/architecture_map.html?query=service+registration+discovery]
+                                                ┌───────────┐
+   ─ Describes the resources available ─┐       │Node Status│
+     ─ CPU                              │       ├───────────┤
+     ─ memory                           │       │Addresses  ←─(HostName, ExternalIP, InternalIP)
+     ─ max.number of pods supported     └───────→Capacity   │                        ^^^^^^^^^^
+    ┌───────────────────────────────────────────→Condition  │                        Typically visible
+    status ofºallºRunning nodes.                │Info       ← General info. like     within cluster
+    Node               Description              └───────────┘ kernel/k8s/docker ver,
+    -----------------  -------------------------------------  OS name,...
+    OutOfDisk          True → insufficient free space on the
+                              node for adding new pods
+    Ready              True → node is healthy and ready to accept pods
+                       if not True after ºpod─eviction─timeoutº 
+                       (5 minutes by default)
+                       an argument is passed to the kube-controller-manager 
+                       and all Pods
+    MemoryPressure     True → pressure exists on the node memory
+    PIDPressure        True → pressure exists on the processes
+    DiskPressure       True → pressure exists on the disk size
+    NetworkUnavailable True → node network not correctly configured
 
-<pre zoom bgorange>
+
 <span xsmall>Network</span>
-Network schema without Cloud-Controller:
 REF:@[https://kubernetes.io/docs/concepts/architecture/cloud-controller/]
 
-  o Cloud connector                             _                 _
-                                            ___| | ___  _   _  __| |
-             kube─controller─manager  o──→ / __| |/ _ \| | | |/ _` |
-                        ^                 | (__| | (_) | |_| | (_| |
-                        │                  \___|_|\___/ \__,_|\__,_|
-                        │                           ^
-                        │                           │
-                        │                           │
-                        v                           │  node
-  etcd  ←───────→ kube─apiserver ←─────┬───┐    ┌───o──────┐
-                                       │   └────→kubelet   │
-                        ^              │        │          │
-                        │              │        │          │
-                        v              │        │          │
-                  kube─scheduler       └────────→kube─proxy│
-                                                └──────────┘
+     NETWORK SCHEMA WITHOUT CLOUD-CONTROLLER          | NETWORK SCHEMAºWITHº   CLOUD-CONTROLLER:
+  o Cloud connector              _                 _  | o Cloud connector                   _                 _
+                             ___| | ___  _   _  __| | |                                 ___| | ___  _   _  __| |
+kube─controller─managero──→ / __| |/ _ \| | | |/ _` | |   cloud-controller─managero──→ / __| |/ _ \| | | |/ _` |
+                    ^      | (__| | (_) | |_| | (_| | |                         ^     | (__| | (_) | |_| | (_| |
+                    │       \___|_|\___/ \__,_|\__,_| | kube─controller─manager │      \___|_|\___/ \__,_|\__,_|
+                    │                  ^              |       ^                 │
+                    │                  │              |       │                 │
+                    │                  │              |       └─────────────────┤
+                    v                  │  node        |                         │
+  etcd  ←───→ kube─apiserver ←──┬─┐  ┌─o────────┐     |                         v                      node
+                                │ └──→kubelet   │     |   etcd  ←───────→ kube─apiserver ←──┬─┐ ┌──────────┐
+                    ^           │    │          │     |                                     │ └─→kubelet   │
+                    │           │    │          │     |                         ^           │   │          │
+                    v           │    │          │     |                         │           │   │          │
+              kube─scheduler    └────→kube─proxy│     |                         v           │   │          │
+                                     └──────────┘     |                   kube─scheduler    └───→kube─proxy│
+                                                      |                                         └──────────┘
+                                                      | 
+<span xsmall>Object Management</span>
+REF:
+- @[https://kubernetes.io/docs/tasks/tools/install-kubectl/]
+- @[https://kubernetes.io/docs/concepts/overview/object-management-kubectl/overview/]
+- @[https://kubernetes.io/docs/reference/kubectl/cheatsheet/]
 
-
-Network schemaºwithº   Cloud-Controller:
-
-  o Cloud connector                             _                 _
-                                            ___| | ___  _   _  __| |
-            cloud-controller─manager  o──→ / __| |/ _ \| | | |/ _` |
-                        ^                 | (__| | (_) | |_| | (_| |
-kube─controller─manager │                  \___|_|\___/ \__,_|\__,_|
-      ^                 │
-      │                 │
-      └─────────────────┤
-                        │
-                        v                              node
-  etcd  ←───────→ kube─apiserver ←─────┬───┐    ┌──────────┐
-                                       │   └────→kubelet   │
-                        ^              │        │          │
-                        │              │        │          │
-                        v              │        │          │
-                  kube─scheduler       └────────→kube─proxy│
-                                                └──────────┘
-
-</pre>
-
-
-<pre zoom>
-<span xsmall  bgorange>kubectl: Object Management</span>
-- INSTALL   : @[https://kubernetes.io/docs/tasks/tools/install-kubectl/]
-- Overview  : @[https://kubernetes.io/docs/concepts/overview/object-management-kubectl/overview/]
-        _                _       _               _   
-    ___| |__   ___  __ _| |_ ___| |__   ___  ___| |_ 
-   / __| '_ \ / _ \/ _` | __/ __| '_ \ / _ \/ _ \ __|
-  | (__| | | |  __/ (_| | |_\__ \ | | |  __/  __/ |_ 
-   \___|_| |_|\___|\__,_|\__|___/_| |_|\___|\___|\__|
-@[https://kubernetes.io/docs/reference/kubectl/cheatsheet/]*
- 
 º┌──────────┐º                                ┌───────────┐
 º│k8s object│º                             ┌─→│metadata   │
 º├──────────┤º                             │  ├───────────┤
@@ -215,9 +163,9 @@ kube─controller─manager │                  \___|_|\___/ \__,_|\__,_|
 
 
 etcd                 kubernetes                (/openapi/v2)       cli management:
-(serialized  ←────── objects    ←────────────────→ API    ←───→  $ºkubectlº'action'      Gº'resource'º
- API resource    - Represent API resources        Server                    ^^^^^^
- states)           (persistent entities           (ref1)         ºget     º: list resources 
+(serialized  ←────── objects    ←────────────────→ API    ←───→   ºkubectlº'action'      Gº'resource'º
+ API resource    - Represent API resources        Server *1                 ^^^^^^
+ states)           (persistent entities                          ºget     º: list resources 
                     in a cluster)                                ºdescribeº: show details (and events for pods)
                  - The can describe:                             ºlogs    º: print container
                    - apps running on nodes                                   logs
@@ -233,9 +181,9 @@ etcd                 kubernetes                (/openapi/v2)       cli managemen
                                                                   --sort-by='.status.containerStatuses[0].restartCount'
                                                                   --selector=app=cassandra
 
+*1: @[https://kubernetes.io/docs/conceptsverview/kubernetes-api/]
 
-
-GºRESOURCE TYPESº
+GºRESOURCE TYPES SUMMARYº
     clusters            │podtemplates               │statefulsets
 (cs)componentstatuses   │(rs)replicasets            │(pvc)persistentvolumeclaims
 (cm)configmaps          │(rc)replicationcontrollers │(pv) persistentvolumes
@@ -247,48 +195,8 @@ GºRESOURCE TYPESº
 (ing)ingresses          │networkpolicies            │storageclasses
                         │(no)nodes                  │thirdpartyresources
 
-<a xsmall href="https://github.com/kubernetes/kubernetes/blob/master/pkg/apis/core/types.go">Full list APItypes</a> 
 
-ref1: @[https://kubernetes.io/docs/conceptsverview/kubernetes-api/]
-- External refs:
-  - <a href="https://kubernetes.io/docs/reference/kubectl/jsonpath/">JSONPath Support</a>
-  - <a href="https://kubernetes.io/docs/reference/kubectl/overview/">Overview of kubectl</a>
-  - <a href="https://kubernetes.io/docs/reference/kubectl/kubectl/">kubectl</a>
-  - <a href="https://kubernetes.io/docs/reference/kubectl/kubectl-cmds/">kubectl Commands</a>
-  - <a href="https://kubernetes.io/docs/reference/kubectl/conventions/">kubectl Usage Conventions</a>
-  - <a href="https://kubernetes.io/docs/reference/kubectl/docker-cli-to-kubectl/">kubectl for Docker Users</a>
-</pre>
-
-<pre zoom>
-<span xsmall>Kubectl Autocomplete</span>
-$ source ˂(kubectl completion bash)
-$ source ˂(kubectl completion zsh)
-# use multiple kubeconfig files
-$ KUBECONFIG=~/.kube/config:~/.kube/kubconfig2 \
-kubectl config view # Show Merged kubeconfig settings.
-
-$ kubectl config current-context
-$ kubectl config use-context my-cluster-name
-
-$ kubectl run nginx --image=nginx
-$ kubectl explain pods,svc
-</pre>
-
-<pre zoom >
-<span xsmall>editing resources</span>
-$ KUBE_EDITOR="nano" kubectl edit svc/my-service-1
-</pre>
-
-<pre TODO zoom>
-<span xsmall>Organizing Cluster Access</span>
-<span xsmall> Using kubeconfig Files</span>
-@[https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/]
-</pre>
-
-<pre zoom>
-<span xsmall>Core API types</span>
-@[https://github.com/kubernetes/kubernetes/blob/master/pkg/apis/core/types.go]
-
+GºRESOURCE TYPES EXTENDEDº @[https://github.com/kubernetes/kubernetes/blob/master/pkg/apis/core/types.go]
 001	Volume                               021	FlexPersistentVolumeSource           041	DownwardAPIProjection
 002	VolumeSource                         022	FlexVolumeSource                     042	AzureFileVolumeSource
 003	PersistentVolumeSource               023	AWSElasticBlockStoreVolumeSource     043	AzureFilePersistentVolumeSource
@@ -332,7 +240,6 @@ $ KUBE_EDITOR="nano" kubectl edit svc/my-service-1
 079	ResourceRequirements  099	PodAffinityTerm                   119	ReplicationControllerCondition
 080	Container             100	NodeAffinity                      120	ReplicationController
 
-
 121	ReplicationControllerList 141	DaemonEndpoint       161	Preconditions             181	ResourceQuotaSpec
 122	ServiceList               142	NodeDaemonEndpoints  162	PodLogOptions             182	ScopeSelector
 123	SessionAffinityConfig     143	NodeSystemInfo       163	PodAttachOptions          183	ScopedResourceSelerRequirement
@@ -355,8 +262,31 @@ $ KUBE_EDITOR="nano" kubectl edit svc/my-service-1
 140	ConfigMapNodeConfigSource 160	Binding              180	LimitRangeList
 </pre>
 
-<pre zoom>
-<span xsmall>kubectrl Field Selectors</span>
+<pre zoom labels="101,tool,kubectl,troubleshooting">
+<span xsmall>Kubectl</span>
+- @[https://kubernetes.io/docs/reference/kubectl/jsonpath/]
+  @[https://kubernetes.io/docs/reference/kubectl/overview/]
+  @[https://kubernetes.io/docs/reference/kubectl/kubectl/]
+  @[https://kubernetes.io/docs/reference/kubectl/kubectl-cmds/]
+  @[https://kubernetes.io/docs/reference/kubectl/conventions/]
+  @[https://kubernetes.io/docs/reference/kubectl/docker-cli-to-kubectl/]
+
+$ KUBE_EDITOR="vim"
+$ source ˂(kubectl completion bash)  # kubectl autocomple
+$ source ˂(kubectl completion zsh)
+# use multiple kubeconfig files
+$ KUBECONFIG=~/.kube/config:~/.kube/kubconfig2 \
+kubectl config view # Show Merged kubeconfig settings.
+
+$ kubectl config current-context
+$ kubectl config use-context my-cluster-name
+
+$ kubectl run nginx --image=nginx
+$ kubectl explain pods,svc
+
+$ kubectl edit svc/my-service-1  # ← Edit resource
+
+ºkubectl Field Selectorsº
 - filter k8s objects based on the value of one or more object fields.
 - the possible field depends on each object type/kind but 
   all resource-types support 'metadata.name' and 'metadata.namespace'
@@ -365,7 +295,13 @@ $ KUBE_EDITOR="nano" kubectl edit svc/my-service-1
   $ kubectl get pods --field-selector  metadata.namespace!=default,status.phase==Running
 </pre>
 
-<pre zoom>
+
+<pre zoom labels="TODO,aaa,kubeconfig">
+<span xsmall>Cluster Access</span>
+@[https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/]
+</pre>
+
+<pre zoom labels="TODO,kubeconfig">
 <span TODO xsmall>Kustomization</span>
 <a TODO href="https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/">Object kustomization</a>
 </pre>
@@ -373,13 +309,10 @@ $ KUBE_EDITOR="nano" kubectl edit svc/my-service-1
 
 <div groupv>
 <span title>Building Blocks</span>
-
-<pre zoom>
+<pre zoom labels="101,namespace,quota,TODO">
 <span xsmall>Namespace</span>
 @[https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/]
 @[https://kubernetes.io/docs/tasks/administer-cluster/namespaces/]
-- Kubernetes supports multiple virtual clusters backed by the same physical
-    cluster. These virtual clusters are called namespaces
 - Provide a scope for names
 - Namespaces are intended for use in environments with many users spread
   across multiple teams, or projects. For clusters with a few to tens of users,
@@ -417,22 +350,17 @@ $ kubectl config view | \
 <a href=https://kubernetes.io/docs/tasks/administer-cluster/namespaces/">Share a Cluster with Namespaces</a>
 </pre>
 
-<pre zoom>
+<pre zoom labels="secrets,aaa">
 <span xsmall>Secrets</span>
 @[https://kubernetes.io/docs/concepts/configuration/secret/]
-
-See also secret design:
 @[https://github.com/kubernetes/community/blob/master/contributors/design-proposals/auth/secrets.md]
-
-- Used to store passwords, OAuth tokens, ssh keys, ...
-  the Secrets k8s API object allows for more control over
-  how they are used, reducing the risk of accidental exposure.
+- (Handling passwords, OAuth tokens, ssh keys, ... in k8s)
 
 - Users (and system) create secrets
-- Pods reference the secrets in three ways:
+- At runtime Pods reference the secrets in three ways:
   - as files in a mounted volume
   - as ENVIRONMENT variables.
-  - used by kubelet when pulling images for the pod
+- Also used by kubelet when pulling images for the pod
 
 ºBuilt-in Secretsº
 - Service Accounts automatically create and attach secrets with API Credentials
@@ -488,9 +416,6 @@ See also secret design:
                                                                      256 = 0400       · password secret is not projected
      
 
-
-
-
 Ex 2:
 SECRET CREATION                                      | SECRET USSAGE
 $ kubectl create secret generic \                    | apiVersion: v1
@@ -520,7 +445,7 @@ Gºssh-key-secretº \                                  | kind: Pod
 FEATURE STATE: Kubernetes v1.13 beta
 You can enable encryption at rest for secret data, so that the secrets are not stored in the clear into etcd .
 </pre>
-<pre zoom>
+<pre zoom labels="pod,configuration">
 <span xsmall>(Pod)ConfigMap</span>
 @[https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/]
 
@@ -1737,7 +1662,6 @@ $ kubectl autoscale deployment nginx-deployment \
 <a href=https://kubernetes.io/docs/tasks/run-application/rolling-update-replication-controller/">Perform Rolling Update Using a Replication Controller</a>
 <a href=https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/">Horizontal Pod Autoscaler</a>
 <a href=https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/">Horizontal Pod Autoscaler Walkthrough</a>
-<a href=https://kubernetes.io/docs/tasks/run-application/configure-pdb/">Specifying a Disruption Budget for your Application</a>
 </pre>
 
 <pre zoom>
@@ -2528,6 +2452,34 @@ One example of this pattern would be a Job which starts a Pod which runs a scrip
 that in turn starts a Spark master controller (see spark example), runs a spark
 driver, and then cleans up.
 </pre>
+
+<pre zoom labels="deployment">
+<span xsmall>PodDisruptionBudget</span>
+@[https://kubernetes.io/docs/concepts/workloads/pods/disruptions/#how-disruption-budgets-work]
+@[https://kubernetes.io/docs/tasks/run-application/configure-pdb/]
+
+A PodDisruptionBudget object (PDB) can be defined for each deployment(application),
+limiting the number of pods of a replicated application that 
+are down simultaneously from ºvoluntaryº disruptions.
+
+Ex: A Deployment has:
+  - .spec.replicas: 5  (5 pods desired at any given time)
+  - The PDB is defined as:
+    apiVersion: policy/v1beta1
+    kind: PodDisruptionBudget
+    metadata:
+      name: zookeeper-pdb
+    spec:
+      maxUnavailable: 1  ←--   Eviction API will allow voluntary disruption of one,
+      selector:                but not two pods, at a time trying to have 4 running
+        matchLabels:           at all times
+          app: zookeeper
+
+Eviction API compatible tools/commands
+like 'kubectl drain' must be used
+(vs directly deleting pods/deployments)
+
+</pre>
 </div>
 
 <div groupv>
@@ -2794,6 +2746,7 @@ REF @[https://kubernetes.io/docs/tasks/tools/install-kubeadm/]
 <div groupv>
 <span title>Understanding K8S Code</span>
 <pre zoom>
+
 <a xsmall href="https://jvns.ca/blog/2017/06/04/learning-about-kubernetes/">K8s Implementation Summary</a>
 - <a href="https://jvns.ca/blog/2017/06/04/learning-about-kubernetes/">Julia Evans "A few things I've learned about Kubernetes"</a>
 
@@ -3548,5 +3501,12 @@ Kubernetes administration policy made easy with brewOPA
 
 Administering policies across Kubernetes and other cloud native environments 
 isn't easy. Now, Cyral wants to take the trouble out of the job with brewOPA.
+______________________
+Reasons NOT to use k8s
+https://thenewstack.io/question-the-current-dogma-is-kubernetes-hyper-scale-necessary-for-everyone/
+----------------------
+https://www.nomadproject.io/intro/vs/kubernetes.html
+
+
 
 -->

@@ -12,6 +12,7 @@ var spb = {
   zoomStepOut:0.10,
   visited:[],
   visited_idx:-1,
+  replaceMap : { "wikipedia" : "https://en.wikipedia.org/wiki" },
   CallbackOnClose:false,
   labelANDMode : true,
   singleLineMode : false,
@@ -270,7 +271,8 @@ function onLabelClicked(e) {
 
 function renderLabel(sLabel,selected) {
   sLabel = sLabel.toLowerCase()
-  return "<input class='labelButton' selected="+(!!spb.labelMapSelected[sLabel])+
+  cssAtribute    = (sLabel.startsWith("todo")) ? "red"  : ""
+  return "<input "+cssAtribute+" class='labelButton' selected="+(!!spb.labelMapSelected[sLabel])+
          " type='button' onClick='onLabelClicked(this)' value='"+sLabel+"' /><span labelcount>"+spb.labelMap[sLabel].length+"</span>" ;
 }
 
@@ -369,8 +371,6 @@ function onPageLoaded() {
    + '<br/>'
   document.body.insertBefore(searchDiv,document.body.children[0])
   document.getElementById("idLabelsFilter").addEventListener("click",  function() {  doExtraOptions() })
-//  document.getElementById("search"     ).addEventListener("submit",  function(e) {e.preventDefault(); return false })
-  
 
   spb.zoomDivDOM = document.getElementById('zoomDiv')
 
@@ -394,9 +394,19 @@ function onPageLoaded() {
      longPress.enableDblClick (nodeList[idx]);
      longPress.enableLongTouch(nodeList[idx]);
   }
+
+  // create re-usable regex outside loop.
+  Object.keys(spb.replaceMap).forEach( key => 
+     spb.replaceMap[key] = [new RegExp("[$][{]"+key+"[}]",'g'), spb.replaceMap[key]]
+  )
+
   nodeList = document.querySelectorAll('*[zoom]')
   for (idx in nodeList) { 
-      if (!!! nodeList[idx].innerHTML) continue;
+      if (!!! nodeList[idx].innerHTML) { continue }
+
+      Object.keys(spb.replaceMap).forEach( key => 
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(spb.replaceMap[key][0],spb.replaceMap[key][1])
+      )
    // COMMENTED: Needs more testings 
    // nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/(http.?:\/\/[^\b]*)\b/,"<a target='_blank' href='$1'>$1</a>")
       // Open new window with pre-recoded search:[[Troubleshooting+restorecon?]]
@@ -406,6 +416,7 @@ function onPageLoaded() {
         + "<a target='_blank' href='"+window.location.href.split('?')[0]+"?query=$1&labels="+labelMapSelectedToCSV()+"'>( ⏏ )</a>"
 //        "<a href='"+window.location.href.split('?')[0]+"?query=$1'>$1</a>"
       )
+  
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/@\[(http[^\]]*)\]/g,"<a target='_new' href='$1'> [$1]</a>")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/@\[([^\]]*)\]/g,    "<a               href='$1'> [$1]</a>")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Gº([^º\n]*)º/g, "<b green >  $1 </b>")   

@@ -1335,25 +1335,104 @@ doc1 → hash → has1 ─┬→ hash → has2 ─┬→ hash → has3 ─┬→
 </div>
 
 <div groupv>
-<pre zoom labels="jwt,aaa,signature,keystore">
+<pre zoom labels="jwt,aaa,authorization,web,signature,keystore,code_snippet,comparative">
 <span title>JS?</span>
-See alo:
-@[https://jwt.io/]
-Contains online web utilities to parse a JWT to JSON, detailed list
-of libraries (Java, Python, C#, Rust,...) and other useful info
+See also: @[https://jwt.io/]
+- online JWT debugger to decode, verify and generate JWT,
+  detailed list of libraries (Java, Python, C#, Rust,...) 
+  and other useful info
+
+ºJWT online Debuggerº
+- decode, verify, and generate JWTs.
+@[https://jwt.io/#debugger]
+
 
 <span xsmall>JSON Web Token (JWT)</span>
 @[https://tools.ietf.org/html/rfc7519]
-   JSON Web Token (JWT) is a compact, URL-safe means of representing
-   claims to be transferred between two parties.  The claims in a JWT
-   are encoded as a JSON object that is used as the payload of a JSON
-   Web Signature (JWS) structure or as the plaintext of a JSON Web
-   Encryption (JWE) structure, enabling the claims to be digitally
-   signed or integrity protected with a Message Authentication Code
-   (MAC) and/or encrypted.
+- URL-safe means of representing claims to be transferred between 
+  two parties.
+  - Ussually encoded as:
+    - payload of a JSON Web Signature (JWS) structure
+    - plaintext of a JSON Web Encryption (JWE) structure.
 
-- TODO: JWT authentication: When and how to use it
-@[https://blog.logrocket.com/jwt-authentication-best-practices/]
+JWTs can be signed with:
+- symetric shared secrets (HMAC)
+- asymetrict key pairs RSA/ECDSA.
+(opt): JWTs can also be encrypted to provide secrecy between parties.
+
+OºJWT structureº (JWS structure)
+  xxxxx.yyyyy.zzzzz ← Base64URL encoded
+  ^     ^     ^     
+  │  ┌──┘     │     ↖
+  │  │  ┌─────┘      ☞ format more compact when compared to 
+  │  │  │              XML-based standards such as SAML.
+  │  │ ºSIGNATUREº
+  │  │ Base64URL ( 
+  │  │   Sign (shared secret or private key,
+  │  │         Base64URL encoded HEADER, 
+  │  │         Base64URL encoded PAYLOAD)
+  │  │ )
+  │  │ (Using signature algorithm of HEADER)
+  │  │
+  │  │
+  │ ºPAYLOADº
+  │  - claims about an entity + additional data.
+  │  
+  │  - types of claims:
+  │    -ºregistered : non mandatory but recommended for interoperability:
+  │      º"iss"º(issuer)            º"sub"º(subject)
+  │      º"exp"º(expiration time)   º"aud"º(audience)
+  │      ...
+  │    -ºpublicº    : Defined at will. To avoid collisions they should be defined
+  │                   in the IANA JSON Web Token Registry or be defined as a URI 
+  │                   that contains a collision resistant namespace.
+  │
+  │    -ºprivateº   : custom claims between parties 
+  │
+ ºHEADERº
+  typically consists of:
+  {
+    "alg": "HS256", ← signing algorithm used (HMAC SHA256, RSA, ECDSA...)
+    "typ": "JWT"    ← type of tokern (JWT)
+  }
+
+ºJWT common ussage patterns:º
+- user agent should send the JWT in the HTTP Authorization header
+  using the Bearer schema like:
+  Authorization: Bearer <token>
+  (ºStateless authorizationº)
+
+ º☞ By sending in the Authorization header, Cross-Origin Resource Sharingº
+ º  (CORS) won't be an issue as it doesn't use cookies.º
+
+- A typicalºOpenID Connect compliant web applicationºwill go through the 
+ º/oauth/authorizeºendpoint using the authorization code flow.
+  When the authorization is granted, the authorization server returns an 
+  access token back to the  application.
+
+- no secret information must be placed into the PAYLOAD unless the JWT is
+  encrypted.
+
+- Don't store JWT inside localStorage since it's accessible by any script
+  inside the page: an XSS attack can let an external attacker get access
+  to the token.
+- Don’t store JWT in local or session storage. 
+  If third-party scripts in the page  get compromised, 
+  they can access all your users' tokens.
+- Stored JWT inside an httpOnly cookie, that’s only sent in
+  HTTP requests to the server and it's never accessible 
+  (both for reading or writing) from JS running in the browser.
+
+- Don't use JWT as Sessions since it's error prone.
+
+Since JWT are signed, the receiver can be sure the client is really who it 
+thinks it is.
+
+
+ºCOMPARATIVEº
+- Signing XML with XML Digital Signature is very complex and error prone
+  when compared to the simplicity of signing JSON.
+
 
 
 <span xsmall>JSON Web Signature (JWS)</span>
@@ -1399,7 +1478,14 @@ of libraries (Java, Python, C#, Rust,...) and other useful info
   (wherever possible) all algorithms, formats, and options in JWS, JWE, JWK, and
   JWA and uses native cryptographic support (WebCrypto API or node.js' "crypto"
   module) where feasible.
-
+  Ex ussage:
+  // Create Self Signed JSON token
+  const ºprivKey01º= jose.JWK.asKey(
+      "-----BEGIN PRIVATE KEY-----\n" +
+      ...
+      "-----END RSA PRIVATE KEY-----");
+  const payload = { iss:"service1", aud:"service2" };
+  constOºJWT01º=ºjose.JWT.signº(payload,ºprivKey01º, { expiresIn: "1 hours" });
 </pre>
 </div>
 <div groupv>
@@ -2913,39 +2999,39 @@ See original RFC for extended details
 <span xsmall>non-experts</span>
 @[https://www.infoq.com/news/2018/09/google-tink-cryto-ios-android]
 - Crypto.libr for *non cryptographic experts
-  cross-platform cryptographic library developed by a group of
-cryptographers and security engineers at Google to help developers implement
-cryptography correctly ºwithout being cryptographic expertsº.
-version 1.2 adds support for Cloud, Android, and iOS platforms, and C++ and Objective-C.
-
-aimed to stress cryptographic libraries against known attacks:
+- cross-platform 
+- developed by experts to help developers implement cryptography 
+  correctly ºwithout being cryptographic expertsº.
+- version 1.2 adds support for Cloud, Android, and iOS platforms,
+  C++ and Objective-C.
+- stress cryptographic libraries against known attacks:
   - biased nonces
   - invalid curves
   - ...
+-OºTink provides support for key managementº
+ Oºincluding key versioning/rotation/remote key management systems(KMS):º
+ Oº-  Currently, the following KMSes are supported:º
+ Oº  Google Cloud KMS, Amazon KMS, Android Keystore, Apple iOS KeyChain (planned)º
 
-ensure popular cryptographic algorithms behave as expected, including DSA, RSA, AES-EAX, ...
 
-- Tink strives to make as explicit as possible what security guarantees each provided API gives:
+
+- ensure crypto.algorithms behave as expected (DSA, RSA, AES-EAX, ...)
+
+- Tink strives to make as explicit as possible what security guarantees each 
+  provided API gives:
   - For example, if a given operation is safe against chosen-ciphertext attacks,
     this is displayed in the interface and that same guarantee has to be satisfied
     by each primitive used to implement it.
 
 - currently four cryptographic operations are provided, implemented by specific primitives:
-
   - authenticated encryption with associated data (primitive: AEAD)
   - message authentication codes (primitive: MAC),
   - digital signatures (primitives: PublicKeySign and PublicKeyVerify)
   - hybrid encryption (primitives: HybridEncrypt and HybridDecrypt).
 
-  Each operation has an associated set of minimal properties and a guarantee.
+- Each operation has an associated set of minimal properties and a guarantee.
   A primitive can have multiple implementations and the user chooses the actual
   implementation to use by instantiating a key of a corresponding type.
-
-- Tink provides support for key management,
-  including key versioning/rotation/remote key management systems(KMS):
-
-  -  Currently, the following KMSes are supported:
-    Google Cloud KMS, Amazon KMS, Android Keystore, Apple iOS KeyChain (planned)
 
 </pre>
 </div>
@@ -3852,7 +3938,8 @@ Portecle can be used to, for example:
 - Change the password of key pair entries and keystores.
 - Delete, clone, and rename keystore entries.
 - View the details of certificate revocation list (CRL) files.
-
+___________________________
+https://jwt.io/introduction/   ← !!! Very Good Introduction
 
 -->
 

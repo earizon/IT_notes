@@ -1321,7 +1321,6 @@ $ tar tzf _home_myUser_myProject_01.tar.gz
       ││└── name of  input file
       │└─── use gzip for de-compression
       └──── ºlistº
-
 </pre>
 
 <pre zoom labels="backup,learn_x_in_y_min,storage,security">
@@ -1385,6 +1384,33 @@ $ tar tzf _home_myUser_myProject_01.tar.gz
 super-fast compression tool
 </pre>
 
+<pre zoom labels="TODO">
+<span xsmall>Android 2 Linux Backups</span>
+@[https://github.com/FlamingTuri/android-file-backup]
+
+Script solving common problems when transferring files/folders from/to Android.
+- transfer big folders
+- keep the files original modification date
+
+PREREQUISITES
+- On Linux:
+  - adb installed.
+    Download (~10MB size Toolkit) from @[https://developer.android.com/studio/releases/platform-tools]
+    More info at @[https://developer.android.com/studio/command-line/adb]
+
+  - $ sudo apt-get install pv  ← pv allows to view the backup compression progress (-z option)
+
+- On Android:
+  - enable USB debugging
+  - enable USB file transfer
+    (accept dialog asking to trust your computer RSA fingerprint)
+
+Execution Example:
+  $ ./adb-backup.sh    ← backup "DCIM", "Download", "Pictures" 
+     /sdcard/DCIM        from Android to Linux FS.
+     /sdcard/Download
+     /sdcard/Pictures 
+</pre>
 </div>
 
 <div groupv>
@@ -2834,8 +2860,9 @@ Information on Packages
 </pre>
 </div>
 
+<div group>
+<span title>Storage</span><br/>
 <div groupv>
-<span title>Storage</span>
 <pre zoom labels="learn_x_in_y_min,storage">
 <span xsmall>File System Management Basics</span>
 ┌──────────────────┬────────────────────────────────────┐ ┌────────────────┬────────────────────────────────────┐ ┌─────────────────┬─────────────────────────────────────┐
@@ -3073,11 +3100,10 @@ Linux(UNIX) sess storage devices like block-devices:
  → 3 LABEL=backups                                  /mnt/backups    xfs    defaults          1 2 
  → 4 /dev/mapper/fedora-home                        /home           ext4   defaults          1 2 
  → 5 /dev/mapper/fedora-swap                        swap            swap   defaults          0 0 
- → 6 PARTUUID=8C208C30-4E8F-4096-ACF9-858959BABBAA  /mnt/ddbb       xfs    defaults          1 2 
- → 6 "some network attached device"                 /var/.../       xfs    defaults,nofail*3 1 2 
-     └───────────────────┬───────────────────┘      └─────┬────┘   └──┬──┘ └───┬───┘         │ │ 
+ → 6 UUID=8C208C30-4E8F-4096-ACF9-858959BABBAA      /var/.../       xfs    defaults,nofail*3 1 2 
+          └──────────────┬───────────────────┘      └─────┬────┘   └──┬──┘ └───┬───┘         │ │ 
                          ↓                                ↓           ↓        ↓             │ │ 
-        partition device (dev/...),                 mount point in   FS    CSV mount options │ │ 
+        As returned by $ lsblk -o +uuid             mount point in   FS    CSV mount options │ │ 
         partition Universal Unique ID (UUID) or     FS tree hierchy  type  for the FS type.  │ │ 
         partition LABEL  or PARTUUID (GPT)                                 Different FSs can │ │ 
         identifies the partition.                                          have different    │ │ 
@@ -3254,7 +3280,8 @@ Linux(UNIX) sess storage devices like block-devices:
 │ └─────────────────────────────────────────────────────────────────────────────┘              │
 └──────────────────────────────────────────────────────────────────────────────────────────────┘
 </pre>
-
+</div>
+<div groupv>
 <pre zoom labels="">
 NOTE: LVM can also be used to create RAID, but the approach looks to be less mature/supported.
 <span xsmall bgorange>Software RAID 0/1/2/...</span>
@@ -3646,8 +3673,8 @@ NOTE: Usually, you don't have to set up LVM at all since most distros
 
 
 ºSTEP 2: Create logical-volumesº
-# lvcreate volgroup01 49G --name vol0  # ← create logical-volume /dev/volgroup01/vol0
-# lvcreate volgroup01 49G --name vol1  # ← create logical-volume /dev/volgroup01/vol1
+# lvcreate volgroup01 --size 49G --name vol0  # ← create logical-volume /dev/volgroup01/vol0
+# lvcreate volgroup01 --size 49G --name vol1  # ← create logical-volume /dev/volgroup01/vol1
 
 
 ºSTEP 4: Switch volume-group onlineº
@@ -3933,12 +3960,49 @@ min_batch_time=usec This parameter sets the commit time (as
             fast disks, at the cost of increasing latency.
 </pre>
 
-<pre zoom labels="storage,TODO">
+<pre zoom labels="storage,comparative,TODO">
 <span xsmall>XFS</span>
 @[https://www.systutorials.com/docs/linux/man/8-xfs_admin/]
 
-SEE ALSO
-mkfs.xfs(8), mount(8), xfs_db(8), xfs_growfs(8), xfs_repair(8), xfs(5).
+- TODO:
+  - mkfs.xfs(8):
+  -  xfs_db(8):
+  - xfs_growfs(8)
+  - xfs_repair(8)
+  - xfs(5)
+
+- Compared to Ext4:
+  - xfs is prefered for "big" systems with many apps accesing
+    the file-system CONCURRENTLY.
+  - ext4 is simpler and -theorically- less buggy.
+
+
+- TODO: https://blogs.oracle.com/linux/xfs-2019-development-retrospective
+
+- https://blogs.oracle.com/linux/xfs-data-block-sharing-reflink
+  Three years ago, I introduced to XFS a new experimental "reflink" feature that 
+  enables users to share data blocks between files. With this feature, users gain 
+  the ability to make fast snapshots of VM images and directory trees; and 
+  deduplicate file data for more efficient use of storage hardware. Copy on write 
+  is used when necessary to keep file contents intact, but XFS otherwise 
+  continues to use direct overwrites to keep metadata overhead low. The 
+  filesystem automatically creates speculative preallocations when copy on write 
+  is in use to combat fragmentation.
+
+- Btrfs ⅋ XFS File-Systems See More Fixes With Linux 5.4
+<a href0"https://www.phoronix.com/forums/forum/software/general-linux-open-source/1127076-btrfs-xfs-file-systems-see-more-fixes-with-linux-5-4">REF</a>
+- The mature XFS and Btrfs file-systems continue seeing more fixes and 
+  cleaning with the now in-development Linux 5.4 kernel.
+
+- With the XFS changes the work is a bit more lively with seeing some 
+  performance work / speed-ups but also a lot of fixes. "For this cycle 
+  we have the usual pile of cleanups and bug fixes, some performance 
+  improvements for online metadata scrubbing, massive speedups in the 
+  directory entry creation code, some performance improvement in the 
+  file ACL lookup code, a fix for a logging stall during mount, and 
+  fixes for concurrency problems." Those XFS details in full here.
+
+
 </pre>
 
 <pre zoom labels="storage,TODO">
@@ -3957,7 +4021,7 @@ mkfs.xfs(8), mount(8), xfs_db(8), xfs_growfs(8), xfs_repair(8), xfs(5).
 
 
 </div>
-
+</div> <!-- Storage -->
 
 <div groupv>
 <span title>SElinux</span>
@@ -4821,8 +4885,9 @@ $ sudOºsetseboolº -P httpd_can_network_connect 1
 
 </div>
 
+<div group>
+<span title>kernel monit</span><br/>
 <div groupv>
-<span title>kernel monit</span>
 <pre zoom bgorange labels="monitoring,profiling">
 <span xsmall>Kernel Monit.Diagram</span>
   ↑        ┌───────────────────────────────────────────────────────────────────┐
@@ -5026,8 +5091,9 @@ Global average activities among all processors are also reported.
  %idle  : time that the CPU or CPUs were idle and the system did not have
           an outstanding disk I/O request.
 </pre>
+</div>
 
-
+<div groupv>
 <pre zoom labels="profiling">
 <span xsmall>pidstat: Linux task stats</span>
 <a href="https://linux.die.net/man/1/pidstat">man 1 pidstat</a>
@@ -5301,6 +5367,7 @@ another pipe mode is available, to move the main work to the latrace binary (
 see the section called "PIPE mode").
 
 </pre>
+</div>
 </div>
 
 <div groupv>
@@ -6529,17 +6596,27 @@ nfs high available service based on drbd/lvm/xfs
 
 Hey,
 
-would like to create a high available nfs service. 2 virtual machines will mirror multiple separated disks configured with drbd. Would like to have lvm pvs mirrored (one pv for each nfs export).
+would like to create a high available nfs service. 2 virtual machines 
+will mirror multiple separated disks configured with drbd. Would like 
+to have lvm pvs mirrored (one pv for each nfs export).
 
 Is it possible to add new pvs (disks) to a running drbd service ?
 
-how easy can i resize a disk (nfs export) when i use lvm on top of drbd? have to resize the virtual disk(vmdk), drbd has to know about the new size, sync the status .. after that i have to pvscan the drbd device, resize vg/lv. am i correct or does it not work as desired?
+how easy can i resize a disk (nfs export) when i use lvm on top of 
+drbd? have to resize the virtual disk(vmdk), drbd has to know about 
+the new size, sync the status .. after that i have to pvscan the drbd 
+device, resize vg/lv. am i correct or does it not work as desired?
 
-does it make sense to use lvm on top of drbd (most approches are using lvm underneath drbd.)
+does it make sense to use lvm on top of drbd (most approches are 
+using lvm underneath drbd.)
 
 can i configure lvs to get synced by drbd or not ?
 
-btw does it work when i run 2 nfs servers on the same drbd disk one on server A and one on server B. server A exports 2 of 10 nfs shares and the other 8 nfs shares would get offered by server B ? would like to add a VIP for each nfs share as well so i can easily evacuate the nfs shares from one nfs server to the other.
+btw does it work when i run 2 nfs servers on the same drbd disk one 
+on server A and one on server B. server A exports 2 of 10 nfs shares 
+and the other 8 nfs shares would get offered by server B ? would like 
+to add a VIP for each nfs share as well so i can easily evacuate the 
+nfs shares from one nfs server to the other.
 ________________________
 https://www.reddit.com/r/linuxadmin/comments/bffpot/linux_resources_for_deep_diving/
 
@@ -6670,12 +6747,6 @@ Weaveworks is the company that delivers the most productive way for developers t
 This repository contains Weave Net, the first product developed by Weaveworks, with over 8 million downloads to date. Weave Net enables you to get started with Docker clusters and portable apps in a fraction of the time required by other solutions.
 
 ___________________
-Btrfs & XFS File-Systems See More Fixes With Linux 5.4
-The mature XFS and Btrfs file-systems continue seeing more fixes and cleaning with the now in-development Linux 5.4 kernel.
-
-On the Btrfs front the Linux 5.4 changes are summed up as "work on code refactoring, sanity checks and space handling. There are some less user visible changes, nothing that would particularly stand out." The Btrfs changes include deprecating a few items as well as improving the exposure of debugging information via sysfs. See the pull request for all the Btrfs file-system fixes and changes this round.
-
-With the XFS changes the work is a bit more lively with seeing some performance work / speed-ups but also a lot of fixes. "For this cycle we have the usual pile of cleanups and bug fixes, some performance improvements for online metadata scrubbing, massive speedups in the directory entry creation code, some performance improvement in the file ACL lookup code, a fix for a logging stall during mount, and fixes for concurrency problems." Those XFS details in full here.
 ______________________
 https://www.ostechnix.com/kmdr-display-cli-commands-explanation-in-terminal/
 _________________________
@@ -6907,7 +6978,6 @@ https://www.infoq.com/articles/metaparticle-pulumi-ballerina/
 Packaging Applications for Docker and Kubernetes: Metaparticle vs Pulumi vs Ballerina
 https://v1-0.ballerina.io/learn/by-example/
 ____________
-https://blogs.oracle.com/linux/xfs-2019-development-retrospective
 _________________________
 rysnc dry-run:
 cd ...
@@ -6991,15 +7061,7 @@ place to build up groups and work together through its project model.
 
 Used for example in this project:https://github.com/dmacvicar/terraform-provider-libvirt
 _______________________
-https://blogs.oracle.com/linux/xfs-data-block-sharing-reflink
-Three years ago, I introduced to XFS a new experimental "reflink" feature that 
-enables users to share data blocks between files. With this feature, users gain 
-the ability to make fast snapshots of VM images and directory trees; and 
-deduplicate file data for more efficient use of storage hardware. Copy on write 
-is used when necessary to keep file contents intact, but XFS otherwise 
-continues to use direct overwrites to keep metadata overhead low. The 
-filesystem automatically creates speculative preallocations when copy on write 
-is in use to combat fragmentation.
+
 __________________
 http://ivarch.com/programs/pv.shtml
 pv pipe viewer
@@ -7069,6 +7131,26 @@ The script will install and configure the following lab components on the target
     Kickstart files for lab VMs and automated VM build scripts
     An NTP server for time synchronization and lab use
     A Postfix SMTP host with delivery for the lab domain (for relay labs)
+______________________
+https://www.redhat.com/sysadmin/pxe-boot-uefi
+How to set up PXE boot for UEFI hardware
+Setting up a PXE system will streamline new system installs, but the 
+process is lengthy and requires attention to detail. This part one of 
+two articles walks you through the process.
+______________________
+<a href0"https://www.phoronix.com/forums/forum/software/general-linux-open-source/1127076-btrfs-xfs-file-systems-see-more-fixes-with-linux-5-4">REF</a>
+- Btrfs ⅋ XFS File-Systems See More Fixes With Linux 5.4
+- On the Btrfs front the Linux 5.4 changes are summed up as "work on 
+  code refactoring, sanity checks and space handling. There are some 
+  less user visible changes, nothing that would particularly stand 
+  out." The Btrfs changes include deprecating a few items as well as 
+  improving the exposure of debugging information via sysfs. See the 
+  pull request for all the Btrfs file-system fixes and changes this 
+  round.
+
+-----------------------
+https://developers.redhat.com/blog/2020/03/06/configure-and-run-a-qemu-based-vm-outside-of-libvirt/
+(Launching VMs directly from qemu)
 
 START DOCKER {{{
 <pre zoom  labels="docker,TODO">
@@ -7175,7 +7257,149 @@ typical use case:
    starting the contenerized application
  - other use case: forward logs from harcoded files on the filesystem to stdout/stderr
    (Ex: nginx logs to /var/log/nginx/access.log and /var/log/nginx/error.log by default)
+_____________________
+https://www.redhat.com/sysadmin/speeding-container-buildah
 
-
+This article will address a second problem with build speed when using dnf/yum 
+commands inside containers. Note that in this article I will use the name dnf 
+(which is the upstream name) instead of what some downstreams use (yum) These 
+comments apply to both dnf and yum.
+________________________
+Code refactoring and multicursor with Vim:
+GitHub - dyng/ctrlsf.vim: An ack.vim alternative mimics Ctrl-Shift-F on Sublime Text 2https://github.com/dyng/ctrlsf.vim 
+----------------
+http://www.linuxandubuntu.com/home/portainer-io-manage-docker-containers-easily
+Portainer.io: "Easy docker"
 </pre>
+
+<pre zoom labels="TODO">
+<span xsmall>Mount HFS/HFSPlus</span>
+REF: @[https://github.com/FlamingTuri/hfs-device-mounter]
+Dependencies:
+  sudo apt-get install  "lsblk" "udisksctl" "hfsplus" "hfsutils" "hfsprogs" 
+
+hfs-mount.py:
+  #!/usr/bin/python3
+  
+  import sys
+  import re
+  import subprocess
+  import json
+  import getpass
+  import argparse
+  
+  # parsing program flags
+  parser = argparse.ArgumentParser()
+  parser.add_argument('-d', action='store_true',
+                      help='check and install program dependencies')
+  parser.add_argument('-c', action='store_true',
+                      help='check the device filesystem with fsck')
+  parser.add_argument('-m', action='store_false',
+                      help='use [umount|mount] instead of udisksctl [unmount|mount] (requires root privileges)')
+  
+  flags = parser.parse_args()
+  
+  # check program dependencies
+  if flags.d:
+      print('checking that all the dependencies are satisfied')
+      subprocess.call(['./dependencies.sh'])
+      print('\n\n')
+  
+  # --- #
+  
+  def runCommand(cmd: str):
+      print(cmd)
+      subprocess.call(cmd.split())
+  
+  
+  def runCommandList(cmd: list):
+      print(' '.join(cmd))
+      subprocess.call(cmd)
+  
+  def mode(cmd1, cmd2):
+      if flags.m: 
+          return cmd1
+      else:
+          return cmd2
+  
+  fstype = 'hfs'
+  
+  stdout = subprocess.check_output(['lsblk', '-flJ'])
+  
+  json_lsblk: dict = json.loads(str(stdout, 'utf-8'))
+  
+  # filtering out non hfs filesystems
+  hfs_devices: list = [x for x in json_lsblk['blockdevices']
+                       if fstype in str(x['fstype'])]
+  
+  if len(hfs_devices) ˂= 0:
+      sys.exit('No hfs device found, quitting...')
+  
+  # device selection
+  valid_input: bool = False
+  while not valid_input:
+      print('Currently detected hfs devices:')
+      for idx, device in enumerate(hfs_devices):
+          print(str(idx) + ') [name]=' + str(device['name']) + ' [label]=' +
+                str(device['label']) + ' [mountpoint]=' + str(device['mountpoint']))
+  
+      try:
+          selected: int = int(input('\nType the number of the hfs device to mount' +
+                                    ' with read/write permissions: '))
+      except ValueError:
+          print('Wrong input\n')
+          continue
+      else:
+          if selected ˂ len(hfs_devices):
+              valid_input = True
+  
+  
+  user: str = getpass.getuser()
+  device = hfs_devices[selected]
+  name: str = '/dev/' + device['name']
+  
+  print(device['mountpoint'])
+  if device['mountpoint'] is None:
+      mountpoint = '/media/' + user + '/' + str(device['label'])
+  else:
+      mountpoint = str(device['mountpoint'])
+      # unmount device
+      cmd1 = 'udisksctl unmount -b ' + name
+      cmd2 = 'sudo umount ' + name
+      runCommand(mode(cmd1, cmd2))
+  
+  # trasform mountpoint in list to avoid errors caused by spaces
+  mountpoint = [mountpoint]
+  
+  if flags.c:
+      # checks the device filesystem;
+      # useful if the device was unproperly unmounted or
+      # has become partially corrupted
+      runCommand('sudo fsck.hfsplus -f ' + name)
+  
+  # mounts the hfs device with read and write permissions
+  if flags.m:
+      cmd = 'udisksctl mount -t hfsplus -o force,rw -b ' + name
+      runCommand(cmd)
+  else:
+      cmd = 'sudo mkdir -m 777'
+      runCommandList(cmd.split() + mountpoint)
+  
+      cmd = 'sudo mount -t hfsplus -o force,rw ' + name
+      runCommandList(cmd.split() + mountpoint)
+</pre>
+
+
 }}} END-DOCKER
+____________________
+Linux tools: Getting the message out with dmesg | Enable Sysadmin
+https://www.redhat.com/sysadmin/dmesg 
+_______________________
+https://www.ctrl.blog/entry/systemd-service-hardening.html 
+
+Systemd service sandboxing and security hardening 101
+______________________
+conrad - conferences and meetups on your terminal - LinuxLinks
+https://www.linuxlinks.com/conrad-conferences-meetups-terminal/ 
+
+

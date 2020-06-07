@@ -210,9 +210,11 @@ function doOpenZoom(e, isHistoric, showTimeControl, CallbackOnClose, strCloseLab
   let sLabels="";
   if (e.attributes && e.attributes.labels) {
       /* list -> Set -> array leaves non-repeated/unique elements*/
-    Array.from(new Set(e.attributes.labels.value.split(","))).filter(e => !!e).forEach(label_i => {
-        sLabels += renderLabel(label_i)
-    })
+    Array
+      .from(
+        new Set(e.attributes.labels.value.split(",")))
+      .filter(e => !!e)
+      .forEach(label_i => { sLabels += renderLabel(label_i) })
   }
   strCloseLabel = (!!strCloseLabel)?strCloseLabel:"✕ (close)"
   spb.zoomDivDOM.innerHTML = 
@@ -301,7 +303,9 @@ function getSearchOptions() {
       + "<input type='checkbox' "+(spb.labelANDMode?"checked":"")+" onClick='switchANDORSearch()'><span id='idLabelSearchAndMode' mono>"+spb.labelAndOrText[spb.labelANDMode]+"</span>"
       + "<br/>\n"
       + "<div>\n"
-      Object.keys(spb.labelMap).sort().forEach(label_i => {
+      Object.keys(spb.labelMap).sort()
+         .filter(e => {  console.log(e); return !e.toLowerCase().startsWith("uuid:") })
+         .forEach(label_i => {
           result += renderLabel(label_i)
       })
         result += "</div><br/>\n"
@@ -425,6 +429,7 @@ function onPageLoaded() {
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Oº([^º\n]*)º/g, "<b orange>  $1 </b>")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Qº([^º\n]*)º/g, "<b brown >  $1 </b>")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Yº([^º\n]*)º/g, "<b yellow>  $1 </b>")   
+      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/[$]º([^º\n]*)º/g, "  <span console>$1</span> ")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /º([^º\n]*)º/g, "<b        > $1 </b>")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[˂]/g, "&lt;")   
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[˃]/g, "&gt;")   
@@ -463,7 +468,7 @@ function onPageLoaded() {
 
   createLabelIndex()
 
-  let csvLabels = getParameterByName("topics")
+  let csvLabels = getParameterByName("topics").toLowerCase()
   label_l = (!!csvLabels) ? csvLabels.split(",") : []
   label_l.forEach(label => {
       onLabelClicked({value : label});

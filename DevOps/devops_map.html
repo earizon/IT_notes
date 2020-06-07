@@ -667,8 +667,59 @@ finding and applying series
  Code review changes      :ok_hand:                   👌 
  Accessibility            :wheelchair:                ♿️ 
  Move/rename repository  :truck:                      🚚 
-
 </pre>
+
+<pre zoom labels="git,github">
+<span xsmall>GitHub: Custom Bug/Feature-request templates</span>
+
+$ cat .github/ISSUE_TEMPLATE/bug_report.md
+ | ---
+ | name: Bug report
+ | about: Create a report to help us improve
+ | title: ''
+ | labels: ''
+ | assignees: ''
+ | 
+ | ---
+ | 
+ | **Describe the bug**
+ | A clear and concise description of what the bug is.
+ | 
+ | **To Reproduce**
+ | Steps to reproduce the behavior:
+ | 1. Go to '...'
+ | 2. Click on '....'
+ | 3. Scroll down to '....'
+ | 4. See error
+ | 
+ | **Expected behavior**
+ | A clear and concise description of what you expected to happen.
+ | 
+ | ...
+  
+$ cat .github/ISSUE_TEMPLATE/feature_request.md
+  | ---
+  | name: Feature request
+  | about: Suggest an idea for this project
+  | title: ''
+  | labels: ''
+  | assignees: ''
+  | 
+  | ---
+  | 
+  | **Is your feature request related to a problem? Please describe.**
+  | A clear and concise description of what the problem is.... 
+  | 
+  | **Describe the solution you'd like**
+  | A clear and concise description of what you want to happen.
+  | 
+  | **Describe alternatives you've considered**
+  | A clear and concise description of any alternative solutions or features you've considered.
+  | 
+  | **Additional context**
+  | Add any other context or screenshots about the feature request here.
+</pre>
+
 </div>
 </div> <!-- git -->
 
@@ -676,7 +727,102 @@ finding and applying series
 <div group>
     <span title>Shell</span><br/>
 <div groupv>
-<div groupv>
+<pre zoom labels="TODO">
+<span xsmall bgorange>Reference Script</span>
+Source: @[https://github.com/earizon/utility_shell_scripts/blob/master/scriptTemplate.sh]
+
+#!/bin/bash
+
+OUTPUT="$(basename $0).log"
+exec 3˃⅋1   # Copy current STDOUT to ⅋3
+exec 4˃⅋2   # Copy current STDERR to ⅋4
+echo "Redirecting STDIN/STDOUT to $OUTPUT"
+# exec 1˃$OUTPUT 2˃⅋1  
+# REF: https://unix.stackexchange.com/questions/145651/using-exec-and-tee-to-redirect-logs-to-stdout-and-a-log-file-in-the-same-time
+exec ⅋˃ ˃(tee -a "$OUTPUT") # Reditect STDOUT/STDERR to file
+exec 2˃⅋1  
+echo "This will be logged to the file and to the screen"
+
+
+GLOBAL_EXIT_STATUS=0
+WD=$(pwd)
+
+LOCK="/tmp/exampleLock"
+function funCleanUp() {
+  set +e
+  echo "Cleaning resource and exiting"
+  rm -f $LOCK  
+}
+trap funCleanUp EXIT   # ← Clean any resource on exit
+
+if [ ! ${STOP_ON_ERR_MSG} ] ; then
+  STOP_ON_ERR_MSG=true
+fi
+ERR_MSG=""
+function funThrow {
+    if [[ $STOP_ON_ERR_MSG != false ]] ; then
+      echo "ERR_MSG DETECTED: Aborting now due to " 
+      echo -e ${ERR_MSG} 
+      if [[ $1 != "" ]]; then
+          GLOBAL_EXIT_STATUS=$1 ; 
+      elif [[ $GLOBAL_EXIT_STATUS == 0 ]]; then
+          GLOBAL_EXIT_STATUS=1 ;
+      fi
+      exit $GLOBAL_EXIT_STATUS
+    else
+      echo "ERR_MSG DETECTED: "
+      echo -e ${ERR_MSG}
+      echo "WARN: CONTINUING WITH ERR_MSGS "
+
+      GLOBAL_EXIT_STATUS=1 ;
+    fi
+    ERR_MSG=""
+}
+
+while [  $#  -gt 0 ]; do  # $#  number of arguments
+  case "$1" in
+    -l|--list)
+      echo "list arg"
+      shift 1  # ºconsume arg         ←   $# = $#-1 
+      ;; -p|--port) export PORT="${2}:"
+      shift 2  #  consume arg+value   ←   $# = $#-2 
+      ;;
+    -h|--host)
+      export HOST="${2}:"
+      shift 2  #  consume arg+value   ←   $# = $#-2 
+      ;;
+    *)
+      echo "non-recognised option '$1'"
+      shift 1  #  consume arg         ←   $# = $#-1 
+  esac
+done
+set -e # exit on ERR_MSG
+
+function preChecks() {
+  # Check that ENV.VARs and parsed arguments are in place
+  if [[ ! ${HOME} ]] ; then ERR_MSG="HOME ENV.VAR NOT DEFINED" ; funThrow 41 ; fi
+  if [[ ! ${PORT} ]] ; then ERR_MSG="PORT ENV.VAR NOT DEFINED" ; funThrow 42 ; fi
+  if [[ ! ${HOST} ]] ; then ERR_MSG="HOST ENV.VAR NOT DEFINED" ; funThrow 43 ; fi
+  set -u # From here on, ANY UNDEFINED VARIABLE IS CONSIDERED AN ERROR.
+}
+
+function funSTEP1 {
+  echo "STEP 1: $HOME, PORT:$PORT, HOST: $HOST"
+}
+function funSTEP2 { # throw ERR_MSG
+  ERR_MSG="My favourite ERROR@funSTEP2"
+  funThrow 2
+}
+
+
+cd $WD ; preChecks
+cd $WD ; funSTEP1
+cd $WD ; funSTEP2
+
+echo "Exiting with status:$GLOBAL_EXIT_STATUS"
+exit $GLOBAL_EXIT_STATUS
+</pre>
+
 <pre zoom labels="101,shell">
 <span xsmall>Init Vars</span>
 complete Shell parameter expansion list available at:
@@ -722,6 +868,7 @@ TMP_DIR=$(mktemp --directory)
 
 <pre zoom labels="shell">
 <span xsmall>Barrier synchronization</span>
+UUID:[9737647d-58dc-4999-8db4-4cd3c2682edd] 
 Wait for background jobs to complete example:
 (
   ( sleep 3 ; echo "job 1 ended" ) &
@@ -849,7 +996,6 @@ Full documentation at: @[https://www.gnu.org/software/coreutils/]
 
 
 </pre>
-</div>
 </div>
 </div><!-- shell -->
 
@@ -1437,6 +1583,300 @@ To allow this history saving policy a groovy job-post-build step is needed:
 
 </div>
 </div><!-- Jenkins -->
+
+<div group> <!-- Circle CI -->
+<span title>CircleCI</span><br/>
+<pre zoom labels="circleci">
+<span xsmall>CircleCI Ex</span>
+REF:
+@[https://github.com/interledger4j/ilpv4-connector/blob/master/.circleci/config.yml]
+
+cat .circleci/config.yml
+# Java Maven CircleCI 2.0 configuration file
+#
+# Check https://circleci.com/docs/2.0/language-java/ for more details
+#
+version: 2
+jobs:
+
+  # This job builds the entire project and runs all unit tests (specifically the persistence tests) against H2 by
+  # setting the `spring.datasource.url` value. All Integration Tests are skipped.
+  build:
+    working_directory: ~/repo
+
+    docker:
+      # Primary container image where all commands run
+      - image: circleci/openjdk:8-jdk
+        environment:
+          # Customize the JVM maximum heap limit
+          MAVEN_OPTS: -Xmx4096m
+
+    steps:
+
+      # apply the JCE unlimited strength policy to allow the PSK 256 bit key length
+      # solution from http://qiita.com/yoskhdia/items/f4702a3abc4467de69b0
+      - run:
+          name: Getting JCE unlimited strength policy to allow the 256 bit keys
+          command: |
+            curl -L --cookie 'oraclelicense=accept-securebackup-cookie;'  http://download.oracle.com/otn-pub/java/jce/8/jce_policy-8.zip -o /tmp/jce_policy.zip
+            unzip -o /tmp/jce_policy.zip -d /tmp
+            sudo mv -f /tmp/UnlimitedJCEPolicyJDK8/US_export_policy.jar $JAVA_HOME/jre/lib/security/US_export_policy.jar
+            sudo mv -f /tmp/UnlimitedJCEPolicyJDK8/local_policy.jar $JAVA_HOME/jre/lib/security/local_policy.jar
+
+      - checkout # check out source code to working directory
+
+      # Restore the saved cache after the first run or if `pom.xml` has changed. Read about caching dependencies:
+      # https://circleci.com/docs/2.0/caching/
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "pom.xml" }}
+
+      - run:
+          name: Full Build (H2)
+          command:  mvn dependency:go-offline -DskipITs install
+
+      - save_cache: # saves the project dependencies
+          paths:
+            - ~/.m2
+          key: v1-dependencies-{{ checksum "pom.xml" }}
+
+      # save tests
+      - run:
+          name: Save test results
+          command: |
+            mkdir -p ~/junit/
+            find . -type f -regex ".*/target/surefire-reports/.*xml" -exec cp {} ~/junit/ \;
+            mkdir -p ~/checkstyle/
+            find . -type f -regex ".*/target/checkstyle-reports/.*xml" -exec cp {} ~/junit/ \;
+
+          when: always
+
+      - store_test_results:
+          path: ~/junit
+
+      - store_artifacts:
+          path: ~/junit
+
+      # publish the coverage report to codecov.io
+      - run: bash <(curl -s https://codecov.io/bash)
+
+  # This job runs specific Ilp-over-HTTP Integration Tests (ITs) found in the `connector-it` module.
+  # by executing a special maven command that limits ITs to the test-group `IlpOverHttp`.
+  integration_tests_ilp_over_http:
+    working_directory: ~/repo
+
+    machine:
+      image: ubuntu-1604:201903-01
+
+    environment:
+      MAVEN_OPTS: -Xmx4096m
+      JAVA_HOME: /usr/lib/jvm/jdk1.8.0/
+
+    steps:
+
+      # apply the JCE unlimited strength policy to allow the PSK 256 bit key length
+      # solution from http://qiita.com/yoskhdia/items/f4702a3abc4467de69b0
+      - run:
+          name: Getting JCE unlimited strength policy to allow the 256 bit keys
+          command: |
+            curl -L --cookie 'oraclelicense=accept-securebackup-cookie;'  http://download.oracle.com/otn-pub/java/jce/8/jce_policy-8.zip -o /tmp/jce_policy.zip
+            unzip -o /tmp/jce_policy.zip -d /tmp
+            sudo mv -f /tmp/UnlimitedJCEPolicyJDK8/US_export_policy.jar $JAVA_HOME/jre/lib/security/US_export_policy.jar
+            sudo mv -f /tmp/UnlimitedJCEPolicyJDK8/local_policy.jar $JAVA_HOME/jre/lib/security/local_policy.jar
+      - checkout # check out source code to working directory
+
+      # Restore the saved cache after the first run or if `pom.xml` has changed. Read about caching dependencies:
+      # https://circleci.com/docs/2.0/caching/
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "pom.xml" }}
+
+      # gets the project dependencies and installs sub-module deps
+      - run:
+          name: Install Connector Dependencies
+          command: mvn dependency:go-offline -DskipTests -DskipITs install
+
+      - save_cache: # saves the project dependencies
+          paths:
+            - ~/.m2
+          key: v1-dependencies-{{ checksum "pom.xml" }}
+
+      - run:
+          name: Run Integration Tests (ITs)
+          command: |
+            cd ./connector-it
+            docker network prune -f
+            mvn verify -Pilpoverhttp
+
+      # publish the coverage report to codecov.io
+      - run: bash <(curl -s https://codecov.io/bash)
+
+  # This job runs specific Settlement-related Integration Tests (ITs) found in the `connector-it` module.
+  # by executing a special maven command that limits ITs to the test-group `Settlement`.
+  integration_tests_settlement:
+    working_directory: ~/repo
+
+    machine:
+      image: ubuntu-1604:201903-01
+
+    environment:
+      MAVEN_OPTS: -Xmx4096m
+      JAVA_HOME: /usr/lib/jvm/jdk1.8.0/
+
+    steps:
+
+      # apply the JCE unlimited strength policy to allow the PSK 256 bit key length
+      # solution from http://qiita.com/yoskhdia/items/f4702a3abc4467de69b0
+      - run:
+          name: Getting JCE unlimited strength policy to allow the 256 bit keys
+          command: |
+            curl -L --cookie 'oraclelicense=accept-securebackup-cookie;'  http://download.oracle.com/otn-pub/java/jce/8/jce_policy-8.zip -o /tmp/jce_policy.zip
+            unzip -o /tmp/jce_policy.zip -d /tmp
+            sudo mv -f /tmp/UnlimitedJCEPolicyJDK8/US_export_policy.jar $JAVA_HOME/jre/lib/security/US_export_policy.jar
+            sudo mv -f /tmp/UnlimitedJCEPolicyJDK8/local_policy.jar $JAVA_HOME/jre/lib/security/local_policy.jar
+      - checkout # check out source code to working directory
+
+      # Restore the saved cache after the first run or if `pom.xml` has changed. Read about caching dependencies:
+      # https://circleci.com/docs/2.0/caching/
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "pom.xml" }}
+
+      # gets the project dependencies and installs sub-module deps
+      - run:
+          name: Install Connector Dependencies
+          command: mvn dependency:go-offline -DskipTests -DskipITs install
+
+      - save_cache: # saves the project dependencies
+          paths:
+            - ~/.m2
+          key: v1-dependencies-{{ checksum "pom.xml" }}
+
+      - run:
+          name: Run Integration Tests (ITs)
+          command: |
+            cd ./connector-it
+            docker network prune -f
+            mvn verify -Psettlement
+
+      # publish the coverage report to codecov.io
+      - run: bash <(curl -s https://codecov.io/bash)
+
+  # This job runs specific Coordination-related Integration Tests (ITs) found in the `connector-it` module.
+  # by executing a special maven command that limits ITs to the test-group `Coordination`.
+  integration_tests_coordination:
+    working_directory: ~/repo
+
+    machine:
+      image: ubuntu-1604:201903-01
+
+    environment:
+      MAVEN_OPTS: -Xmx4096m
+      JAVA_HOME: /usr/lib/jvm/jdk1.8.0/
+
+    steps:
+
+      # apply the JCE unlimited strength policy to allow the PSK 256 bit key length
+      # solution from http://qiita.com/yoskhdia/items/f4702a3abc4467de69b0
+      - run:
+          name: Getting JCE unlimited strength policy to allow the 256 bit keys
+          command: |
+            curl -L --cookie 'oraclelicense=accept-securebackup-cookie;'  http://download.oracle.com/otn-pub/java/jce/8/jce_policy-8.zip -o /tmp/jce_policy.zip
+            unzip -o /tmp/jce_policy.zip -d /tmp
+            sudo mv -f /tmp/UnlimitedJCEPolicyJDK8/US_export_policy.jar $JAVA_HOME/jre/lib/security/US_export_policy.jar
+            sudo mv -f /tmp/UnlimitedJCEPolicyJDK8/local_policy.jar $JAVA_HOME/jre/lib/security/local_policy.jar
+      - checkout # check out source code to working directory
+
+      # Restore the saved cache after the first run or if `pom.xml` has changed. Read about caching dependencies:
+      # https://circleci.com/docs/2.0/caching/
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "pom.xml" }}
+
+      # gets the project dependencies and installs sub-module deps
+      - run:
+          name: Install Connector Dependencies
+          command: mvn dependency:go-offline -DskipTests -DskipITs install
+
+      - save_cache: # saves the project dependencies
+          paths:
+            - ~/.m2
+          key: v1-dependencies-{{ checksum "pom.xml" }}
+
+      - run:
+          name: Run Integration Tests (ITs)
+          command: |
+            cd ./connector-it
+            docker network prune -f
+            mvn verify -Pcoordination
+
+      # publish the coverage report to codecov.io
+      - run: bash <(curl -s https://codecov.io/bash)
+
+  docker_image:
+    working_directory: ~/repo
+
+    machine:
+      image: ubuntu-1604:201903-01
+
+    environment:
+      MAVEN_OPTS: -Xmx4096m
+      JAVA_HOME: /usr/lib/jvm/jdk1.8.0/
+
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "pom.xml" }}
+      - run:
+          name: Deploy docker image
+          command: mvn verify -DskipTests -Pdocker,dockerHub -Dcontainer.version=nightly -Djib.httpTimeout=60000 -Djib.to.auth.username=${DOCKERHUB_USERNAME} -Djib.to.auth.password=${DOCKERHUB_API_KEY}
+
+workflows:
+  version: 2
+
+  # In CircleCI v2.1, when no workflow is provided in config, an implicit one is used. However, if you declare a
+  #  workflow to run a scheduled build, the implicit workflow is no longer run. You must add the job workflow to your
+  # config in order for CircleCI to also build on every commit.
+  commit:
+    jobs:
+      - build
+      - integration_tests_ilp_over_http:
+          requires:
+            - build
+      - integration_tests_settlement:
+          requires:
+            - build
+      - integration_tests_coordination:
+          requires:
+            - build
+
+  nightly:
+    triggers:
+      - schedule:
+          cron: "0 0 * * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - build
+      - integration_tests_ilp_over_http:
+          requires:
+            - build
+      - integration_tests_settlement:
+          requires:
+            - build
+      - integration_tests_coordination:
+          requires:
+            - build
+      - docker_image:
+          requires:
+            - integration_tests_ilp_over_http
+            - integration_tests_settlement
+            - integration_tests_coordination
+</pre>
+</div> <!-- Circle CI -->
 
 <div groupv>
 <span title>Nexus</span><br/>
@@ -2764,6 +3204,9 @@ fact_caching_timeout = 86400
   and task engine for Ansible. It's the open source version of the Ansible Tower. 
   The AWX allows you to manage Ansible playbooks, inventories, and schedule jobs 
   to run using the web interface. 
+
+- How to Run and Schedule Ansible Playbook Using AWX GUI
+@[https://www.linuxtechi.com/run-schedule-ansible-playbook-awx-gui/]
 </pre>
 
 </div>
@@ -2884,33 +3327,25 @@ master/agent architecture:
 │  - matching Nodes (Node_name vs Agent Certificate Name) are also applied  │
 └───────────────────────────────────────────────────────────────────────────┘
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ºADVANCED TOPICSº (TODO)
  - controlling the Resources order  execution
  - transient cloud servers
  - auto-signing and node name wildcards
  - ...
 </pre>
+
+
+<pre zoom labels="puppet,bolt,IaC,TODO">
+<span xsmall>Bolt</span>
+OOSS orchestration tool automating manual work to maintain infrastructure.
+ For example, you can use Bolt to patch and update systems, 
+troubleshoot servers, deploy applications, or stop 
+and restart services. Bolt can be installed on your local workstation 
+and connects directly to remote targets with SSH or WinRM, so you are 
+not required to install any agent software.
+</pre>
+
+
 
 </div>
 <div groupv>
@@ -3058,7 +3493,7 @@ end
 <div group>
     <span title>Terraform</span> </br>
 <div groupv>
-<pre zoom labels="terraform">
+<pre zoom labels="terraform,IaC">
 <span xsmall>External Links</span>
 - @[https://learn.hashicorp.com/terraform/getting-started/install.html]
 - @[https://www.terraform.io/intro/use-cases.html]
@@ -3072,7 +3507,7 @@ end
   - Multi-Cloud Deployment
 </pre>
 
-<pre zoom labels="terraform">
+<pre zoom labels="terraform,IaC">
 <span xsmall>Terraform 101</span>
 $ mkdir project01
 $ cd project01
@@ -3323,7 +3758,7 @@ $ cp terraform-provider-libvirt  ~/.terraform.d/plugins
  """
 </pre>
 
-<pre zoom labels="cloud-init,terraform,vagrant,TODO">
+<pre zoom labels="cloud-init,terraform,vagrant,IaC,TODO">
 <span xsmall>cloud-init</span>
 https://cloudinit.readthedocs.io/en/latest/
 """industry standard multi-distribution method for
@@ -3346,7 +3781,7 @@ supported private clouds:
     Bare metal installs , OpenStack , LXD, KVM, Metal-as-a-Service (MAAS)
 </pre>
 
-<pre zoom labels="terraform,regula,TODO">
+<pre zoom labels="terraform,regula,security,IaC,TODO">
 <span xsmall>Regula</span>
 @[https://www.helpnetsecurity.com/2020/01/16/fugue-regula/]
 Fugue open sources Regula to evaluate Terraform for security misconfigurations 
@@ -3454,6 +3889,10 @@ __________________
 https://www.infoq.com/news/2020/02/github-actions-api/
 __________________
 http://schacon.github.io/git/git-read-tree.html#_sparse_checkout
+___________________
+Github: search by topic ex troubleshooting and language java
+https://github.com/topics/troubleshooting?l=java 
+
 }}} TODO GIT END
 ##############################################################
 TODO Jenkins start {{{
@@ -3484,7 +3923,7 @@ TODO_CLOUDINIT_START: {{{
 }}} TODO_CLOUDINIT_END
 ##############################################################
 TODO_TERRAFORM_START: {{{
-
+https://www.infoq.com/news/2020/03/azurerm-terraform-2-0/
 }}} TODO_TERRAFORM_START
 ##############################################################
 TODO_AZURE_PIPELINES: {{{
@@ -3492,7 +3931,10 @@ https://azure.microsoft.com/es-es/services/devops/pipelines/
 }}} TODO_AZURE_PIPELINES
 ##############################################################
 ##############################################################
-
+{{{
+https://pijul.org/model/#why-care-about-patch-theory
+Alternative to Git. p2p.
+}}}
 
 -->
 

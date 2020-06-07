@@ -304,22 +304,25 @@ EXPLAIN SELECT * FROM table;
 <pre zoom labels="comparative">
 <a xsmall href="https://www.pg-versus-ms.com/">PSQL vs MSQL comparative</a>
 <span xsmall>(for data analytics)</span>
-  - A data analytics platform which cannot handle CSV robustly is a broken, useless liability
-  - PostgreSQL's CSV support is top notch. The COPY TO and COPY FROM commands support the spec outlined in
-     RFC4180 (which is the closest thing there is to an official CSV standard) as well as a multitude of common
-    and not-so-common variants and dialects. These commands are fast and robust. When an error occurs, they give
-    helpful error messages. Importantly, they will not silently corrupt, misunderstand or alter data. If PostgreSQL 
-    says your import worked, then it worked properly. The slightest whiff of a problem and it abandons the import
-    and throws a helpful error message.
-  
-  - 
+PSQL: PostgreSQL's CSV support is very good with RFC4180 support
+     (which is the closest thing there is to an official CSV standard) 
+      COPY TO
+      COPY FROM
+      Helpul error message in case of error with fail-fast approach:
+      - Abort import on problem
+      (vs silently corrupt, misunderstand or alter data)
+
 PostgreSQL                     | MS SQL Server:
 DROP TABLE IF EXISTS my_table; | 
                                | IF OBJECT_ID (N'dbo.my_table', N'U') IS NOT NULL
                                | DROP TABLE dbo.my_table;
   
-  - PostgreSQL supports DROP SCHEMA CASCADE, which drops a schema and all the database objects inside it. This is very, very important for a robust analytics delivery methodology, where tear-down-and-rebuild is the underlying principle of repeatable, auditable, collaborative analytics work.
-  - 
+- PSQL supports DROP SCHEMA CASCADE:
+ º  This is very, very important for a robust analytics delivery methodology,º
+ ºwhere tear-down-and-rebuild is the underlying principle of repeatable,     º
+ ºauditable, collaborative analytics work.                                   º
+  - drop  schema and all the database objects inside it.
+
 PostgreSQL                  |  MS SQL Server
 CREATE TABLE good_films AS  |  SELECT
 SELECT                      |    *
@@ -359,7 +362,8 @@ SELECT $$Hello, World$$ AS greeting;
   kind of procedural language. This allows a database user to write imperative
   - style code for more complex or fiddly tasks.
   - PostgreSQL's procedural language support is exceptional:
-    - PL/PGSQL: this is PostgreSQL's native procedural language. It's like Oracle's PL/SQL, but more modern and feature-complete.
+    - PL/PGSQL: this is PostgreSQL's native procedural language. It's like Oracle's
+        PL/SQL, but more modern and feature-complete.
     - PL/V8: the V8 JavaScript engine from Google Chrome is available in PostgreSQL.
       Even better, PL/V8 supports global (i.e. cross-function call) state, 
       allowing the user to selectively cache data in RAM for fast random access.
@@ -381,13 +385,16 @@ SELECT $$Hello, World$$ AS greeting;
       (All those run-test-modify cycles were only possible because of DROP SCHEMA CASCADE
        and freedom to execute CREATE FUNCTION statements in the middle of a statement
        batch, as explained above. See how nicely it all fits together?)
-    - PL/Python: Fancy running a SVM from scikit-learn or some arbitrary-precision arithmetic provided by gmpy2 in the middle of a SQL query? No problem!
+    - PL/Python: Fancy running a SVM from scikit-learn or some 
+      arbitrary-precision arithmetic provided by gmpy2 in the middle of a SQL query? 
+      No problem!
     - PL/R
     - C: doesn't quite belong in this list because you have to compile it 
       separately, but it's worth a mention.  In PostgreSQL it is trivially easy 
       to create functions which execute compiled, optimised C (or C++ or assembler)
       in the database backend.
-  - In PostgreSQL, custom aggregates are convenient and simple to use, resulting in fast problem-solving and maintainable code:
+  - In PostgreSQL, custom aggregates are convenient and simple to use, 
+     resulting in fast problem-solving and maintainable code:
 CREATE FUNCTION interest_sfunc(state JSON, movement FLOAT, rate FLOAT, dt DATE) RETURNS JSON AS
 $$
 state.balance += movement;  //payments into/withdrawals from account
@@ -442,9 +449,10 @@ Elegant, eh? A custom aggregate is specified in terms of an internal state
       for interoperability with other systems.
     - They also support the INTERVAL type, which is so useful it has its own 
       section right after this one.
-        SELECT to_char('2001-02-03'::DATE, 'FMDay DD Mon YYYY');  --this produces the string "Saturday 03 Feb 2001"
-        and, going in the other direction,
-        SELECT to_timestamp('Saturday 03 Feb 2001', 'FMDay DD Mon YYYY');  --this produces the timestamp value 2001-02-03 00:00:00+00
+      SELECT to_char('2001-02-03'::DATE, 'FMDay DD Mon YYYY');  ← "Saturday 03 Feb 2001"
+
+      SELECT to_timestamp('Saturday 03 Feb 2001', 'FMDay DD Mon YYYY');  ←TS 2001-02-03 00:00:00+00
+
     - PostgreSQL: the INTERVAL type represents a period of time, such as "30 
   microseconds" or "50 years". It can also be negative, which may seem 
   counterintuitive until you remember that the word "ago" exists. PostgreSQL 
@@ -470,7 +478,9 @@ Elegant, eh? A custom aggregate is specified in terms of an internal state
   - PostgreSQL: HSTORE is a PostgreSQL extension which implements a fast key-value store as a data type.
      Like arrays, this is very useful because virtually every high-level programming language has such
      a concept (associative arrays, dicts, std::map ...)
-     There are also some fun unexpected uses of such a data type. A colleague recently asked me if there was a good way to deduplicate a text array. Here's what I came up with:
+     There are also some fun unexpected uses of such a data type. A colleague 
+     recently asked me if there was a good way to deduplicate a text array. Here's 
+     what I came up with:
         SELECT akeys(hstore(my_array, my_array)) FROM my_table;
      i.e. put the array into both the keys and values of an HSTORE, forcing a 
      dedupe to take place (since key values are unique) then retrieve the keys 
@@ -482,20 +492,28 @@ Elegant, eh? A custom aggregate is specified in terms of an internal state
     that joins to ranges using BETWEEN can go horribly wrong, for a number of reasons.
     PostgreSQL's approach is to treat time ranges as first-class data types. Not only can you put a
     range of time (or INTs or NUMERICs or whatever) into a single data value, you can use a host of
-    built-in operators to manipulate and query ranges safely and quickly. You can even apply specially-developed
-    indices to them to massively accelerate queries that use these operators. 
+    built-in operators to manipulate and query ranges safely and quickly. You 
+    can even apply specially-developed indices to them to massively accelerate 
+    queries that use these operators. 
   - PostgreSQL: NUMERIC (and DECIMAL - they're symonyms) is near-as-dammit arbitrary 
     precision: it supports 131,072 digits before the decimal point and 16,383 digits after the decimal point.
   - PostgreSQL: XML/Xpath querying is supported
   - PostgreSQL's logs, by default, are all in one place. By changing a couple of settings in a text file,
-  you can get it to log to CSV (and since we're talking about PostgreSQL, it's proper CSV, not broken CSV).
-  You can easily set the logging level anywhere from "don't bother logging anything" to "full profiling and debugging output".
-  The documentation even contains DDL for a table into which the CSV-format logs can be conveniently imported.
-   You can also log to stderr or the system log or to the Windows event log (provided you're running PostgreSQL in Windows, of course).  
-  The logs themselves are human-readable and machine-readable and contain data likely to be of great value to a sysadmin.
-  Who logged in and out, at what times, and from where? Which queries are being run and by whom?
-  How long are they taking? How many queries are submitted in each batch? Because the data is well-formatted CSV,
-  it is trivially easy to visualise or analyse it in R or PostgreSQL itself or Python's matplotlib or whatever you like.
+    you can get it to log to CSV (and since we're talking about PostgreSQL, it's proper CSV, not broken CSV).
+    You can easily set the logging level anywhere from "don't bother logging 
+    anything" to "full profiling and debugging output".
+    The documentation even contains DDL for a table into which the CSV-format 
+    logs can be conveniently imported.
+    You can also log to stderr or the system log or to the Windows event log 
+    (provided you're running PostgreSQL in Windows, of course).  
+      The logs themselves are human-readable and machine-readable and contain data 
+    likely to be of great value to a sysadmin.
+      Who logged in and out, at what times, and from where? Which queries are being 
+    run and by whom?
+      How long are they taking? How many queries are submitted in each batch? 
+    Because the data is well-formatted CSV,
+      it is trivially easy to visualise or analyse it in R or PostgreSQL itself or 
+    Python's matplotlib or whatever you like.
   - PostgreSQL comes with a set of extensions called contrib modules. There are libraries of functions,
     types and utilities for doing certain useful things which don't quite fall 
     into the core feature set of the server. There are libraries for fuzzy 
@@ -503,6 +521,21 @@ Elegant, eh? A custom aggregate is specified in terms of an internal state
     cryptography, UUID generation, tree data types and loads, loads more. A few
     of the modules don't even do anything except provide templates to allow 
     developers and advanced users to develop their own extensions and custom functionality.
+</pre>
+</div>
+
+<div groupv>
+<span title>Scalability</span>
+<pre zoom labels="TODO">
+<span xsmall>Citus Sharding Extension</span>
+@[https://github.com/citusdata/citus]
+@[https://www.citusdata.com]
+
+Distributed PostgreSQL extension for multi-tenant and
+real-time analytics workloads 
+
+- cluster of databases with Citus extension (sharding for PostgreSQL).
+  Configured High-Availability for the coordinator node.
 </pre>
 </div>
 
@@ -1343,4 +1376,18 @@ as I would like (and I'll also use this as an opportunity to say that having a
 replica is not a backup). However, if you are running PostgreSQL on Kubernetes 
 ºusing the PostgreSQL Operatorº, with a few commands, the answer to this question 
 is "Yes!"
+________________________
+https://github.com/dbcli/pgcli
+This is a postgres client that does auto-completion and syntax highlighting.
+Home Page: http://pgcli.com
+MySQL Equivalent: http://mycli.net
+-------------------------
+PostgreSQL: Network latency does make a BIG difference - Cybertec
+https://www.cybertec-postgresql.com/en/postgresql-network-latency-does-make-a-big-difference/ 
+___________________________
+https://www.percona.com/blog/2019/07/22/percona-monitoring-and-management-pmm-2-beta-4-is-now-available/
+Percona Monitoring and Management (PMM) 2 Beta 4 Is Now Available
+----------------------
+
+
 -->

@@ -10,6 +10,12 @@
 <body>
 
 <div groupv>
+  <span title>Kubernetes at a glance</span><br/>
+<pre zoom bgred labels="TODO">
+<span xsmall>WARN! Kubernetes is not for you!</span>
+@[https://pythonspeed.com/articles/dont-need-kubernetes/]
+@[https://en.wikipedia.org/wiki/Fallacies_of_distributed_computing]
+</pre>
 
 <pre zoom labels="101,">
 <span xsmall>External Links</span>
@@ -49,50 +55,94 @@ ref:@[https://kubernetes.io/docs/concepts/overview/components/]
 
 Kubernetes Cluster Components:
 │ºetcdº:                      │    ºMasterº:                         │ºnodeº (Pool):
-│- High availability key/value│    (Or cluster of masters)           │- (VM) computer serving as 
-│ddbb used to save the cluster│     - manages the cluster.           │  a worker machine where pods      
+│- High availability key/value│    (Or cluster of masters)           │- (VM) computer serving as
+│ddbb used to save the cluster│     - manages the cluster.           │  a worker machine where pods
 │metadata, service registrat. │     - keeps tracks of:               │  are scheduled for execution.   takes a set of PodSpecs and ensures
-│and discovery                │       - desired state.               │- Contains k8s services:         thate described containers are     
-└─────────────────────────────┘       ─ application scalation        │  ─ Kubelet agent        ←------ running and healthy.               
+│and discovery                │       - desired state.               │- Contains k8s services:         thate described containers are
+└─────────────────────────────┘       ─ application scalation        │  ─ Kubelet agent        ←------ running and healthy.
                                       - rolling updates              │  - Container runtime Iface
                                     - Raft consensus used in         │    (Docker or rkt)
                                       multimaster mode               │- kube-proxy:(Gº"SDN enabler"º)
-                                      (requires 1,3,5,... masters    │  simple or round-robin TCP/UDP 
-                                     @[https://raft.github.io/])     │  stream forwarding across set 
+                                      (requires 1,3,5,... masters    │  simple or round-robin TCP/UDP
+                                     @[https://raft.github.io/])     │  stream forwarding across set
                                      └────────┬─────────────────┘    │  of back-ends.
                                               │                      └─────────────────────────────
-      ┌──────────────────┬───────────┬────────┴──────────────────────┬────────┬──────────────────────────────────────┐
-ºkube─apiserver:º        │ ºkube─controller─managerº                 │ ºScheduler Serviceº                       ºcloud─controller─managerº
- ─ (REST) Wrapper around │  ─Oº:EMBEDS K8S CORE CONTROL LOOPS!!!º    │  ─ Assigns workloads to nodes              ─ Kubernetes 1.6Rºalpha featureº
-   k8s objects           │  ─ºhandles a number of controllers that:º │  ─ tracks resource utilization on hosts    ─ runs controllers that interact
-                         │    ─ regulate the state of the cluster    │  ─ tracks total resources available on       with the underlying cloud providers.
-                         │    ─ and perform routine tasks            │    each server as well as the resources    ─ affected controllers
-                         │      ─ ensures number of replicas for     │    allocated to existing workloads           ─ Node Controller
-                         │        a service,                         │    assigned on each server.                  ─ Route Controller
-                         │      ─ ...                                │  ─ Manages availability, performance and     ─ Service Controller
-                         │                                           │    capacity                                  ─ Volume ControllerCluster
-                         │                                           │
+        ┌───────────────┬────────────┬────────┴────────────────┬──────────┬─────────────────────────────┐
+ºkube─apiserver:º       │ºkube─controller─managerº             │ºkube-schedulerº               ºcloud─controller─managerº
+ ─ (REST) Wrapper around│ ─Oº:EMBEDS K8S CORE CONTROL LOOPS!!!º│ ─ Assigns workloads to nodes  ─ k8s 1.6Rºalpha featureº
+   k8s objects          │ ─ºhandles a number of controllers:º  │ ─ tracks host-resource ussage ─ runs controllers
+ - Listen for management│   ─ regulating the state of  cluster │ ─ tracks total resources        interacting with underlying
+   tools (kubectl,      │   ─ perform routine tasks            │   available per server and      cloud provider
+   dashboard,...)       │     ─ ensures number of replicas for │   resources allocated to      ─ affected controllers
+                        │       a service,                     │   existing workloads assigned   ─ Node Controller
+                        │     ─ ...                            │   to each server                ─ Route Controller
+                        │                                      │ ─ Manages availability,         ─ Service Controller
+                        │                                      │   performance and capacity      ─ Volume ControllerCluster
+                        │                                      │
                 ºfederation-apiserveRº                   ºfederation-controller-managerº
                 - API server for federated               - embeds the core control loops shipped
                   clusters                                 with Kubernetes federation.
 
 
-K8S
-CLUSTER  1 ←───→ N Namespace  1 ←─┬─→  N Deployment       1 ←───→ N Pods
-───────           "Virtual        │      "Application"             Minimum 
-─ etcd             cluster"       │                                Unit of
-─ Master          Can be assigned │      ─ Load balancing          Exec/Sched.
-─ Node Pool       max Memory/CPU  │        with(out) session
-                  Quotas          │        affinity
-                                  │      ─ Persistence storage
-                                  │      ─ Scheduing of pods into
-                                  │        node pool
-                                  │      ─ Rolling deployments
-                                  │
-                                  └──  N "Other" Controllers
-                                         (ReplicaSet, ...)
 
- 
+K8S
+CLUSTER  1 ←···→ N Namespace  1 ←─┬─→  N Deployment       1 ←·····┐
+───────            =========             ==========
+─ etcd            "Virtual        │      "Application"            ·
+─ Master           cluster"       │                               ·
+─ Node Pool       Can be assigned │      · Load balancing         ·
+                  max Memory/CPU  │        with(out) session      ·
+                  Quotas          │        affinity               ·
+                                  │      · Persistence storage    ·
+                                  │      · Scheduing of pods into ·
+                                  │        node pool              ·
+                                  │      · Rolling deployments    ·
+                                  │      · Ex:                    ·
+                                  │        1 DDBB pod             ·
+                                  │      + 2 Front End pods       ·
+                                  │      + 1 ESB Pod              ·
+                                  │                               ·
+                                  └── N "Other" Controllers       ·
+                                       (ReplicaSet, ...)          ·                                                 ·
+                                                                  ·
+ ┌································································┘
+ │
+ └→ N Pods    1 ←················→ 1+ Container                                                                
+      ====                            =========                                                                                                               
+   · Minimum Unit of Exec/Sched.      · executable ("Docker") image                                                                                   
+   · At creation time resource        .ºLifecycle Hooksº                                                                                          
+     limits for CPU/memory are          - PostStart Hook                                                                                                      
+     defined (min and max-opt)          - PreStop   Hook                                                                                                      
+   · Ussually Pod 1←→1 Container                                                                                                          
+     (rarely 2 when such              type Container struct {                                                                                                 
+      containers are closely             Name string                                                                                                          
+      related to make Pod work)          Image string                                                                                                         
+   ·RºPods are ephemeral.º               Command []string                                                                                         
+      Deploy Controller+                 Args []string                                                                                                        
+      Pods is high available.            WorkingDir string
+                                         Ports []ContainerPort
+   · Define shared resources            EnvFrom []EnvFromSource
+     for its container/s:                Env []EnvVar
+     o Volumes: (Shared Storage)         Resources ResourceRequirements
+     o Networking: (Sharedºuniqueº       VolumeMounts []VolumeMount
+          ºcluster IPº)                  VolumeDevices []VolumeDevice
+     o Metadata: (Container image        LivenessProbe *Probe   ←······· kubelet exec the probes
+         version, ports to use,...)      ReadinessProbe *Probe           - ExecAction 
+                                         Lifecycle *Lifecycle            - TCPSocketAction 
+   · Represent a "logical host"          TerminationMessagePath string   - HTTPGetAction
+                                         TerminationMessagePolicy TerminationMessagePolicy
+   · A Pod is tied to the Node where     ImagePullPolicy PullPolicy
+     it has been scheduler to run,       SecurityContext *SecurityContext
+     and remains there until             Stdin bool
+     termination.                     }
+   · In case of failure, controllers  
+     can be scheduled to run on other · containers in a Pod are 
+     available Nodes in the cluster.    co-located and co-scheduled
+                                        on the same cluster node.
+   · Controllers takes charge of 
+     scalling /"healing" pods. 
+
+
 REF: @[https://kubernetes.io/docs/Architecture/architecture_map.html?query=service+registration+discovery]
                                                 ┌───────────┐
    ─ Describes the resources available ─┐       │Node Status│
@@ -106,16 +156,16 @@ REF: @[https://kubernetes.io/docs/Architecture/architecture_map.html?query=servi
     OutOfDisk          True → insufficient free space on the
                               node for adding new pods
     Ready              True → node is healthy and ready to accept pods
-                       if not True after ºpod─eviction─timeoutº 
+                       if not True after ºpod─eviction─timeoutº
                        (5 minutes by default)
-                       an argument is passed to the kube-controller-manager 
+                       an argument is passed to the kube-controller-manager
                        and all Pods
     MemoryPressure     True → pressure exists on the node memory
     PIDPressure        True → pressure exists on the processes
     DiskPressure       True → pressure exists on the disk size
     NetworkUnavailable True → node network not correctly configured
 
-
+<hr/>
 <span xsmall>Network</span>
 REF:@[https://kubernetes.io/docs/concepts/architecture/cloud-controller/]
 
@@ -137,7 +187,7 @@ kube─controller─managero──→ / __| |/ _ \| | | |/ _` | |   cloud-contro
               kube─scheduler    └────→kube─proxy│     |                         v           │   │          │
                                      └──────────┘     |                   kube─scheduler    └───→kube─proxy│
                                                       |                                         └──────────┘
-                                                      | 
+<hr/>
 <span xsmall>Object Management</span>
 REF:
 - @[https://kubernetes.io/docs/tasks/tools/install-kubectl/]
@@ -153,19 +203,19 @@ REF:
 º│state     │← present stateº                 │labels     │
 º└──────────┘º                                │annotations│
                                               └───────────┘
-                                         metadata is organized 
-                                         around the concept of an     
-                                         application. k8s does NOT    
-                                         enforce a formal notion of   
-                                         application. Apps are        
-                                         described thorugh metadata   
-                                         in a loose definition.             
+                                         metadata is organized
+                                         around the concept of an
+                                         application. k8s does NOT
+                                         enforce a formal notion of
+                                         application. Apps are
+                                         described thorugh metadata
+                                         in a loose definition.
 
 
 etcd                 kubernetes                (/openapi/v2)       cli management:
 (serialized  ←────── objects    ←────────────────→ API    ←───→   ºkubectlº'action'      Gº'resource'º
  API resource    - Represent API resources        Server *1                 ^^^^^^
- states)           (persistent entities                          ºget     º: list resources 
+ states)           (persistent entities                          ºget     º: list resources
                     in a cluster)                                ºdescribeº: show details (and events for pods)
                  - The can describe:                             ºlogs    º: print container
                    - apps running on nodes                                   logs
@@ -262,6 +312,209 @@ GºRESOURCE TYPES EXTENDEDº @[https://github.com/kubernetes/kubernetes/blob/mas
 140	ConfigMapNodeConfigSource 160	Binding              180	LimitRangeList
 </pre>
 
+<pre zoom labels="101,tool,kubectl,troubleshooting,application,uuid:44f7447a-dda7-4949-8e9e-4c4d7eb1d9d1">
+<span xsmall>Application Troubleshooting</span>
+REF: @[https://learnk8s.io/]
+
+- @[https://kubernetes.io/docs/tasks/debug-application-cluster/debug-application/]
+
+$º$ kubectl get pods º
+    └─────┬────────┘
+OºQ: Is there any pending Pod?º
+  └─────────┬────────────────┘
+  ┌─────────┘
+  ├ YES → $º$ kubectl describe º←OºQ: Is the cluster full?º
+  │       $º     pod $pod_name º   └────────┬────────────┘
+  │           ┌─────────────────────────────┘
+  │           ├ NO  →OºQ: Are you hitting ResourceQuotaLimits?º
+  │           │        └────────────────────┬────────────────┘
+  │           │       ┌─────────────────────┘
+  │           │       ├ NO  →OºQ: Are you mounting a PENDINGº
+  │           │       │      Oº   PersistentVolumeClaim?º
+  │           │       │        └───────────┬────────────────┘
+  │           │       │       ┌────────────┘
+  │           │       │       ├ NO  →$º$ kubectl get pods º←OºQ: Is the Pod assignedº
+  │           │       │       │      $º    -o wide        º Oº   to the Node?º
+  │           │       │       │                               └────┬───────────────┘
+  │           │       │       │      ┌─────────────────────────────┘
+  │           │       │       │      ├ YES →RºThere is an issue with the Kubeletº
+  │           │       │       │      │
+  │           │       │       │      └ NO  →RºThere is an issue with the Schedulerº
+  │           │       │       │
+  │           │       │       └ YES →BºFix the PersistentVolumeClaimº
+  │           │       │
+  │           │       └ YES →BºRelax Quota Limitsº
+  │           │
+  │           └ YES →BºProvision a bigger clusterº
+  │
+  └ NO  →OºQ: Are the Pods Running?º
+           └──────┬───────────────┘
+  ┌───────────────┘
+  ├ NO  → $º$ kubectl logs $pod_name º←OºQ: Can you see the logsº
+  │        ↑                           Oº   for the App?º
+  │        │                             └─────────┬───────────┘
+  │        │  ┌────────────────────────────────────┘
+  │        │  ├ Yes →BºFix the issue in the Appº
+  │        │  └ NO  →OºQ: Did the container died too Quickly?º
+  │        │           └──────┬─────────────────────────────┘
+  │        │      ┌───────────┘
+  │        │      ├ NO  → $º$ kubectl describe º←OºQ: Is the Pod in statusº
+  │        │      │       $º    pod $pod_name  º Oº   ImagePullBackOff?  º
+  │        │      │                                └──┬──────────────────┘
+  │        │      │  ┌────────────────────────────────┘    
+  │        │      │  ├ NO  →OºQ: Is the Pode Status CrashLoopBackOff?º
+  │        │      │  │        └─────────┬─────────────────────────┘
+  │        │      │  │ ┌────────────────┘
+  │        │      │  │ ├ NO →OºQ: Is the Pod status RunContainerError?º
+  │        │      │  │ │       └─────────┬───────────────────────────┘
+  │        │      │  │ │ ┌───────────────┘
+  │        │      │  │ │ ├ NO  →BºConsult StackOverflowº
+  │        │      │  │ │ │
+  │        │      │  │ │ └ YES →BºThe issue is likely to be withº
+  │        │      │  │ │        Bºmounting volumesº
+  │        │      │  │ │
+  │        │      │  │ └ YES →OºQ: Did you inspect the logs and fixedº
+  │        │      │  │        Oº   the crashes?º
+  │        │      │  │          └─────────┬─────────────────────────┘
+  │        │      │  │    ┌───────────────┘
+  │        │      │  │    ├ NO  →BºFix the app crahsesº
+  │        │      │  │    │
+  │        │      │  │    └ YES →QºQ: Did you forget the 'CMD' instruction
+  │        │      │  │           Qº   in the Dockerfile?
+  │        │      │  │             └──────────┬──────────────────────────┘
+  │        │      │  │       ┌────────────────┘
+  │        │      │  │       ├ YES →BºFix the Dockerfileº
+  │        │      │  │       │
+  │        │      │  │       └ NO  →QºQ: Is the Pod restarting frequently?º
+  │        │      │  │              Qº   Cycling between Running and      º
+  │        │      │  │              Qº   CrashLoopBackoff?º
+  │        │      │  │                └──────────┬────────────────────────┘
+  │        │      │  │        ┌──────────────────┘
+  │        │      │  │        ├ YES →BºFix the liveness probeº
+  │        │      │  │        │
+  │        │      │  │        └ NO  →RºUnknown Stateº
+  │        │      │  │
+  │        │      │  └ YES →OºQ: Is the name of the image correct?º
+  │        │      │           └────┬─────────────────────────────┘
+  │        │      │   ┌────────────┘      
+  │        │      │   ├ NO  →BºFix the image nameº
+  │        │      │   │
+  │        │      │   └ YES →OºQ: Is the image tag valid?º
+  │        │      │          Oº   Does it exists?º
+  │        │      │            └──┬──────────────────────┘
+  │        │      │   ┌───────────┘      
+  │        │      │   ├ NO  →BºFix the tagº
+  │        │      │   │
+  │        │      │   └ YES →OºQ: Are you pulling images from aº
+  │        │      │          Oº   private registry?º
+  │        │      │            └─────────┬────────────────────┘
+  │        │      │    ┌─────────────────┘
+  │        │      │    ├ NO  →BºThe Issue could be with CRI|Kubeletº
+  │        │      │    │
+  │        │      │    └ YES →BºConfigure pulling images from aº
+  │        │      │           Bºprivate registryº
+  │        │      │
+  │        │      └ YES → $º$ kubectl logs $pod_name --previous º
+  │        │                  └────────────┬──────────────────┘
+  │        └───────────────────────────────┘
+  └ YES →OºQ: Are ther Pods READY?º
+           └──┬──────────────────┘
+  ┌───────────┘
+  ├ NO  → $º$ kubectl describe º←OºQ: Is the Readiness probeº
+  │       $º    pod $pod_name  º Oº   failing?º
+  │                                └──┬────────────────────┘
+  │           ┌───────────────────────┘
+  │           ├ YES →BºFix the Readiness Probeº
+  │           │
+  │           └ NO  →RºUnknown Stateº
+  │
+  └ YES → $º$ kubectl port-forward      \ º ←OºQ: Can you access the app?º
+          $º    $pod_name  8080:$pod_port º    └──────────┬─────────────┘
+  ┌───────────────────────────────────────────────────────┘
+  ├ NO  →OºQ: Is the port exposed by container correctº
+  │      Oº   and listening on 0.0.0.0?º
+  │        └────────────────────┬────────────────────┘
+  │       ┌─────────────────────┘
+  │       ├ NO  →BºFix the app. It should listen onº
+  │       │      Bº0.0.0.0.º
+  │       │      BºUpdate the containerPortº
+  │       │
+  │       └ YES →RºUnknown Stateº
+  ↓
+  YES 
+  ↓
+Bº***************************º
+Bº*POD ARE RUNNING CORRECTLY*º
+Bº***************************º
+   └──────────┬────────────┘
+              ↓
+$º$ kubectl describe   \  º ←OºQ: Can you see a listº
+$º  service $SERVICE_NAME º  Oº    of endpoints?º
+                               └──────┬────────────┘
+  ┌───────────────────────────────────┘
+  ├ NO  →OºQ: Is the Selector matching the rightº
+  │      Oº   Pod label?º
+  │        └──┬────────────────────────────────┘
+  │     ┌─────┘
+  │     ├ NO  → Fix the Service selector. It has
+  │     │       to match the Pod labels
+  │     │
+  │     └ YES →OºQ: Does the Pod have an IP address assigned?º
+  │              └──┬───────────────────────────────────────┘
+  │           ┌─────┘
+  │           ├ NO  → There is an issue with
+  │           │       the Controller Manager
+  │           │
+  │           └ YES → There is an issue with the Kubelet
+  │
+  └ YES →$º$ kubectl port-forward    \ º←OºQ: Can you visit the app?º
+         $º    service/$SERVICE_NAME \ º   └──┬────────────────────┘
+         $º    8080:$SERVICE_PORT      º      │        
+                                              │        
+  ┌───────────────────────────────────────────┘
+  ├ NO  →OºQ: Is the targetPort on the Service º
+  │      Oº   matching the containerPort in theº
+  │      Oº   Pod?º
+  │        └──┬────────────────────────────────┘
+  │     ┌─────┘
+  │     ├ NO  →BºFix the Service targetPort andº
+  │     │      Bºthe containerPodº
+  │     │
+  │     └ YES →BºThe issue could be with Kube Proxyº
+  ↓
+ YES
+  ↓
+Bº******************************º
+Bº*SERVICE IS RUNNING CORRECTLY*º
+Bº******************************º
+  ↓
+$º$ kubectl describe    \ º←OºQ: Can you see a list of Backends?º
+$º  ingress $INGRESS_NAME º   └──┬─────────────────────────────┘
+  ┌──────────────────────────────┘
+  ├ NO  →OºQ: Are the serviceName and servicePortº
+  │      Oº   mathcing the service?º
+  │        └──┬─────────────────────────────────┘
+  │       ┌───┘
+  │       ├ NO  →BºFix the ingress serviceName and servicePortº
+  │       │
+  │       └ YES →BºThe issue is specific to the Ingress Controllerº
+  │              BºConsult the docs for your Ingressº
+  ↓
+ YES
+  ↓
+Bº**********************************º
+Bº*THE INGRESS IS RUNNING CORRECTLY*º
+Bº**********************************º
+Bº(The app should be working now!!!)º
+  │
+  ↓                         ┌ NO  →RºThe issue is likely to be with the   º
+                            │      RºInfrastructure and how the cluster isº
+OºQ:  Can you visit app º→ ─┤      Rºexposedº
+Oº    from the Internet?º   │
+                            │       Bº*****º
+                            └ YES → Bº*END*º
+                                    Bº*****º
+</pre>
 <pre zoom labels="101,tool,kubectl,troubleshooting">
 <span xsmall>Kubectl</span>
 - @[https://kubernetes.io/docs/reference/kubectl/jsonpath/]
@@ -288,7 +541,7 @@ $ kubectl edit svc/my-service-1  # ← Edit resource
 
 ºkubectl Field Selectorsº
 - filter k8s objects based on the value of one or more object fields.
-- the possible field depends on each object type/kind but 
+- the possible field depends on each object type/kind but
   all resource-types support 'metadata.name' and 'metadata.namespace'
   Ex:
   $ kubectl get pods --field-selector       metadata.name==my-service,spec.restartPolicy=Always
@@ -296,19 +549,13 @@ $ kubectl edit svc/my-service-1  # ← Edit resource
 </pre>
 
 
-<pre zoom labels="TODO,aaa,kubeconfig">
-<span xsmall>Cluster Access</span>
-@[https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/]
-</pre>
-
-<pre zoom labels="TODO,kubeconfig">
-<span TODO xsmall>Kustomization</span>
-<a TODO href="https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/">Object kustomization</a>
-</pre>
 </div>
 
+<div group>
+<span title>Building Blocks</span><br/>
+
+<span title>NameSpaces</span>
 <div groupv>
-<span title>Building Blocks</span>
 <pre zoom labels="101,namespace,quota,TODO">
 <span xsmall>Namespace</span>
 @[https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/]
@@ -329,7 +576,7 @@ kube-system   Active    1d
 
 $ kubectlºcreate namespaceºmy-namespace // ← create namespace:
 
-$ kubectlº--namespace=my-namespaceº \ ← set NS for request 
+$ kubectlº--namespace=my-namespaceº \ ← set NS for request
     run nginx --image=nginx
 $ kubectlºconfig set-contextº\           ← permanently save the NS
     $(kubectl ºconfig current-contextº) \ ← shell syntax sugar: Exec command and take output
@@ -337,20 +584,9 @@ $ kubectlºconfig set-contextº\           ← permanently save the NS
 $ kubectl config view | \
     grep namespace: # Validate
 
-<span TODO xsmall>Manage Mem./CPU/API Resrc.</span>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/memory-default-namespace/">Configure Default Memory Requests and Limits for a Namespace</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/cpu-default-namespace/">Configure Default CPU Requests and Limits for a Namespace</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/memory-constraint-namespace/">Configure Minimum and Maximum Memory Constraints for a Namespace</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/cpu-constraint-namespace/">Configure Minimum and Maximum CPU Constraints for a Namespace</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/quota-memory-cpu-namespace/">Configure Memory and CPU Quotas for a Namespace</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/quota-pod-namespace/">Configure a Pod Quota for a Namespace</a>
-
-
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/namespaces-walkthrough/">Namespaces Walkthrough</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/namespaces/">Share a Cluster with Namespaces</a>
 </pre>
 
-<pre zoom labels="secrets,aaa">
+<pre zoom labels="101,secrets,aaa">
 <span xsmall>Secrets</span>
 @[https://kubernetes.io/docs/concepts/configuration/secret/]
 @[https://github.com/kubernetes/community/blob/master/contributors/design-proposals/auth/secrets.md]
@@ -364,12 +600,12 @@ $ kubectl config view | \
 
 ºBuilt-in Secretsº
 - Service Accounts automatically create and attach secrets with API Credentials
-- Kubernetes automatically creates secrets which contain credentials for 
-  accessing the API and it automatically modifies your pods to use this type 
+- Kubernetes automatically creates secrets which contain credentials for
+  accessing the API and it automatically modifies your pods to use this type
   of secret.
 
 ºCreating User Secretsº
-│       ALTERNATIVE 1                           │ ALTERNATIVE 2                                    │ALTERNATIVE 3 
+│       ALTERNATIVE 1                           │ ALTERNATIVE 2                                    │ALTERNATIVE 3
 │ ºSTEP 1º: Create un-encrypted secrets locally:│ºSTEP 1:ºCreate Secret with data                  │ºSTEP 1º: Create Secret with stringData
 │   $ echo -n 'admin'        ˃ ./username.txt   │   cat ˂˂ EOF ˃ secret.yaml                       │apiVersion: v1
 │   $ echo -n '1f2d1e2e67df' ˃ ./password.txt   │   apiVersion: v1                                 │kind:ºSecretº
@@ -381,12 +617,12 @@ $ kubectl config view | \
 │                                               │     username: $(echo -n 'admin'        | base64) │    apiUrl: "https://my.api.com/api/v1"
 │                                               │     password: $(echo -n '1f2d1e2e67df' | base64) │    username: admin
 │                                               │   EOF                                            │    password: 1f2d1e2e67df
-│                                               │                                                  │ 
-│ ºSTEP 2:º Package into a Secret k8s object    │ºSTEP 2:º Apply                                   │ºSTEP 2:ºApply                   
+│                                               │                                                  │
+│ ºSTEP 2:º Package into a Secret k8s object    │ºSTEP 2:º Apply                                   │ºSTEP 2:ºApply
 │   $ kubectlºcreate secretº\                   │  $ kubectl apply -f ./secret.yaml                │  $ kubectl apply -f ./secret.yaml
-│     genericGºdb-user-passº \                  │                                                  │                        
-│     --from-file=./username.txt \              │                                                  │  
-│     --from-file=./password.txt                │                                                  │                     
+│     genericGºdb-user-passº \                  │                                                  │
+│     --from-file=./username.txt \              │                                                  │
+│     --from-file=./password.txt                │                                                  │
 
 │ºSTEP 3:º Check that Secret object has been ┌────────────────────────────────────────────
 │  properly created.                         │ ºUsing the Secrets in a Podº
@@ -397,8 +633,8 @@ $ kubectl config view | \
 │  $ kubectl describe secrets/db-user-pass   │   name: mypod                   │   name: mypod                         |   name: secret-env-pod
 │  → Name:          Gºdb-user-passº          │ spec:                           │ spec:                                 | spec:
 │  → Namespace:       default                │   containers:                   │   containers:                         |  containers:
-│  → Labels:          <none>                 │   ─ name: mypod                 │   - name: mypod                       |  - name: mycontainer
-│  → Annotations:     <none>                 │     image: redis                │     image: redis                      |   image: redis
+│  → Labels:          ˂none˃                 │   ─ name: mypod                 │   - name: mypod                       |  - name: mycontainer
+│  → Annotations:     ˂none˃                 │     image: redis                │     image: redis                      |   image: redis
 │  →                                         │     volumeMounts:               │     volumeMounts:                     |   env:
 │  → Type:            Opaque                 │     ─ name:ºfoOº                │     - name:ºfooº                      |    - name: SECRET_USERNAME
 │  →                                         │       mountPath: "/etc/foo"     │       mountPath: "/etc/foo"           |     valueFrom:
@@ -414,7 +650,7 @@ $ kubectl config view | \
                                                             JSON does NOT support     · username will be seen in container as:
                                                             octal notation.             /etc/foo/my-group/my-username
                                                                      256 = 0400       · password secret is not projected
-     
+
 
 Ex 2:
 SECRET CREATION                                      | SECRET USSAGE
@@ -445,7 +681,7 @@ Gºssh-key-secretº \                                  | kind: Pod
 FEATURE STATE: Kubernetes v1.13 beta
 You can enable encryption at rest for secret data, so that the secrets are not stored in the clear into etcd .
 </pre>
-<pre zoom labels="pod,configuration">
+<pre zoom labels="101,pod,configuration">
 <span xsmall>(Pod)ConfigMap</span>
 @[https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-configmap/]
 
@@ -466,22 +702,22 @@ You can use kubectl describe or kubectl get to retrieve information about a Conf
 ConfigMapºfrom config-fileº:
 ┌───────────────────────────── ┌──────────────────────────────────────
 │ºSTEP 0:º Input to config map │ºSTEP 1:º create ConfigMap object
-│ ...configure─pod─container/  │ $ kubectl create configmap \             
-│    └─ configmap/             │   game-config                            
-│       ├─ºgame.propertiesº    │   --from-file=configmap/                 
-│       └─º  ui.propertiesº    │               ^^^^^^^^^^                 
-│                              │               combines the contents of   
-│                              │               all files in the directory 
-                                                                         
+│ ...configure─pod─container/  │ $ kubectl create configmap \
+│    └─ configmap/             │   game-config
+│       ├─ºgame.propertiesº    │   --from-file=configmap/
+│       └─º  ui.propertiesº    │               ^^^^^^^^^^
+│                              │               combines the contents of
+│                              │               all files in the directory
+
 ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────
 │ºSTEP 2:º check STEP 1
 │$ kubectlºget configmapsºgame-config -o yaml                     │$ kubectlºdescribe configmapsºgame-config
-│→ apiVersion: v1                                                 │→ 
+│→ apiVersion: v1                                                 │→
 │→ kind: ConfigMap                                                │→ Name:           game-config
 │→ metadata:                                                      │→ Namespace:      default
 │→   creationTimestamp: 2016-02-18T18:52:05Z                      │→ Labels:         <none>
 │→   name: game-config                                            │→ Annotations:    <none>
-│→   namespace: default                                           │→ 
+│→   namespace: default                                           │→
 │→   resourceVersion: "516"                                       │→ Data
 │→   selfLink: /api/v1/namespaces/default/configmaps/game-config  │→ ====
 │→   uid: b4952dc3-d670-11e5-8cd0-68f728db1985                    │→ºgame.properties:º 158 bytes
@@ -505,10 +741,10 @@ ConfigMapºfrom config-fileº:
                                                 │     º      name: game-config   º
                                                 │     º      key: enemies.cheat  º
 
- 
+
 ConfigMapºfrom env-fileº:
 │ºSTEP 0:º Input to config map       │ºSTEP 1:º create ConfigMap object
-│ ...configure─pod─container/        │ $ kubectl create configmap \             
+│ ...configure─pod─container/        │ $ kubectl create configmap \
 │    └─ configmap/                   │   game-config-env-file \
 │       └─ºgame-env-file.propertiesº │   --from-env-file=game-env-file.properties
 │          ^^^^^^^^^^^^^^^^^^^^^^^^
@@ -549,44 +785,11 @@ $ kubectl create configmap special-config \   | → ...
 </pre>
 
 <span title>Containers</span>
-<pre zoom>
-<span xsmall>Containers</span>
-Container: (lightweight and portable) executable image that contains software and
-           all of its dependencies.
-NOTE: 1 Pod = one or moreºrunningºcontainers.
-
-ºLifecycle Hooksº
- - PostStart Hook
- - PreStop   Hook
-
-ºtype Container struct {º
-    Name string
-    Image string
-    Command []string        
-    Args []string           
-    WorkingDir string       
-    Ports []ContainerPort   
-    EnvFrom []EnvFromSource 
-    Env []EnvVar            
-    Resources ResourceRequirements
-    VolumeMounts []VolumeMount
-    VolumeDevices []VolumeDevice
-    LivenessProbe *Probe         ← kubelet exec the probes
-    ReadinessProbe *Probe          (ExecAction, TCPSocketAction, HTTPGetAction)
-    Lifecycle *Lifecycle
-    TerminationMessagePath string
-    TerminationMessagePolicy TerminationMessagePolicy
-    ImagePullPolicy PullPolicy
-    SecurityContext *SecurityContext
-    Stdin bool
- }
-</pre>
-
-<pre zoom>
+<pre zoom labels="container,application,debug">
 <span xsmall>Init Containers</span>
 @[https://kubernetes.io/docs/concepts/workloads/pods/init-containers/]
 
-- one or more specialized Containers that run before app Containers 
+- one or more specialized Containers that run before app Containers
 -ºcan contain utilities or setup scripts not present in an app imageº
 - exactly equal to regular Containers, except:
   - They always run to completion.
@@ -595,10 +798,10 @@ NOTE: 1 Pod = one or moreºrunningºcontainers.
   - Each one must complete successfully before the next one is started.
   - status is returned in .status.initContainerStatuses
                                   ^^^^^^^^^^^^^^^^^^^^^
-                       vs .status.containerStatuses 
+                       vs .status.containerStatuses
   - readiness probes do not apply
 
-Note: Init Containers can also be given access to Secrets that app Containers 
+Note: Init Containers can also be given access to Secrets that app Containers
       are not able to access.
 
 - Ex: Wait for 'myService' and then for 'mydb'.
@@ -627,26 +830,26 @@ Note: Init Containers can also be given access to Secrets that app Containers
 
 RºWARN:º
 - Use activeDeadlineSeconds on the Pod and livenessProbe on the Container
-  to prevent Init Containers from failing forever. 
-</pre>
-<pre zoom>
-<a TODO xsmall href=https://kubernetes.io/docs/tasks/debug-application-cluster/debug-init-containers/">Debug Init Containers</a>
+  to prevent Init Containers from failing forever.
+
+- Debugging Init Containers:
+@[https://kubernetes.io/docs/tasks/debug-application-cluster/debug-init-containers/]
 </pre>
 
-<pre zoom>
-<span xsmall>Containers Resources</span>
+<pre zoom labels="container,quotas,">
+<span xsmall>Containers Limits</span>
 @[https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/]
-- TODO: difference between requests and limits, see Resource QoS.
-      @[https://github.com/kubernetes/community/blob/master/contributors/design-proposals/node/resource-qos.md]
+
+- See also design proposal:
+@[https://github.com/kubernetes/community/blob/master/contributors/design-proposals/node/resource-qos.md]
 
 A Container:
--   ºcan exceedº its resourceºrequestºif the Node has memory available, 
+-   ºcan exceedº its resourceºrequestºif the Node has memory available,
 - isºnot allowedºto use more than its resource ºlimitº.
 
-
-- spec.containers[].resources.limits.cpu              ← can NOT exceed resource limit → it will be scheduled 
+- spec.containers[].resources.limits.cpu              ← can NOT exceed resource limit → it will be scheduled
 - spec.containers[].resources.limits.memory                                             for termination
-- spec.containers[].resources.requests.cpu            ← can     exceed resource request 
+- spec.containers[].resources.requests.cpu            ← can     exceed resource request
 - spec.containers[].resources.requests.memory
 - spec.containers[].resources.limits.ephemeral-storage     k8s 1.8+
 - spec.containers[].resources.requests.ephemeral-storage   k8s 1.8+
@@ -657,7 +860,7 @@ Note: resource quota feature can be configured to limit the total amount of reso
 
 ContaineRºComputeºResource types:
 - CPU    : units of cores
-           - total amount of CPU time that a container can use every 100ms. 
+           - total amount of CPU time that a container can use every 100ms.
              (minimum resolution can be setup to 1ms)
            - 1 cpu is equivalent to: 1 (AWS vCPU|GCP Core|Azure vCore,IBM vCPU,Hyperthread bare-metal )
            - 0.1 cpu == 100m
@@ -678,65 +881,14 @@ Ussage:
 - STEP 1: cluster operator must advertise an Extended Resource.
 - STEP 2: users must request the Extended Resource in Pods.
 (See official doc for more info)
- 
+
 It is planned to add new resource types, including a node disk space resource, and a framework for adding custom resource types.
 </pre>
-
-<pre zoom>
-<a TODO xsmall href=https://kubernetes.io/docs/tasks/debug-application-cluster/get-shell-running-container/">Get a Shell to a Running Container</a>
-</pre>
-
+</div>
+<div groupv>
 <span title>Pods</span>
 <pre zoom>
-<span xsmall>Pod</span>
-<span xsmall>basic execution</span>
-<span xsmall>unit of k8s apps</span>
-@[https://kubernetes.io/docs/concepts/workloads/pods/pod-overview/]
-Pod: Minimalºschedulable-for-execution unitºin a k8s application (or k8s service)
- ┌───────┐            ┌─────┐                 ┌───────────┐
- │k8s app│1←───→(1..N)│pod/s│ 1 ←───→ (1,2,..)│container/s│
- └───────┘            └─────┘                 └───────────┘
-           ^^^^^                ^^^^^ 
-  ex: - 1 DDBB pod              Best practice:
-      - 2 FrontEnd pods         only a single container or
-      - 1 ESB pod               a few tightly-coupled ones.
-      - ...
-
-- one or more application containers (such as Docker or rkt) plus
-  shared resources for those containers:
-  - Volumes   : (Shared storage)
-  - Networking: (Shared unique cluster IP)
-  - Metadata  : (Container image version, ports to use, ...)
-
-- Represent a k8s app. "logical host"
-
-- Each Pod is tied to the Node where it is scheduled, and remains there 
-  until termination (according to restart policy) or deletion.
-
-- In case of a Node failure, identical Pods are scheduled on other 
-  available Nodes in the cluster.
-
-- The containers in a Pod are automatically co-located and co-scheduled
-  on the same physical or virtual machine in the cluster.             
-
-- Podsºdo not, by themselves, self-healº
-  Using a k8s Controller is used for Pod scaling or healing (restart).
-
-ºPod Presetº
-@[https://kubernetes.io/docs/concepts/workloads/pods/podpreset/]
-- objects used to inject information into pods at creation time
-  like secrets, volumes, volume mounts, and environment variables.
-
-- label selectors are used to specify Pods affected.
-
-ºDisable Pod Preset for a Specific Podº
-Add next annotation to the Pod Spec:
--  podpreset.admission.kubernetes.io/exclude: "true".
-
-
-</pre>
-<pre zoom>
-<span xsmall>Pod Life Cicle</span>
+<span xsmall>Life Cicle</span>
  DEFINITION                                               END
   defined   → scheduled in node → run → alt1: run until their container(s) exit
                                         alt2: pod removed (for any other reason)
@@ -748,17 +900,28 @@ Add next annotation to the Pod Spec:
 
 @[https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/]
 Pod.PodStatus.phase := Pending|Running|Succeeded|Failed
-</pre>
-<pre zoom>
+<hr/>
+<span xsmall>Pod Preset</span>
+ºPod Presetº
+@[https://kubernetes.io/docs/concepts/workloads/pods/podpreset/]
+- objects used to inject information into pods at creation time
+  like secrets, volumes, volume mounts, and environment variables.
+
+- label selectors are used to specify Pods affected.
+
+ºDisable Pod Preset for a Specific Podº
+Add next annotation to the Pod Spec:
+-  podpreset.admission.kubernetes.io/exclude: "true".
+<hr/>
 <span xsmall>Pod QoS</span>
 @[https://kubernetes.io/docs/tasks/configure-pod-container/quality-service-pod/]
 
-Pod.spec.qosClass := 
+Pod.spec.qosClass :=
 Guaranteed   Assigned to pod when:
              - All Pod-Containers have a defined cpu/mem. limit.
              - All Pod-Containers have same cpu/mem.limit and same cpu/mem.request
 
-Burstable    Assigned to pod when: 
+Burstable    Assigned to pod when:
              - criteria for QoS class Guaranteed isºNOTºmet.
              - 1+ Pod-Containers have memory or CPU request.
 
@@ -766,7 +929,7 @@ BestEffort   Assigned to pod when:
              - Pod-Containers do NOT have any memory/CPU request/limit
 </pre>
 
-<pre zoom >
+<pre zoom labels="pod,101,">
 <span xsmall>Ex. Pod YAML Definition:</span>
 apiVersion: v1
 kind: Pod
@@ -792,34 +955,40 @@ containers:
       type: Directory
 </pre>
 
-<pre zoom>
-<a xsmall TODO href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy">RestartPolicy</a>
+<pre zoom labels="container,debug,troubleshooting,">
+<span xsmall>Managing running pods</span>
+<div cli>
+$ kubectl get pod shell-demo                   # ← ensure pod is running
+
+$ kubectlºlogsºmy-pod (-c my-container) (-f)   # ← Get logs 
+                                         ^^
+                                       "tail"
+$ kubectlºattachºmy-pod -i
+
+$ kubectlºport-forwardºmy-pod 5000:6000
+                              ^    ^        
+                           local   pod
+                         machine   port
+
+$ kubectlºrunº-i \                        # ← Exec. shell for image 
+          --tty busybox \                 #   (launch new temporal pod)
+          --image=busybox \
+          -- sh
+
+
+$ kubectlºexecºmy-pod \                   # ← Get a shell inside already-running Pod 
+         (-c my-container)                # ← Required if Pod has 2+ containers
+         -it                              # ← Allocate terminal. 
+         -- /bin/bash 
+
+$ kubectlºexecºmy-pod \                   # ← Execute non-interatively inside already-running Pod 
+         (-c my-container)                # ← Required if Pod has 2+ containers
+         env                              # ← env execution will dump all ENV.VARs inside container 
+$ kubectlºtopºpod POD_NAME --containers
+</div>
 </pre>
 
-
-<pre zoom>
-<span xsmall>Mng. running pod</span>
-<span xsmall>run,attach</span>
-<span xsmall>exec,top</span>
-<span xsmall>Mng. running pod:</span>
-  $ kubectl logs my-pod (-c my-container) (-f)
-                                           ^"tail -f"
-  $ kubectl run -i --tty busybox --image=busybox -- sh
-  $ kubectl attach my-pod -i
-  $ kubectl port-forward my-pod 5000:6000  # Forward port 6000 of Pod → 5000 local machine
-  $ kubectl exec my-pod (-c my-container) -- ls / # Run command in existing pod
-  $ kubectl top pod POD_NAME --containers
-</pre>
-
-<pre zoom>
-<a TODO xsmall href=https://kubernetes.io/docs/tasks/debug-application-cluster/debug-pod-replication-controller/">Debug Pods and ReplicationControllers</a>
-</pre>
-
-<pre zoom>
-<a TODO xsmall href=https://kubernetes.io/docs/tasks/debug-application-cluster/determine-reason-pod-failure/">Determine the Reason for Pod Failure</a>
-</pre>
-
-<pre zoom>
+<pre zoom labels="pod,TODO">
 <span xsmall>SecurityContext</span>
 @[https://kubernetes.io/docs/tasks/configure-pod-container/security-context/]
 @[https://github.com/kubernetes/community/blob/master/contributors/design-proposals/auth/security_context.md]
@@ -828,13 +997,13 @@ Ex:
 apiVersion: v1                            Exec a terminal into a running container adnd execute:
 kind: Pod                                 $ id
 metadata:                                ºuid=1000 gid=3000 groups=2000º
-  name: security-context-demo                 ^^^^     ^^^^ 
+  name: security-context-demo                 ^^^^     ^^^^
 spec:                                         uid/gid 0/0 if not specified
  ºsecurityContext:  º
  º  runAsUser: 1000 º
  º  runAsGroup: 3000º
  º  fsGroup: 2000º ← owned/writable by this GID when supported by volume
-  volumes:           
+  volumes:
   - name: sec-ctx-vol   ← Volumes will be relabeled with provided seLinuxOptions values
     emptyDir: {}
   containers:
@@ -850,6 +1019,7 @@ spec:                                         uid/gid 0/0 if not specified
                                         @[https://github.com/torvalds/linux/blob/master/include/uapi/linux/capability.h]
     º seLinuxOptions:º
     º   level: "s0:c123,c456"º
+
 
 SecurityContext holds security configuration that will be applied to a container.
 Some fields are present in both SecurityContext and PodSecurityContext.  When both
@@ -908,10 +1078,7 @@ typeºSecurityContextºstruct {
     // +optional
     ProcMount *ProcMountType
 }
-</pre>
-
-<pre zoom>
-<span xsmall>PodSecurityContext</span>
+<hr/>
 // PodSecurityContext holds pod-level security attributes and common container settings
 // Some fields are also present in container.securityContext.  Field values of
 // container.securityContext take precedence over field values of PodSecurityContext.
@@ -996,14 +1163,13 @@ typeºPodSecurityContextºstruct {
     Sysctls []Sysctl
 }
 </pre>
-
-<pre zoom>
+<pre zoom labels="101,TODO">
 <span xsmall>ServiceAccount</span>
 @[https://kubernetes.io/docs/reference/access-authn-authz/service-accounts-admin/]
 @[https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/]
 
 - Processes in containers inside pods can also contact the apiserver.
-  When they do, they are authenticated as a particular Service Account 
+  When they do, they are authenticated as a particular Service Account
 - provides an identity for processes that run in a Pod.
 - to access the API from inside a pod a mounted service account with
   a 1-hour-expiration-token is provided.
@@ -1014,7 +1180,7 @@ typeºPodSecurityContextºstruct {
 - Allows to split auditing between humans and services.
 
 - Three separate components cooperate to implement the automation around service accounts:
-  - AºService account admission controllerº, part of the apiserver, thatsynchronously modify 
+  - AºService account admission controllerº, part of the apiserver, thatsynchronously modify
     pods as they are created or updated:
     - sets the ServiceAccount to default when not specified by pod.
     - abort if ServiceAccount in the pod spec does NOT exists.
@@ -1029,13 +1195,13 @@ typeºPodSecurityContextºstruct {
     - observes secret addition, and ensures the referenced ServiceAccount exists, and adds a
       token to the secret if needed.
     - observes secret deletion and removes a reference from the corresponding ServiceAccount if needed.
-    NOTE: 
+    NOTE:
       controller-manageRº'--service-account-private-key-file'º indicates the priv.key signing tokens
      - kube-apiserver   º'--service-account-key-file'º         indicates the matching pub.key verifying signatures
     - A controller loop ensures a secret with an API token exists for each service account.
 
     To create additional API tokens for a service account:
-    - create a new secret of type ServiceAccountToken like: 
+    - create a new secret of type ServiceAccountToken like:
       (controller will update it with a generated token)
       {
         "kind":º"Secret"º,
@@ -1057,7 +1223,7 @@ typeºPodSecurityContextºstruct {
       default   1          1d   ← Exists for each namespace
       ...
     - Additional ServiceAccount's can be created like:
-    - 
+    -
     - $ kubectl apply -f - ˂˂EOF
     - apiVersion: v1
     - kind: ServiceAccount
@@ -1066,23 +1232,21 @@ typeºPodSecurityContextºstruct {
     - EOF
 </pre>
 
-<pre zoom>
-<span xsmall>Liveness  Probes</span>
-<span xsmall>Readiness Probes</span>
+<pre zoom labels="pod,101,">
+<span xsmall>Liveness/Readiness Probes</span>
 @[https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/]
 @[https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.14/#probe-v1-core]
-
 .
 - liveness probes  : used by kubelet to know when to restart a Container.
 - readiness probes : used by kubelet to know whether a Container can accept new requests.
-                     - A Pod is considered ready when all of its Containers are ready. 
+                     - A Pod is considered ready when all of its Containers are ready.
                      - The Pod is not restarted in this case but no new requests are
                        forwarded.
                      - Readiness probes continue to execute for the lifetime of the Pod
                        (not only at startup)
 
 ºliveness COMMANDº            │ ºliveness HTTP requestº         │ ºTCP liveness probeº
-                              │                                 │ 
+                              │                                 │
 apiVersion: v1                │ apiVersion: v1                  │ apiVersion: v1
 kind:ºPodº                    │ kind:ºPodº                      │ kind:ºPodº
 metadata:                     │ metadata:                       │ metadata:
@@ -1100,19 +1264,19 @@ spec:                         │ spec:                           │ spec:
    º  periodSeconds: 5      º │    º      value: Awesome     º  │    º    port: 8080           º
                               │    º  initialDelaySeconds: 3 º  │    º  initialDelaySeconds: 15º
                               │    º  periodSeconds: 3       º  │    º  periodSeconds: 20      º
-                                HTTP proxy ENV.VARS is ignored 
-                                in liveness probes (k8s v1.13+) 
+                                HTTP proxy ENV.VARS is ignored
+                                in liveness probes (k8s v1.13+)
 
                                       ↑                                ↑
                                       │                                │
-ºnamedºContainerPort can also   ──────┴────────────────────────────────┘ 
+ºnamedºContainerPort can also   ──────┴────────────────────────────────┘
 be used for HTTP and TCP probes
 like:
  │ ports:
  │ - name: liveness-port
  │   containerPort: 8080
  │   hostPort: 8080
- │ 
+ │
  │ livenessProbe:
  │   httpGet:
  │     path: /healthz
@@ -1127,71 +1291,94 @@ Other optional parameters:
                     considered successful after having failed. (1 by default)
 - failureThreshold: number of failures before "giving up": Pod will be marked Unready.(Def 3)
 
-HTTP optional parameters: 
+HTTP optional parameters:
 - host  : for example 127.0.0.1 (defaults to pod IP)
 - port  : Name or number(1-65535)
 - scheme: HTTP or HTTPS(skiping cert.validation)
-- path  : 
-- httpHeaders: Custom headers 
+- path  :
+- httpHeaders: Custom headers
 </pre>
 
-<pre zoom>
-<span TODO xsmall>Config Pods/Cont.</span>
-<a TODO xsmall href=https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/">Assign Pods to Nodes</a>
-<a TODO xsmall href=https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-initialization/">Config.Pod I12n</a>
-<a TODO xsmall href=https://kubernetes.io/docs/tasks/configure-pod-container/attach-handler-lifecycle-event/">Attach Cont.Lifecycle Handlers</a>
-<a TODO xsmall href=https://kubernetes.io/docs/tasks/configure-pod-container/share-process-namespace/">Share Process Namespace between Containers in a Pod</a>
-<a TODO xsmall href=https://kubernetes.io/docs/tasks/configure-pod-container/translate-compose-kubernetes/">Translate Docker-Compose to k8s Resources</a>
-
-<a TODO href="https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/">Pod Priority and Preemption</a>
-<a TODO href="https://kubernetes.io/docs/concepts/configuration/assign-pod-node/">Assigning Pods to Nodes</a>
-<a TODO href="https://kubernetes.io/docs/concepts/policy/pod-security-policy/">Pod Security Policies</a>
-<a TODO href="https://kubernetes.io/docs/concepts/policy/resource-quotas/">Resource Quotas</a>
-</pre>
-
-<span xsmall>Services</span>
-<pre zoom>
+</div>
+<div groupv>
+<span title>Services</span>
+<pre zoom bgorange labels="101,network,service,diagram,comparative,troubleshooting,tls">
 <span xsmall>Service</span>
-@[https://kubernetes.io/docs/concepts/services-networking/service/]
-  ^^^ contains -many more info- about kube-proxy + iptables +... advanced config settings
 
-
-- Service:ºDefines a logical set of Pods (Label Selected) and ºa policy by which to access them*
+- Service:ºDefines a logical set of Podsº(Label Selected)
+  and ºa network policy by which to access themº
+         └────────────┘
 
 - Kubernetes-native applications: K8s offers a simple Endpoints API
 - non-native        applications: K8s offers virtual-IP-based-2-Service bridge
 
-kind:ºServiceº                  ServiceTypes:
-apiVersion: v1                  ┌─────────────┬─────────────────────────────────┬──────────────────────
-metadata:                       │Type         │ Description                     │ External Access
-  name: my-service              ├─────────────┼─────────────────────────────────┼──────────────────────
-spec:                           │OºClusterIPº │ (default) Exposes the service   │ (None)
-  selector:                     │(virtual IP) │ on a cluster─internal IP.       │
-    app: MyApp                  ├─────────────┼─────────────────────────────────┼──────────────────────
-  ports:                        │NodePort     │                                 │ (each)NodeIP:NodePort
-  - protocol: TCP               ├─────────────┼─────────────────────────────────┼──────────────────────
-    port: 80                    │LoadBalancer │ uses a cloud provider           │ ClusterIP:NodePort
-    targetPort: 9376            │             │ load balancer                   │ ^spec.clusterIP
-  - name: https                 │             │ (round robin by default)        │ 
-    protocol: TCP               ├─────────────┼─────────────────────────────────┼──────────────────────
-    port: 443                   │ExternalName │ Maps the service to the contents│ foo.bar.example.com
-    targetPort: 9377            │             │ of the "externalName" field     │
-  sessionAffinity: "ClientIP"   │             │ by returning a CNAME record.    │
-  ^                             └─────────────┴─────────────────────────────────┴──────────────────────
-  |
-  sessionAffinityConfig.clientIP.timeoutSeconds: 100 (defaults to 10800)
+ internal-only applications that support other workloads within the
+cluster.
+    Diagram showing Cluster IP traffic flow in an AKS cluster
+
+
+kind:ºServiceº              ºServiceTypes:º
+apiVersion: v1               ┌─────────────┬────────────────────────────┬───────────────────┐
+metadata:                    │Type         │ Description                │ External Access   │
+  name: my-service           ├─────────────┼────────────────────────────┼───────────────────┤
+spec:                        │OºClusterIPº │ Exposes the service        │ (None)            │
+  selector:                  │ virtual IP  │ on a cluster─internal IP.  │                   │
+    app: MyApp               │(default)    │ Use-case:internal-only apps│                   │
+  ports:                     ├─────────────┼────────────────────────────┼───────────────────┤
+  - protocol: TCP            │NodePort     │                            │ NodeIP:NodePort   │
+    port: 80                 ├─────────────┼────────────────────────────┼───────────────────┤
+    targetPort: 9376         │LoadBalancer │ uses a cloud provider      │ ClusterIP:NodePort│
+  - name: https              │             │ load balancer              │ ^spec.clusterIP   │
+    protocol: TCP            │             │ (round robin by default)   │                   │
+    port: 443                ├─────────────┼────────────────────────────┼───────────────────┤
+    targetPort: 9377         │ExternalName │ Maps app to DNS entry      │ foo.example.com   │
+  sessionAffinity: "ClientIP"└─────────────┴────────────────────────────┴───────────────────┘
+  ^
+  (opt)sessionAffinityConfig.clientIP.timeoutSeconds: 100 (defaults to 10800)
+
+│                     ┌───┐ │ :3100┌────┐       :80┌───┐ │              ┌────┐:80───┐
+│               ┌─→:80│Pod│ │ ┌───→│node├───┐  ┌──→│Pod│ │           ┌─→│node├─→│Pod│
+│               │     └───┘ │ │    └────┘   │  │   └───┘ │           │  └────┘  └───┘
+│         :80┌───────────┐  │ Incomming  ┌──v───────┐    │     :80 ┌──────────┐
+│ Internal──→│ºClusterIPº│  │ traffic    │ºNodePortº│    │     ┌─→:│  ºLoadº  │ ┌───┐
+│ Traffic    └───────────┘  │ │          └──^───────┘    │     │   │ºBalancerº│ │Pod│
+│               │     ┌───┐ │ │    ┌────┐   │  │   ┌───┐ │     │   └──────────┘ └───┘
+│               └─→:80│Pod│ │ └───→│node├───┘  └──→│Pod│ │ Incomming │   ┌────┐  ↑:80
+│                     └───┘ │ :3100└────┘       :80└───┘ │   traffic └──→│node├──┘
+│                           │ ^                 ^        │               └────┘
+│                           │ Creates mapping between    │  configures an external
+│                           │ node port(3100) and        │  IP address in balancer.
+│                           │ Pod port (80)              │  Then connects requested
+│                           │                            │  pods to balancer
+
+
+                                              ºLoad Balancerºworks at ºlayer 4º.
+                                               unaware of the actual apps.
+ (Layer 7)                  ┌───┐    ┌───┐ ☜ ☞ Use OºIngress controllersº(Oºlayer 7º)
+┌─────────────────────┐     │Pod│    │Pod│     for advanced rules based on inbound
+│OºIngress controllerº│     └─^─┘    └─^─┘     URL, ...
+│ ┌─────────────────┐ │     ┌─┴────────┴───┐ - Another common feature of Ingress
+│ │ myapp.com/blog  │ │───→ │Blog service  │   isºSSL/TLS terminationºremoving
+│ └─────────────────┘ │     └──────────────┘   TLS cert complexity from Apps
+│ ┌─────────────────┐ │     ┌──────────────┐
+│ │ myapp.com/store │ │────→│Store service │
+│ └─────────────────┘ │     └─┬────────┬───┘
+└───^─────────────────┘     ┌─v─┐    ┌─v─┐
+    |                       │Pod│    │Pod│
+  Incomming                 └───┘    └───┘
+   Traffic
 
 -ºService.spec.clusterIP can be used to force a given IPº
 
-│   USER SPACE proxy─mode                     │   IPTABLES proxy─mode 
+│   USER SPACE proxy─mode                     │   IPTABLES proxy─mode
 │                                             │   (or ipvs)
 │     NODE                                    │     NODE
 │   ┌─────────────────────────┐               │   ┌─────────────────────────┐
 │   │ ┌──────┐                │               │   │ ┌──────┐  ┌──────────┐  │
 │   │ │Client│                │               │   │ │Client│  │kube─proxy│←─── API─Server
 │   │ └──────┘                │               │   │ └┬─────┘  └────────┬─┘  │
-│   │    ↓                    │               │   │  │                 │    │   
-│   │ OºClusterIPº            │               │   │  │                 │    │   
+│   │    ↓                    │               │   │  │                 │    │
+│   │ OºClusterIPº            │               │   │  │                 │    │
 │   │ (iptables)              │               │   │  │   ┌───────────┐ │    │
 │   │    │      ┌──────────┐  │               │   │  └──→│OºcluserIPº│←┘    │
 │   │    └─────→│kube─proxy│←──API─Server     │   │      │(iptables) │      │
@@ -1207,7 +1394,7 @@ spec:                           │OºClusterIPº │ (default) Exposes the serv
 │└────────────│────┘  └────────────│────┘     │└─────────────────┘  └─────────────────┘
               │                    │
    Note that the Pod IP dies when the pod dies,
-   while the ClusterIP persists for the 
+   while the ClusterIP persists for the
    application (Deployment) life.
 
 ┌─────────────────┐
@@ -1227,8 +1414,8 @@ spec:                           │OºClusterIPº │ (default) Exposes the serv
 │  REDIS_MASTER_PORT_6379_TCP_PORT=6379           │
 │  REDIS_MASTER_PORT_6379_TCP_ADDR=10.0.0.11      │
 └─────────────────────────────────────────────────┴──────────────────────────────────────────────────────────
- 
-  
+
+
 ºQuick App(Deployment) service creationº
 REF: @[https://kubernetes.io/docs/concepts/services-networking/connect-applications-service/]
 $ kubectl expose deployment/my-nginx
@@ -1236,7 +1423,7 @@ $ kubectl expose deployment/my-nginx
 is equivalent to:
 
 $ kubectl apply -f service.yaml
-                   ^^^^^^^^^^^^                  
+                   ^^^^^^^^^^^^
                    apiVersion: v1
                    kind: Service
                    metadata:
@@ -1251,10 +1438,15 @@ $ kubectl apply -f service.yaml
                        run: my-nginx
 
 @[https://kubernetes.io/docs/concepts/services-networking/add-entries-to-pod-etc-hosts-with-host-aliases/]
-</pre>
 
-<pre zoom>
-<a TODO xsmall href=https://kubernetes.io/docs/tasks/debug-application-cluster/debug-service/">Debug Services</a>
+<span TODO>Debug Services</span>
+@[https://kubernetes.io/docs/tasks/debug-application-cluster/debug-service/]
+
+☞ (Much more) detailed info available at:
+  ( about kube-proxy + iptables +... advanced config settings)
+@[https://kubernetes.io/docs/concepts/services-networking/service/]
+
+
 </pre>
 
 <span title>Labels</span>
@@ -1262,7 +1454,7 @@ $ kubectl apply -f service.yaml
 <span xsmall>Labels</span>
 @[https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors/]
 - Labels = key/value pairs attached to objects.
-- labelsºdo not provide uniquenessº 
+- labelsºdo not provide uniquenessº
   - we expect many objects to carry the same label(s)
 - used to specify ºidentifying attributes of objectsº
  ºmeaningful and relevant to usersº, (vs k8s core system)
@@ -1305,7 +1497,7 @@ metadata:                                     |metadata:                       |
  ºapp.kubernetes.io/part-of   :ºwordpressº    |  .../part-of   :ºwordpressº    |  .../part-of   : wordpressº
   app.kubernetes.io/managed-by: helm          |  .../managed-by: helm          |  .../managed-by: helm
                                               |...                             |...
-                                                
+
 
 
 
@@ -1324,34 +1516,34 @@ metadata:                                     |metadata:                       |
 <pre zoom>
 <span xsmall>Label selectors</span>
 - core (object) grouping primitive.
-- two types of selectors: 
-  - equality-based   
+- two types of selectors:
+  - equality-based
     Ex. environment=production,tier!=frontend
                               ^
                             "AND" represented with ','
 
   - set-based
     - filter keys according to a set of values.
-      (in, notin and exists ) 
+      (in, notin and exists )
     Ex.'ºkeyºequal to environment andºvalueºequal to production or qa'
 
     Ex.'environment in (production, qa)'
 
     Ex.'tier notin (frontend, backend)'
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ 
-        all resources with 
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        all resources with
             (key == "tier" AND
              values != frontend or backend )  AND
-        all resources with 
+        all resources with
             (key != "tier")
 
     Ex:'partition'                    !partition
         ^^^^^^^^^                     ^^^^^^^^^
         all resources including       all resources without
         a label with key 'partition'  a label with key 'partition'
-        
+
 - LIST and WATCH operations may specify label selectors to filter the sets
-  of objects returned using a query parameter. 
+  of objects returned using a query parameter.
   Ex.:
   $ kubectl get pods -l environment=production,tier=frontend             # equality-based
   $ kubectl get pods -l 'environment in (production),tier in (frontend)' # set-based
@@ -1360,105 +1552,70 @@ metadata:                                     |metadata:                       |
 </pre>
 
 <span title>Storage</span>
-
-<pre zoom>
+<pre zoom labels="storage,TODO,volume,persistence,">
 <span xsmall>Volume</span>
 @[https://kubernetes.io/docs/concepts/storage/volumes/]
-TODO: @[https://github.com/kubernetes/community/blob/master/contributors/design-proposals/storage/volume-ownership-management.md]
-<span xsmall>lifetime of pod (vs docker container)</span>
-- many types supported, and a Pod can use any number
-   of them simultaneously.
-- a pod specifies what volumes to provide for the pod (spec.volumes) and
-    where to mount those into each container(spec.containers.volumeMounts).
-
-- Sometimes, it is useful to share one volume for
-  multiple uses in a single pod. The volumeMounts.subPath
-  property can be used to specify a sub-path inside the
-  referenced volume instead of its root.
-</pre>
-
-<pre zoom>
-<span xsmall>Persistent Volumes</span>
 @[https://kubernetes.io/docs/concepts/storage/persistent-volumes/]
-  (provisioned by cluster admin)
-- "hardware" resource applying to the whole cluster (just like a node)
-- While Volumes lifecycle is dependent of pod's lifecyles,
-  Persistent Volumes lifecycle is independent of any individual pod.
-- The k8s API/object captures the details of the implementation of
-  underlying storage (NFS, iSCSI, cloud-provided, ...)
-- Pods use it through a volume of type "PersistentVolumeClaim" like:
-  Similar to how Pods can request specific levels of resources
-  (CPU and Memory), Claims can request specific size and access modes
-  (e.g., can be mounted once read/write or many times read-only)
-  - PV contains max size, PVC contains min size where
-    PVC min.size must be ˂ PV max.size
+@[https://kubernetes.io/docs/concepts/storage/volume-snapshots/]
+@[https://kubernetes.io/docs/concepts/storage/volume-pvc-datasource/]
+@[https://kubernetes.io/docs/concepts/storage/storage-classes/]
+@[https://kubernetes.io/docs/concepts/storage/volume-snapshot-classes/]
+@[https://kubernetes.io/docs/concepts/storage/dynamic-provisioning/]
+@[https://kubernetes.io/docs/concepts/storage/storage-limits/]
 
-Ex:
-Ex. PV using Oºlocal storageº:
-apiVersion: v1
-kind: ºPersistentVolumeº
-metadata:
-  name: example-pv
-  annotations:
-    "volume.alpha.kubernetes.io/node-affinity": '{
-      "requiredDuringSchedulingIgnoredDuringExecution": {
-        "nodeSelectorTerms": [
-          { "matchExpressions": [
-            { "key": "kubernetes.io/hostname",
-              "operator": "In",
-              "values": ["example-node"]
-            }
-          ]}
-         ]}
-        }'
-ºspec:º
-  capacity:
-    storage: 100Gi
-  accessModes:
-  - ReadWriteOnce
-  persistentVolumeReclaimPolicy: Delete
-OºstorageClassName: local-storageº
-Oºlocal:                         º
-Oº  path: /mnt/disks/ssd1        º
-</pre>
+@[https://github.com/kubernetes/community/blob/master/contributors/design-proposals/storage/volume-ownership-management.md]
 
-<pre zoom>
-<a TODO xsmall href="https://kubernetes.io/docs/concepts/storage/storage-classes/">Storage Classes</a>
-</pre>
-<pre zoom>
-<a TODO xsmall href="https://kubernetes.io/docs/concepts/storage/dynamic-provisioning/">Dynamic Volume Provisioning</a>
-</pre>
-<pre zoom>
-<a TODO xsmall href="https://kubernetes.io/docs/concepts/storage/storage-limits/">Node-specific Volume Limits</a>
+    REF: https://www.youtube.com/watch?v=OulmwTYTauI
+
+                             once underlying         "hardware" resource applying
+                             storage has been        to the whole cluster
+                             assigned to a pod       (ºlifespanº independent of pods)
+  ┌──────────────────┐       PV is bound to PVC      ┌─↓───────────┐
+  │ Pod              │       one-to-one relation┌···→│ Persistent  ·····plugin to
+  │                  │     ┌───────────────────┐·    │ Volume(ºPVº)│    one of
+  │┌───────────────┐ │ ┌··→│ Persistent *1     │·    └─────────────┘        ·       Underlying
+  ││ºVolume Mountsº│ │ ·   │ Volume            │·                           ·          Storage
+  ││ /foo          │ │ ·   │ Claim (ºPVCº)     │·                       ┌───↓────────────────┐
+  │└───────────────┘ │ ·   │                   │·    ┌────────────┐     │-Local HD           │
+  │    ┌──────────────┐·   │- 100Gi            │· ┌·→│ Storage    │     │-NFS: path,serverDNS│
+  │    │ Volumes:     │·   │- Selector ·········┘ ·  │ Class(ºSCº)│     │-Amazon:EBS,EFS,... │
+  │    │ -PVC ·········┘   │- StorageClassName····┘  └────────────┘     │-Azure:...          │
+  │    │ ─claimName   ←┐   └───────────────────┘                        │-...                │
+  │    └──────────────┘└─ Volumeºlifespamºis                            └────────────────────┘
+  └──────────────────┘    that of the Pod.
+
+├────────Created by users (Dev)───────────────────┤ ├──────Created by Admin (Ops)────────────┤
+
+- many types supported, and a Pod can use any number of them simultaneously.
+- a pod specifies what volumes to provide for the pod (spec.volumes) and where
+  to mount those into each container(spec.containers.volumeMounts).
+
+- Sometimes, it is useful to share one volume for multiple uses in a single
+  pod. The volumeMounts.subPath property can be used to specify a sub-path inside
+  the referenced volume instead of its root.
+
+*1:Similar to how Pods can request specific levels of resources
+   (CPU and Memory), Claims can request specific size and access modes
+   (e.g., can be mounted once read/write or many times read-only)
+☞ BºPV contains max size, PVC contains min sizeº
+    wih PV max.size ˃ PVC min.size must be ˂ PV max.size
 </pre>
 </div>
+</div><!-- Building blocks -->
 
 <div groupv>
 <span title>Controllers</span>
-<pre zoom>
-<span xsmall>ReplicationController</span>
-@[https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller/]
-Deprecated in favor of Deployment Controllers configuring a Replica Set
-</pre>
-<pre zoom>
-<a xsmall href="https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/">ReplicaSet</a>
-- ensures that a specified number of pod replicas are running at any given time.
-- While ReplicaSets can be used independently, today it's mainly used by
-  Deployments as a mechanism to orchestrate pod creation, deletion and updates.
-- "we recommend using Deployments instead of directly using ReplicaSets, unless
-   you require custom update orchestration or don't require updates at all."
-- Unlike the case where a user directly created pods, a ReplicaSet replaces
-  pods that are deleted or terminated for any reason, such as in the case of
-  node failure or disruptive node maintenance, such as a kernel upgrade. For
-  this reason, we recommend that you use a ReplicaSet even if your
-  application requires only a single pod.
-- Use a Job instead of a ReplicaSet for pods that are expected to terminate on their own.
-- Use a DaemonSet instead of a ReplicaSet for pods that provide a machine-level
-  function, such as machine monitoring or machine logging. These pods have a
-  lifetime that is tied to a machine lifetime: the pod needs to be running on
-  the machine before other pods start, and are safe to terminate when the
-  machine is otherwise ready to be rebooted/shutdown.
-
+<pre zoom labels="101,replicaset,deployment,">
+<span title>ReplicaSet</span>
+@[https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/]
+- ensures that "N" pod replicas are running simultaneously.
+- ReplicaSets can be used independently, but normally used
+  indirectly by Deployments to orchestrate pod creation/deletion/updates.
+ BºNOTE:º Job       is prefered for pods that terminate on their own.
+ BºNOTE:º DaemonSet is prefered for pods that provide a machine-level function.
+                    (monitoring,logging, pods that need to be running before
+                     others pods starts).
+                  OºDaemonSet pods  lifetime == machine lifetimeº
 |controllers/frontend.yaml
 |
 |apiVersion: apps/v1
@@ -1473,16 +1630,16 @@ Deprecated in favor of Deployment Controllers configuring a Replica Set
 |  replicas: 3   ← Default to 1
 |  selector:
 |    matchLabels:
-|      tier: frontend  ← Matches all pods with labels matching the selector
+|      tier: frontend  ←
 |    matchExpressions:
 |      - {key: tier, operator: In, values: [frontend]}
-|  template:  ← Pod template (same schema as a pod, except that it is nested and does not have an apiVersion or kind)
-|    metadata:
-|      labels:             ← Needed in pod-template, not in isolated pod
-|        app: guestbook     .spec.template.metadata.labels must match the .spec.selector
-|        tier: frontend
+|  template:  ← Pod template (nested schema pod,
+|    metadata:                no apiVersion/kind-)
+|      labels:             ← Needed in pod-template (vs isolated pod)
+|        app: guestbook     .spec.template.metadata.labels must match
+|        tier: frontend     .spec.selector
 |    spec:
-|      restartPolicy: Always ← It's the only allowed value, can be ommited (default).
+|      restartPolicy: Always ← (default/only allowed value)
 |      containers:
 |      - name: php-redis
 |        image: gcr.io/google_samples/gb-frontend:v3
@@ -1502,9 +1659,10 @@ Deprecated in favor of Deployment Controllers configuring a Replica Set
 |        - containerPort: 80
 
 
-$ kubectl create -f (http://k8s.io/examples/controllers/frontend.yaml
+$ kubectl create -f http://.../frontend.yaml
 → replicaset.apps/frontend created
-→ $ kubectl describe rs/frontend
+
+$ kubectl describe rs/frontend
 → Name:       frontend
 → Namespace:  default
 → Selector:   tier=frontend,tier in (frontend)
@@ -1544,9 +1702,12 @@ $ kubectl get pods
 
 <pre zoom>
 <span bgorange xsmall>Deployment(=="aplication")</span>
-
 @[https://kubernetes.io/docs/concepts/workloads/controllers/deployment/]
-  Declarative updates for Pods and ReplicaSets
+- Declarative updates for Pods and ReplicaSets
+- "one or more identical pods", managed by the Deployment Controller.
+  A deployment defines the number of replicas (pods) to
+  create, and the Kubernetes Scheduler ensures that if pods or nodes encounter
+  problems, additional pods are scheduled on healthy nodes.
   Ex. Deployment:
 # for versions before 1.7.0 use apps/v1beta1
 apiVersion: apps/v1beta2
@@ -1641,7 +1802,7 @@ $ kubectl autoscale deployment nginx-deployment \
   --min=10 --max=15 --cpu-percent=80
 </pre>
 
-<pre zoom>
+<pre zoom labels="application,TODO">
 <span TODO xsmall>Inject Data Into Apps</span>
 <a href=https://kubernetes.io/docs/tasks/inject-data-application/define-command-argument-container/">Define a Command and Arguments for a Container</a>
 <a href=https://kubernetes.io/docs/tasks/inject-data-application/define-environment-variable-container/">Define Environment Variables for a Container</a>
@@ -1650,7 +1811,7 @@ $ kubectl autoscale deployment nginx-deployment \
 <a href=https://kubernetes.io/docs/tasks/inject-data-application/distribute-credentials-secure/">Distribute Credentials Securely Using Secrets</a>
 <a href=https://kubernetes.io/docs/tasks/inject-data-application/podpreset/">Inject Information into Pods Using a PodPreset</a>
 </pre>
-<pre zoom>
+<pre zoom labels="application,TODO">
 <span TODO xsmall>Run Applications</span>
 <a href=https://kubernetes.io/docs/tasks/run-application/run-stateless-application-deployment/">Run a Stateless Application Using a Deployment</a>
 <a href=https://kubernetes.io/docs/tasks/run-application/run-single-instance-stateful-application/">Run a Single-Instance Stateful Application</a>
@@ -1664,9 +1825,6 @@ $ kubectl autoscale deployment nginx-deployment \
 <a href=https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale-walkthrough/">Horizontal Pod Autoscaler Walkthrough</a>
 </pre>
 
-<pre zoom>
-<a TODO xsmall href=https://kubernetes.io/docs/tasks/debug-application-cluster/debug-application/">Troubleshoot Applications</a>
-</pre>
 
 <pre zoom>
 <a TODO xsmall href=https://kubernetes.io/docs/tasks/debug-application-cluster/debug-application-introspection/">App Introspection and Debugging</a>
@@ -1695,6 +1853,12 @@ $ kubectl autoscale deployment nginx-deployment \
 <pre zoom>
 <span xsmall>StatefulSet (v:1.9+)</span>
 @[https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/]
+
+- naming convention, network names, and storage persist as replicas are
+  rescheduled.
+- underlying persistent storage remains even when the StatefulSet is deleted.
+- Pods in StatefulSet are scheduled and run across any available node in an
+  AKS cluster (vs DaemonSet pods, attached to a given node).
 
 - Manages stateful apps:
   - Useful for apps requiring one+ of:
@@ -1869,8 +2033,8 @@ spec:
 <a xsmall href="https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/">DaemonSet</a>
 - ensures "N" Nodes run a Pod instance
 - typical uses: cluster storage, log collection or monitoring
-  - As nodes are added to the cluster, Pods are added to them. As nodes are 
-    removed from the cluster, those Pods are garbage collected. Deleting a 
+  - As nodes are added to the cluster, Pods are added to them. As nodes are
+    removed from the cluster, those Pods are garbage collected. Deleting a
     DaemonSet will clean up the Pods it created.
   - Ex (simple case): one DaemonSet, covering all nodes, would be used
     for each type of daemon. A more complex setup might use multiple DaemonSets
@@ -2110,8 +2274,8 @@ pi-aiw0a
 </pre>
 <pre zoom>
 <span xsmall>Parallel Jobs</span>
-  - Parallel Jobs with a fixed completion count 
-    (.spec.completions greater than zero). 
+  - Parallel Jobs with a fixed completion count
+    (.spec.completions greater than zero).
     the job is complete when there is one successful pod for
     each value in the range 1 to .spec.completions.
 
@@ -2233,18 +2397,11 @@ API (metrics.k8s.io), run the following command:
 <pre zoom>
 <a TODO xsmall href=https://kubernetes.io/docs/tasks/debug-application-cluster/resource-usage-monitoring/">Tools for Monitoring Resources</a>
 </pre>
-<pre zoom>
-<a TODO xsmall href=https://kubernetes.io/docs/tasks/debug-application-cluster/troubleshooting/">Troubleshooting</a>
-</pre>
-<pre zoom labels="">
-<span xsmall>Troubleshooting</span>
-<span xsmall>Debuggin the Cluster</span>
-@[https://kubernetes.io/docs/tasks/debug-application-cluster/debug-cluster/]
-</pre>
 </div>
 
+<div group>
+<span title>Unordered notes</span><br/>
 <div groupv>
-<span title>Unordered notes</span>
 
 <pre zoom >
 <span xsmall>Get External</span>
@@ -2278,11 +2435,7 @@ $ kubectl get nodes -o jsonpath=\
 
 
 <pre zoom labels="devops,setup" bgorange>
-<span xsmall>KOPS - KUBERNETES OPERATIONS</span>
-<span xsmall>The easiest way</span>
-<span xsmall>to get a production</span>
-<span xsmall>grade k8s cluster</span>
-<span xsmall>up and running</span>
+<span xsmall>KOPS: easiest way to get production grade cluster</span>
 @[https://github.com/kubernetes/kops/blob/master/README.md]
 @[https://github.com/kubernetes/kops/blob/master/README.md]
   - What is kops?  """We like to think of it as kubectl for clusters."""
@@ -2291,16 +2444,24 @@ $ kubectl get nodes -o jsonpath=\
     AWS is currently officially supported, with GCE in beta support,
     and VMware vSphere in alpha, and other platforms planned.
 </pre>
+</div>
+<div groupv>
 
-<pre zoom>
-<span xsmall>HELM</span>
-<span xsmall>Package</span>
-<span xsmall>manager</span>
+<pre zoom labels="helmhelm,,TODO">
+<span xsmall>HELM Chars</span>
 @[https://HELM.sh]
+- Application Package stored locally or in remote repo
+ (Ex: A.Container Registry Helm chart repo).
+ - packaged version of app code + YAML deployment manifests.
 
-<span xsmall>Kubeapps</span>
+ PRE-SETUP:
+ - Install Tiller in k8s cluster.
+ - Install Helm client locally (or cloud shell)
+
+ - chart → Tiller → Exec. Install
+
+<span xsmall TODO>Kubeapps</span>
 @[https://kubeapps.com/]
-The Easiest Way to Deploy Applications in Your Kubernetes Cluster
 </pre>
 
 <pre zoom>
@@ -2357,6 +2518,12 @@ InfoQ caught up with Burns, who recently authored an ebook titled Designing
 Distributed Systems, Patterns and Paradigms for Scaleable Microservices. He
 talks about distributed systems patterns and how containers enable it.
 </pre>
+
+<pre zoom labels="TODO">
+<span xsmall>Yaml Tips</span>
+@[https://www.redhat.com/sysadmin/yaml-tips]
+</pre>
+
 
 <pre zoom>
 <span xsmall>Container Network Iface (CNI)</span>
@@ -2459,7 +2626,7 @@ driver, and then cleans up.
 @[https://kubernetes.io/docs/tasks/run-application/configure-pdb/]
 
 A PodDisruptionBudget object (PDB) can be defined for each deployment(application),
-limiting the number of pods of a replicated application that 
+limiting the number of pods of a replicated application that
 are down simultaneously from ºvoluntaryº disruptions.
 
 Ex: A Deployment has:
@@ -2481,24 +2648,24 @@ like 'kubectl drain' must be used
 
 </pre>
 </div>
-
+</div> <!-- Unordered notes -->
 <div groupv>
 <span title>Install a new cluster</span>
 <pre zoom labels="git,bootstrap,gitops">
 <span xsmall>WKSctl GitOps install</span>
-- Tool for Kubernetes Cluster Management Using GitOps 
- WKSctl is an open-source project to install, bootstrap, and manage Kubernetes 
- clusters, including add-ons, through SSH. WKS is a provider of the Cluster API 
- (CAPI) using the GitOps approach. Kubernetes cluster configuration is defined 
- in YAML, and WKSctl applies the updates after every push in Git, allowing users 
+- Tool for Kubernetes Cluster Management Using GitOps
+ WKSctl is an open-source project to install, bootstrap, and manage Kubernetes
+ clusters, including add-ons, through SSH. WKS is a provider of the Cluster API
+ (CAPI) using the GitOps approach. Kubernetes cluster configuration is defined
+ in YAML, and WKSctl applies the updates after every push in Git, allowing users
  to have repeatable clusters on-demand.
 
 
 <span xsmall>ArgoCD</span>
 @[https://argoproj.github.io/argo-cd/]
 Argo CD is a declarative, GitOps continuous delivery tool for Kubernetes.
-Application definitions, configurations, and environments should be declarative 
-and version controlled. Application deployment and lifecycle management should 
+Application definitions, configurations, and environments should be declarative
+and version controlled. Application deployment and lifecycle management should
 be automated, auditable, and easy to understand.
 </pre>
 
@@ -2570,7 +2737,7 @@ REF @[https://kubernetes.io/docs/tasks/tools/install-kubeadm/]
 
 <span xsmall>imagePullSecrets</span>
 @[https://kubernetes.io/docs/concepts/configuration/secret/]
-- method to pass a secret that contains a Docker image registry password 
+- method to pass a secret that contains a Docker image registry password
  to the Kubelet so it can pull a private image on behalf of your Pod.
 
 
@@ -2600,13 +2767,13 @@ REF @[https://kubernetes.io/docs/tasks/tools/install-kubeadm/]
 @[https://stackoverflow.com/questions/46891273/kubernetes-what-is-the-maximum-distance-latency-supported-between-kubernetes-no]
 ....There is no latency limitation between nodes in kubernetes cluster. They are configurable parameters.
 - For kubelet on worker node it is:
-   --node-status-update-frequency duration    Specifies how often kubelet posts node status to master. 
+   --node-status-update-frequency duration    Specifies how often kubelet posts node status to master.
                                               Note: be cautious when changing the constant, it must work
                                                     with nodeMonitorGracePeriod in nodecontroller. (default 10s)
 - For controller-manager on master node they are:
   --node-monitor-grace-period duration    Amount of time which we allow running Node to be unresponsive
                                           before marking it unhealthy. Must be N times more than kubelet's
-                                          nodeStatusUpdateFrequency, where N means number of retries allowed 
+                                          nodeStatusUpdateFrequency, where N means number of retries allowed
                                           for kubelet to post node status. (default 40s)
   --node-monitor-period duration          The period for syncing NodeStatus in NodeController. (default 5s)
   --node-startup-grace-period duration    Amount of time which we allow starting Node to be unresponsive before
@@ -2619,23 +2786,24 @@ REF @[https://kubernetes.io/docs/tasks/tools/install-kubeadm/]
 
 <div groupv>
 <span title>Cluster Admin</span>
-
 <pre zoom>
+<span xsmall>Admin Tasks</span>
 <a href="https://kubernetes.io/docs/reference/#config-reference">Config Ref()</a>
-<a xsmall href="https://kubernetes.io/docs/concepts/cluster-administration/cluster-administration-overview/">Overview</a>
-<a xsmall href="https://kubernetes.io/docs/concepts/cluster-administration/certificates/">Certificates</a>
-<a xsmall href="https://kubernetes.io/docs/concepts/cluster-administration/cloud-providers/">Cloud Providers</a>
-<a xsmall href="https://kubernetes.io/docs/concepts/cluster-administration/manage-deployment/">Managing Resources</a>
-<a xsmall href="https://kubernetes.io/docs/concepts/cluster-administration/networking/">Cluster Networking</a>
-<a xsmall href="https://kubernetes.io/docs/concepts/cluster-administration/logging/">Logging Architecture</a>
-<a xsmall href="https://kubernetes.io/docs/concepts/cluster-administration/kubelet-garbage-collection/">Configuring kubelet Garbage Collection</a>
-<a xsmall href="https://kubernetes.io/docs/concepts/cluster-administration/proxies/">Proxies in Kubernetes</a>
-<a xsmall href="https://kubernetes.io/docs/concepts/cluster-administration/controller-metrics/">Controller manager metrics</a>
-<a xsmall href="https://kubernetes.io/docs/concepts/cluster-administration/addons/">Installing Addons</a>
+@[https://kubernetes.io/docs/concepts/cluster-administration/cluster-administration-overview/]
+@[https://kubernetes.io/docs/concepts/cluster-administration/certificates/]
+@[https://kubernetes.io/docs/concepts/cluster-administration/cloud-providers/]
+@[https://kubernetes.io/docs/concepts/cluster-administration/manage-deployment/]
+@[https://kubernetes.io/docs/concepts/cluster-administration/networking/]
+@[https://kubernetes.io/docs/concepts/cluster-administration/logging/]
+@[https://kubernetes.io/docs/concepts/cluster-administration/kubelet-garbage-collection/]
+@[https://kubernetes.io/docs/concepts/cluster-administration/proxies/]
+@[https://kubernetes.io/docs/concepts/cluster-administration/controller-metrics/]
+@[https://kubernetes.io/docs/concepts/cluster-administration/addons/]
 </pre>
 <pre zoom>
 <span TODO xsmall>Extending Kubernetes</span>
-<a href="https://kubernetes.io/docs/concepts/extend-kubernetes/extend-cluster/">Extending your Kubernetes Cluster</a>
+<span title>Extending k8s Cluster</span>
+@[https://kubernetes.io/docs/concepts/extend-kubernetes/extend-cluster/"]
 </pre>
 <pre zoom>
 <span TODO xsmall>Extending the Kubernetes API</span>
@@ -2656,7 +2824,8 @@ REF @[https://kubernetes.io/docs/tasks/tools/install-kubeadm/]
 <a href="https://kubernetes.io/docs/concepts/extend-kubernetes/compute-storage-net/device-plugins/">Device Plugins</a>
 <a href="https://kubernetes.io/docs/concepts/extend-kubernetes/service-catalog/">Service Catalog</a>
 </pre>
-
+</div>
+<div groupv>
 <span title>Cluster Federation </span>
 <pre zoom>
 <span xsmall>Cluster Federation</span>
@@ -3019,12 +3188,12 @@ Tools and techniques that can really help accelerate your ability to learn the k
 <span xsmall>getting started</span>
 @[https://www.redhat.com/sysadmin/getting-started-sdn]
 - provide sdns: allows admin teams to control network traffic in
-      complex networking topologies through a centralized panel, 
+      complex networking topologies through a centralized panel,
       rather than handling each network device, such as routers
       and switches, manually ("hierarchical" topology)
 
 ºcontainer network interface (cni):º
-- library definition and a set of tools to configure network 
+- library definition and a set of tools to configure network
   interfaces in linux containers through many supported plugins.
 - multiple plugins can run at the same time in a container
   that participates in a network driven by different plugins.
@@ -3037,8 +3206,8 @@ Tools and techniques that can really help accelerate your ability to learn the k
     @[https://docs.projectcalico.org/v3.7/getting-started/kubernetes/]
     @[https://kubernetes.io/docs/tasks/administer-cluster/network-policy-provider/calico-network-policy/]
   -ºciliumº:
-    - provides network connectivity and load balancing 
-      between application workloads, such as application 
+    - provides network connectivity and load balancing
+      between application workloads, such as application
       containers and processes, and ensures transparent security.
   -ºcontivº:
     - integrates containers, virtualization, and physical servers
@@ -3059,14 +3228,14 @@ Tools and techniques that can really help accelerate your ability to learn the k
     - enables virtual networks for multiple containers on different
       hosts using an overlay function.
   -ºromanaº:
-    - makes cloud network functions less expensive to build, 
+    - makes cloud network functions less expensive to build,
       easier to operate, and better performing than traditional
       cloud networks.
 
-- in addition to network namespaces, an sdn should increase security by 
-offering isolation between multiple namespaces with the multi-tenant plugin: 
-  packets from one namespace, by default, will not be visible to 
-  other namespaces, so containers from different namespaces cannot 
+- in addition to network namespaces, an sdn should increase security by
+offering isolation between multiple namespaces with the multi-tenant plugin:
+  packets from one namespace, by default, will not be visible to
+  other namespaces, so containers from different namespaces cannot
   send packets to or receive packets from pods and services of a
   different namespace.
 </pre>
@@ -3118,7 +3287,7 @@ offering isolation between multiple namespaces with the multi-tenant plugin:
 <pre zoom labels="">
 <span xsmall>linkerd</span>
 </pre>
-  
+
 </div>
 </body>
 </html>
@@ -3385,20 +3554,20 @@ https://developers.redhat.com/blog/2019/05/27/command-line-tools-for-kubernetes-
 
 -ºkubectxº
  - helpful for multi-cluster installations, where you need to
-   switch context between one cluster and another. 
- - Rather than type a series of lengthy kubectl command, kubectx 
+   switch context between one cluster and another.
+ - Rather than type a series of lengthy kubectl command, kubectx
    works it magic in one short command.
  - It also allows you to alias a lengthy cluster name into an alias.
- - For example (taken directly from the kubectx website), 
+ - For example (taken directly from the kubectx website),
    kubectx eu=gke_ahmetb-samples-playground_europe-west1-b_dublin allows
-   you to switch to that cluster by running kubectx eu. 
+   you to switch to that cluster by running kubectx eu.
  - Another slick trick is that kubectx remembers your previous context—
    much like the “Previous” button on a television remote—and allows
    you to switch back by running kubectx -.
 
 -ºkubensº
  - easily switch between Kubernetes namespaces.
-   $ kubens foo # activate namespace. 
+   $ kubens foo # activate namespace.
    $ kubens -   # back to previous value.
  - Author: Ahmet Alp Balkan
 _____________________________
@@ -3409,7 +3578,7 @@ Built from the ground up for containers, PX-Store provides cloud native storage 
 ____________________________
 https://www.tigera.io/
 (authors of the Calico Zero-Trust Network with Policy-based micro-segmentation)
-https://www.projectcalico.org/, 
+https://www.projectcalico.org/,
 Why add another layer of overhead when you don't need it?
 
 Sometimes, an overlay network (encapsulating packets inside an extra IP header) is necessary. Often, though, it just adds unnecessary overhead, resulting in multiple layers of nested packets, impacting performance and complicating trouble-shooting. Wouldn't it be nice if your virtual networking solution adapted to the underlying infrastructure, using an overlay only when required? That's what Calico does. In most environments, Calico simply routes packets from the workload onto the underlying IP network without any extra headers. Where an overlay is needed – for example when crossing availability zone boundaries in public cloud – it can use lightweight encapsulation including IP-in-IP and VxLAN. Project Calico even supports both IPv4 and IPv6 networks!
@@ -3474,12 +3643,12 @@ _________________________
 - https://developers.redhat.com/blog/2019/11/14/tracing-kubernetes-applications-with-jaeger-and-eclipse-che/
 - https://www.jaegertracing.io/
   - Jaeger: open source, end-to-end distributed tracing
-  - Monitor and troubleshoot transactions in complex distributed systems 
-  As on-the-ground microservice practitioners are quickly realizing, the 
-  majority of operational problems that arise when moving to a distributed 
-  architecture are ultimately grounded in two areas: networking and 
-  observability. It is simply an orders of magnitude larger problem to network 
-  and debug a set of intertwined distributed services versus a single 
+  - Monitor and troubleshoot transactions in complex distributed systems
+  As on-the-ground microservice practitioners are quickly realizing, the
+  majority of operational problems that arise when moving to a distributed
+  architecture are ultimately grounded in two areas: networking and
+  observability. It is simply an orders of magnitude larger problem to network
+  and debug a set of intertwined distributed services versus a single
   monolithic application.
 _________________________
 https://www.infoq.com/news/2019/11/microsoft-keda-1-0-kubernetes/
@@ -3499,14 +3668,202 @@ https://www.zdnet.com/article/kubernetes-administration-policy-made-easy-with-br
 
 Kubernetes administration policy made easy with brewOPA
 
-Administering policies across Kubernetes and other cloud native environments 
+Administering policies across Kubernetes and other cloud native environments
 isn't easy. Now, Cyral wants to take the trouble out of the job with brewOPA.
 ______________________
 Reasons NOT to use k8s
 https://thenewstack.io/question-the-current-dogma-is-kubernetes-hyper-scale-necessary-for-everyone/
 ----------------------
 https://www.nomadproject.io/intro/vs/kubernetes.html
+________________________
+Kured, an open-source reboot daemon for Kubernetes.
+Kured runs as a [DaemonSet][aks-daemonset] and monitors each node for the presence of
+a file indicating that a reboot is required.
+_______________
+https://www.infoq.com/news/2020/03/harbor-kubernetes-operator/
+_________________
+kubernetes-the-hard-way-virtualbox/README.md
+https://github.com/sgargel/kubernetes-the-hard-way-virtualbox/blob/master/README.md
+_________
+WebAssembly meets Kubernetes with Krustlet
+https://cloudblogs.microsoft.com/opensource/2020/04/07/announcing-krustlet-kubernetes-rust-kubelet-webassembly-wasm/
+____________________
+New Application Manager Brings GitOps to Google Kubernetes Engine
+https://www.infoq.com/news/2020/03/Kubernetes-application-manager/
+_____________________
+K8s operators
+Other common misunderstandings, according to Deo: That Operators are
+set-it-and-forget-it propositions (as I mentioned above), and that
+Operators require a lot of heavy-duty development effort. For the
+latter, yes, someone has to write the Operator, but it doesn’t
+necessarily need to be you, thanks to repositories like
+OperatorHub.io. Moreover, toolkits and SDKs like Operator Framework
+and Kubebuilder can cut down development effort.
 
+Gadi Naor, founder and CTO at Alcide, gives an example, from a
+security perspective, of where an Operator might not be the ideal
+fit: When a cron job will do the trick just fine.
+
+By design, Naor explains, Operators can provision, update, and delete
+Kubernetes resources - which means they are in-cluster privileged
+components. “This means that Operators represent a persistent
+in-cluster risk; therefore these are components that we must treat
+appropriately as far as our threat and risk modeling,” Naor says.
+
+According to Naor, if a task can be appropriately handled with a cron
+job, that may be the better choice.
+
+“This reduces the time a privileged component is running without
+compromising on the required functionality,” Naor explains. “The
+key questions before choosing an Operator are: Do we really need to
+implement certain workflows or functionality as an Operator? Can we
+achieve the same using a cron job, or use cluster external automation
+_______________________
+https://github.com/cilium/cilium
+Cilium is open source software for providing and transparently securing network connectivity and loadbalancing between application workloads such as application containers or processes
+_________________________
+Understanding Kubernetes limits and requests by example | Sysdig
+https://sysdig.com/blog/kubernetes-limits-requests/
+________________________
+Okteto: A Tool to Develop Applications in Kubernetes
+
+https://github.com/okteto/okteto/blob/master/README.md
+
+https://www.infoq.com/news/2020/01/qa-okteto-kubernetes-development/
+
+We created a few guides to get you started with your favorite programming language:
+- ASP.NET Core
+- Golang
+- Java Gradle
+- Java Maven
+- Node
+- PHP
+- Python
+- Ruby
+_____________________
+New features for the Kubernetes scheduler [LWN.net]
+https://lwn.net/Articles/806896/
+_________________________
+https://kogito.kie.org/get-started/
+Kogito is a cloud-native business automation technology for building
+cloud-ready business applications. The name Kogito derives from the
+Latin "Cogito", as in "Cogito, ergo sum" ("I think, therefore I am"),
+and is pronounced [ˈkoː.d͡ʒi.to] (KO-jee-to). The letter K has
+reference to Kubernetes, the base for OpenShift as the target cloud
+platform for Kogito, and to the Knowledge Is Everything (KIE) open
+source business automation project from which Kogito originates.
+
+Kogito is designed specifically to excel in a hybrid cloud
+environment and to be adaptable to your domain and tooling needs. The
+core objective of Kogito is to help you mold a set of business
+processes and decisions into your own domain-specific cloud-native
+set of services.
+Image of business assets moving to cloud services
+Figure 1. Business processes and decisions to cloud services
+
+When you are using Kogito, you are building a cloud-native
+application as a set of independent domain-specific services,
+collaborating to achieve some business value. The processes and
+decisions that you use to describe the target behavior are executed
+as part of the services that you create. The resulting services are
+highly distributed and scalable with no centralized orchestration
+service, and the runtime that your service uses is optimized for what
+your service needs.
+
+Kogito includes components that are based on well-known business
+automation KIE projects, specifically Drools, jBPM, and OptaPlanner,
+to offer dependable, open source solutions for business rules,
+business processes, and constraint solving.
+
+The following list describes some of the examples provided with Kogito:
+
+    dmn-quarkus-example and dmn-springboot-example: A decision
+service (on Quarkus or Spring Boot) that uses DMN to determine driver
+penalty and suspension based on traffic violations
+
+    rules-quarkus-helloworld: A Hello World decision service on
+Quarkus with a single DRL rule unit
+
+    ruleunit-quarkus-example and ruleunit-springboot-example: A
+decision service (on Quarkus or Spring Boot) that uses DRL with rule
+units to validate a loan application and that exposes REST operations
+to view application status
+
+    process-quarkus-example and process-springboot-example: A process
+service (on Quarkus or Spring Boot) for ordering items and that
+exposes REST operations to create new orders or to list and delete
+active orders
+
+    onboarding-example: A combination of a process service and two
+decision services that use DMN and DRL for onboarding new employees
+
+    kogito-travel-agency: A combination of process services and
+decision services that use DRL and XLS for travel booking, intended
+for deployment on OpenShift
+
+<pre zoom labels="TODO,aaa,kubeconfig">
+<span xsmall>Cluster Access</span>
+@[https://kubernetes.io/docs/concepts/configuration/organize-cluster-access-kubeconfig/]
+</pre>
+
+<pre zoom labels="TODO,kubeconfig">
+<span TODO xsmall>Kustomization</span>
+<a TODO href="https://kubernetes.io/docs/tasks/manage-kubernetes-objects/kustomization/">Object kustomization</a>
+</pre>
+
+<pre zoom labels="TODO">
+<span TODO xsmall>Manage Mem./CPU/API Resrc.</span>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/memory-default-namespace/">Configure Default Memory Requests and Limits for a Namespace</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/cpu-default-namespace/">Configure Default CPU Requests and Limits for a Namespace</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/memory-constraint-namespace/">Configure Minimum and Maximum Memory Constraints for a Namespace</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/cpu-constraint-namespace/">Configure Minimum and Maximum CPU Constraints for a Namespace</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/quota-memory-cpu-namespace/">Configure Memory and CPU Quotas for a Namespace</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/manage-resources/quota-pod-namespace/">Configure a Pod Quota for a Namespace</a>
+
+
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/namespaces-walkthrough/">Namespaces Walkthrough</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/namespaces/">Share a Cluster with Namespaces</a>
+</pre>
+
+<pre zoom labels="TODO">
+<span xsmall>Cluster Debug/Troubleshoot</span>
+See also: 
+- @[https://kubernetes.io/docs/tasks/debug-application-cluster/debug-cluster/]
+- @[https://kubernetes.io/docs/tasks/debug-application-cluster/troubleshooting/]
+</pre>
+<pre zoom>
+<a xsmall TODO href="https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy">RestartPolicy</a>
+</pre>
+<pre zoom>
+<a TODO xsmall href=https://kubernetes.io/docs/tasks/debug-application-cluster/debug-pod-replication-controller/">Debug Pods and ReplicationControllers</a>
+</pre>
+
+<pre zoom>
+<a TODO xsmall href=https://kubernetes.io/docs/tasks/debug-application-cluster/determine-reason-pod-failure/">Determine the Reason for Pod Failure</a>
+</pre>
+
+<pre zoom>
+<span TODO xsmall>Config Pods/Cont.</span>
+<a TODO xsmall href=https://kubernetes.io/docs/tasks/configure-pod-container/assign-pods-nodes/">Assign Pods to Nodes</a>
+<a TODO xsmall href=https://kubernetes.io/docs/tasks/configure-pod-container/configure-pod-initialization/">Config.Pod I12n</a>
+<a TODO xsmall href=https://kubernetes.io/docs/tasks/configure-pod-container/attach-handler-lifecycle-event/">Attach Cont.Lifecycle Handlers</a>
+<a TODO xsmall href=https://kubernetes.io/docs/tasks/configure-pod-container/share-process-namespace/">Share Process Namespace between Containers in a Pod</a>
+<a TODO xsmall href=https://kubernetes.io/docs/tasks/configure-pod-container/translate-compose-kubernetes/">Translate Docker-Compose to k8s Resources</a>
+
+<a TODO href="https://kubernetes.io/docs/concepts/configuration/pod-priority-preemption/">Pod Priority and Preemption</a>
+<a TODO href="https://kubernetes.io/docs/concepts/configuration/assign-pod-node/">Assigning Pods to Nodes</a>
+<a TODO href="https://kubernetes.io/docs/concepts/policy/pod-security-policy/">Pod Security Policies</a>
+<a TODO href="https://kubernetes.io/docs/concepts/policy/resource-quotas/">Resource Quotas</a>
+</pre>
+
+<pre zoom labels="TODO">
+<span TODO xsmall>Dynamic Volume Provisioning</a>
+@[https://kubernetes.io/docs/concepts/storage/dynamic-provisioning/]
+
+<hr/>
+<span TODO xsmall>Node-specific Volume Limits</span>
+@[https://kubernetes.io/docs/concepts/storage/storage-limits/]
+</pre>
 
 
 -->

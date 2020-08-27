@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import HTTPServer, SimpleHTTPRequestHandler
 
-httpd = HTTPServer( ('',8000), BaseHTTPRequestHandler )
+httpd = HTTPServer( ('127.0.0.1',8000), SimpleHTTPRequestHandler )
 
 httpd.serve_forever()

@@ -37,7 +37,7 @@ var spb = {
     if (e.key === "PageDown") { goForward(); return }
     if (e.key === "PageUp"  ) { goBack   (); return }
 
-    if ( (e.code === "ShiftLeft" || e.code === "KeyS") ) {
+    if ( (e.key === "s" ) ) {
       if (spb.zoomStatus === 2) return
       doExtraOptions()
     }
@@ -250,13 +250,14 @@ function doExtraOptions() {
     domInputQuery = document.getElementById("inputQuery")
     domInputQuery.addEventListener("change",  updateRegexQuery )
     domInputQuery.focus()
-
 }
+
 function onLabelClicked(e) {
     let label = e.value;
     if (!e.attributes) {
          e.attributes = { selected : { value : "false" } }
     }
+
     if (e.attributes.selected.value == "false") {
         e.attributes.selected.value = "true"
         spb.labelMapSelected[label] = true
@@ -303,14 +304,17 @@ function getSearchOptions() {
       + "<input type='checkbox' "+(spb.labelANDMode?"checked":"")+" onClick='switchANDORSearch()'><span id='idLabelSearchAndMode' mono>"+spb.labelAndOrText[spb.labelANDMode]+"</span>"
       + "<br/>\n"
       + "<div>\n"
+      cleanUUIDSelected() 
       Object.keys(spb.labelMap).sort()
-         .filter(e => {  console.log(e); return !e.toLowerCase().startsWith("uuid:") })
+         .filter(label => {  
+             return !label.toLowerCase().startsWith("uuid:")
+         })
          .forEach(label_i => {
           result += renderLabel(label_i)
       })
         result += "</div><br/>\n"
     } else {
-        result += "(No topics found).<br/> Add new topics in your source html and they will be displayed here automatically. <br/>Visit <a href=\"../help.html\">HelMan</a> for more details.\n"
+      result += "(No topics found).<br/> Add new topics in your source html and they will be displayed here automatically. <br/>Visit <a href=\"../help.html\">HelMan</a> for more details.\n"
     }
     result += "<hr/><span style='font-weight:bold;'>☞ Press key <code brown>'S'</code> or <code brown>'/'</code> to open this search menu☜ </span>"
     result += "</div>"
@@ -365,8 +369,8 @@ function onPageLoaded() {
   var searchDiv = document.createElement('div');
       searchDiv.setAttribute("id", "upper_bar")
       searchDiv.innerHTML = ''
-    
-   + '<img id="idLabelsFilter" class="noprint" src="/labelIcon.svg" />'
+   + '<img id="idLabelsFilter" class="noprint" src="/labelIcon.svg"  '
+   +   ' onerror="src = \'https://singlepagebookproject.github.io/SPB/labelIcon.svg\';" />'
    + '&nbsp;<span blue class="noprint" id="unhide" hidden style="cursor:ns-resize" onClick="resetTextFoundAttr(true)">[unhide]</span>'
    + '&nbsp;<a href="../help.html" class="noprint" style="cursor:help" target="_blank">[HelpMan]</a>'
    + '&nbsp;<span onClick="spbQuickPrint()" blue>[Print]</span>'
@@ -378,7 +382,7 @@ function onPageLoaded() {
 
   spb.zoomDivDOM = document.getElementById('zoomDiv')
 
-  document.addEventListener('keyup', spb.onKeyUp)
+  document.addEventListener('keyup'  , spb.onKeyUp)
 
   // Change default a.target to blank. Ussually this is bad practice 
   // but this is the exception to the rule
@@ -468,7 +472,8 @@ function onPageLoaded() {
 
   createLabelIndex()
 
-  let csvLabels = getParameterByName("topics").toLowerCase()
+  let csvLabels = getParameterByName("topics") || ""
+      csvLabels = csvLabels.toLowerCase()
   label_l = (!!csvLabels) ? csvLabels.split(",") : []
   label_l.forEach(label => {
       onLabelClicked({value : label});
@@ -508,7 +513,7 @@ function resetTextFoundAttr(bKeepHighlightedSearch) {
    */
   [document.querySelectorAll('body>div>[title]'),
    document.querySelectorAll('body>div>div[title]')].forEach(nodeList => {
-      nodeList.forEach(node => {  // @ma
+      nodeList.forEach(node => {
           node.removeAttribute("hidden")
       })
    })
@@ -555,7 +560,7 @@ function highlightSearch(query) {
 
   [document.querySelectorAll('body>div>[title]'),
    document.querySelectorAll('body>div>div>[title]')].forEach(nodeList => {
-      nodeList.forEach(node => {  // @ma
+      nodeList.forEach(node => {
           node.setAttribute("hidden", "true")
       })
    })
@@ -605,5 +610,17 @@ function highlightSearch(query) {
       spb.zoomStatus = 1
   }
   unhideButton.removeAttribute("hidden","");
+  cleanUUIDSelected() 
   return false // avoid event propagation
+}
+
+function cleanUUIDSelected() {
+  let label_l=Object.keys(spb.labelMapSelected)
+  for (idx=0; idx<label_l.length; idx++) {
+    label = label_l[idx] != null ? label_l[idx] : "";
+    if (label.toLowerCase().startsWith("uuid:")) {
+      spb.labelMapSelected[label] = false 
+    }
+  }
+
 }

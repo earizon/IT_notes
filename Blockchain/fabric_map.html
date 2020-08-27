@@ -1104,8 +1104,9 @@ root@0d.../peer# peer chaincode invoke \
 </pre>
 
 <pre zoom labels="chaincode,example">
-<a href='https://github.com/hyperledger/fabric-samples/blob/release/chaincode/fabcar/fabcar.go'>fabric-samples fabcar.go</a>
- (summary error checks removed)
+<span xsmall>fabcar.go chaincode example</span>
+@[https://github.com/hyperledger/fabric-samples/blob/release/chaincode/fabcar/fabcar.go]
+RºWARNº: summary error checks removed. Never do that in real blockchain projects.
 // structures
 type car struct {                   type smartcontract struct { }
     make   string `json:"make"`
@@ -2363,8 +2364,83 @@ The format of a PROPOSE message is <PROPOSE,tx,[anchor]>, where tx is a mandator
 
 Cryptographic hash of tx is used by all nodes as a unique transaction identifier tid (i.e., tid=HASH(tx)). The client stores tid in memory and waits for responses from endorsing peers.
 </pre>
-
 _______________________
 @adlrocha - Performance Best Practices in Hyperledger Fabric IV: SDK - @adlrocha Weekly Newsletter
 https://adlrocha.substack.com/p/adlrocha-performance-best-practices-50a 
+_______________________
+<pre zoom labels="TODO">
+<span xsmall>Block Internals</span>
+RE: @[https://blog.quillhash.com/2019/03/19/ethereum-or-hyperledger-fabric/]
+
+Fabric’s block segments:
+
+   typeºBlockºstruct {
+ ┌      Header   *BlockHeader     ← small segment compared to Data
+ |      Data     *BlockData     
+┌|      Metadata *BlockMetadata   ← small segment compared to Data
+·|  }
+·|
+·└→ typeºBlockHeaderºstruct {
+·      Number       uint64   ←  8 bytes the unique block number. (0 => Genesis Block)
+·      PreviousHash []byte   ← 32 bytes hash of prev. block's header.
+·      DataHash     []byte   ← 32 bytes hash of current block data segment
+·  }                           ^^
+·                              52 bytes length total
+·
+└→ type BlockMetadata struct { ← "stores four metadata", each as a byte array
+       Metadata [ ][ ] byte 
+   }             ^
+   ┌─────────────┘
+   0 SIGNATURES         : signature on the block creation.           
+   1 LAST_CONFIG        : reference to the last configuration block. 
+   2 TRANSACTIONS_FILTER: valid and invalid transactions in a block. 
+   3 ORDERER            : last offset persisted (kafka Order MetaDa).
+   ^ 
+   └ 0,1,3 added by the ordering service.
+   └ For 1 and 3 the last configuration block number and last offset
+   · persisted are set to Value · field in next struct: 
+   · type Metadata struct {              ┌→ type MetadataSignature struct {
+   ·     Value      []byte               |    SignatureHeader []byte 
+   ·     Signatures []*MetadataSignature←┘    Signature       []byte 
+   · }                                      }
+   ·
+   · type SignatureHeader struct {   
+   ·     Creator []byte  ← x.509 cert. + pub.key + MSP_who_issued_identity
+   ·     Nonce   []byte  ← "random bytes"
+   · }
+   · ^
+   · SIGNATURE metadata (index 0) uses the above 3 structures but set
+   · Metadata.Value to nil as it wants to add just the signature on
+   · block creation.
+   ·
+   └ 2 (TRANSACTION_FILTER) added by the committer after validating the
+     transaction based on the endorsement policy, verification of 
+     read-write set, etc… 
+     TRANSACTION_FILTER is a byte array of size equal to the number
+     of transactions in the block:
+     - For each TX, committer sets a validation code in the 
+       byte array appropriately to represent the validation result.
+       validations codes:
+       TxValidationCode_VALID                          0
+       TxValidationCode_NIL_ENVELOPE                   1
+       TxValidationCode_BAD_PAYLOAD                    2
+       TxValidationCode_BAD_COMMON_HEADER              3
+       TxValidationCode_BAD_CREATOR_SIGNATURE          4
+       TxValidationCode_INVALID_ENDORSER_TRANSACTION   5
+       TxValidationCode_INVALID_CONFIG_TRANSACTION     6
+       TxValidationCode_UNSUPPORTED_TX_PAYLOAD         7
+       TxValidationCode_BAD_PROPOSAL_TXID              8
+       TxValidationCode_DUPLICATE_TXID                 9
+       TxValidationCode_ENDORSEMENT_POLICY_FAILURE    10
+       TxValidationCode_MVCC_READ_CONFLICT            11
+       TxValidationCode_PHANTOM_READ_CONFLICT         12
+       TxValidationCode_UNKNOWN_TX_TYPE               13
+       TxValidationCode_TARGET_CHAIN_NOT_FOUND        14
+       TxValidationCode_MARSHAL_TX_ERROR              15
+       TxValidationCode_NIL_TXACTION                  16
+       TxValidationCode_INVALID_OTHER_REASON         255
+</pre>
+
+
+
 

@@ -538,13 +538,62 @@ real-time analytics workloads
   Configured High-Availability for the coordinator node.
 </pre>
 </div>
+<br/>
+<div group>
+    <span title>Non classified</span><br/>
 
-<div groupv>
-<span title>Non classified</span>
-<pre zoom   labels="tool,qa">
+<pre zoom labels="TODO" bgorange>
+<span xsmall>PostGraphile</span>
+- builds a powerful, extensible and performant GraphQL API from a 
+  PostgreSQL schema in seconds; saving you weeks if not months of 
+  development time.
+
+- If you already use PostgreSQL then you understand the value that a 
+  strongly typed and well defined schema can bring to application 
+  development; GraphQL is the perfect match for this technology when it 
+  comes to making your data layer accessible to your frontend 
+  application developers (or even API clients). Why duplicate your 
+  authorization and business logic in a custom API when you can 
+  leverage the tried and tested capabilities built into the worlds most 
+  advanced open source database?
+
+- If you are new to GraphQL then we recommend you read through the 
+  official introduction to GraphQL here before continuing through the 
+  PostGraphile documentation.
+
+- By combining powerful features such as PostgreSQL's role-based 
+  grant system and row-level security policies with Graphile Engine's 
+  advanced GraphQL look-ahead and plugin expansion technologies, 
+  PostGraphile ensures your generated schema is secure, performant and 
+  extensible.
+
+Some of the features we offer:
+- Incredible performance - no N+1 query issues
+- Extensibility via schema and server plugins
+- Auto-discovered relations e.g. userByAuthorId
+- Computed columns allowing easy expansion of your API
+- Custom query procedures enabling arbitrary SQL queries
+- Automatic CRUD mutations e.g. updatePost
+- Custom mutation procedures enabling complex changes to be exposed simply
+- Real-time features powered by LISTEN/NOTIFY and/or logical decoding
+
+- The easiest way to get started is with the CLI interface; 
+ $º$ npx postgraphile -c postgres://user:pass@localhost/mydb \ º
+ $º  --watch --enhance-graphiql --dynamic-json                 º
+
+ (replacing user, pass and mydb with your PostgreSQL username, 
+  password and the name of your database)
+</pre>
+
+<pre zoom   labels="tool,qa,TODO" bgorange>
 <span xsmall>Liquibase</span>
 @[http://www.liquibase.org/]
 Source control for the DDBB schema.
+- Eliminate errors and delays when releasing databases.
+- Deploys and Rollback changes for specific versions without needing 
+  to know what has already been deployed.
+- Deploy database and application changes together so they always 
+  stay in sync.
 - Supports code branching and merging
 - Supports multiple developers
 - Supports multiple database types
@@ -556,6 +605,9 @@ Source control for the DDBB schema.
 - Run through your build process, embedded in your application or on demand
 - Automatically generate SQL scripts for DBA code review
 - Does not require a live database connection
+
+Java Maven Plugin:
+@[https://docs.liquibase.com/tools-integrations/maven/home.html]
 </pre>
 
 <pre zoom labels="cloud,">
@@ -630,51 +682,59 @@ Note to Kubernetes users: Patroni can run natively on top of Kubernetes. Take a
 look at the Kubernetes chapter of the Patroni documentation.
 </pre>
 
+<pre zoom labels="TODO">
+<span xsmall>Error Reporting+Logging</span>
+@[https://www.postgresql.org/docs/current/static/runtime-config-logging.html]
+</pre>
+
+<pre zoom labels="TODO">
+<span xsmall>Regex support</span>
+- fundamental in analytics work involving text processing tasks.
+  """  A data analytics tool without regex support is like a bicycle without a 
+      saddle – you can still use it, but it's painful. """
+
+- Great support in PostgreSQL
+RºWARN:º Non-portable to other DDBBs.
+
+- Exs:
+
+  > SELECT * FROM my_table 
+       WHERE my_field ~ E'^([0-9])\\1+[aeiou]';   ← Get all lines starting with a repeated digit
+                                                    followed by a vowel
+
+  > SELECT SUBSTRING(my_field FROM E'\\y[A-Fa-f0-9]+\\y') ← Get first isolated hex-string
+    FROM my_table;                                          occurring in a field:
+
+
+  > SELECT REGEXP_SPLIT_TO_TABLE('The quick brown fox', E'\\s+'); ← split string based on regex
+                                                                    return each fragment in a row
+    │ column │
+    ├────────┤
+    │ The    │
+    │ quick  │
+    │ brown  │
+    │ fox    │
+
+  > SELECT 
+      REGEXP_MATCHES(my_string, E'\\y[a-z]{10,}\\y', 'gi')   ← 'gi' flags: 
+    FROM my_table;                └──────┬───────┘              g: All matches (vs just first match)
+                                         │                      i: Case insensitive
+                                         └───────────────────── word with 10+ letters 
+                                  └─────────┬───────────┘      
+                                            └────────────────── find all words (case─insensitive) in my_string
+                                                                with at least 10 letters:
+</pre>
 </div>
 </body>
 </html>
 <!--
 
-
-ql -U <username> -d <database> -h <hostname>SELECT rolname       list users FROM pg_roles;
-_________________
-_________________
-Error Reporting and Logging
-https://www.postgresql.org/docs/current/static/runtime-config-logging.html
-_____________________
-1.5. Native regular expression support
-
-Regular expressons (regexen or regexes) are as fundamental to analytics work as arithmetic – they are the first choice (and often only choice) for a huge variety of text processing tasks. A data analytics tool without regex support is like a bicycle without a saddle – you can still use it, but it's painful.
-
-PostgreSQL has smashing out-of-the-box support for regex. Some examples:
-
-Get all lines starting with a repeated digit followed by a vowel:
-
-SELECT * FROM my_table WHERE my_field ~ E'^([0-9])\\1+[aeiou]';
-
-Get the first isolated hex string occurring in a field:
-
-SELECT SUBSTRING(my_field FROM E'\\y[A-Fa-f0-9]+\\y') FROM my_table;
-
-Break a string on whitespace and return each fragment in a separate row:
-
-SELECT REGEXP_SPLIT_TO_TABLE('The quick brown fox', E'\\s+');
-- - Returns this:
-
-- - | column |
-- - 
-- - | The    |
-- - | quick  |
-- - | brown  |
-- - | fox    |
-
-Case-insensitively find all words in a string with at least 10 letters:
-
-SELECT REGEXP_MATCHES(my_string, E'\\y[a-z]{10,}\\y', 'gi') FROM my_table;
 ____________________________
-PostgreSQL's documentation is excellent. Everything is covered comprehensively but the documents are not merely reference manuals – they are full of examples, hints, useful advice and guidance. If you are an advanced programmer and really want to get stuck in, you can also simply read PostgreSQL's source code, all of which is openly and freely available. The docs also have a sense of humour:
 
-    The first century starts at 0001-01-01 00:00:00 AD, although they did not know it at the time. This definition applies to all Gregorian calendar countries. There is no century number 0, you go from -1 century to 1 century. If you disagree with this, please write your complaint to: Pope, Cathedral Saint-Peter of Roma, Vatican.
+
+PostgreSQL's documentation is excellent. Everything is covered comprehensively but the documents are not merely reference manuals – they are full of examples, hints, useful advice and guidance. If you are an advanced programmer and really want to get stuck in, you can also simply read PostgreSQL's source code, all of which is openly and freely available. 
+
+The first century starts at 0001-01-01 00:00:00 AD, although they did not know it at the time. This definition applies to all Gregorian calendar countries. There is no century number 0, you go from -1 century to 1 century. If you disagree with this, please write your complaint to: Pope, Cathedral Saint-Peter of Roma, Vatican.
 
 MS SQL Server's documentation is all on MSDN, which is an unfriendly, sprawling mess. Because Microsoft is a large corporation and its clients tend to be conservative and humourless, the documentation is "business appropriate" – i.e. officious, boring and dry. Not only does it lack amusing references to the historical role of Catholicism in the development of date arithmetic, it is impenetrably stuffy and hidden behind layers of unnecessary categorisation and ostentatiously capitalised official terms. Try this: go to the product documentation page for MS SQL Server 2012 and try to get from there to something useful. Or try reading this gem (not cherry-picked, I promise):
 
@@ -1388,6 +1448,15 @@ ___________________________
 https://www.percona.com/blog/2019/07/22/percona-monitoring-and-management-pmm-2-beta-4-is-now-available/
 Percona Monitoring and Management (PMM) 2 Beta 4 Is Now Available
 ----------------------
+https://dzone.com/articles/postgresql-performance-metrics
+_________________________
+https://en.wikipedia.org/wiki/PostGIS
+ adds support for geographic objects to the PostgreSQL object-relational database. PostGIS follows the Simple Features for SQL specification from the Open Geospatial Consortium (OGC). 
 
+
+https://en.wikipedia.org/wiki/QGIS
+QGIS (until 2013 known as Quantum GIS[2]) is a free and open-source cross-platform desktop geographic information system (GIS) application that supports viewing, editing, and analysis of geospatial data.[3] 
+
+QGIS supports shapefiles, coverages, personal geodatabases, dxf, MapInfo, PostGIS, and other formats.[4] Web services, including Web Map Service and Web Feature Service, are also supported to allow use of data from external sources.[5]
 
 -->

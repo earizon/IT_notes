@@ -16,284 +16,356 @@
 @[https://github.com/spring-projects/spring-framework/wiki/What%27s-New-in-the-Spring-Framework]
 </pre>
 
-<pre zoom>
-<span xsmall>Summary</span>
-
-
-
-
-ºBASE PACKAGES of Spring IoC:º
-  org.springframework.context                                         org.springframework.beans
-˂˂org.springframework.context.BeanFactory˃˃
-↑ - provides advanced config.mechanism for "any" type of object.
-│  
-│
-˂˂org.springframework.context.ºApplicationContextº˃˃
-↑- extends BeanFactory with "Enterprise Features"
-│  - represents the IoC container 
-│  - easier integration with Spring's AOP features
-│  - message resource handling (for use in i18n)
-│  - event publication
-│  - application-layer specific contexts such as 
-│    - WebApplicationContext
-│  ─ implemented by 
-├─── ClassPathXmlApplicationContext
-│    ºApplicationContextº context = 
-│         new ClassPathXmlApplicationContext ( // Alt 1:
-│          "services.xml", "daos.xml");
-│          ^^^^^^^^^^^^^^^^^^^^^^^^^^
-├─── FileSystemApplicationContext
-├─── ...
-
-  MyBeanClass myBean = contextº
-         .getBeanº("idBeanDef", beanClass.class);
-          ^^^^^^^^ 
-          Everything will be "transparent"
- 
-Spring 1.0+   Spring 2.5+          Spring 3.0+
-- XML         Annotation-based     Java-based config
-
-ºBeansº @[https://docs.spring.io/spring/docs/5.0.0.RELEASE/spring-framework-reference/core.html#beans-definition]
-
-º ____                                     _            _       _        º
-º| __ )  ___  __ _ _ __     _ __ ___   ___| |_ __ _  __| | __ _| |_ __ _ º
-º|  _ \ / _ \/ _` | '_ \   | '_ ` _ \ / _ \ __/ _` |/ _` |/ _` | __/ _` |º
-º| |_) |  __/ (_| | | | \  | | | | | |  __/ || (_| | (_| | (_| | || (_| |º
-º|____/ \___|\__,_|_| |_|  |_| |_| |_|\___|\__\__,_|\__,_|\__,_|\__\__,_|º
-                                                                           
-  package-qualified class name 
--ºname º: (unique) "id" or (aliased) "name" in xml.
--ºscopeº: -ºsingletonº per Spring IoC container (default)
-          -ºprototypeº single bean definition to any number of object instances.
-          - Within the context of a web-aware Spring ApplicationContext:
-            -ºrequest    º: single bean for lifecycle of HTTP request
-            -ºsession    º: single bean for lifecycle of HTTP Session. 
-            -ºapplicationº: Single bean for lifecycle of ServletContext. 
-            -ºwebsocketº  : single bean for lifecycle of WebSocket.
-  
--ºconstructor argsº: (Prefered to properties -setters-):
-     ˂bean id="id01" class="x.y.Class01"/˃
-     ˂bean id="id02" class="x.y.Class02"/˃
-     
-     ˂bean id="instance03" class="x.y.Class03"˃
-       ˂constructor-arg ref="id01"/˃                   ← By class
-       ˂constructor-arg type="int" value="3320"/˃      ← by type
-       ˂constructor-arg name="year" value="2020"/˃     ← by param name
-       ˂constructor-arg index="4" value="Hello World"/˃← by param index
-
-     ˂/bean˃
-       Note:- Bº˂idref˃ is prefered to property with value attribute (fails-faster)º
-            - bean ºdepends-onº attribute can force initialization (and destruction) order
-
-- relationship           Let Spring resolve collaborators (other beans)
- ºautowiring modeº       for given bean by inspecting the contents of the
-  between                ApplicationContext.
-@[https://docs.spring.io/spring/docs/5.0.0.RELEASE/spring-framework-reference/core.html#beans-factory-autowire]
-               Referencing bean autowire values:
-               no              | byName               |  byType (setter)             |
-                               |                      |  constructor(arg)            |
-               ^^              | ^^^^^^               |  ^^^^^^                      |
-               ref used        | Containers looks for |  autowired if exactly        |
-               not recommended | a bean with the same |  one bean of the property    |
-               for complex     | name as the property |  type exists in container.   |
-               configs         |                      |  (throw if ˃1 found)         |
-                               |                      |Rº(set to null if zero found)º|
-                         
-        Referenced bean autowire-candidate values:
-           true 
-           false (Disable bean as autowire candidate)
-        
-        
-        Note ˂beans˃ "default-autowire-candidates" can limit autowire candidate globally.
-                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-                      csv list of candidates:
-                      *Repository,*Security,*Logging
-
--ºlazy-initº   false: Will force to resolve and instantiate at startup.(default,recomended)
-               true : use for "big objects" to save memory. 
-               
--ºdestroy-methodº
-
-
-<span xsmall>nullability</span>
-º@NonNullº       ← forces param|return value|field to be NON-null
-º@Nullableº      ← allows param|return value|field to be     null
-º@NonNullApiº    ← forces param|return value       to be NON-null at package level
-º@NonNullFieldsº ← forces                    field to be NON-null at package level
-  ^^^^^^^^^^^^^
-  org.springframework.lang. package
-
-
-ºNull and empty string valuesº
-- empty arguments for properties,... convert to "" empty String.
-- ˂null/˃ element handles null values. Ex
-  ˂property name="email"˃
-    ˂null/˃
-  ˂/property˃
-
-
-ºRegistrering external (to the container) objectsº (not recomended)
-BeanFactory bFactImpl = context.getBeanFactory()
-                                ^^^^^^^^^^^^^^
-                               returns DefaultListableBeanFactory impl
-bFactImpl.registerSingleton(..)
-bFactImpl.registerBeanDefinition(..)
-
-
+<pre zoom labels="spring,resource" bgorange>
 <span xsmall>Quick Sheet</span>
-REF:                                                     
+REF:
 @[https://www.javagists.com/spring-boot-cheatsheet]  ← TODO: Testing annotations,
 @[https://groupe-sii.github.io/cheat-sheets/spring/spring-boot/index.html]
 
-  ºSPRING FRAMEWORK ANNOTATIONSº                                            │  ºSPRING FRAMEWORK ANNOTATIONSº                                       
-  ANNOTATION      DESCRIPTION                                  LEVEL        │  ANNOTATION      DESCRIPTION                                  LEVEL   
-                |                                            |C|F|C|M|P     │                |                                            |C|F|C|M|P
-                |                                            |L|I|O|E|A     │                |                                            |L|I|O|E|A
-                |                                            |A|E|N|T|R     │                |                                            |A|E|N|T|R
-                |                                            |S|L|S|H|A     │                |                                            |S|L|S|H|A
-                |                                            |S|D|T|O|M     │                |                                            |S|D|T|O|M
-                |                                            | | |R|D|S     │                |                                            | | |R|D|S
-                |                                            | | |U| |      │                |                                            | | |U| |
-                |                                            | | |C| |      │                |                                            | | |C| |
-                ------------------------------------------------------      │                ------------------------------------------------------
- º@Autowired    º| "autowired by type", used to inject object |  x x x      │ º@SpringBootApplicationº                                    |         
-k                | dependency implicitly .                    |             │                |tag for main class for S Boot project.      |
-                 | - No need to be public.                    |             │                |tagged class must be present in base path,  |
-                 ------------------------------------------------------     │                | triggering the scan for sub-packages       |
- º@Configurable º|inject properties of domain objects.        |x            │                ------------------------------------------------------
-                 |Types whose properties are injected without |             │ º@EnableAutoConfigurationº                                  |
-                 |being instantiated by Spring                |             │                ------------------------------------------------------
-                 ------------------------------------------------------     │ º@Controllerº  |Allows detection of component classes in    |
- º@Qualifier    º| used to create more than one bean of the   |  x x x      │                |the class path automatically and register   |
-                 | same type and wire only one of the types   |             │                |bean definitions for the classes            |
-                 | with a property, providing greater control |             │                |automatically.                              |
-                 | on the dependency injection process.       |             │                ------------------------------------------------------
-                 | - can be used with @Autowired annotation.  |             │ º@RestControllerº                                           |
-                 ------------------------------------------------------     │                |tag controller as RESTful (behaviour) that  |
- º@Required     º|mark mandatory class members.               |  x x x      │                |will behave as resources.                   |
-                 ------------------------------------------------------     │                ------------------------------------------------------
- º@ComponentScanº|Trigger scanning of package for the         |x            │ º@ResponseBodyº|automatically convert returned object to a  |
-                 |@Configuration clases.                      |             │                |response body.                              |
-                 ------------------------------------------------------     │                ------------------------------------------------------
- º@Configurationº|ºused on classes that define beans.º        |x            │ º@RequestMappingº                                           |
-                 ------------------------------------------------------     │                |map requests URI to handler class/method    |
- º@Bean         º|tag a method ºbean producerº which will be  |      x      │                ------------------------------------------------------
-                 |mananged by the Spring container.           |             │ º@RequestParamº|bind req.param to method param in controller|
-                 ------------------------------------------------------     │                ------------------------------------------------------
- º@Lazy         º| Init bean/component on demand              |x     x      │ º@PathVariableº|bind placeholder from URI to method.param   |
-                 ------------------------------------------------------
- º@Value        º|used to inject values into a bean's         |  x x x  
-                 |attribute from a property file, indicating  |
-                 |a default value expression.                 |
-                 ------------------------------------------------------
- º@Import       º|                                            |
-                 ------------------------------------------------------
- º@DependsOn    º|                                            |
-                 ------------------------------------------------------
+BºSPRING FRAMEWORK ANNOTATIONSº
+
+    ANNOTATION      DESCRIPTION                                  LEVEL
+                  |                                            |C|F|C|M|P
+                  |                                            |L|I|O|E|A
+                  |                                            |A|E|N|T|R
+                  |                                            |S|L|S|H|A
+                  |                                            |S|D|T|O|M
+                  |                                            | | |R|D|S
+                  |                                            | | |U| |
+                  |                                            | | |C| |
+                  ------------------------------------------------------
+   º@Autowired    º| "autowired by type", used to inject object |  x x x
+                   | dependency implicitly .                    |
+                   | - No need to be public.                    |
+                   ------------------------------------------------------
+   º@Configurable º|inject properties of domain objects.        |x
+                   |Types whose properties are injected without |
+                   |being instantiated by Spring                |
+                   ------------------------------------------------------
+   º@Qualifier    º| used to create more than one bean of the   |  x x x
+                   | same type and wire only one of the types   |
+                   | with a property, providing greater control |
+                   | on the dependency injection process.       |
+                   | - can be used with @Autowired annotation.  |
+                   ------------------------------------------------------
+   º@Required     º|mark mandatory class members.               |  x x x
+                   ------------------------------------------------------
+   º@ComponentScanº|Trigger scanning of package for the         |x
+                   |@Configuration clases.                      |
+                   ------------------------------------------------------
+   º@Configurationº|ºused on classes that define beans.º        |x
+                   ------------------------------------------------------
+   º@Bean         º|tag a method ºbean producerº which will be  |      x
+                   |mananged by the Spring container.           |
+                   ------------------------------------------------------
+   º@Lazy         º| Init bean/component on demand              |x     x
+                   ------------------------------------------------------
+   º@Value        º|used to inject values into a bean's         |  x x x
+                   |attribute from a property file, indicating  |
+                   |a default value expression.                 |
+                   ------------------------------------------------------
+   º@Import       º|                                            |
+                   ------------------------------------------------------
+   º@DependsOn    º|                                            |
+                   ------------------------------------------------------
+
+<hr/>
+BºSPRING FRAMEWORK ANNOTATIONSº
+
+    ANNOTATION      DESCRIPTION                                  LEVEL
+                  |                                            |C|F|C|M|P
+                  |                                            |L|I|O|E|A
+                  |                                            |A|E|N|T|R
+                  |                                            |S|L|S|H|A
+                  |                                            |S|D|T|O|M
+                  |                                            | | |R|D|S
+                  |                                            | | |U| |
+                  |                                            | | |C| |
+                  ------------------------------------------------------
+   º@SpringBootApplicationº                                    |
+                  |tag for main class for S Boot project.      |
+                  |tagged class must be present in base path,  |
+                  | triggering the scan for sub-packages       |
+                  ------------------------------------------------------
+   º@EnableAutoConfigurationº                                  |
+                  ------------------------------------------------------
+   º@Controllerº  |Allows detection of component classes in    |
+                  |the class path automatically and register   |
+                  |bean definitions for the classes            |
+                  |automatically.                              |
+                  ------------------------------------------------------
+   º@RestControllerº                                           |
+                  |tag controller as RESTful (behaviour) that  |
+                  |will behave as resources.                   |
+                  ------------------------------------------------------
+   º@ResponseBodyº|automatically convert returned object to a  |
+                  |response body.                              |
+                  ------------------------------------------------------
+   º@RequestMappingº                                           |
+                  |map requests URI to handler class/method    |
+                  ------------------------------------------------------
+   º@RequestParamº|bind req.param to method param in controller|
+                  ------------------------------------------------------
+   º@PathVariableº|bind placeholder from URI to method.param   |
+</pre>
+
+<span title>IoC</span>
+<pre zoom labels="spring,TODO">
+<span xsmall>Summary</span>
+BºBASE PACKAGES of Spring IoC:º
+  - org.springframework.beans
+    - @[https://docs.spring.io/spring/docs/5.0.0.RELEASE/spring-framework-reference/core.html#beans-definition]
+    - Objects managed by Spring IoC
+    - created with the configuration metadata.
+    - Represented as ºBeanDefinition objectsº containing:
+      - essentially "a recipe for creating one or more objects".
+      - package-qualified class name: typically the actual implementation class.
+      - behavioral configuration elements: scope, lifecycle callbacks,...)
+      - References to other dependencies (or "collaborators")
+      - Custom settings (setters).
+
+    BºBest Patternsº
+    - Bean metadata need to be registered as early as possible.
+      (fail-fast).
+    RºWARN:º registration of new beans at runtime (live access to
+      factory) is not officially supported and may lead to concurrent
+      access exceptions  and/or inconsistent state in the bean container.
+
+  - org.springframework.context.BeanFactory (Interace)
+    - provides advanced config.mechanism for "any" type of object.
+    └ org.springframework.context.ApplicationContext (Interface)
+      - extends BeanFactory with "Enterprise Features"
+      - represents the IoC container
+      - easier integration with Spring's AOP features
+      - message resource handling (for use in i18n)
+      - event publication
+      - application-layer specific contexts such as
+        WebApplicationContext
+      └ ClassPathXmlApplicationContext
+      · ºApplicationContextº context =
+      ·      new ClassPathXmlApplicationContext ( // Alt 1:
+      ·       "services.xml", "daos.xml");
+      ·       ^^^^^^^^^^^^^^^^^^^^^^^^^^
+      └ FileSystemApplicationContext
+      └ ...
+
+  MyBeanClass myBean = contextº
+         .getBeanº("idBeanDef", beanClass.class);
+
+BºSpring History:º
+  Spring 1.0+ → Spring 2.5+      → Spring 3.0+
+  XML           Annotation-based   Java-based config
 
 
-<span xsmall>"Cloudify"</span>
-@[http://files.zeroturnaround.com/pdf/zt_spring_annotations_cheat_sheet.pdf]
-         ┌────────→ @SpringBootApplication                HTTP Request                                 ºCLOUDº
- provides│
-    beans│           ┌─────────────────┐
-         │           │    like these   │           ┌──────────────────────────────┐ ask config       ┌───────────────┐
-        ┌────────────┴────┐            v           │ @RestController              ┌─────────────────→  Configuration │
-        │@Configuration   │        ┌────────┐      │                              │ config.propert.  │    Server     │
-        │                 │        │@Service│      │                              │←──────────────── └───────────────┘
-        │                 │        └──────┬─┘      │   @Autowired                 │
-        │ @Bean           │               └──┬───────→ Service service;           │register itself as service
-        │ public MyBean   │        ┌─────────┴┐    │                              ├──────────────────→──────────┐
-        │ providerBean()  │        │@Component│    │                              │ask for service   │  Service │
-        │                 │        └──────────┘    │   @RequestMapping            ├─────────────────→  Discovery│
-        └─────────────────┘                        │   public Map serverRequest() │←──────────────── └──────────┘
-                                                   │                              │ URL response
-                                                   └──────────────────────────────┘                      
+BºBean Metadataº
+  -ºpackage-qualified class nameº
+  -ºname º: (unique) "id" or (aliased) "name" in xml.
+  -ºscopeº:
+    -ºsingletonº per Spring IoC container (default)
+    -ºprototypeº single bean definition to any number of object instances.
+    - In web-aware ApplicationContext next scopes are available:
+      - ºrequest    º: single bean for lifecycle of HTTP request
+      - ºsession    º: single bean for lifecycle of HTTP Session.
+      - ºapplicationº: Single bean for lifecycle of ServletContext.
+      - ºwebsocketº  : single bean for lifecycle of WebSocket.
 
-º@EnableConfigServerº  turns app into a server that other apps can get their configuration from.
-                       Use spring.application.cloud.config.uri in the client @SpringBootApplication 
-                       to point to the config server.
- 
-º@EnableEurekaServerº  turns your app into an Eureka discovery service
- 
-º@EnableDiscoveryClientº  makes your app register in the service discovery server and discover other services through it.
- 
-º@EnableCircuitBreakerº- configures Hystrix circuit breaker protocols.
- 
-º@HystrixCommand(fallbackMethod = “fallbackMethodName”)º
-  marks methods to fall back to another method if they cannot succeed normally.
+  -ºconstructor argsº: (Prefered to properties -setters-):
+       ˂bean id="id01" class="x.y.Class01"/˃
+       ˂bean id="id02" class="x.y.Class02"/˃
 
+       ˂bean id="instance03" class="x.y.Class03"˃
+         ˂constructor-arg ref="id01"/˃                   ← By class
+         ˂constructor-arg type="int" value="3320"/˃      ← by type
+         ˂constructor-arg name="year" value="2020"/˃     ← by param name
+         ˂constructor-arg index="4" value="Hello World"/˃← by param index
+
+       ˂/bean˃
+         Note:- Bº˂idref˃ is prefered to property with value attribute (fails-faster)º
+              - bean ºdepends-onº attribute can force initialization (and destruction) order
+
+  -ºAutowiringº:
+    - Let Spring resolve dependencies("collaborators") of a bean
+      by inspecting the contents of the ApplicationContext.
+    @[https://docs.spring.io/spring/docs/5.0.0.RELEASE/spring-framework-reference/core.html#beans-factory-autowire]
+      ("ref") autowire values:
+      - no     : ref used, not recommended for complex     configs
+      - byName : IoC looks for bean with matching name
+      - byType : (in setter or constructor args)
+                 autowired if exactly one bean of the property type exists in container.
+                 throws error if more than one found
+               RºWARNª: set to null if zero found.
+
+      ☞ Note: "default-autowire-candidates" attribute in beans tag can limit autowire
+              candidate globally with a CSV list of candidates: (*Repository,*Security,*Logging)
+
+  -ºlazy-initº : false: force resolution and instantiate at startup.(default,recomended)
+                 true : use for "big objects" to save memory.
+
+  -ºdestroy-methodº
+
+<hr/>
+<span xsmall>Nullability</span>
+  - º@NonNullº       ← forces param|return value|field to be NON-null
+  - º@Nullableº      ← allows param|return value|field to be     null
+  - º@NonNullApiº    ← forces param|return value       to be NON-null at package level
+  - º@NonNullFieldsº ← forces                    field to be NON-null at package level
+      ^^^^^^^^^^^^^
+      org.springframework.lang. package
+
+  - Null and ºempty stringº values rules
+    - empty arguments for properties,... convert to "" empty String.
+    - ˂null/˃ element handles null values. Ex
+      ˂property name="email"˃ ˂null/˃ ˂/property˃ ← email = null
+      ˂property name="email"˃         ˂/property˃ ← email = ""
+
+
+- While weird and not recomeneded, external (to the container) objects can
+  be registered like:
+  BeanFactory bFactImpl = context.getBeanFactory()
+                                  ^^^^^^^^^^^^^^
+                                 returns DefaultListableBeanFactory impl
+  bFactImpl.registerSingleton(..)
+  bFactImpl.registerBeanDefinition(..)
+</pre>
+
+<pre zoom labels="spring,configuration,xml,resource">
 <span xsmall>Example XML configuration</span>
-xml config inport:
 
-NOTE:  Other namespaces appart of beans are also                                          | ºExample Collection Configurationº
-       provided such as "context" and "util"                                              | (˂list/˃, ˂set/˃, ˂map/˃, ˂props/˃)
-       for extra config. options                                                          | 
-                                                                                          | ˂bean id="moreComplexObject" class="example.ComplexObject"˃
-˂?xml version="1.0" encoding="UTF-8"?˃                                                    |   ˂property name="adminEmails"˃ ←ºwill call setAdminEmails(Properties ...)º
-˂beans xmlns="http://www...schema/beans"                                                  |     ˂props˃
-  ˂xmlns:xsi= "http://www.w3.org/2001/XMLSchema-instance"                                 |       ˂prop key="administrator"˃administrator@example.org˂/prop˃
-  ˂xsi:schemaLocation="http://.../schema/beans                                            |       ˂prop key="support"      ˃support@example.org˂/prop˃
-     http://..../schema/beans/spring-beans.xsd"˃                                          |       ...
-                                                                                          |     ˂/props˃
- ˂!-- *including (importing) other xml --˃                                                |   ˂/property˃
- ˂import resource="/resources/messaging.xml"/˃                                            |   ˂property name="someList"˃   ←ºwill call setSomeList(List ...) º
- ˂import resource="/resources/persistence.xml"/˃                                          |     ˂list˃
-                   ^^^^^^^^^^^^^^^^^^^^^^^^^^                                             |       ˂ref bean="myDataSource0" /˃
-                   relative to current xml.                                               |       ˂ref bean="myDataSource1" /˃
-                     → "/resources/..." is 'down' current xml path                        |       ...
- ˂import resource="custom.xml"/˃                                                          |     ˂/list˃
- ˂import resource="file:/config/custom.xml"/˃                                             |   ˂/property˃
-                   ^^^^^^^^^^^^^^^^^^^^^^^^                                               |   ˂property name="someMap"˃    ←ºwill call setSomeMap(Map ...) º
-                   Absolute system dependent file (discouraged)                           |     ˂map˃
- ˂import resource="classpath:/config/otherResources.xml"/˃                                | ┌──→  ˂entry key="key1"  value    ="just some string"/˃
-                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^                                   | │     ˂entry key="a ref" value-ref="myDataSource"/˃
-                   Absolute classpath (discouraged)                                       | │   ˂/map˃
- ˂import resource="file:${JVM_RUNTIME_ENV_VAR}/....xml"/˃                                 | │ ˂/property˃
-                        ^^^^^^^^^^^^^^^^^^^^^^                                            | │ ˂property name="someSet"˃    ←ºwill call setSomeSet(Map ...) º
-                        Use JVM ENV.VARs (ºDevOps friendlyº)                              | │   ˂set˃
-                                                                                          | ├──→  ˂value˃string 01˂/value˃
-                                                                                          | │     ˂value˃string 02˂/value˃
-                                                                                          | │     ...
-                                                                                          | │     ˂ref bean="myDataSource" /˃
-  ˂bean Bºidº="idFactoryInst" class="..."˃˂/bean˃ ˂-- Using factory --˃                   | │   ˂/set˃
-               ^^^^^^^^^^^^^                                                              | │ ˂/property˃
-               convention:                                                                | │ ^^^^^^^^^^^^^^^^^^^^^^^^ 
-               initial lower-case + camelCase                                             | └─The value of a map key or value, or a set value,
-              (With auto-scanned beans, spring will                                       |   bean | ref | idref | list | set | map | props | value | null
-               take the className and convert                                             | ˂/bean˃
-               first letter to lower-case.                                                | 
-               - java.beans.Introspector.decapitalize -)                                  | ºCollection mergingº
-                                                                                          | - The Spring container also supports merging of collections.
-  ˂--ºUsing Constructorº--˃                                                               | - In parent-child like relationships for 
-  ˂bean Bºidº="idBeanDefinition1"                                                         |   ˂list/˃, ˂map/˃, ˂set/˃ or ˂props/˃
-          class="my.full.qualified.ClassName1"                                            | Ex:
-          depends-on="beanId1,beanId2,..."                                                |    ˂beans˃
-          ^^^^^^^^^^                                                                      |      ˂bean id="parentBean" 
-        - Sometimes dependencies between beans are in-direct and 'ref' to                 |        Bºabstract="true"º class="example.ComplexObject"˃
-          another bean is not enough. For example an static initializer in                |        ˂property name="adminEmails"˃
-          a class needs to be triggered. In this case                                     |          ˂props˃
-          'depends-on' will explicitly force dependent-on beans to be                     |            ˂prop key="administrator"˃administrator@example.com˂/prop˃
-          initialized in order.                                                           |            ˂prop key="support"˃support@example.com˂/prop˃
-        - In the case of singleton beans only, it can also                                |          ˂/props˃
-          indicate a destroy time dependency (shutdown order)                             |        ˂/property˃
-                                                                                          |      ˂/bean˃
-                                                                                          |      ˂bean id="child" Bºparent="parentBean"º˃
-                                                                                          |        ˂property name="adminEmails"˃
-                                                                                          |          ˂!-- the merge is specified on the child collection definition --˃
-   º˂constructor-arGºgºrefº="bar"/˃                                                       | ┌─────→  ˂props Bºmerge="true"º˃
-   º˂constructor-arGºgºrefº="baz"/˃                                                       | │          ˂prop key="sales"˃sales@example.com˂/prop˃
-   º˂constructor-argº  type="int" index="0" value="23" /˃                                 | │          ˂prop key="support"˃support@example.co.uk˂/prop˃
-   º˂constructor-argº  type="int" index="1" value="10" /˃                                 | │        ˂/props˃
-                                  ^^^^^^^^^                                               | │      ˂/property˃
-                        The index resolves the ambiguity a constructor                    | │    ˂/bean˃
-                        with two arguments of the same type.                              | │  ˂beans˃
-                        Name can also be used to disambiguate like :                      | │  
-                        ˂constructor-arg name="years" value="23"/˃                        | └─ adminEmails Properties will contain result of the merging of the child's
-                        ˂constructor-arg name="ultimateAnswer" value="10"/˃               |    adminEmails collection with the parent's adminEmails collection.
-  ˂/bean˃                                                                                 |  
-                                                                                          |   In the list case the ºorder criteriumº is that
-  USING SETTERS:                                                                          |   of parent's values preceding all of the child list's values.
+NOTE: Other namespaces appart of beans are also provided such as "context" and "util"
+      or extra config. options
+
+BºSimple Exampleº
+˂?xml version="1.0" encoding="UTF-8"?˃
+˂beans xmlns="http://www...schema/beans"
+  ˂xmlns:xsi= "http://www.w3.org/2001/XMLSchema-instance"
+  ˂xsi:schemaLocation="http://.../schema/beans
+     http://..../schema/beans/spring-beans.xsd"˃
+
+ ˂!-- *including (importing) other xml --˃
+ ˂import resource="/resources/messaging.xml"/˃
+ ˂import resource="/resources/persistence.xml"/˃
+                   └┬───────────────────────┘
+                    relative to current xml.
+ ˂import resource="custom.xml"/˃
+ ˂import resource="file:/config/custom.xml"/˃
+                   ^^^^^^^^^^^^^^^^^^^^^^^^
+                   Absolute system dependent file (discouraged)
+ ˂import resource="classpath:/config/otherResources.xml"/˃
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                   Absolute classpath (discouraged)
+ ˂import resource="file:${JVM_RUNTIME_ENV_VAR}/....xml"/˃
+                        ^^^^^^^^^^^^^^^^^^^^^^
+                        Use JVM ENV.VARs (ºDevOps friendlyº)
+
+  ˂bean Bºidº="idFactoryInst" class="..."˃˂/bean˃ ˂-- Using factory --˃
+               ^^^^^^^^^^^^^
+               convention:
+               initial lower-case + camelCase
+              (With auto-scanned beans, spring will
+               take the className and convert
+               first letter to lower-case.
+               - java.beans.Introspector.decapitalize -)
+
+  ˂--ºUsing Constructorº--˃
+  ˂bean Bºidº="idBeanDefinition1"
+          class="my.full.qualified.ClassName1"
+          depends-on="beanId1,beanId2,..."
+          ^^^^^^^^^^
+        - Sometimes dependencies between beans are in-direct and 'ref' to
+          another bean is not enough. For example an static initializer in
+          a class needs to be triggered. In this case
+          'depends-on' will explicitly force dependent-on beans to be
+          initialized in order.
+        - In the case of singleton beans only, it can also
+          indicate a destroy time dependency (shutdown order)
+
+
+
+
+   º˂constructor-arGºgºrefº="bar"/˃
+   º˂constructor-arGºgºrefº="baz"/˃
+   º˂constructor-argº  type="int" index="0" value="23" /˃
+   º˂constructor-argº  type="int" index="1" value="10" /˃
+                                  ^^^^^^^^^
+                        The index resolves the ambiguity a constructor
+                        with two arguments of the same type.
+                        Name can also be used to disambiguate like :
+                        ˂constructor-arg name="years" value="23"/˃
+                        ˂constructor-arg name="ultimateAnswer" value="10"/˃
+  ˂/bean˃
+
+
+
+
+BºExample Collection Configurationº
+   (˂list/˃, ˂set/˃, ˂map/˃, ˂props/˃)
+
+   ˂bean id="moreComplexObject" class="example.ComplexObject"˃
+     ˂property name="adminEmails"˃ ←ºwill call setAdminEmails(Properties ...)º
+       ˂props˃
+         ˂prop key="administrator"˃administrator@example.org˂/prop˃
+         ˂prop key="support"      ˃support@example.org˂/prop˃
+         ...
+       ˂/props˃
+     ˂/property˃
+     ˂property name="someList"˃   ←ºwill call setSomeList(List ...) º
+       ˂list˃
+         ˂ref bean="myDataSource0" /˃
+         ˂ref bean="myDataSource1" /˃
+         ...
+       ˂/list˃
+     ˂/property˃
+     ˂property name="someMap"˃    ←ºwill call setSomeMap(Map ...) º
+       ˂map˃
+   ┌──→  ˂entry key="key1"  value    ="just some string"/˃
+   │     ˂entry key="a ref" value-ref="myDataSource"/˃
+   │   ˂/map˃
+   │ ˂/property˃
+   │ ˂property name="someSet"˃    ←ºwill call setSomeSet(Map ...) º
+   │   ˂set˃
+   ├──→  ˂value˃string 01˂/value˃
+   │     ˂value˃string 02˂/value˃
+   │     ...
+   │     ˂ref bean="myDataSource" /˃
+   │   ˂/set˃
+   │ ˂/property˃
+   │ ^^^^^^^^^^^^^^^^^^^^^^^^
+   └─The value of a map key or value, or a set value,
+     bean | ref | idref | list | set | map | props | value | null
+   ˂/bean˃
+
+BºCollection mergingº
+   - The Spring container also supports merging of collections.
+   - In parent-child like relationships for
+     ˂list/˃, ˂map/˃, ˂set/˃ or ˂props/˃
+   Ex:
+      ˂beans˃
+        ˂bean id="parentBean"
+          Bºabstract="true"º class="example.ComplexObject"˃
+          ˂property name="adminEmails"˃
+            ˂props˃
+              ˂prop key="administrator"˃administrator@example.com˂/prop˃
+              ˂prop key="support"˃support@example.com˂/prop˃
+            ˂/props˃
+          ˂/property˃
+        ˂/bean˃
+        ˂bean id="child" Bºparent="parentBean"º˃
+          ˂property name="adminEmails"˃
+            ˂!-- the merge is specified on the child collection definition --˃
+   ┌─────→  ˂props Bºmerge="true"º˃
+   │          ˂prop key="sales"˃sales@example.com˂/prop˃
+   │          ˂prop key="support"˃support@example.co.uk˂/prop˃
+   │        ˂/props˃
+   │      ˂/property˃
+   │    ˂/bean˃
+   │  ˂beans˃
+   │
+   └─ adminEmails Properties will contain result of the merging of the child's
+      adminEmails collection with the parent's adminEmails collection.
+
+     In the list case the ºorder criteriumº is that of parent's values preceding all
+     of the child list's values.
+  USING SETTERS:
   - discouraged in favour of constructor based , since favour "safer" code.
   - Can be useful if there are circular dependencies between two
     beans at initialization time.
@@ -308,23 +380,23 @@ NOTE:  Other namespaces appart of beans are also                                
     ˂constructor-arg Gºrefº="bar"/˃
     ˂constructor-arg Gºrefº="baz"/˃
 
-    ˂!-- TODO 
-        Bean behavioral configuration elements, stating how bean should behave 
+    ˂!-- TODO
+        Bean behavioral configuration elements, stating how bean should behave
         (scope, lifecycle callbacks, ...).
     --˃
 
     STATIC FACTORY METHOD
-    ˂property name="myInnerBean"˃ 
-      ˂bean Bºidº="idMyBuildBean" 
-            class="my.full.qualified.Factory" 
+    ˂property name="myInnerBean"˃
+      ˂bean Bºidº="idMyBuildBean"
+            class="my.full.qualified.Factory"
        ºfactory-methodº="createInstance"/˃
        ^^^^^^^^^^^^^^^^
     ˂/property˃
 
     USING INSTANCE BºFACTORY METHODº FOR GºANOTHER BEANº
-    (No class is specified in this case, resolved from type 
+    (No class is specified in this case, resolved from type
      returned by ºBºgactory-method*)
-    ˂bean          id="clientService"                      
+    ˂bean          id="clientService"
        Gºfactory-bean="serviceLocator"º
        B*factory-method="createClientServiceInstance"*/˃
     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -362,30 +434,621 @@ NOTE:  Other namespaces appart of beans are also                                
   ...
 ˂/beans˃
 </pre>
+</div>
+</div>
+
+<div groupv>
+<span title>Spring Boot/Cloud Summary</span>
+<pre zoom labels="TODO">
+<span xsmall></span>
+
+public class Book {
+    private long id;
+    private String title;
+    private String author;
+    ...  // getters and setters
+
+}
+
+- IoT Dependencies for Book Service:
+  @SpringBootApplication
+  @EnableEurekaClient
+  public class ServiceApplication {...}
+
+- 
+
+- application-conig/book-service.properties
+  spring.application.name=book-service
+  server.port=8083
+  eureka.client.region=default
+  eureka.client.registryFetchIntervalSeconds=5
+  management.security.sessions=neve
+
+- resources/bootstrap.properties
+  spring.cloud.config.name=book-service
+  spring.cloud.config.discovery.service-id=config
+  spring.cloud.config.discovery.enabled=true
+  spring.cloud.config.username=configUser
+  spring.cloud.config.password=configPassword
+  eureka.client.serviceUrl.defaultZone=
+      http://discUser:discPassword@localhost:8082/eureka/
+
+@RestController
+@RequestMapping("/books")
+public class BookController {
+    @Autowired    private BookService bookService;
+    @GetMapping
+    public List<Book> findAllBooks() {
+       return bookService.findAllBooks();    
+    }
+    @GetMapping("/{bookId}")
+    public Book findBook(@PathVariable Long bookId) {
+      return bookService.findBookById(bookId);    
+    }
+    @PostMapping
+    public Book createBook(@RequestBody Book book) {
+       return bookService.createBook(book);    
+    }
+    @DeleteMapping("/{bookId}")
+    public void deleteBook(@PathVariable Long bookId) {
+       bookService.deleteBook(bookId);    
+    }
+    @PutMapping("/{bookId}")
+    public Book updateBook(
+           @RequestBody Book book,
+           @PathVariable Long bookId) {
+       return bookService.updateBook(book, bookId);
+    }
+    @PatchMapping("/{bookId}")
+    public Book updateBook(
+        @RequestBody Map<String, String> updates,
+        @PathVariable Long bookId) {
+        return bookService.updateBook(updates, bookId);    
+    }
+}
+
+
+
+
+
+
+@RestController
+@RequestMapping("/ratings")
+public class RatingController {
+
+   @Autowired
+   private RatingService ratingService;
+
+   @GetMapping
+   public List<Rating> findRatingsByBookId(
+   @RequestParam(required = false, defaultValue = "0") Long bookId) {
+       if (bookId.equals(0L)) {
+           return ratingService.findAllRatings();
+       }
+       return ratingService.findRatingsByBookId(bookId);
+   }
+   @PostMapping
+   public Rating createRating(@RequestBody Rating rating) {
+      return ratingService.createRating(rating);
+   }
+   @DeleteMapping("/{ratingId}")
+   public void deleteRating(@PathVariable Long ratingId) {
+       ratingService.deleteRating(ratingId);
+   }
+   @PutMapping("/{ratingId}") 
+   public Rating updateRating(@RequestBody Rating rating, @PathVariable Long ratingId) {
+       return ratingService.updateRating(rating, ratingId); 
+   }
+   @PatchMapping("/{ratingId}")
+   public Rating updateRating(
+        @RequestBody Map<String, String> updates,
+        @PathVariable Long ratingId) {
+       return ratingService.updateRating(updates, ratingId);
+   }
+}
+
+
+
+BºEnabling HTTP Basic Authenticationº
+  (Anyone can read, admins can write)
+
+  @EnableWebSecurity
+  @Configuration
+  public class SecurityConfig extends WebSecurityConfigurerAdapter {  ← Examples show book API,
+      @Autowired                                                        A similar class applies to the
+      public void configureGlobal1(AuthenticationManagerBuilder auth)   Rating Application to have
+      throws Exception {                                                two independent APIs.
+        auth.inMemoryAuthentication();
+      }
+
+      @Override
+      protected void configure(HttpSecurity http) throws Exception {
+          http.httpBasic()
+          .disable()
+          .authorizeRequests()
+              .antMatchers(HttpMethod.GET, "/books").permitAll()
+              .antMatchers(HttpMethod.GET, "/books/*").permitAll()
+              .antMatchers(HttpMethod.POST, "/books").hasRole("ADMIN")
+              .antMatchers(HttpMethod.PATCH, "/books/*").hasRole("ADMIN")
+              .antMatchers(HttpMethod.DELETE, "/books/*").hasRole("ADMIN")
+              .anyRequest().authenticated()
+          .and()
+          .csrf().disable();    
+      }
+  }
+
+
+
+BºSpring Cloud Configurationº
+
+- PRESETUP: 2+ APIs running independently has been developed
+
+- Target: Bootstrap next micro-services:
+  1) Configuration Server:
+     - centralizes micro-services configuration.
+       (Sort of "etcd" for Spring)
+
+  2) Discovery Server: allow apps to find each other
+
+  3) Gateway Server: reverse proxy encapsulating all
+     independent micro-services in a single port.
+
+
+   └ 1) Configuration Server HOW-TO:
+   | └ Configuration Ser. Maven Deps:
+   | · Configuration Server deps:
+   | · <dependency>
+   | ·     <groupId>org.springframework.cloud</groupId>
+   | ·     <artifactId>spring-cloud-config-server</artifactId>
+   | · </dependency>
+   | · <dependency>
+   | ·     <groupId>org.springframework.cloud</groupId>
+   | ·     <artifactId>spring-cloud-starter-eureka</artifactId>
+   | · </dependency>
+   | · <dependency>
+   | ·      <groupId>org.springframework.boot</groupId>
+   | ·      <artifactId>spring-boot-starter-security</artifactId>
+   | · </dependency>
+   | ·
+   | └  Configuration Server IoT Setup:
+   | ·    @SpringBootApplication
+   | ·    @EnableConfigServer       ← Make Configuration Service discoverable
+   | ·    @Enable       ← via EEurekaClienturoka client
+   | ·    public class ConfigApplication {
+   | ·      ...
+   | ·    }
+   | ·
+   | └ Configuration Server Config. file:
+   | · - application.properties:
+   | ·   server.port=8081
+   | ·   spring.application.name=config
+   | ·   spring.cloud.config.server.git.uri=            ← set to real git path
+   | ·          file:///${user.home}/application-config
+   | ·   eureka.client.region=default                    
+   | ·   eureka.client.registryFetchIntervalSeconds=5
+   | ·   eureka.client.serviceUrl.defaultZone=
+   | ·          =http://discUser:discPassword@localhost:8082/eureka/
+   | ·   security.user.name=configUser
+   | ·   security.user.password=configPassword
+   | ·   security.user.role=SYSTEM
+
+
+   └ 2) Discovery Server HOW-TO:
+     └ Discovery Ser. Maven Deps:
+       <dependency>
+           <groupId>org.springframework.cloud</groupId>
+           <artifactId>spring-cloud-starter-eureka-server</artifactId>
+       </dependency>
+       <dependency>
+           <groupId>org.springframework.cloud</groupId>
+           <artifactId>spring-cloud-starter-config</artifactId>
+       </dependency>
+       <dependency>
+           <groupId>org.springframework.boot</groupId>
+           <artifactId>spring-boot-starter-security</artifactId>
+       </dependency>
+
+     └  Discovery Server IoT Setup:
+          @SpringBootApplication
+          @EnableEurekaServerpublic
+          class DiscoveryApplication {...}
+
+     └ Discovery Service: Secure Server endpoints:
+       @Configuration
+       @EnableWebSecurity
+       @Order(1)                          ←  There are two security configurations for the
+       public class SecurityConfig           Discover Serv. endpoints + dashboard.
+       extends WebSecurityConfigurerAdapter {
+          @Autowired
+          public void configureGlobal(
+                    AuthenticationManagerBuilder auth) 
+             {
+             auth.inMemoryAuthentication()
+               .withUser("discUser") 
+               .password("discPassword") 
+               .roles("SYSTEM");
+          }
+          @Overridep
+          protected void configure(HttpSecurity http) {
+            http
+            .sessionManagement()
+            .sessionCreationPolicy(SessionCreationPolicy.ALWAYS).and()
+            .requestMatchers().antMatchers("/eureka/**").and()
+            .authorizeRequests()
+               .antMatchers("/eureka/**").hasRole("SYSTEM")
+               .anyRequest().denyAll().and()
+            .httpBasic().and()
+            .csrf().disable();
+          }
+       }
+
+     └ Secure Discovery Serv. Eureka dashboard:
+       @Configuration
+       public static class AdminSecurityConfig
+       extends WebSecurityConfigurerAdapter {
+           @Override
+           protected void configure(HttpSecurity http) {
+           http
+           .sessionManagement()
+           .sessionCreationPolicy(SessionCreationPolicy.NEVER).and()
+           .httpBasic().disable()
+           .authorizeRequests()
+             .antMatchers(HttpMethod.GET, "/").hasRole("ADMIN")
+             .antMatchers("/info", "/health").authenticated()
+             .anyRequest().denyAll().and()
+           .csrf().disable();
+           }
+       }
+
+     └ Discovery Service config. Files: 
+     
+       - bootstrap.properties                               Must match Discovery serv. in 
+         spring.cloud.config.name=discovery               ← configuration repository.
+         spring.cloud.config.uri=http://localhost:8081    ← URL of the confi. server 
+         spring.cloud.config.username=configUser
+         spring.cloud.config.password=configPassword
+
+       - discovery.properties                             ← Add also to application-config Git repo
+         spring.application.name=discovery
+         server.port=8082
+         eureka.instance.hostname=localhost
+         eureka.client.serviceUrl.defaultZone=
+            http://discUser:discPassword@localhost:8082/eureka/
+         eureka.client.register-with-eureka=false
+         eureka.client.fetch-registry=false
+         spring.redis.host=localhost
+         spring.redis.port=6379
+
+   └ 3) Gateway Server HOW-TO:
+     └ Gateway Ser. Maven Deps:
+       <dependency>
+         <groupId>org.springframework.cloud</groupId>
+         <artifactId>spring-cloud-starter-config</artifactId>
+       </dependency>
+       <dependency>
+         <groupId>org.springframework.cloud</groupId>
+         <artifactId>spring-cloud-starter-eureka</artifactId>
+       </dependency>
+       <dependency>
+         <groupId>org.springframework.cloud</groupId>
+         <artifactId>spring-cloud-starter-zuul</artifactId>
+       </dependency>
+       <dependency>
+         <groupId>org.springframework.boot</groupId>
+         <artifactId>spring-boot-starter-security</artifactId>
+       </dependency>
+     └ Gatewy Server IoT Setup:
+       @SpringBootApplication
+       @EnableZuulProxy
+       @EnableEurekaClient
+       public class GatewayApplication {}
+
+
+     └ Secure Gateway Server:
+       @EnableWebSecurity
+       @Configuration
+       public class SecurityConfig extends WebSecurityConfigurerAdapter 
+       {
+         @Autowired
+         public void configureGlobal(AuthenticationManagerBuilder auth)
+         throws Exception {
+            auth.inMemoryAuthentication()
+       .withUser("user").password("password").roles("USER")
+       .and()
+       .withUser("admin").password("admin").roles("ADMIN");
+       }
+
+       @Override
+       protected void configure(HttpSecurity http) throws Exception {
+           http.authorizeRequests()
+           .antMatchers("/book-service/books").permitAll()
+           .antMatchers("/eureka/**").hasRole("ADMIN")
+           .anyRequest().authenticated().and()
+           .formLogin().and()
+           .logout().permitAll().and()
+           .csrf().disable();
+           }
+       }
+       
+     └ Secure Gateway Config. files
+       - resources/bootstrap.properties:
+         spring.cloud.config.name=gateway
+         spring.cloud.config.discovery.service-id=config
+         spring.cloud.config.discovery.enabled=true
+         spring.cloud.config.username=configUser
+         spring.cloud.config.password=configPassword
+         eureka.client.serviceUrl.defaultZone=
+           http://discUser:discPassword@localhost:8082/eureka
+
+       - gateway.properties:  (from app-config Git repo)
+         spring.application.name=gateway
+         server.port=8080
+         eureka.client.region = default
+         eureka.client.registryFetchIntervalSeconds = 5
+         management.security.sessions=always
+         
+         zuul.routes.book-service.path=/book-service/**            ← route any request to /boot-servie to our Book Ser.app
+         zuul.routes.book-service.sensitive-headers=Set-Cookie,Authorization
+         hystrix.command.book-service.execution.isolation.thread.timeoutInMilliseconds=600000
+         zuul.routes.rating-service.path=/rating-service/**
+         zuul.routes.rating-service.sensitive-headers=Set-Cookie,Authorization
+         hystrix.command.rating-service.execution.isolation.thread.timeoutInMilliseconds=600000
+         zuul.routes.discovery.path=/discovery/**
+         zuul.routes.discovery.sensitive-headers=Set-Cookie,Authorization
+         zuul.routes.discovery.url=http://localhost:8082
+         hystrix.command.discovery.execution.isolation.thread.timeoutInMilliseconds=600000
+         
+         spring.redis.host=localhost
+         spring.redis.port=6379
+
+- Common Maven Depen. for Config Client, Eureka, JPA, Web an Security:
+  <dependency>
+      <groupId>org.springframework.cloud</groupId>
+      <artifactId>spring-cloud-starter-config</artifactId>
+  </dependency>
+  
+  <dependency>
+      <groupId>org.springframework.cloud</groupId>
+      <artifactId>spring-cloud-starter-eureka</artifactId>
+  </dependency>
+  
+  <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-data-jpa</artifactId>
+  </dependency>
+  
+  <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-web</artifactId>
+  </dependency>
+  
+  <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-security</artifactId>
+  </dependency>
+
+- (Sharing) Session Configuration:
+  - Maven dependencies to add to Discovery server, gateway server and micro-service1/2/... servers
+    <dependency>
+        <groupId>org.springframework.session</groupId>
+        <artifactId>spring-session</artifactId>
+    </dependency>
+    <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-data-redis</artifactId>
+    </dependency>
+
+  - Add next IoT to Discovery Server and REST APIs.
+    @EnableRedisHttpSession
+    public class SessionConfig 
+    extends AbstractHttpSessionApplicationInitializer {  }
+
+  - For the Gateway Server:
+    @Configuration
+    @EnableRedisHttpSession(redisFlushMode = RedisFlushMode.IMMEDIATE)
+    public class SessionConfig 
+    extends AbstractHttpSessionApplicationInitializer {}
+
+  - For the Gateway Server add a simple filter to forward 
+    the session so that authentication will propagate to
+    another service after login:
+
+    @Component
+    public class SessionSavingZuulPreFilter
+    extends ZuulFilter {
+      @Autowired
+      private SessionRepository repository;
+    
+      @Override
+      public boolean shouldFilter() {
+        return true;
+      }
+    
+      @Override
+      public Object run() {
+        RequestContext context = RequestContext.getCurrentContext();
+        HttpSession httpSession = context.getRequest().getSession();
+        Session session = repository.getSession(httpSession.getId());
+        
+        context.addZuulRequestHeader(
+          "Cookie", "SESSION=" + httpSession.getId());
+        return null;
+      }
+      
+      @Override
+      public String filterType() {
+        return "pre";
+      }
+      @Override
+      public int filterOrder() {return 0;}
+    }
+
+BºTESTING Rest APIº
+
+private final String ROOT_URI = "http://localhost:8080";
+private FormAuthConfig formConfig
+   = new FormAuthConfig("/login", "username", "password");
+@Before
+public void setup() {
+  RestAssured.config = config().redirect(
+    RedirectConfig.redirectConfig().followRedirects(false)
+  );
+}
+
+@Test
+public void whenGetAllBooks_thenSuccess() {
+  Response response = RestAssured.get(ROOT_URI + "/book-service/books");
+  Assert.assertEquals(HttpStatus.OK.value(), response.getStatusCode());
+  Assert.assertNotNull(response.getBody());
+}
+
+// Try to access protected resource:
+@Test
+public void whenAccessProtectedResourceWithoutLogin_thenRedirectToLogin() {
+  Response response = RestAssured.get(ROOT_URI + "/book-service/books/1");
+  Assert.assertEquals(HttpStatus.FOUND.value(), response.getStatusCode());
+  Assert.assertEquals("http://localhost:8080/login", response.getHeader("Location"));
+}
+
+
+ login and create new Book:
+
+@Test
+public void whenAddNewBook_thenSuccess() {
+  Book book = new Book("Baeldung", "How to spring cloud");
+  Response bookResponse = RestAssured.given().auth().form("admin", "admin", formConfig).and().contentType(ContentType.JSON).body(book).post(ROOT_URI + "/book-service/books");
+  Book result = bookResponse.as(Book.class);
+  Assert.assertEquals(HttpStatus.OK.value(), bookResponse.getStatusCode());
+  Assert.assertEquals(book.getAuthor(), result.getAuthor());
+  Assert.assertEquals(book.getTitle(), result.getTitle());
+}
+
+ access the protected resource after authentication:
+
+ @Test
+ public void whenAccessProtectedResourceAfterLogin_thenSuccess() {
+   Response response = RestAssured.given().auth()
+    .form("user", "password", formConfig)
+    .get(ROOT_URI + "/book-service/books/1");
+     Assert.assertEquals(HttpStatus.OK.value(), response.getStatusCode());
+     Assert.assertNotNull(response.getBody());
+ }
+
+ access discovery resources as the admin:
+ @Test
+ public void whenAdminAccessDiscoveryResource_thenSuccess() {
+   Response response = RestAssured.given().auth()
+     .form("admin", "admin", formConfig)
+     .get(ROOT_URI + "/discovery");
+   Assert.assertEquals(
+     HttpStatus.OK.value(), response.getStatusCode()
+   );
+ }
+</pre>
+
 
 
 </div>
 
+</body>
+</html>
+<!--
+  //@[https://docs.spring.io/spring/docs/5.0.0.RELEASE/spring-framework-reference/core.html#resources]
+
+<pre zoom>
+<span xsmall>Method injection</span>
+- Suppose singleton A needs to use ºnon-singletonº bean B
+ ºon each method invocation on Aº
+
+Solution A:
+RºDiscouraged, tied to Spring internalsº
+- beans A implements ˂˂ApplicationContextAware˃˃.
+  getBean("B") to container requesting a
+  (typically new) bean B instance.
+
+Solution B: Method Injection
+- containers overrides managed bean A
+  Limitations:
+  - class and method cannot be final
+  - lookup methods won't work with factory methods
+    and in particular not with @Bean methods
+    in configuration
+     classes, since the container is not in charge of creating the instance
+     in that case and therefore cannot create a runtime-generated subclass
+     on the fly.
+</pre>
+_________________________
+TODO: scan config auto-detection
+___________________________
+<pre TODO zoom>
+<span xsmall>MVC</span>
+@[https://docs.spring.io/spring/docs/5.0.0.RELEASE/spring-framework-reference/web.html#mvc]
+</pre>
+___________________________
+<pre TODO zoom>
+<span xsmall>Spring vs Guice</span>
+@[https://www.baeldung.com/guice-spring-dependency-injection]
+</pre>
+__________________________
+https://docs.spring.io/spring-boot/docs/current/reference/html/spring-boot-features.html
+__________________________
+<pre zoom labels="cloud,service_discovery,TODO">
+<span xsmall>"Cloudify"</span>
+@[http://files.zeroturnaround.com/pdf/zt_spring_annotations_cheat_sheet.pdf]
+  ┌────────→ @SpringBootApplication      HTTP Request                        ºCLOUDº
+provides
+beans to      ┌──like─  ─┐
+  │           │  these   │         ┌───────────────────┐ ask config       ┌───────────────┐
+ ┌────────────┴──┐       v         │ @RestController   ───────────────────→ Configuration │
+ │@Configuration │   ┌────────┐    │                   │ config.propert.  │    Server     │
+ │               │   │@Service│    │                   │←──────────────── └───────────────┘
+ │               │   └──────┬─┘    │  @Autowired       │
+ │ @Bean         │          └──┬────→ Service service; │register itself as service
+ │ public MyBean │   ┌─────────┴┐  │                   ├──────────────────→──────────┐
+ │ providerBean()│   │@Component│  │                   │ask for service   │  Service │
+ │               │   └──────────┘  │  @RequestMapping  ├─────────────────→  Discovery│
+ └───────────────┘                 │  public Map       │←──────────────── └──────────┘
+                                   │   serverRequest() │ URL response
+                                   └───────────────────┘
+
+º@EnableConfigServerº  turns app into a server that other apps can get
+                       their configuration from.
+                       Use spring.application.cloud.config.uri in the
+                       client @SpringBootApplication
+                       to point to the config server.
+
+
+º@EnableEurekaServerº  turns your app into an Eureka discovery service
+
+º@EnableDiscoveryClientº makes your app register in the service discovery
+                        server and discover other services through it.
+
+º@EnableCircuitBreakerº- configures Hystrix circuit breaker protocols.
+
+º@HystrixCommand(fallbackMethod = “fallbackMethodName”)º
+  marks methods to fall back to another method if they cannot succeed normally.
+</pre>
+
 
 <div groupv>
-<span title>Reactive WebFlux</span>  
-<pre zoom>
+<span title>Reactive WebFlux</span>
+<pre zoom labels="spring,TODO">
 <span xsmall>Reactive</span>
 <span xsmall>Stack</span>
 <span xsmall>(Spring 5.0+)</span>
 <span xsmall>Reactive Web</span>
 @[https://docs.spring.io/spring/docs/5.0.0.RELEASE/spring-framework-reference/web-reactive.html#webflux]
 - Note: Servlet 3.1+ API for non-blocking I/O leads away from
-  the rest of the Servlet API where contracts are synchronous 
+  the rest of the Servlet API where contracts are synchronous
   (Filter, Servlet) or blocking (getParameter, getPart).
 - fully non-blocking, handling concurrency with a small number of threads
 - supports Reactive Streams non-blocking back pressure:
   In synch/imperative code, blocking calls serve as a natural form
   of back pressure that forces the caller to wait.
-  In non-blocking code it becomes important to control the rate 
+  In non-blocking code it becomes important to control the rate
    of events so that a fast producer does not overwhelm its destination.
   Spring Reactive Streams is a small spec, also adopted in Java 9,
-  that defines the interaction between asynchronous components 
+  that defines the interaction between asynchronous components
   with back pressure. Ex: a data repository (Publisher),
   produces data that an HTTP server (Subscriber), can then "forward"
   to the response. Main purpose of Reactive Streams is to allow
@@ -401,30 +1064,30 @@ NOTE:  Other namespaces appart of beans are also                                
 - TODO: WebTestClient
 - TODO: WebSocket
 - The spring-web module contains the reactive building block:  
-  HTTP abstractions, Reactive Streams server adapters, reactive codecs, 
+  HTTP abstractions, Reactive Streams server adapters, reactive codecs,
   and a core Web API.
 - public spring-web APIs Server support is organized in two layers:
-  - HttpHandler and server adapters : the most basic, common API for HTTP 
-    request handling with Reactive Streams back pressure running on different 
+  - HttpHandler and server adapters : the most basic, common API for HTTP
+    request handling with Reactive Streams back pressure running on different
     servers.
-  - WebHandler API : slightly higher level but still general purpose server 
-    web API with exception handlers (WebExceptionHandler), filters (WebFilter), 
+  - WebHandler API : slightly higher level but still general purpose server
+    web API with exception handlers (WebExceptionHandler), filters (WebFilter),
     and a target handler (WebHandler)
-    All components work on ServerWebExchange — a container for the HTTP 
-    request and response that also adds request attributes, session attributes, 
+    All components work on ServerWebExchange — a container for the HTTP
+    request and response that also adds request attributes, session attributes,
     access to form data, multipart data, and more.
-- Codecs: The spring-web module provides 
-  HttpMessageReader(DecoderHttpMessageReader) and 
+- Codecs: The spring-web module provides
+  HttpMessageReader(DecoderHttpMessageReader) and
   HttpMessageWriter(EncoderHttpMessageWriter) for encoding and decoding the
   HTTP request and response body with Reactive Streams.
-  Basic Encoder and Decoder implementations exist in spring-core but 
+  Basic Encoder and Decoder implementations exist in spring-core but
   spring-web adds more for JSON, XML, and other formats.
 
 <span xsmall>DispatcherHandler</span>
 - central controller
 - discovers delegate components from Spring configuration
   If declared with the bean name "webHandler" it is in turn
-  discovered by WebHttpHandlerBuilder which puts together a 
+  discovered by WebHttpHandlerBuilder which puts together a
   request processing chain as described in WebHandler API
 - typical WebFlux application Spring configuration:
   - DispatcherHandler named "webHandler"
@@ -432,7 +1095,7 @@ NOTE:  Other namespaces appart of beans are also                                
   - WebExceptionHandlers
   - DispatcherHandler special beans
   - Others
-- The configuration is given to WebHttpHandlerBuilder to 
+- The configuration is given to WebHttpHandlerBuilder to
   build the processing chain:
  (The resulting HttpHandler is ready for use with a server adapter)
   ApplicationContext context = ...
@@ -444,15 +1107,15 @@ NOTE:  Other namespaces appart of beans are also                                
   ---------------------+------------------------------------
   HandlerMapping       | Map a request to a handler.
                        | mapping is based on some criteria
-                       | the details of which vary by 
+                       | the details of which vary by
                        | HandlerMapping implementation 
-                       | (annotated controllers, 
+                       | (annotated controllers,
                        | simple URL pattern mappings,...)
   ---------------------+------------------------------------
   HandlerAdapter       | Helps the DispatcherHandler to
-                       | invoke a handler mapped to a 
+                       | invoke a handler mapped to a
                        | request regardless of how the
-                       | handler is actually invoked. 
+                       | handler is actually invoked.
                        | For example invoking an annotated
                        | controller requires resolving
                        | various annotations. The main
@@ -470,15 +1133,15 @@ NOTE:  Other namespaces appart of beans are also                                
     HandlerResult res = handler()
     HandlerResultHandler(res)
 
-  Rules  
+  Rules
   1) Each HandlerMapping is asked to find a
      matching handler and the first match is used
   2) If a handler is found, it is executed through
-     an appropriate HandlerAdapter which exposes 
+     an appropriate HandlerAdapter which exposes
      the return value from the execution as
      HandlerResult.
   3) The HandlerResult is given to an appropriate
-     HandlerResultHandler to complete processing 
+     HandlerResultHandler to complete processing
      by writing to the response directly or using
      a view to render.
 
@@ -511,7 +1174,7 @@ to have the following detected:<p>
 Server name     │  Group id              │ Artifact name      │  Code snippet
 ────────────────┼────────────────────────┼────────────────────┼────────────────
 Reactor Netty   │ io.projectreactor.ipc  │ reactor-netty      │ HttpHandler handler = ...
-                │                        │                    │ ReactorHttpHandlerAdapter adapter = 
+                │                        │                    │ ReactorHttpHandlerAdapter adapter =
                 │                        │                    │     new ReactorHttpHandlerAdapter(handler);
                 │                        │                    │ HttpServer.create(host, port).
                 │                        │                    │     newHandler(adapter).block();
@@ -525,9 +1188,9 @@ Undertow        │ io.undertow            │ undertow-core      │ HttpHandle
                 │                        │                    │ server.start();
 ────────────────┼────────────────────────┼────────────────────┼────────────────
 Tomcat          │ org.apache.tomcat.embe │ omcat-embed-core   │ HttpHandler handler = ...
-                │                        │                    │ Servlet servlet = new 
+                │                        │                    │ Servlet servlet = new
                 │                        │                    │     TomcatHttpHandlerAdapter(handler);
-                │                        │                    │ 
+                │                        │                    │
                 │                        │                    │ Tomcat server = new Tomcat();
                 │                        │                    │ File base = new File(
                 │                        │                    │    System.getProperty("java.io.tmpdir"));
@@ -540,16 +1203,16 @@ Tomcat          │ org.apache.tomcat.embe │ omcat-embed-core   │ HttpHandle
                 │                        │                    │ server.start();
 ────────────────┼────────────────────────┼────────────────────┼────────────────
 Jetty           │ org.eclipse.jetty      │ etty-server        │ HttpHandler handler = ...
-                │                        │ etty-servlet       │ Servlet servlet = 
+                │                        │ etty-servlet       │ Servlet servlet =
                 │                        │                    │     new JettyHttpHandlerAdapter(handler);
-                │                        │                    │ 
+                │                        │                    │
                 │                        │                    │ Server server = new Server();
                 │                        │                    │ ServletContextHandler contextHandler =
                 │                        │                    │     new ServletContextHandler(server, "");
                 │                        │                    │ contextHandler.addServlet(
                 │                        │                    │     new ServletHolder(servlet), "/");
                 │                        │                    │ contextHandler.start();
-                │                        │                    │ 
+                │                        │                    │
                 │                        │                    │ ServerConnector connector =
                 │                        │                    │     new ServerConnector(server);
                 │                        │                    │ connector.setHost(host);
@@ -559,90 +1222,29 @@ Jetty           │ org.eclipse.jetty      │ etty-server        │ HttpHandle
 ────────────────┴────────────────────────┴────────────────────┴────────────────
 
 </pre>
-</div>
-</div>
 
-<div groupv>
-<span title>Annotated Controllers</span>
- 
-<pre zoom TODO>
-<span xsmall>Security</span>
-</pre>   
-<pre TODO zoom>
-<span xsmall>DATA-ACCESS</span>
 @[https://docs.spring.io/spring/docs/5.0.0.RELEASE/spring-framework-reference/data-access.html]
-</pre>
-
-<pre TODO zoom>
-<span xsmall>TESTING</span>
 @[https://docs.spring.io/spring/docs/5.0.0.RELEASE/spring-framework-reference/testing.html]
-</pre>
-
-<pre TODO zoom>
-<span xsmall>INTEGRATION</span>
 @[https://docs.spring.io/spring/docs/5.0.0.RELEASE/spring-framework-reference/integration.html]
-</pre>
 
 
-<pre TODO zoom>
+</div>
+
+<pre zoom labels="spring,graalvm,TODO">
 <span xsmall>GraalVM integration</span>
 <span xsmall>Spring</span>
 <span xsmall>Issues</span>
 UUID: 6374869e-4921-497d-9d43-75fb6ae1c9c9
 REF:
 @[https://github.com/spring-projects/spring-framework/wiki/GraalVM-native-image-support]
-Working toward GraalVM native image support without requiring additional 
-configuration or workaround is one of the themes of upcoming Spring Framework 
-5.3. The main missing piece for considering GraalVM as a suitable deployment 
-target for Spring applications is providing custom GraalVM Feature 
-implementation at Spring Framework level to automatically register classes 
+Working toward GraalVM native image support without requiring additional
+configuration or workaround is one of the themes of upcoming Spring Framework
+5.3. The main missing piece for considering GraalVM as a suitable deployment
+target for Spring applications is providing custom GraalVM Feature
+implementation at Spring Framework level to automatically register classes
 used in the dependency mechanism or Spring factories, see the related issue #
 22968 for more details.
 </pre>
-
-
-</div>
-
-</body>
-</html>
-<!--
-  //@[https://docs.spring.io/spring/docs/5.0.0.RELEASE/spring-framework-reference/core.html#resources]
-
-<pre zoom>
-<span xsmall>Method injection</span>
-- Suppose singleton A needs to use ºnon-singletonº bean B
- ºon each method invocation on Aº
-
-Solution A:
-RºDiscouraged, tied to Spring internalsº
-- beans A implements ˂˂ApplicationContextAware˃˃.
-  getBean("B") to container requesting a 
-  (typically new) bean B instance.
-
-Solution B: Method Injection
-- containers overrides managed bean A
-  Limitations: 
-  - class and method cannot be final
-  - lookup methods won't work with factory methods 
-    and in particular not with @Bean methods
-    in configuration
-     classes, since the container is not in charge of creating the instance
-     in that case and therefore cannot create a runtime-generated subclass 
-     on the fly.
-</pre>
-_________________________
-TODO: scan config auto-detection
 ___________________________
-<pre TODO zoom>
-<span xsmall>MVC</span>
-@[https://docs.spring.io/spring/docs/5.0.0.RELEASE/spring-framework-reference/web.html#mvc]
-</pre>
-___________________________
-<pre TODO zoom>
-<span xsmall>Spring vs Guice</span>
-@[https://www.baeldung.com/guice-spring-dependency-injection]
-</pre>
-
-
-
---˃
+https://www.youtube.com/watch?v=35EQXmHKZYs
+-->

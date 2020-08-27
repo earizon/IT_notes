@@ -1456,31 +1456,31 @@ $ ac      ← Tell how much time users are logged in.
 <pre zoom labels="audit_user">
 <span bgorange xsmall>Audit framework</span>
 <a href="https://www.youtube.com/watch?v=x2u_prS2HmM">Video REF</a>
-ºARCHITECTURE:º                                          ºLOG "TOPICS":º
-                                                          ---------------------
- audit.rules      auditd.conf                             user
-     +              +                                     group
-     |              |                                     Audit ID
-     |              |                                     Remote Hostname
-     |              |                                     Remote Host Address
-     |              |  +-→ audispd                        System call
-     v              v  |                                  System call arguments
-  auditctl +---→Bºauditdº           +-→ Gºaureportº       File
-     |              ^  |            |                     File Operations
-     |              ║  +-→ /var/log/audit/audit.log       Session
-     |              ║               |                     Success|Failure
-     |              ║               +-→ Gºausearchº
-     |              ║
-     +-------+      ║
-             |      ║
-Running      |      ║      autrace
-process      |      ║        |
-    +   +----|----------+    |
-    |   |    +-→Oºauditº|    |
-    +--→+           ^   +←---+
-        |           ║   |                  Lecture:
-        | KERNEL════╝   |                  ═══ : control
-        +---------------+                  --- : data-flow
+ºARCHITECTURE:º                                   ºLOG "TOPICS":º
+                                                  ┌───────────────────
+ audit.rules   auditd.conf                        │user
+     +           +                                │group
+     │           │                                │Audit ID
+     │           │                                │Remote Hostname
+     │           │                                │Remote Host Address
+     │           │  ┌─→ audispd                   │System call
+     v           v  │                             │System call args.
+  auditctl ───→Bºauditdº         ┌─→ Gºaureportº  │File
+     │           ^  │            │                │File Operations
+     │           ║  └─→ /var/log/audit/audit.log  │Session
+     │           ║               │                │Success│Failure
+     │           ║               └─→ Gºausearchº
+     │           ║
+     └──────┐    ║
+            │    ║
+Running     │    ║      autrace
+process     │    ║        │
+    +   ┌───│──────────┐  │
+    │   │   └─→Oºauditº│  │
+    └──→+          ^   +←─┘
+        │          ║   │                Lecture:
+        │ KERNEL════╝  │                ═══ : control
+        └──────────────┘                ─── : data─flow
 
   - Bºauditd daemonº centralize log writing to disk/network
 
@@ -1497,8 +1497,12 @@ process      |      ║        |
   |  --auth, --avc, --login, --user, --executable, --syscall
   |
   |- Gºausearchº "drills deeper" into the details of a
-  |   particular event
-
+  |   particular event. Ex.
+    $º# ausearch -sv no --comm httpd º 
+        └──────────────────────────┘ 
+        Search audit log for recently denied events triggered by
+        httpd ("Apache", lighthttpd). Useful also for debugging 
+        SELinux related problems.
 
   - autrace is the "ptrace" or "strace" for audit events
     (audit the audit)
@@ -1912,6 +1916,117 @@ $ sudo logwatch --detail Low --range today
 @[https://opensource.com/article/18/9/quiet-log-noise-python-and-machine-learning]
 @[https://pypi.org/project/logreduce/] logreduce@pypi
   - Quiet log noise with Python and machine learning
+</pre>
+
+<pre zoom labels="monitoring,backup,storage,troubleshooting">
+<span xsmall>logrotate</span>
+BºAvoid filling disks with logsº
+- automatic rotation, compression, removal, and mailing of log files.
+  (daily, weekly, monthly, or when size is exceeded)
+
+synopsys:
+$ logrotate --state "file" option_flags config_file ..
+                                        └────┬────┘ 
+                           - any number of config files 
+                             may be given on the command line.
+                           - order is important. later ones override first ones
+   
+- tipically run on daily cron.
+
+bºoption flags:º
+  --debug: no changes will be made to the logs or to the logrotate state file. 
+  --force: force rotation, even if logrotate thinks this is not necessary.
+  --mail : command to use when mailing logs. command must support next args:
+          1) e-mail subject ,  2) the recipient. 
+          message read from standard input 
+          default mail command: /bin/mail -s. 
+  --state "statefile": tells logrotate to use an alternate state file. this is
+          useful if logrotate is being run as a different user for various sets
+          of log files. 
+          default state file is /var/lib/logrotate.status. 
+  --usage
+  --help
+  --verbose
+
+bºconfiguration fileº
+  - rules: local definitions override global ones,
+           later definitions override earlier ones
+  - example file:
+
+  | compress              ← compress using gzip (by default)
+  |                         use compresscmd     to set gzip alternative
+  |                         use compressoptions to set gzip alternative
+  | # this is a comment
+  | /var/log/directory1 "/var/log/directory2/file name with spaces.log" {
+  |     rotate 5          ← optional. 5 weekly rotations
+  |     weekly            ←           daily|weekly|monthly|yearly
+  |
+  |     dateext           ← optional. suffix with date instead of plain number.
+  |     dateformat %y%m%d   rºwarnº: generated string must be lexically sortable 
+  |                                  since "rotate" option will sorts all rotated
+  |                                  filenames lexically to find out which logfiles
+  |                                  are older and should be removed. 
+  |
+  |     size 100k         ← optional. rotate whenever it grows over 100k in size.
+  |     mail www@my.org   ← optional. old logs files mailed (uncompressed) 
+  |     sharedscripts     ← optional. script will be run once (after old logs have been
+  |                          compressed), vs once for each log. 
+  |
+  |     postrotate                        ┐  ← see also prerotate|firstaction|lastaction
+  |         /usr/bin/killall -hup syslogd │
+  |     endscript                         ┘
+  | }
+
+  rºwarnº: use wildcards with caution. "*" will rotate all files, 
+         rºincluding previously rotated onesº.
+
+  other config. file options:
+  - copy: make a copy of the log file, but don't change the original at all. 
+          (create snapshot)
+  - copytruncate: copy and truncate original log file in place 
+  - create mode owner group:  
+           ^
+           octal format
+
+  - delaycompress: postpone compression of previous log file to next rotation cycle.
+    useful when some program cannot be told to close its logfile and thus might 
+    continue writing to the previous log file for some time. 
+
+  - extension ext: allows to rotate names like mylog.foo → mylog.1.foo.gz
+                                                          (mylog.foo.1.gz by default) 
+  - ifempty: rotate log file even i empty, overriding any previous notifempty option 
+  - include file_or_directory:  include file in config.
+    (files read in alphabetic order for dirs)
+  - mailfirst   : mail just-rotated file vs about-to-expire file. 
+  - maillast    : mail about-to-expire file vs  just-rotated file.
+  -ºmaxage     n:ºremove rotated logs older than n days.
+
+  - size size   : rotate only if log grow bigger than size bytes.
+                  (suffix k|m|g allowed)
+
+  - minsize size: rotate when file grow bigger than size bytes, 
+                  but not before any additionally specified time interval
+                  (daily, weekly, monthly, or yearly).
+
+  - missingok   : don't issue error if a file is missing.
+  - nocreate    : do not create new log file.
+  - (no)shred   : 
+    do not use shred when deleting old log files. see also shred. 
+  - olddir $dir : move old logs to $dir 
+                  rºwarnº: $dir must be on the same physical device 
+  - rotate count: log rotated count times before being removed|mailed
+
+  - see also: sharedscripts
+  - shred       : delete log files using shred -u instead of unlink().
+                  this should ensure that logs are not readable after their 
+                  scheduled deletion; this is off by default. see also noshred.
+  - start count :  
+  - tabooext [+]list: defaults to .rpmorig, .rpmsave, ,v, .swp, .rpmnew, ~,
+                      .cfsaved and .rhn-cfg-tmp-*. 
+
+bºfilesº:
+  - /var/lib/logrotate.status    default state file.
+  - /etc/logrotate.conf          default configuration options.
 </pre>
 </div>
 
@@ -2673,93 +2788,93 @@ $ flatpak install --user --from https://download.mono-project.com/repo/monodevel
 $ flatpak run com.xamarin.MonoDevelop
 </pre>
 
-<pre zoom labels="configuration,TODO">
-<a xsmall href="https://help.ubuntu.com/community/AptGet/Howto#Maintenance_commands">APT</a>(Debian/Ubuntu)
-  <a TODO href="https://help.ubuntu.com/community/SourcesList">Package source list: /etc/apt/sources.list file</a>
+<pre zoom labels="packaging,configuration,troubleshooting">
+- @[https://help.ubuntu.com/community/AptGet/Howto#Maintenance_commands]
+
+- 'apt', introduced by Ubuntu in 2014, is recomended over "older" 'apt-get' and 'apt-cache'.
+  by unifying both of them while removing most "obscure" options.
+  It also add a progress bar by default.
 
 
-$ sudo apt-get  install ubuntu-desktop  "package2" ... (-s to simulate)
-$ sudo aptitude install ubuntu-desktop  ← Ncurses variant
+$º$      apt      search  regexPackageName   º ← Show all package with similar name
+$º$      apt      show    package1           º ← Show package details (Version, Origin, 
+                                                 Maintainer, BºBugs Reportingº, dependencies,
+                                                 recomended extra-packages, Bºhomepageº, 
+                                                 Description,
+$º$ dpkg -L "package_name"                   º ← list files in package
+$º$ dpkg -c foo.deb                          º ← lists files in the manually downloaded package 
+                                                 "./foo.deb".
+BºInstalling Updatingº
+$º$ sudo apt      install package1 package2  º ← (-s to simulate)
+$º$ sudo aptitude install package1 package2  º ← Ncurses variant
+$º$ sudo apt    reinstall package1           º ← Reinstall.
+$º$ sudo apt     upgrade  package1           º ← Upgrade 
+$º$ sudo apt     update                      º ← Refresh local cache with remote info about
+                                                 newest package version.
+                                              ☞  Run periodically and after modifications
+                                                 to /etc/apt/*. Execute:
+                                               $º$ apt list --upgradable º to see what can
+                                                 be updated.
+ 
+$º$ sudo apt      upgrade                   º ← upgrade all installed packages.
+$º$ sudo apt full-upgrade                   º ← Upgrades packages with dependencies auto-handling 
+$º$ sudo apt dist-upgrade                   º ← like 'upgrade' adding the "smart upgrade" checkbox.
+                                                It tells APT to use "smart" conflict resolution 
+                                                system,Bºtrying to upgrade  most important packagesº
+                                              Bºat expense of less important ones.º
+                                             ¡¡¡does not upgrade from a previous version!!!
+
+$º$ apt-cache depends --recurse \            º ← Show installed package dependencies. 
+$º   --installed $package ||grep '[ ]'       º 
+
+BºCleaning/Removalº
+$º$ sudo apt-get remove "package_name"       º ← keep   configuration files
+$º$ sudo apt-get purge  "package_name"       º ← Remove configuration files
+$º$ sudo apt-get autoclean º ← removes .deb files for packages no longer installed.
+                               (saving space in /var/cache/apt/archives)
+$º$ apt-get clean          º ← like autoclean, but removing all packages from package-cache.
+                               Not recomended with slow-connections.
+                               ($ du -sh /var/cache/apt/archives)
+$º$ apt-get autoremove     º ← removes packages no longer needed
+
+BºDiagnostics/troubleshooting:º
+$º$ apt-get check            º ← update package lists
+                                 checks for broken dependencies
+
+$º$ sudo apt -f install      º ← Fix Broken Packages ("complains" about "unmet dependencies")
+$º$ dpkg-reconfigure package1º
+
+$º$ echo "'package1' hold" |\º ← Put package1 on hold Bº(avoid non-controlled upgrade)º. 
+$ºsudo dpkg --set-selections º RºWARN:º side effect: prevents upgrades to packages 
+                                                    depending on updated versions of package1.
+                                                  $º$ sudo apt dist-upgrade º will override it 
+  - Setting Bºhttp-proxyº
+    - alt 1: Temporary proxy session:
+      # export http_proxy=http://username:password@yourproxyaddress:proxyport
+    
+    - alt 2: APT configuration file method
+      Add next line to /etc/apt/apt.conf
+      | Acquire::http::Proxy "http://yourproxyaddress:proxyport";
 
 
-$ sudo auto-apt run "./configure" ← runs "command_string", installing uninstalled packages when possible.
-  ^ keeps databases up-to-date by calling:
-    $ auto-apt update
-    $ auto-apt updatedb
-    $ auto-apt update-local
+BºAdvanced Package Searchº
+$º$ dpkg -l $search_term    º ← find packages whose names contain "search_term".
+                                It also shows whether a package is installed on your system
+  
+$º$ dpkg -S $search_pattern º ← "what package provides this file/package?" reverse lookup.
+                                List packages providing or owning the file 
+                                or package matching search_pattern. 'dlocate' is a faster
+                                (but not installed by default) alternative.
+                                'apt-file' also allows to search over all available packages,
 
-$ apt-get update ← Run periodically and after modifications to /etc/apt/*
+<hr/>
+Bº<span TODO>APT Sources</span>º
+  - /etc/apt/sources.list file
+    @[https://help.ubuntu.com/community/SourcesList]
 
-$ apt-get upgrade ← upgrade all installed packages.
-
-$ apt-get dist-upgrade ← same as upgrade, except add the "smart upgrade" checkbox.
-                         It tells APT to use "smart" conflict resolution system,
-                         and ºit will attempt to upgrade the most important packages º
-                        ºat the expense of less important ones if necessary.º
-                         ¡¡¡does not upgrade from a previous version of Ubuntu!!!
-
-ºDiagnostics:º
-$ apt-get check    ← update package lists and checks for broken dependencies
-
-ºCleaning/Removalº
-$ sudo apt-get autoclean  ← removes .deb files for packages that are no longer
-                            installed on your system. (Can save space in /var/cache/apt/archives)
-$ apt-get clean           ← same as autoclean, except it removes all packages from the package cache.
-                            Not recomended with slow-connections.
-                            ($ du -sh /var/cache/apt/archives)
-
-$ sudo apt-get remove "package_name" ← keeps  configuration files
-$ sudo apt-get purge  "package_name" ← Remove configuration files
-
-$ apt-get autoremove     ← removes packages no longer needed
-
-ºTroubleshootingº
-$ sudo apt-get -f install  ← Fix Broken Packages (system complains about "unmet dependencies")
-
-$ dpkg-reconfigure "package_name"
-
-
-$ echo "'package_name' hold" | \  ← Put package_name on hold
-  sudo dpkg --set-selections        may have the unintended side effect of preventing upgrades
-                                    to packages that depend on updated versions of the pinned package.
-                                    apt-get dist-upgrade will override this, but will warn you first.
-
-ºSearch commandsº
-$ apt-cache search "search_term" ← lists packages matching in name or description
-
-$ dpkg -l º"search_term"º  ← find packages whose names contain "search_term".
-                             It also shows whether a package is installed on your system
-
-$ dlocate "package_name"         ← "reverse lookup". It Determines which installed package owns "package_name".
-                                    It shows files from installed packages that match "package_name",
-                                    with the name of the package they came from.
-                                    Its equivalent to the slower (but installed by default):
-                                    $ dpkg -S "filename_search_pattern"
-$ sudo apt-file update ⅋⅋ \       ← Similar to dlocate  but searches over all available packages.
-                                    """what package provides this file?"""
-
-  sudo apt-file search \"filepath_pattern"
-ºPackage Infoº
-$ apt-cache show "package_name"  ← shows the description of "package_name", version, size, dependencies and conflicts.
-$ dpkg -L "package_name"         ← list files in package
-$ dpkg -c foo.deb                ← lists files in the manually downloaded package "./foo.deb".
-
-$ apt-cache pkgnames             ← provides a list of every package in the system
-
-
-
-ºSetting http-proxyº
-- alt 1: Temporary proxy session:
-  # export http_proxy=http://username:password@yourproxyaddress:proxyport
-
-- alt 2: APT configuration file method
-  Add next line to /etc/apt/apt.conf
-  | Acquire::http::Proxy "http://yourproxyaddress:proxyport";
-
-
-ºDeveloper commands:º
-$ apt-get build-dep $PACKAGE_NAME
 </pre>
+
+
 <pre zoom labels="configuration,TODO">
 <a xsmall href="https://wiki.alpinelinux.org/wiki/Alpine_Linux_package_management"><code>apk</code></a> (Alpine/"Docker")
 Because Alpine Linux is designed to run from RAM, package management involves two phases:
@@ -2868,10 +2983,10 @@ Information on Packages
 ┌──────────────────┬────────────────────────────────────┐ ┌────────────────┬────────────────────────────────────┐ ┌─────────────────┬─────────────────────────────────────┐
 │ºMOVING AROUND FSº│                                    │ │ºLISTING  FILESº│                                    │ │ºHARD/SOFT LINKSº│                                     │
 ├──────────────────┘                                    │ ├────────────────┘                                    │ ├─────────────────┘                                     │
-│ $ºpwdº           ← "P"rint "W"orking "D"irectory      │ │$ºls" -"optionalFlags"   ← list files in current     │ │- In UNIX anOºinode* is the low-level structure        │
-│ $*cd*/my/new/dir ← "C"hange "d"irectory               │ │      ^^^^^^^^^^^^^^^^     directory                 │ │  that stores the physical location in disk of         │
-│ $ºcdº            ← move to $HOME directory            │ │ -l: ("long"), show permissions, size,               │ │  a given file. This "inode" is not visible to         │
-│ $ºcd ~º          ← '~' is alias for $HOME             │ │     modification date, ownership                    │ │  the user.                                            │
+│ $ pwd            ← "P"rint "W"orking "D"irectory      │ │$ ls" -"optionalFlags"   ← list files in current     │ │- In UNIX anOºinodeº is the low-level structure        │
+│ $ cd /my/new/dir ← "C"hange "d"irectory               │ │      ^^^^^^^^^^^^^^^^     directory                 │ │  that stores the physical location in disk of         │
+│ $ cd             ← move to $HOME directory            │ │ -l: ("long"), show permissions, size,               │ │  a given file. This "inode" is not visible to         │
+│ $ cd ~           ← '~' is alias for $HOME             │ │     modification date, ownership                    │ │  the user.                                            │
 │ $ pushd.         ← Remember current dir.              │ │ -a: ("all" ), shows also hidden (.*) files          │ │- The user visible entities are the file system        │
 │                    (put on FILO stack)                │ │ -d: Show only directory entry(vs directory contents)│ │  paths, that point to the real inodes:                │
 │ $ cd ..   # Change to parent directory                │ │ -F: ("format") append helper symbol                 │ │ /my/file/path →points→Oºinodeº →points→  physical     │
@@ -2881,8 +2996,8 @@ Information on Packages
 ┌──────────────────────┬────────────────────────────┐     ┌──────────────┬──────────────────────────────────────┐ │ user shells,        users, managed    internal circuit│
 │ºCREATE NEW DIRECTORYº│                            │     │ºMOVING FILESº│                                      │ │ GUI explorers,..    by the OS kernel  networks NAS,...│
 ├──────────────────────┘                            │     ├──────────────┘                                      │ │                                                       │
-│$ºmkdiRº-p ~/projects/project01 # ←  Make directory│     │$ºmvºmyFile1 /my/path02/  # ← move myFile1 to        │ │                                                       │
-│         ↑                                         │     │                       ^      /my/path02 directory   │ │$*ln -s*/my/file/path  /my/symbolic/link               │
+│$ mkdir -p ~/projects/project01 # ←  Make directory│     │$ mv myFile1 /my/path02/  # ← move myFile1 to        │ │                                                       │
+│         ↑                                         │     │                       ^      /my/path02 directory   │ │$ ln -s /my/file/path  /my/symbolic/link               │
 │     withouth -p will fail if                      │     │                    ┌──┘                             │ │  ^^ ^^                                                │
 │     ~/projects directory does                     │     │RºWARNº: The final '/' indicates taht path02         │ │ ºcreate symbolic (-s) linkº                           │
 │     NOT YET exits. With -p it                     │     │         is a directory.                             │ │- A symbolic links is a sortcut                        │
@@ -2891,17 +3006,17 @@ Information on Packages
                                                           │         and renamed as wrongl 'path02' file.        │ │                                                       │
                                                           └─────────────────────────────────────────────────────┘ │RºWARN:ºIf the original /my/file/path is               │
 ┌────────────────┬───────────────────────────────┐        ┌──────────────┬──────────────────────────────────────┐ │        deleted or moved the link is broken.           │
-│ºCOPYING FILESºº│                               │        │ºRENAME FILES*│                                      │ │                                                       │
-├────────────────┘                               │        ├──────────────┘                                      │ │$ºlnº my/file/path  /my/hard/link                      │
-│$ºcpº   fileToCopy      /destination/directory/ │        │$ºmvºmyFile1 finalName # ← move myFile1 to new name  │ │  ^^                                                   │
-│$ºcpº-R directoryToCopy /destination/directory/ │        │                       ^   (rename) finalName        │ │- With no -s(ymbolyc) flag the link will point         │
+│ºCOPYING FILESºº│                               │        │ºRENAME FILESº│                                      │ │                                                       │
+├────────────────┘                               │        ├──────────────┘                                      │ │$ ln  my/file/path  /my/hard/link                      │
+│$ cp    fileToCopy      /destination/directory/ │        │$ mv myFile1 finalName # ← move myFile1 to new name  │ │  ^^                                                   │
+│$ cp -R directoryToCopy /destination/directory/ │        │                       ^   (rename) finalName        │ │- With no -s(ymbolyc) flag the link will point         │
 │     ^^                                         │        └─────────────────────────────────────────────────────┘ │  to the realOºinodeº. Deleting the original file      │
 │     -R: Recursive copy of dir.content          │                                                                │  will not affect the new path.                        │
 └────────────────────────────────────────────────┘        ┌───────────────────────────────────────────────┬─────┐ │- In can also be created pointing directly to          │
 ┌──────────────────────────┬─────────────────────┐        │ºREMOVE FILES AND CONTENT BY OVERWRITING FIRSTº│     │ │  the Oºinodeº.                                        │
 │ºREMOVE FILES/DIRECTORIESº│                     │        ├───────────────────────────────────────────────┘     │ │                                                       │
-├──────────────────────────┘                     │        │$ºshredº-n 2 -z -v /tmp/myImportantSecret            │ │  /my/symbolic/Link                                    │
-│$ºrmº-r -f file                                 │        │           ↑  ↑  ↑                                   │ │   ↓                                                   │
+├──────────────────────────┘                     │        │$ shred -n 2 -z -v /tmp/myImportantSecret            │ │  /my/symbolic/Link                                    │
+│$ rm -r -f file                                 │        │           ↑  ↑  ↑                                   │ │   ↓                                                   │
 │     ^^ ^^                                      │        │           │  │  └── show progress                   │ │  /my/file/path ──────┐                                │
 │     |  force deletetion, do not confirm        │        │           │  └───── Finally write over with zeroes  │ │                      ↓        physical                │
 │     |  useful for automated scripts            │        │           └──────── Overwrite twice with random data│ │                   Oºinodeº──→ block                   │
@@ -2916,25 +3031,25 @@ Information on Packages
 │ºSEARCHING FILES/DATAº│                              │    │ºCHECK DISK FREE/USED SPACEº│                    │    │                    are deleted.                       │
 ├──────────────────────┘                              │    ├────────────────────────────┘                    │    └───────────────────────────────────────────────────────┘
 │@[https://linux.die.net/man/1/find]                  │    │@[https://linux.die.net/man/0/df]                │
-│                                                     │    │$ºdfº-k -h  -x devtmpfs -x tmpfs # ºDºiskº Fºree │  ┌─────────────────┬───────────────────────────────┐
-│$ºfindº           \                                  │    │      ↑  ↑   ↑           ↑                       │  │ºGRAPHICAL TOOLSº│                               │
+│                                                     │    │$ df -k -h  -x devtmpfs -x tmpfs # ºDºiskº Fºree │  ┌─────────────────┬───────────────────────────────┐
+│$ find            \                                  │    │      ↑  ↑   ↑           ↑                       │  │ºGRAPHICAL TOOLSº│                               │
 │   /var/lib       \   ←     find inside /var/lib     │    │      │  │   Skip "false" filesystems(dev,...)   │  ├─────────────────┘                               │
 │   -type f        \   ←     objects of type 'file'   │    │      │  └── show in human readable units        │  │- Easier to use, but not scriptable.             │
 │                            (ignore dirs, links, ...)│    │      └───── scale size by 1K before printing    │  │- Discouraged for system administration.         │
 │   -iname "*html" \   ← AND whose name matches *html │    │@[https://linux.die.net/man/1/du]                │  │                                                 │
-│                             name:do NOT ignore case │    │$ºduº-sch dir1 file2 # ºDºisk  ºUºssage          │  │$ºmcº      ← Execute the Midnight Commander      │
-│                            iname:do     ignore case │    │      ↑↑↑                                        │  │$ºrancherº ← Execute rancher.                    │
+│                             name:do NOT ignore case │    │$ du -sch dir1 file2 # ºDºisk  ºUºssage          │  │$ mc       ← Execute the Midnight Commander      │
+│                            iname:do     ignore case │    │      ↑↑↑                                        │  │$ rancher  ← Execute rancher.                    │
 │   -mmin  -30     \   ← AND whose modification time  │    │      ││└── show in human readable units         │  │             Light and Nice Console File Manager │
 │                            is '30 or less'(-30)     │    │      │└─── produce a grand total                │  │             with VI Key Bindings                │
-│                            minutes (mmin)           │    │      └──── display only total for each arg      │  │$ºnnnº     ← one of the fastest and most         │
+│                            minutes (mmin)           │    │      └──── display only total for each arg      │  │$ nnn      ← one of the fastest and most         │
 │   -msize +20k        ← AND whose size (msize) is    │    └─────────────────────────────────────────────────┘  │             lightweight file managers:          │
 │                            20k(ilobytes) or more    │   ┌──────────────────┬──────────────────────────┐       │             ~50KB binary using ~3.5MB resident  │
 │                                                     │   │ºFILE PERMISSIONSº│                          │       │             memory at runtime:                  │
-│$ºfindº           \   ←     find                     │   ├──────────────────┘                          │       │        @[https://github.com/jarun/nnn#features] │
+│$ findº           \   ←     find                     │   ├──────────────────┘                          │       │        @[https://github.com/jarun/nnn#features] │
 │   /var/lib       \   ←     inside /var/lib          │   │- Change who can read,write or execute a file│       └─────────────────────────────────────────────────┘
 │   -type f        \   ←     object of type 'file'    │   │  $ chmod go-rwx mySecretDir                 │
 │   -iname "*html" \   ← AND whose name matches '*html│   │            ↑↑                               │
-│ Oº-execº Bºgrep "myStyleSheet.css"ºB*{} \;*         │   │            │└──  (r)ead, (w)rite e(x)ecute  │
+│ Oº-execº Bºgrep "myStyleSheet.css"ºBº{} \;º         │   │            │└──  (r)ead, (w)rite e(x)ecute  │
 │    ^^^^    ^^^^^^^^^^^^^^^^^^^^^^    ^^^^^          │   │            │      4       2        1        │
 │+ºexecuteºBºthis commandº           Bºfor each º     │   │            │                                │
 │                                   Bºfound fileº     │   │            └───   - remove                  │
@@ -3446,7 +3561,113 @@ Add mirror to existing disk without deleting data:
 
 
 <span title>Encryption</span>
-<pre zoom labels="storage,security">
+<pre zoom labels="storage,encryption,security">
+<span xsmall>eCryptfs</span>
+Linux Kernel 2.6.19+
+https://www.ostechnix.com/how-to-encrypt-directories-with-ecryptfs-in-linux/
+
+- Original author: Michael Halcrow and IBM Linux Technology Center.
+  - Actively maintained by Dustin Kirkland and Tyler Hicks from Canonical.
+
+- eCryptfs is not a Kernel-level full disk encryption subsystems like dm-crypt
+- eCryptfs is a stacked filesystem mounted on any directory on top of
+  the local file system (EXT3, EXT4, XFS,, ...) and also
+Bºnetwork file systemsº(NFS, CIFS, Samba, WebDAV,...) withRºsome
+  restrictionsº when compared to local FS.
+
+- No separate partition or pre-allocated space is actually required!
+  eCryptfs stores cryptographic metadata in the headers of files, 
+  so the encrypted data can be easily moved between different users and 
+  even systems.
+
+ºPRE-SETUPº
+- Install it like:
+$ sudo pacman       -S ecryptfs-utils  # ← Arch, Manjaro,..
+$ sudo apt-get install ecryptfs-utils  # ← Debian,Ubuntu,...
+$ sudo dnf     install ecryptfs-utils  # ← RedHat, CentOS, Fedora, ..
+$ sudo zypper --install ecryptfs-utils # ← openSUSE
+
+ºUssageº
+- At first mount, you will be prompted cipher, key bytes,
+  plaintext passthrough, enable/disable filename encryption etc.
+<div cli>
+$ sudo mount -t ecryptfs ~/SensitiveData ~/SensitiveData/
+
+[sudo] password for sk: 
+Passphrase:                       ← Enter passphrase. Needed to unlock again
+Select cipher:                      on next mounts.
+ 1) aes: blocksize = 16; min keysize = 16; max keysize = 32
+ 2) blowfish: blocksize = 8; min keysize = 16; max keysize = 56
+ 3) des3_ede: blocksize = 8; min keysize = 24; max keysize = 24
+ 4) twofish: blocksize = 16; min keysize = 16; max keysize = 32
+ 5) cast6: blocksize = 16; min keysize = 16; max keysize = 32
+ 6) cast5: blocksize = 8; min keysize = 5; max keysize = 16
+Selection [aes]:                  ← Prompt
+Select key bytes: 
+ 1) 16
+ 2) 32
+ 3) 24
+Selection [16]:                          ← [Enter]
+Enable plaintext passthrough (y/n) [n]:  ← [Enter]
+Enable filename encryption (y/n) [n]:    ← [Enter]
+Attempting to mount with the following options:
+  ecryptfs_unlink_sigs
+  ecryptfs_key_bytes=16
+  ecryptfs_cipher=aes
+  ecryptfs_sig=8567ee2ae5880f2d
+WARNING: Based on the contents of [/root/.ecryptfs/sig-cache.txt],
+it looks like you have never mounted with this key 
+before. This could mean that you have typed your 
+passphrase wrong.
+
+Would you like to proceed with the mount (yes/no)? : yes     ←
+Would you like to append sig [8567ee2ae5880f2d] to
+[/root/.ecryptfs/sig-cache.txt] 
+in order to avoid this warning in the future (yes/no)? : yes ←
+Successfully appended new sig to user sig cache file
+Mounted eCryptfs
+</div>
+
+A signature file º/root/.ecryptfs/sig-cache.txtº will be created 
+to identify the mount passphrase in the kernel keyring.
+
+When the directory is un-mounted, files are still visible, but
+completely encrypted and un-readable.
+
+
+ºChanging mount passphraseº <div cli>
+$ sudo rm -f /root/.ecryptfs/sig-cache.txt
+$ sudo mount -t ecryptfs ~/SensitiveData ~/SensitiveData/ # ← Mount again
+</div>
+ºRe-mount automatically at rebootº
+ - PRE-SETUP:
+   Fetch an USB drive to store the signature and path of the password file.
+<div cli>
+$ sudo mount /dev/sdb1 /mnt/usb # ← sdb1 == "usb". Use $ 'dmesg'
+                                #   to known the exact value
+
+$ sudo cat /root/.ecryptfs/sig-cache.txt
+934e8e1fa80152e4
+
+$ sudo vim /mnt/usb/password.txt # ← Ej: change!M@1234
+
+$ sudo vim /root.ecryptfsrc
+key=passphrase:passphrase_passwd_file=/mnt/usb/password.txt  
+ecryptfs_sig=934e8e1fa80152e4
+ecryptfs_cipher=aes
+ecryptfs_key_bytes=16
+ecryptfs_passthrough=n
+ecryptfs_enable_filename_crypto=n
+</div>
+   (Note that USB will need to be mounted for the setup to work properly)
+
+  - Finally add next line to /etc/fstab :
+    ...
+    /home/myUser/SensitiveData /home/myUser/SensitiveData ecryptfs defaults 0 0
+</pre>
+
+
+<pre zoom labels="storage,encryption,security">
 <span xsmall>Storage encryption</span>
 - can be performed at the file system level or the block level.
 - Linux file system encryption options include eCryptfs and EncFS, while
@@ -5150,7 +5371,7 @@ dm-2    0.00  7.50   0.00  30.00    0.00    0.00   0.00   0.00     0.00      0.4
 <a href="https://linux.die.net/man/8/blktrace">man 8 blktrace</a>
 </pre>
 
-<pre zoom labels="profiling,kernel,TODO">
+<pre zoom labels="profiling,kernel,java,lock,TODO">
 <span xsmall bgorange>perf (kernel counters)</span>
 TODO @[http://www.brendangregg.com/perf.html]
 TODO @[http://www.brendangregg.com/flamegraphs.html]
@@ -5274,8 +5495,6 @@ Overhead  Shared Object              Symbol
   1877.189 (1000.372 ms): dockerd/32491 futex(uaddr: 0xc420c83948)                                            = 0
 
 
-
-
 - record command's profile into perf.data:
 <a TODO href="https://linux.die.net/man/1/perf-record">man 1 perf-record</a>
 
@@ -5287,6 +5506,21 @@ Overhead  Shared Object              Symbol
 
 - Analyze lock events
 <a TODO href="https://linux.die.net/man/1/perf-lock">man 1 perf-lock</a>
+
+
+<span title>Ex.Profiling (FB 60 TB+ input data)</span>
+Extracted from:
+  "Apache Spark @Scale: A  production use case"
+@[https://engineering.fb.com/core-data/apache-spark-scale-a-60-tb-production-use-case/]
+  ...  Tools we used to find performance bottleneck
+  - Spark Linux Perf/Flame Graph support: Although the two tools 
+    above are very handy, they do not provide an aggregated view of CPU 
+    profiling for the job running across hundreds of machines at the same 
+    time. On a per-job basis, Bºwe added support for enabling Perf º
+  Bºprofiling (via libperfagent for Java symbols) and can customize the º
+  Bºduration/frequency of sampling. The profiling samples are aggregatedº
+  Bºand displayed as a Flame Graph across the executors using our       º
+  Bºinternal metrics collection framework.                              º
 </pre>
 
 <pre zoom  labels="profiling,TODO">
@@ -5313,9 +5547,12 @@ See real example:
 @[https://developers.redhat.com/blog/2019/07/24/probing-golang-runtime-using-systemtap/]
 </pre>
 
-<pre zoom labels="profiling">
+<pre zoom labels="profiling,troubleshooting,locks,tunning,kernel,performance">
 <span xsmall bgorange>(x)latencytop</span>
 UUID:99937290-9184-4d98-b590-e6f7443afc38
+WARN: There are newer alternatives based on BPF:
+http://www.brendangregg.com/blog/2016-10-27/dtrace-for-linux-2016.html
+
 <a href="https://linux.die.net/man/8/xlatencytop">man 8 xlatencytop</a>
 Note: See also the more advanced TimeChart:
     @[http://www.linux-magazine.com/Online/News/Timechart-Zoom-in-on-Operating-System]
@@ -5681,680 +5918,9 @@ ZeroConf Linux impl.
 <span title>Docker</span><br/>
 <div groupv>
 <pre zoom labels="docker">
-<span xsmall>External Links</span>
-- @[https://docs.docker.com/]
-- @[https://github.com/jdeiviz/docker-training] D.Peman@github
-- @[https://github.com/jpetazzo/container.training] container.training@Github
-- @[http://container.training/]
-</pre>
-<pre zoom>
-<span xsmall>$ docker help</span>
-Usage:	docker COMMAND
-
-A self-sufficient runtime for containers
-
-Options:
-      --config string      Location of client config files (default "/root/.docker")
-  -D, --debug              Enable debug mode
-  -H, --host list          Daemon socket(s) to connect to
-  -l, --log-level string   Set the logging level ("debug"|"info"|"warn"|"error"|"fatal") (default "info")
-      --tls                Use TLS; implied by --tlsverify
-      --tlscacert string   Trust certs signed only by this CA (default "/root/.docker/ca.pem")
-      --tlscert string     Path to TLS certificate file (default "/root/.docker/cert.pem")
-      --tlskey string      Path to TLS key file (default "/root/.docker/key.pem")
-      --tlsverify          Use TLS and verify the remote
-  -v, --version            Print version information and quit
-
-Management Commands:       | Commands:
-            Manage ...     |   attach      Attach local STDIN/OUT/ERR streams to a running container
-config      Docker configs |   build       Build an image from a Dockerfile
-container   containers     |   commit      Create a new image from a container's changes
-image       images         |   cp          Copy files/folders between a container and the local filesystem
-network     networks       |   create      Create a new container
-node        Swarm nodes    |   diff        Inspect changes to files or directories on a container's filesystem
-plugin      plugins        |   events      Get real time events from the server
-secret      Docker secrets |   exec        Run a command in a running container
-service     services       |   export      Export a container's filesystem as a tar archive
-swarm       Swarm          |   history     Show the history of an image
-system      Docker         |   images      List images
-trust       trust on       |   import      Import the contents from a tarball to create a filesystem image
-            Docker images  |   info        Display system-wide information
-volume      volumes        |   inspect     Return low-level information on Docker objects
-                           |   kill        Kill one or more running containers
-                           |   load        Load an image from a tar archive or STDIN
-                           |   login       Log in to a Docker registry
-                           |   logout      Log out from a Docker registry
-                           |   logs        Fetch the logs of a container
-                           |   pause       Pause all processes within one or more containers
-                           |   port        List port mappings or a specific mapping for the container
-                           |   ps          List containers
-                           |   pull        Pull an image or a repository from a registry
-                           |   push        Push an image or a repository to a registry
-                           |   rename      Rename a container
-                           |   restart     Restart one or more containers
-                           |   rm          Remove one or more containers
-                           |   rmi         Remove one or more images
-                           |   run         Run a command in a new container
-                           |   save        Save one or more images to a tar archive (streamed to STDOUT by default)
-                           |   search      Search the Docker Hub for images
-                           |   start       Start one or more stopped containers
-                           |   stats       Display a live stream of container(s) resource usage statistics
-                           |   stop        Stop one or more running containers
-                           |   tag         Create a tag TARGET_IMAGE that refers to SOURCE_IMAGE
-                           |   top         Display the running processes of a container
-                           |   unpause     Unpause all processes within one or more containers
-                           |   update      Update configuration of one or more containers
-                           |   version     Show the Docker version information
-                           |   wait        Block until one or more containers stop, then print their exit codes
-</pre>
-<span title>Install ⅋ setup</span>
-<pre zoom>
-<span xsmall>Proxy settings</span>
-To configure Docker to work with an HTTP or HTTPS proxy server, follow
-instructions for your OS:
-Windows - <a href="https://docs.docker.com/docker-for-windows/#proxies">Get Started with Docker for Windows</a>
-macOS   - <a href="https://docs.docker.com/docker-for-mac/">Get Started with Docker for Mac</a>
-Linux   - <a href="https://docs.docker.com/engine/admin/systemd/#httphttps-proxy">Control⅋config. Docker with Systemd</a>
-</pre>
-
-<pre zoom>
-<span xsmall>docker global info</span>
-<span xsmall>system setup</span>
-<span xsmall>running/paused/stopped cont.</span>
-$ sudo docker info
-Containers: 23
- Running: 10
- Paused: 0
- Stopped: 1
-Images: 36
-Server Version: 17.03.2-ce
-ºStorage Driver: devicemapperº
- Pool Name: docker-8:0-128954-pool
- Pool Blocksize: 65.54 kB
- Base Device Size: 10.74 GB
- Backing Filesystem: ext4
- Data file: /dev/loop0
- Metadata file: /dev/loop1
-ºData Space Used: 3.014 GBº
-ºData Space Total: 107.4 GBº
-ºData Space Available: 16.11 GBº
-ºMetadata Space Used: 4.289 MBº
-ºMetadata Space Total: 2.147 GBº
-ºMetadata Space Available: 2.143 GBº
-ºThin Pool Minimum Free Space: 10.74 GBº
- Udev Sync Supported: true
- Deferred Removal Enabled: false
- Deferred Deletion Enabled: false
- Deferred Deleted Device Count: 0
-ºData loop file: /var/lib/docker/devicemapper/devicemapper/dataº
-ºMetadata loop file: /var/lib/docker/devicemapper/devicemapper/metadataº
- Library Version: 1.02.137 (2016-11-30)
-ºLogging Driver: json-fileº
-ºCgroup Driver: cgroupfsº
-Plugins:
- Volume: local
- Network: bridge host macvlan null overlay
-Swarm: inactive
-Runtimes: runc
-Default Runtime: runc
-Init Binary: docker-init
-containerd version: 4ab9917febca54791c5f071a9d1f404867857fcc
-runc version: 54296cf40ad8143b62dbcaa1d90e520a2136ddfe
-init version: 949e6fa
-ºSecurity Options:º
-º seccompº
-º  Profile: defaultº
-Kernel Version: 4.17.17-x86_64-linode116
-Operating System: Debian GNU/Linux 9 (stretch)
-OSType: linux
-Architecture: x86_64
-CPUs: 2
-Total Memory: 3.838 GiB
-Name: 24x7
-ID: ZGYA:L4MN:CDCP:DANS:IEHQ:XYLD:C5KG:SUL4:3XLQ:ZO6M:3RSY:V6VB
-ºDocker Root Dir: /var/lib/dockerº
-ºDebug Mode (client): falseº
-ºDebug Mode (server): falseº
-*Registry: https://index.docker.io/v1/*
-Experimental: false
-Insecure Registries:
- 127.0.0.0/8
-Live Restore Enabled: false
-</pre>
-
-<pre zoom>
-<span xsmall>/var/run/docker.sock</span>
-@[https://medium.com/better-programming/about-var-run-docker-sock-3bfd276e12fd]
-- Unix socket the Docker daemon listens on by default,
-  used to communicate with the daemon from within a container.
-- Can be mounted on containers to allow them to control Docker:
-$ docker runº-v /var/run/docker.sock:/var/run/docker.sockº  ....
-
-USSAGE EXAMPLE:
-
-# STEP 1. Create new container
-$ curl -XPOSTº--unix-socket /var/run/docker.sockº \
-  -d '{"Image":"nginx"}' \
-  -H 'Content-Type: application/json' \
-  http://localhost/containers/create
-Returns something similar to:
-→ {"Id":"fcb65c6147efb862d5ea3a2ef20e793c52f0fafa3eb04e4292cb4784c5777d65","Warnings":null}
-
-# STEP 2. Use /containers/<ID>/start to start the newly created container.
-$ curl -XPOSTº--unix-socket /var/run/docker.sockº \
-  http://localhost/containers/fcb6...7d65/start
-
-# STEP 3: Verify it's running:
-$ docker container ls
-CONTAINER ID IMAGE COMMAND CREATED STATUS PORTS NAMES
-fcb65c6147ef nginx “nginx -g ‘daemon …” 5 minutes ago Up 5 seconds 80/tcp, 443/tcp ecstatic_kirch
-...
-
-ºStreaming events from the Docker daemonº
-
-- Docker API also exposes the*/events endpoint*
-
-$ curlº--unix-socket /var/run/docker.sockº http://localhost/events
-  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  command hangs on, waiting for new events from the daemon.
-  Each new event will then be streamed from the daemon.
-</pre>
-
-</div>
-
-<div groupv>
-<span title>Docker components</span>
-<pre zoom labels="docker,network">
-<span xsmall>Docker Networks</span>
-Create new network and use it in containers:
-  $ docker ºnetwork createº OºredisNetworkº
-  $ docker run --rm --name redis-server --network OºredisNetworkº -d redis
-  $ docker run --rm --network OºredisNetworkº -it redis redis-cli -h redis-server -p 6379
-
-List networks:
-  $ docker network ls
-
-Disconect and connect a container to the network:
-  $ docker disconnect OºredisNetworkº redis-server
-  $ docker connect --alias db OºredisNetworkº redis-server
-</pre>
-
-<pre zoom labels="docker,storage">
-<span xsmall>Volumes</span>
-
-REUSE VOLUME FROM CONTAINER:
-  STEP 0: Create new container with volume
-    host-mach $ docker run -it Oº--name alphaº º-v "hostPath":/var/logº ubuntu bash
-    container $ date &gt; /var/log/now
-
-  STEP 1: Create new container using volume from previous container:
-    host-mach $ docker run --volumes-from Oºalphaº ubuntu
-    container $ cat /var/log/now
-
-CREAR VOLUME FOR REUSE IN DIFFERENT CONTAINERS
-
-  STEP 0: Create Volume
-  host-mach $ docker volume create --name=OºwebsiteVolumeº
-  STEP 1: Use volume in new container
-  host-mach $ docker run -d -p 8888:80 \
-              -v OºwebsiteVolumeº:/usr/share/nginx/html
-              -v logs:/var/log/nginx nginx
-  host-mach $ docker run
-              -v OºwebsiteVolumeº:/website
-              -w /website \
-              -it alpine vi index.html
-
-Ex.: Update redis version without loosing data:
-  host-mach $ docker network create dbNetwork
-  host-mach $ docker run -d --network dbNetwork \
-              --network-alias redis \
-              --name redis28 redis:2.8
-  host-mach $ docker run -it --network dbNetwork \
-              alpine telnet redis 6379
-              → SET counter 42
-              → INFO server
-              → SAVE
-              → QUIT
-  host-mach $ docker stop redis28
-  host-mach $ docker run -d --network dbNetwork \
-              --network-alias redis \
-              --name redis30 \
-              --volumes-from redis28 \
-              redis:3.0
-  host-mach $ docker run -it --network dbNetwork \
-              alpine telnet redis 6379
-              → GET counter
-              → INFO server
-              → QUIT
-</pre>
-
-<pre zoom labels="docker">
-<span xsmall>docker-compose</span>
-version: "3"
-services:
-  web:
-    build: .         # ← use Dockerfile to build image
-    ports:
-      - "8000:8000"
-  redis:
-    image: redis     # ← use DockerHub image
-    volumes:
-      - "redis-data:/data"
-
-volumes:
-  redis-data:
-</pre>
-
-<pre zoom labels="docker">
-<a TODO xsmall href="https://docs.docker.com/registry/#what-it-is">Registry</a>
-(server store for images)
-</pre>
-
-<span title>Managing Containers</span>
-<pre zoom labels="docker">
-<span xsmall>Boot-up/run container:</span>
-$ docker run \                             $ docker run \
-  --rm  \        ←------ Remove ---------→   --rm  \
-  --name clock  \        on exit             --name clock  \
- º-dº\             ← Daemon    interactive →º-tiº\
-                     mode      mode
-  jdeiviz/clock                              jdeiviz/clock
-
-
-<span xsmall>Show container logs:</span>
-$ docker logs docker
-$ logs --tail 3
-$ docker logs --tail 1 --follow
-
-<span xsmall>Stop container:</span>
-$ docker stop # Espera 10s docker kill
-
-<span xsmall>Prune stopped containers:</span>
-
-$ docker container prune
-
-<span xsmall>container help:</span>
-$ docker container
-</pre>
-<pre zoom labels="docker">
-<span xsmall>ENTRYPOINT</span>
-<span xsmall>vs</span>
-<span xsmall>COMMAND</span>
-Extracted from:
-- @[https://docs.docker.com/engine/reference/run/#entrypoint-default-command-to-execute-at-runtime]
-The ENTRYPOINT of an image is similar to a COMMAND because it specifies what
-executable to run when the container starts,
-ºbut it is (purposely) more difficult to overrideº.
-
-- The ENTRYPOINT gives a container its default nature or behavior, so that when
-you set an ENTRYPOINT you can run the container as if it were that binary,
-complete with default options, and you can pass in more options via the COMMAND.
-But, sometimes an operator may want to run something else inside the container,
-so you can override the default ENTRYPOINT at runtime by using a string to specify the
-new ENTRYPOINT.
-
-*Override Entrypoint @ docker-run passing extra parameters
-$ docker run -it --entrypoint /bin/bash ${DOCKER_IMAGE} -c ls -l
-                 └───────┬────────────┘                 └───┬───┘
-                  overrides the entrypoint             extra params.
-                                                      (exec 'ls -l' script)
-
-</pre>
-
-<span title>Monitoring running containers</span>
-
-<pre zoom labels="docker,monitoring">
-<span xsmall>Monitoring (Basic)</span>
-List containers instances:
-   $ docker ps     # only running
-   $ docker ps -a  # also finished, but not yet removed (docker rm ...)
-   $ docker ps -lq # TODO:
-
-"top" containers showing Net IO read/writes, Disk read/writes:
-   $ docker stats
-   | CONTAINER ID   NAME                    CPU %   MEM USAGE / LIMIT     MEM %   NET I/O          BLOCK I/O      PIDS
-   | c420875107a1   postgres_trinity_cache  0.00%   11.66MiB / 6.796GiB   0.17%   22.5MB / 19.7MB  309MB / 257kB  16
-   | fdf2396e5c72   stupefied_haibt         0.10%   21.94MiB / 6.796GiB   0.32%   356MB / 693MB    144MB / 394MB  39
-
-   $ docker top 'containerID'
-   | UID       PID     PPID    C  STIME  TTY   TIME     CMD
-   | systemd+  26779   121423  0  06:11  ?     00:00:00 postgres: ddbbName cache 172.17.0.1(35678) idle
-   | ...
-   | systemd+  121423  121407  0  Jul06  pts/0 00:00:44 postgres
-   | systemd+  121465  121423  0  Jul06  ?     00:00:01 postgres: checkpointer process
-   | systemd+  121466  121423  0  Jul06  ?     00:00:26 postgres: writer process
-   | systemd+  121467  121423  0  Jul06  ?     00:00:25 postgres: wal writer process
-   | systemd+  121468  121423  0  Jul06  ?     00:00:27 postgres: autovacuum launcher process
-   | systemd+  121469  121423  0  Jul06  ?     00:00:57 postgres: stats collector process
-
-</pre>
-
-<pre zoom labels="docker,monitoring,troubleshooting,TODO">
-<span xsmall TODO>SysDig</span>
-Container-focused Linux troubleshooting and monitoring tool.
-
-Once Sysdig is installed as a process (or container) on the server,
-it sees every process, every network action, and every file action
-on the host. You can use Sysdig "live" or view any amount of historical
-data via a system capture file.
-
-Example: take a look at the total CPU usage of each running container:
-   $ sudo sysdig -c topcontainers\_cpu
-   | CPU% container.name
-   | ----------------------------------------------------
-   | 80.10% postgres
-   | 0.14% httpd
-   | ...
-   |
-
-Example: Capture historical data:
-   $ sudo sysdig -w historical.scap
-
-Example: "Zoom into a client":
-   $ sudo sysdig -pc -c topprocs\_cpu container. name=client
-   | CPU% Process container.name
-   | ----------------------------------------------
-   | 02.69% bash client
-   | 31.04%curl client
-   | 0.74% sleep client
-</pre>
-
-<pre zoom TODO labels="docker,gui,monitoring,">
-<span xsmall>Dockviz</span>
-@[https://github.com/justone/dockviz]
-Show a graph of running containers dependencies and
-image dependencies.
-
-Other options:
-$ºdockviz images -tº
-└─511136ea3c5a Virtual Size: 0.0 B
-  ├─f10ebce2c0e1 Virtual Size: 103.7 MB
-  │ └─82cdea7ab5b5 Virtual Size: 103.9 MB
-  │   └─5dbd9cb5a02f Virtual Size: 103.9 MB
-  │     └─74fe38d11401 Virtual Size: 209.6 MB Tags: ubuntu:12.04, ubuntu:precise
-  ├─ef519c9ee91a Virtual Size: 100.9 MB
-  └─02dae1c13f51 Virtual Size: 98.3 MB
-    └─e7206bfc66aa Virtual Size: 98.5 MB
-      └─cb12405ee8fa Virtual Size: 98.5 MB
-        └─316b678ddf48 Virtual Size: 169.4 MB Tags: ubuntu:13.04, ubuntu:raring
-
-$ºdockviz images -t -l º← show only labelled images
-└─511136ea3c5a Virtual Size: 0.0 B
-  ├─f10ebce2c0e1 Virtual Size: 103.7 MB
-  │ └─74fe38d11401 Virtual Size: 209.6 MB Tags: ubuntu:12.04, ubuntu:precise
-  ├─ef519c9ee91a Virtual Size: 100.9 MB
-  │ └─a7cf8ae4e998 Virtual Size: 171.3 MB Tags: ubuntu:12.10, ubuntu:quantal
-  │   ├─5c0d04fba9df Virtual Size: 513.7 MB Tags: nate/mongodb:latest
-  │   └─f832a63e87a4 Virtual Size: 243.6 MB Tags: redis:latest
-  └─02dae1c13f51 Virtual Size: 98.3 MB
-    └─316b678ddf48 Virtual Size: 169.4 MB Tags: ubuntu:13.04, ubuntu:raring
-
-
-$ºdockviz images -tº-i º ← Show incremental size rather than cumulative
-└─511136ea3c5a Virtual Size: 0.0 B
-  ├─f10ebce2c0e1 Virtual Size: 103.7 MB
-  │ └─82cdea7ab5b5 Virtual Size: 255.5 KB
-  │   └─5dbd9cb5a02f Virtual Size: 1.9 KB
-  │     └─74fe38d11401 Virtual Size: 105.7 MB Tags: ubuntu:12.04, ubuntu:precise
-  └─02dae1c13f51 Virtual Size: 98.3 MB
-    └─e7206bfc66aa Virtual Size: 190.0 KB
-      └─cb12405ee8fa Virtual Size: 1.9 KB
-        └─316b678ddf48 Virtual Size: 70.8 MB Tags: ubuntu:13.04, ubuntu:raring
-
-</pre>
-<pre zoom labels="docker,monitoring,TODO">
-<span xsmall>cAdvisor</span>
-<span xsmall>+Prometheus</span>
-<span xsmall>+Grafana</span>
-@[https://dzone.com/refcardz/intro-to-docker-monitoring?chapter=6]
-@[https://github.com/google/cadvisor/blob/master/docs/running.md#standalone]
+Content moved to <a href="./containers_map.html" target="_new">Containers map</a>
 </pre>
 </div>
-
-<div groupv>
-<span title>Managing Images</span>
-<pre zoom labels="docker">
-  <span xsmall>Managing images</span>
-(List all image related commands with: $ docker image)
-
-  $ docker images        # ← List local ("downloaded/instaled") images
-
-  $ docker search redis  # ← Search remote images @ Docker Hub: 
-
-  $ docker rmi /${IMG_NAME}:${IMG_VER}  # ← remove (local) image
-  $ docker image prune                  # ← removeºallºnon used images
-
--ºPUSH/PULL Images from Private Registry:º
-
-  -ºPRE-SETUP:º(Optional opinionated, but recomended)
-    Define ENV. VARS. in BºENVIRONMENTº file
-
-    $ catBºENVIRONMENTº
-    #  COMMON ENV. PARAMS for PRIVATE/PUBLIC REGISTRY: {{
-    USER=user01
-    IMG_NAME="postgres_custom"
-    IMG_VER="1.0"  # ← Defaults to 'latest'
-    # }} 
-    # PRIVATE REGISTRY ENV. PARAMS ONLY : {{
-    SESSION_TOKEN="dAhYK9Z8..."  # ← Updated Each 'N' hours
-    REGISTRY=docker_registry.myCompany.com
-    # }}
-
-
-  -ºUPLOAD IMAGEº 
-   ºALT1: UPLOAD TO PRIVATE REGISTRY:º      │ ºALT2: UPLOAD TO DOCKER HUB:º
-    $ cat push_image_to_private_registry.sh │  $ cat push_image_to_dockerhub_registry.sh
-    #!/bin/bash                             │  #!/bin/bash
-    set -e # ← stop on first error          │  set -e # ← stop on first error
-    .BºENVIRONMENTº                         │  .BºENVIRONMENTº
-                                            │  
-    sudo dockerºloginº\                     │  sudo dockerºloginº\
-       -u ${LOGIN_USER} \                   │     -u ${LOGIN_USER} \
-       -p ${SESSION_TOKEN} \                │ 
-       ${REGISTRY}                          │ 
-                                            │  
-    sudo dockerºpushº \                     │  sudo dockerºpushº \
-       ${REGISTRY}/${USER}/\                │  /\
-       /${IMG_NAME}:${IMG_VER}              │  /${IMG_NAME}:${IMG_VER}
-
-
-  -ºDOWNLOAD IMAGEº 
-   ºALT1: DOWNLOAD FROM PRIVATE REGISTRY:º  │ ºALT2: DOWNLOAD FROM DOCKER HUB:º
-   $ docker pull \                          │ $ docker pull \
-     ${REGISTRY}/${USER}/\                  │   \
-     ${IMG_NAME}:${IMG_VER}                 │   ${IMG_NAME}:${IMG_VER}
-</pre>
-
-<pre zoom labels="docker">
-<span xsmall>Build image</span>
-$ docker build \
-   --build-arg http_proxy=http://...:8080 \
-   --build-arg https_proxy=https://..:8080 \
-   -t figlet .
-
-$ cat ./Dockerfile
-FROM ubuntu
-
-RUN apt-get update
-# Instalar figlet
-
-ENTRYPOINT ["figlet", "-f", "script"]
-</pre>
-
-<pre zoom labels="docker">
-  <span xsmall>Image tags</span>
-adding a tag to the image essentially adds an alias
-The tags consists of:
-    'registry_server'/'user_name'/'image_name':'tag'
-    ^^^^^^^^^^^^^^^^^
-    default one if not
-    indicated
-
-Tag image:
-  $ docker tag jdeiviz/clock /clock:1.0
-</pre>
-<pre zoom labels="docker">
-<span xsmall>Show image</span>
-<span xsmall>change history</span>
-   $ docker history /clock:1.0
-</pre>
-<pre zoom labels="docker">
-<span xsmall>Commit image</span>
-<span xsmall>modifications</span>
-(Discouraged most of the time, modify Dockerbuild instead)
-host-mach $ docker run -it ubuntu bash     # Boot up existing image
-container # apt-get install ...            # Apply changes to running instance
-host-mach $ docker diff $(docker ps -lq)   # Show changes done in running container
-host-mach $ docker commit $(docker ps -lq) # Commit/Confirm changes
-host-mach $ docker tag figlet              # Tage new image
-host-mach $ docker run -it figlet          # Boot new image instance
-</pre>
-
-<span title>Advanced Image creation</span>
-<pre zoom labels="docker">
-<span xsmall>ONBUILD</span>
-<span xsmall>(base Dockerfile</span>
-<span xsmall> for devel)</span>
-
-Modify base image adding "ONBUILD" in places that are executed just during build
-in the image extending base image:
-| Dockerfile.base                | Dockerfile
-| FROM node:7.10-alpine          | FROM node-base
-|                                |
-| RUN mkdir /src                 | EXPOSE 8000
-| WORKDIR /src
-|
-| ONBUILD ARG NODE_ENV
-| ONBUILD ENV NODE_ENV $NODE_ENV
-|
-| COPY package.json /src
-|
-| RUN npm install
-|
-| COPY . /src
-|
-| CMD [ "npm", "start" ]
-
-  $ docker build -t node-base -f Dockerfile.base . # STEP 1: Compile base image
-  $ docker build -t node -f Dockerfile .           # STEP 2: Compile image
-  $ docker run -p 8000:8000 -d node
-</pre>
-
-<pre zoom labels="docker">
-<span xsmall>Multi-Stage</span>
-- Multi-Stage allows for final "clean" images that will
-  contain just the application binaries, with no building
-  or compilation intermediate tools needed during the build.
-  This allow for much lighter final images.
-                   ┌───────────────────────────────┼────────────────────────────────────────────────┐
-                   │ "STANDARD" BUILD              │ multi─stage BUILD                              │
-┌──────────────────┼───────────────────────────────┼────────────────────────────────────────────────┤
-│Dockerfile        │ Dockerfile                    │ Dockerfile.ms                                  │
-│                  │ FROM golang:alpine            │ FROM ºgolang:alpineº AS Oºbuild─envº           │
-│                  │ WORKDIR /app                  │ ADD . /src                                     │
-│                  │ ADD . /app                    │ RUN cd /src ; go build ─o app                  │
-│                  │ RUN cd /app ; go build ─o app │                                                │
-│                  │ ENTRYPOINT ./app              │ FROMºalpineº                                   │
-│                  │                               │ WORKDIR /app                                   │
-│                  │                               │ COPY ──from=Oºbuild─envº /src/app /app/        │
-│                  │                               │ ENTRYPOINT ./app                               │
-├──────────────────┼───────────────────────────────┼────────────────────────────────────────────────┤
-│ Compile image    │ $ docker build . ─t hello─go  │ $ docker build . ─f Dockerfile.ms ─t hello─goms│
-├──────────────────┼───────────────────────────────┼────────────────────────────────────────────────┤
-│ Exec container   │ $ docker run hello─go         │ $ docker run hello─goms                        │
-├──────────────────┼───────────────────────────────┼────────────────────────────────────────────────┤
-│ Check image size │ $ docker images               │ $ docker images                                │
-└──────────────────┴───────────────────────────────┴────────────────────────────────────────────────┘
-</pre>
-<pre zoom labels="docker">
-  <a xsmall href="https://github.com/GoogleContainerTools/distroless">Distroless</a>
-- "Distroless" images contain only your application and its runtime dependencies.
-(not package managers, shells,...)
-Notice: In kubernetes we can also use init containers with non-light images
-        containing all set of tools (sed, grep,...) for pre-setup, avoiding
-        any need to include in the final image.
-
-Stable:                      experimental (2019-06)
-gcr.io/distroless/static     gcr.io/distroless/python2.7
-gcr.io/distroless/base       gcr.io/distroless/python3
-gcr.io/distroless/java       gcr.io/distroless/nodejs
-gcr.io/distroless/cc         gcr.io/distroless/java/jetty
-                             gcr.io/distroless/dotnet
-
-Ex java Multi-stage Dockerfile:
-@[https://github.com/GoogleContainerTools/distroless/blob/master/examples/java/Dockerfile]
- ºFROMºopenjdk:11-jdk-slim  ASOºbuild-envº
-  ADD . /app/examples
-  WORKDIR /app
-  RUN javac examples/*.java
-  RUN jar cfe main.jar examples.HelloJava examples/*.class
-
-  FROM gcr.io/distroless/java:11
-  COPY --from=Oºbuild-envº /app /app
-  WORKDIR /app
-  CMD ["main.jar"]
-</pre>
-
-<pre zoom labels="docker">
-<span xsmall>rootless Buildah</span>
-@[https://opensource.com/article/19/3/tips-tricks-rootless-buildah]
-- Building containers in unprivileged environments
-    Buildah is a tool and library for building Open Container Initiative (OCI) container images.
-    In previous articles, including How does rootless Podman work?, I talked
-    about Podman, a tool that enables users to manage pods, containers, and container images.
-    Buildah is a tool and library for building Open Container Initiative (OCI)
-    container images that is complementary to Podman. (Both projects are
-    maintained by the containers organization, of which I'm a member.) In this
-    article, I will talk about rootless Buildah, including the differences between it and Podman.
-</pre>
-
-<pre zoom labels="docker">
-<span xsmall>alpine how-to</span>
-Next image (golang) is justº6Mbytesºin size:
-@[https://hub.docker.com/r/ethereum/solc/dockerfile]
-Dockerfile:
-    01	FROM alpine
-    02	MAINTAINER chriseth <chris@ethereum.org>
-    03	
-    04	RUN \
-    05	  apk --no-cache --update add build-base cmake boost-dev git ⅋⅋ \
-    06	  sed -i -E -e 's/include ˂sys\/poll.h˃/include ˂poll.h˃/' /usr/include/boost/asio/detail/socket_types.hpp  ⅋⅋ \
-    07	  git clone --depth 1 --recursive -b release https://github.com/ethereum/solidity                           ⅋⅋ \
-    08	  cd /solidity ⅋⅋ cmake -DCMAKE_BUILD_TYPE=Release -DTESTS=0 -DSTATIC_LINKING=1                             ⅋⅋ \
-    09	  cd /solidity ⅋⅋ make solc ⅋⅋ install -s  solc/solc /usr/bin                                               ⅋⅋\
-    10	  cd / ⅋⅋ rm -rf solidity                                                                                   ⅋⅋ \
-    11	  apk del sed build-base git make cmake gcc g++ musl-dev curl-dev boost-dev                                 ⅋⅋ \
-    12	  rm -rf /var/cache/apk/*
-
-Notes:
-  - line 07: º--depth 1º: faster cloning (just last commit)
-  - line 07: the cloned repo contains next º.dockerignoreº:
-    01 # out-of-tree builds usually go here. This helps improving performance of uploading
-    02 # the build context to the docker image build server
-    03*/build*
-    04
-    05 # in-tree builds
-    06*/deps*
-</pre>
-</div>
-
-<div groupv>
-<span title>TODO Classify</span>
-<pre zoom labels="docker,troubleshooting">
-<span xsmall>Troubleshooting</span>
-- /var/lib/docker/devicemapper/devicemapper/data consumes too much space
-$ sudo du -sch /var/lib/docker/devicemapper/devicemapper/data
-14G     /var/lib/docker/devicemapper/devicemapper/data
-<a href="https://meta.discourse.org/t/why-is-docker-devicemapper-taking-so-much-hard-drive-space/34378">[REF@StackOverflow]</a>
-</pre>
-
-<pre zoom labels="docker,TODO">
-<span xsmall>Live Restore</span>
-@[https://docs.docker.com/config/containers/live-restore/]
-Keep containers alive during daemon downtime
-</pre>
-
-
 </div> <!-- docker -->
 
 </body>
@@ -6737,16 +6303,6 @@ The Extended Object File System (exofs) is a traditional Linux file system built
 Next-generation Linux file systems: NiLFS(2) and exofs
 _______________________________
 @[https://www.linuxlinks.com/excellent-utilities-peco-interactive-filtering-tool/]
-_________________
-https://github.com/jpetazzo/pipework  [Docker]
-Pipework lets you connect together containers in arbitrarily complex scenarios. Pipework uses cgroups and namespace and works with "plain" LXC containers (created with lxc-start), and with the awesome Docker.
-_________________
-https://github.com/weaveworks/weave  [Docker]
-Weaveworks is the company that delivers the most productive way for developers to connect, observe and control Docker containers.
-
-This repository contains Weave Net, the first product developed by Weaveworks, with over 8 million downloads to date. Weave Net enables you to get started with Docker clusters and portable apps in a fraction of the time required by other solutions.
-
-___________________
 ______________________
 https://www.ostechnix.com/kmdr-display-cli-commands-explanation-in-terminal/
 _________________________
@@ -6922,14 +6478,8 @@ If you have any questions or feedback, feel free to leave a comment.
 <span xsmall>ZFS@Ubuntu 19.10</span>
 @[https://www.techrepublic.com/article/something-exciting-is-coming-with-ubuntu-19-10/]
 </pre>
-_______________________
-exec docker without sudo:
-
-sudo usermod -a -G docker "myUser"
 ________________________________
 https://www.redhat.com/sysadmin/raid-intro
-_____________________________
-https://www.ostechnix.com/explaining-docker-volumes-with-examples/1gt
 _____________________
 https://www.ostechnix.com/doppler-a-zero-configuration-remote-monitoring-tool/
 ____________________________________
@@ -6973,10 +6523,6 @@ Linux shell script to reduce PDF file size (x5 or more when embbeding images)
 ____________
 https://www.redhat.com/sysadmin/fedora-31-control-group-v2
 Cgroups v2 @ Fedora 31
-____________
-https://www.infoq.com/articles/metaparticle-pulumi-ballerina/
-Packaging Applications for Docker and Kubernetes: Metaparticle vs Pulumi vs Ballerina
-https://v1-0.ballerina.io/learn/by-example/
 ____________
 _________________________
 rysnc dry-run:
@@ -7039,9 +6585,6 @@ _________________________
 │  → ...                                              │
 └─────────────────────────────────────────────────────┘
 _____________________________
-https://github.com/jesseduffield/lazydocker
-A simple terminal UI for both docker and docker-compose, written in Go with the gocui library.
-________________________
 https://geekland.eu/mejorar-el-rendimiento-de-un-sistema-operativo-de-escritorio-linux/
 ______________________
 https://www.redhat.com/en/blog/achieving-maximum-performance-fixed-size-ceph-object-storage-cluster
@@ -7151,246 +6694,6 @@ ______________________
 -----------------------
 https://developers.redhat.com/blog/2020/03/06/configure-and-run-a-qemu-based-vm-outside-of-libvirt/
 (Launching VMs directly from qemu)
-
-START DOCKER {{{
-<pre zoom  labels="docker,TODO">
-<span xsmall TODO>Un-ordered</span>
-https://kerneltalks.com/virtualization/8-basic-docker-container-management-commands/
-_______________________
-Docker Remote API SDK:
-https://docs.docker.com/develop/sdk/
-____________________________________
-https://www.linux-toys.com/archives/1554
-________________________
-https://coreos.com/clair/docs/latest/
-Clair is an open source project for the static analysis of vulnerabilities in appc and docker containers.
-
-Vulnerability data is continuously imported from a known set of sources and
-correlated with the indexed contents of container images in order to produce
-lists of vulnerabilities that threaten a container. When vulnerability data
-changes upstream, the previous state and new state of the vulnerability along
-with the images they affect can be sent via webhook to a configured endpoint.
-All major components can be customized programmatically at compile-time
-without forking the project.
-______________________
-https://www.infoq.com/news/2015/02/under-hood-containers
-___________________
-https://stackoverflow.com/questions/19897743/exposing-a-port-on-a-live-docker-container
-_________________________
-https://www.eweek.com/cloud/red-hat-advances-container-technology-with-podman-1.0
-______________________
-https://blog.couchbase.com/monitoring-docker-containers-docker-stats-cadvisor-universal-control-plane/
-Monitoring Docker Containers – docker stats, cAdvisor, Universal Control Plane
-_______________________________
-https://jvns.ca/blog/2016/12/22/container-networking/ !!!
-____________________________
-https://docs.docker.com/storage/storagedriver/
-____________________________
-https://www.infoq.com/news/2019/01/docker-windows-server-2019
-_______________________________
-____________________________________
-Docker + Device Mapper + LVM + ...
-https://docs.docker.com/storage/storagedriver/device-mapper-driver/
-___________________________
-https://github.com/opencontainers/runc
-
-CLI tool for spawning and running containers according to the OCI specification https://www.opencontainers.org/
-______________________
-https://www.opencontainers.org/
-_________________________________
-https://lwn.net/Articles/788282/
-____________________________________
-https://opensource.com/business/15/3/docker-security-tuning
-______________________
-https://www.eweek.com/enterprise-apps/docker-enterprise-3.0-advances-container-development
-__________________
-https://medium.com/better-programming/about-var-run-docker-sock-3bfd276e12fd
-
-___________________
-- Portainer, an open-source management interface used to manage a Docker host or a Swarm cluster.
-______________________
-https://rancher.com/introducing-convoy-a-docker-volume-driver-for-backup-and-recovery-of-persistent-data/
-Introducing Convoy a Docker Storage Driver for Backup and Recovery of Volumes
-
-__________________
-DOCKER: API/API-Types:
-https://godoc.org/github.com/docker/docker/api
-https://godoc.org/github.com/docker/docker/api/types
-___________
-DOCKER:
-Unless you tell Docker otherwise, it will do as little work as possible when 
-building an image. It caches the result of each build step of a Dockerfile that 
-it has executed before and uses the result for each new build. If a new version 
-of the base image you’re using becomes available that conflicts with your 
-app, however, you won’t notice that when running the tests in a container 
-using an image that is built upon the older, cached version of the base image.
-
-You can instruct Docker to look for newer verions of your base image during a 
-build with the command-line argument --pull. Because new base images are only 
-available once in a while, it’s not really wasteful to use this argument all 
-the time when building images.  (--no-cache can also be useful)
-__________________
-See script to automate Docker setup on Ubuntu:
-https://raw.githubusercontent.com/oveits/docker-enabled-vagrant/master/ubuntu-trusty/vagrant-provision.sh
-REF: @[https://vocon-it.com/2016/04/06/aws-automation-using-vagrant-part-3-creating-a-docker-host-on-aws-in-10-minutes-using-vagrant/]
-___________________
-https://github.com/jwilder/docker-gen
-docker-gen is a file generator that renders templates using docker container meta-data.
-
-It can be used to generate various kinds of files for:
-- Centralized logging - fluentd, logstash or other centralized logging tools that tail the containers JSON log file or files within the container.
-- Log Rotation - logrotate files to rotate container JSON log files
-- Reverse Proxy Configs - nginx, haproxy, etc. reverse proxy configs to route requests from the host to containers
-- Service Discovery - Scripts (python, bash, etc..) to register containers within etcd, hipache, etc..
-_______________________
-https://github.com/jwilder/dockerize
-
-dockerize is a utility to simplify running applications in docker containers. It allows you to:
-- generate application configuration files at container startup time from templates and container environment variables
-- Tail multiple log files to stdout and/or stderr
-- Wait for other services to be available using TCP, HTTP(S), unix before starting the main process.
-
-typical use case:
- - application that has one or more configuration files and
-   you would like to control some of the values using environment variables.
- - dockerize allows to set an environment variable and update the config file before
-   starting the contenerized application
- - other use case: forward logs from harcoded files on the filesystem to stdout/stderr
-   (Ex: nginx logs to /var/log/nginx/access.log and /var/log/nginx/error.log by default)
-_____________________
-https://www.redhat.com/sysadmin/speeding-container-buildah
-
-This article will address a second problem with build speed when using dnf/yum 
-commands inside containers. Note that in this article I will use the name dnf 
-(which is the upstream name) instead of what some downstreams use (yum) These 
-comments apply to both dnf and yum.
-________________________
-Code refactoring and multicursor with Vim:
-GitHub - dyng/ctrlsf.vim: An ack.vim alternative mimics Ctrl-Shift-F on Sublime Text 2https://github.com/dyng/ctrlsf.vim 
-----------------
-http://www.linuxandubuntu.com/home/portainer-io-manage-docker-containers-easily
-Portainer.io: "Easy docker"
-</pre>
-
-<pre zoom labels="TODO">
-<span xsmall>Mount HFS/HFSPlus</span>
-REF: @[https://github.com/FlamingTuri/hfs-device-mounter]
-Dependencies:
-  sudo apt-get install  "lsblk" "udisksctl" "hfsplus" "hfsutils" "hfsprogs" 
-
-hfs-mount.py:
-  #!/usr/bin/python3
-  
-  import sys
-  import re
-  import subprocess
-  import json
-  import getpass
-  import argparse
-  
-  # parsing program flags
-  parser = argparse.ArgumentParser()
-  parser.add_argument('-d', action='store_true',
-                      help='check and install program dependencies')
-  parser.add_argument('-c', action='store_true',
-                      help='check the device filesystem with fsck')
-  parser.add_argument('-m', action='store_false',
-                      help='use [umount|mount] instead of udisksctl [unmount|mount] (requires root privileges)')
-  
-  flags = parser.parse_args()
-  
-  # check program dependencies
-  if flags.d:
-      print('checking that all the dependencies are satisfied')
-      subprocess.call(['./dependencies.sh'])
-      print('\n\n')
-  
-  # --- #
-  
-  def runCommand(cmd: str):
-      print(cmd)
-      subprocess.call(cmd.split())
-  
-  
-  def runCommandList(cmd: list):
-      print(' '.join(cmd))
-      subprocess.call(cmd)
-  
-  def mode(cmd1, cmd2):
-      if flags.m: 
-          return cmd1
-      else:
-          return cmd2
-  
-  fstype = 'hfs'
-  
-  stdout = subprocess.check_output(['lsblk', '-flJ'])
-  
-  json_lsblk: dict = json.loads(str(stdout, 'utf-8'))
-  
-  # filtering out non hfs filesystems
-  hfs_devices: list = [x for x in json_lsblk['blockdevices']
-                       if fstype in str(x['fstype'])]
-  
-  if len(hfs_devices) ˂= 0:
-      sys.exit('No hfs device found, quitting...')
-  
-  # device selection
-  valid_input: bool = False
-  while not valid_input:
-      print('Currently detected hfs devices:')
-      for idx, device in enumerate(hfs_devices):
-          print(str(idx) + ') [name]=' + str(device['name']) + ' [label]=' +
-                str(device['label']) + ' [mountpoint]=' + str(device['mountpoint']))
-  
-      try:
-          selected: int = int(input('\nType the number of the hfs device to mount' +
-                                    ' with read/write permissions: '))
-      except ValueError:
-          print('Wrong input\n')
-          continue
-      else:
-          if selected ˂ len(hfs_devices):
-              valid_input = True
-  
-  
-  user: str = getpass.getuser()
-  device = hfs_devices[selected]
-  name: str = '/dev/' + device['name']
-  
-  print(device['mountpoint'])
-  if device['mountpoint'] is None:
-      mountpoint = '/media/' + user + '/' + str(device['label'])
-  else:
-      mountpoint = str(device['mountpoint'])
-      # unmount device
-      cmd1 = 'udisksctl unmount -b ' + name
-      cmd2 = 'sudo umount ' + name
-      runCommand(mode(cmd1, cmd2))
-  
-  # trasform mountpoint in list to avoid errors caused by spaces
-  mountpoint = [mountpoint]
-  
-  if flags.c:
-      # checks the device filesystem;
-      # useful if the device was unproperly unmounted or
-      # has become partially corrupted
-      runCommand('sudo fsck.hfsplus -f ' + name)
-  
-  # mounts the hfs device with read and write permissions
-  if flags.m:
-      cmd = 'udisksctl mount -t hfsplus -o force,rw -b ' + name
-      runCommand(cmd)
-  else:
-      cmd = 'sudo mkdir -m 777'
-      runCommandList(cmd.split() + mountpoint)
-  
-      cmd = 'sudo mount -t hfsplus -o force,rw ' + name
-      runCommandList(cmd.split() + mountpoint)
-</pre>
-
-
-}}} END-DOCKER
 ____________________
 Linux tools: Getting the message out with dmesg | Enable Sysadmin
 https://www.redhat.com/sysadmin/dmesg 
@@ -7401,5 +6704,77 @@ Systemd service sandboxing and security hardening 101
 ______________________
 conrad - conferences and meetups on your terminal - LinuxLinks
 https://www.linuxlinks.com/conrad-conferences-meetups-terminal/ 
+_____________________
+https://askubuntu.com/questions/601/the-following-packages-have-been-kept-back-why-and-how-do-i-solve-it
 
+The cautious solution is to run sudo apt-get install "list of 
+packages kept back". In most cases this will give the kept-back 
+packages what they need to successfully upgrade.
+
+Aggressive solution:
+
+A more aggressive solution is to run sudo apt-get dist-upgrade, which 
+will force the installation of those new dependencies.
+
+But dist-upgrade can be quite dangerous. Unlike upgrade it may remove 
+packages to resolve complex dependency situations. Unlike you, APT 
+isn't always smart enough to know whether these additions and 
+removals could wreak havoc. 
+____________________________
+Code refactoring and multicursor with Vim:
+GitHub - dyng/ctrlsf.vim: An ack.vim alternative mimics Ctrl-Shift-F on Sublime Text 2
+https://github.com/dyng/ctrlsf.vim 
+___________________________
+Linux perf Examples
+http://www.brendangregg.com/perf.html
+
+Learn eBPF Tracing: Tutorial and Examples:
+http://www.brendangregg.com/blog/2019-01-01/learn-ebpf-tracing.html
+___________________________
+https://www.tecmint.com/test-network-throughput-in-linux/
+___________________________
+Man unix friendly DB: man db5.3_*
+___________________________
+https://www.debugpoint.com/2020/07/kde-plasma-5-20-wayland/
+Desktop recording in Wayland thanks to Pipeware.
+https://pipewire.org/
+- It provides a low-latency, graph based processing engine on top of 
+  audio and video devices that can be used to support the use cases 
+  currently handled by both pulseaudio and JACK. PipeWire was designed 
+  with a powerful security model that makes interacting with audio and 
+  video devices from containerized applications easy, with supporting 
+  Flatpak applications being the primary goal. Alongside Wayland and 
+  Flatpak we expect PipeWire to provide a core building block for the 
+  future of Linux application development
+__________________________
+https://www.nsoftware.com/sftp/drive/
+An easy-to-use utility that mounts remote file systems as Windows drives via SFTP. Once connected, you can browse and work with files as if they were stored on your local machine.
+_______________________________
+https://serversuit.com/community/technical-tips/view/storage-area-network,-and-other-storage-methods.html
+There are some common misconceptions about the term "SAN", which 
+means "Storage Area Network" and as such, strictly speaking, refers 
+only to the communication infrastructure connecting storage devices 
+(disk arrays, tape libraries, etc.) and storage users (servers). 
+However, in common practice the term "SAN" is used to refer to two 
+things:
+
+- A complete storage infrastructure, including all the hardware and 
+software involved in providing shared access to central storage 
+devices from multiple servers. This usage, although not strictly 
+correct, is commonly accepted and what most people refers to when 
+talking about a "SAN". The rest of this answer will focus on it, thus 
+describing every component of an enterprise-level storage 
+infrastructure.
+- A single storage array (see later); as in, "we have a Brand X SAN 
+with 20 TB storage". This usage is fundamentally incorrect, because 
+it doesn't even take into account the real meaning of "SAN" and just 
+assumes it's some form of storage device.
+______________________________
+SSH two-facto authentication for R.Pi.:
+Q: Does anone know if Authy is supported as well as Google Auth?
+A:
+I've with TOTP any client app that supports the standar (Google auth, authy, M$ authenticato,r ...) 
+should work iwth any service that implements it.
+__________________________
+https://linuxconfig.org/apt-vs-apt-get-advanced-package-tool
 

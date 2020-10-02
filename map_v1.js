@@ -1,3 +1,4 @@
+import { preLoad , postLoad } from '/custom.js';
 var spb = {
   zoomDivDOM : window,
   zoomStatus: 0, // 0 = inactive, 1 = zoomedContent, 2 = searchDialog
@@ -37,10 +38,10 @@ var spb = {
     if (e.key === "PageDown") { goForward(); return }
     if (e.key === "PageUp"  ) { goBack   (); return }
 
-    if ( (e.key === "s" ) ) {
-      if (spb.zoomStatus === 2) return
-      doExtraOptions()
-    }
+//  if ( (e.key === "s" ) ) {
+//    if (spb.zoomStatus === 2) return
+//    doExtraOptions()
+//  }
     if (e.code === "Enter") { doCloseZoom() }
     if (e.code === "F1") doHelp(); 
   },
@@ -70,7 +71,7 @@ var spb = {
   }
 }
 
-function doCloseZoom() {
+export function doCloseZoom() {
   spb.zoomStatus = 0 
   document.getElementById("buttonZoomIn" ).innerHTML="[dive]";
   document.getElementById("buttonZoomOut").innerHTML="[orbit]";
@@ -131,7 +132,7 @@ var longPress = {
    }
 }
 
-function onZoomOut(){
+export function onZoomOut(){
   if (spb.zoomDivDOM.innerHTML != '') {
     spb.zoomFontSize = (spb.zoomFontSize > 0.05) ? spb.zoomFontSize - spb.zoomStepOut : 0.0006
     spb.cssRules[spb.idxZoomDivRule].style['font-size']=spb.zoomFontSize+'rem'
@@ -151,7 +152,7 @@ function onZoomOut(){
   spb.cssRules[spb.idxXSmallRule].style['font-size']=spb.  xsmallFontSize+'rem'
   spb.cssRules[spb.idxXTitleRule].style['font-size']=spb.  xsmallFontSize+'rem'
 }
-function onZoomIn(){
+export function onZoomIn(){
   if (spb.zoomDivDOM.innerHTML != '') {
     spb.zoomFontSize = spb.zoomFontSize + spb.zoomStepIn
     spb.cssRules[spb.idxZoomDivRule].style['font-size']=spb.zoomFontSize+'rem'
@@ -167,14 +168,14 @@ function onZoomIn(){
   spb.cssRules[spb.idxXTitleRule].style['font-size']=spb.  xsmallFontSize+'rem'
 }
 
-function goBack() {
+export function goBack() {
     if(spb.visited_idx == 0) return
     spb.visited_idx--
     let e = spb.visited[spb.visited_idx]
     doOpenZoom.call(e, e, true, true, false);
     spb.zoomStatus = 1
 }
-function goForward() {
+export function goForward() {
     if(spb.visited_idx == spb.visited.length-1) return
     spb.visited_idx++
     let e = spb.visited[spb.visited_idx]
@@ -183,7 +184,7 @@ function goForward() {
 }
 
 
-function doOpenZoom(e, isHistoric, showTimeControl, CallbackOnClose, strCloseLabel) {
+export function doOpenZoom(e, isHistoric, showTimeControl, CallbackOnClose, strCloseLabel) {
   spb.CallbackOnClose = CallbackOnClose
   if (!!!spb.CallbackOnClose /* This mean showing real content. */ ) {
     document.getElementById("buttonZoomIn" ).innerHTML="[zoom-in]";
@@ -230,17 +231,17 @@ function doOpenZoom(e, isHistoric, showTimeControl, CallbackOnClose, strCloseLab
 
    + e.outerHTML; 
   spb.zoomDivDOM.style.display="block";
-  window.spb.zoomDivDOM.scrollTop = 0;
+  spb.zoomDivDOM.scrollTop = 0;
   if (!!this.stopPropagation) { this.stopPropagation(); }
   return false;
 }
 
-function updateRegexQuery() {
+export function updateRegexQuery() {
     spb.regexQuery = this.value
 }
 
-function doExtraOptions() {
-    ctx = {
+export function doExtraOptions() {
+    let ctx = {
         outerHTML : getSearchOptions()
     }
     document.getElementById("buttonZoomIn" ).innerHTML="";
@@ -249,6 +250,9 @@ function doExtraOptions() {
     spb.zoomStatus = 2
     domInputQuery = document.getElementById("inputQuery")
     domInputQuery.addEventListener("change",  updateRegexQuery )
+
+    document.querySelector('.labelButton').addEventListener('click', onLabelClicked);
+     
     domInputQuery.focus()
 }
 
@@ -274,9 +278,9 @@ function onLabelClicked(e) {
 
 function renderLabel(sLabel,selected) {
   sLabel = sLabel.toLowerCase()
-  cssAtribute    = (sLabel.startsWith("todo")) ? "red"  : ""
+  let cssAtribute    = (sLabel.startsWith("todo")) ? "red"  : ""
   return "<input "+cssAtribute+" class='labelButton' selected="+(!!spb.labelMapSelected[sLabel])+
-         " type='button' onClick='onLabelClicked(this)' value='"+sLabel+"' /><span labelcount>"+spb.labelMap[sLabel].length+"</span>" ;
+         " type='button' value='"+sLabel+"' /><span labelcount>"+spb.labelMap[sLabel].length+"</span>" ;
 }
 
 
@@ -289,10 +293,6 @@ function switchCaseMode()       { spb.matchCaseMode=document.getElementById("cas
 
 function getSearchOptions() {
     var result = "<div style='font-size:2rem; margin:0;'>";
-    let selectedText = window.getSelection().toString();
-    let selectedText_l = selectedText.split().filter/*remove empty strings*/((el) => {return !!el});
-    if (selectedText_l.length>0 && selectedText_l.length<3) spb.regexQuery = selectedText;
-
     result += ""
       + '  <input id="inputQuery" type="text" placeholder="(regex)search" maxlength="30" value="'+spb.regexQuery+'" />'
       + "  <input id='singleLineOnly' type='checkbox' onClick='switchSingleLineMode()' "+(spb.singleLineMode ? "checked" :"")+" ><code style='font-size:0.7em;'>single-line</code>"
@@ -331,12 +331,12 @@ function labelMapSelectedToCSV() {
 }
 function createLabelIndex() {
   var labeled_dom_l = document.querySelectorAll('*[labels]');
-  for (idx1 in labeled_dom_l) {
+  for (let idx1 in labeled_dom_l) {
     var node = labeled_dom_l[idx1]
     if (!node.getAttribute    ) continue
     let csvAttributes = node.getAttribute("labels")
     if (!csvAttributes || !csvAttributes.trim()) continue;
-    labelCount = 0
+    var labelCount = 0
     csvAttributes.split(",").forEach( label => {
         if (!!! label) return
         label = label.toLowerCase()
@@ -362,6 +362,7 @@ function spbQuickPrint() {
 }
 
 function onPageLoaded() {
+  try {   preLoad(); } catch(err) {console.dir(err)}
   spb.cssRules = document.styleSheets[0]['cssRules'][0].cssRules;
   var zoomDiv = document.createElement('div');
       zoomDiv.setAttribute("id", "zoomDiv")
@@ -373,7 +374,7 @@ function onPageLoaded() {
    +   ' onerror="src = \'https://singlepagebookproject.github.io/SPB/labelIcon.svg\';" />'
    + '&nbsp;<span blue class="noprint" id="unhide" hidden style="cursor:ns-resize" onClick="resetTextFoundAttr(true)">[unhide]</span>'
    + '&nbsp;<a href="../help.html" class="noprint" style="cursor:help" target="_blank">[HelpMan]</a>'
-   + '&nbsp;<span onClick="spbQuickPrint()" blue>[Print]</span>'
+   + '&nbsp;<span onClick="spbQuickPrint()" blue id="printButton">[Print]</span>'
    + '<span id="buttonZoomIn" onclick="onZoomIn ()" blue>[dive]</span>'
    + '&nbsp;<span id="buttonZoomOut" onclick="onZoomOut()" blue>[orbit]&nbsp;&nbsp;</span>'
    + '<br/>'
@@ -388,7 +389,7 @@ function onPageLoaded() {
   // but this is the exception to the rule
   var nodeList = document.querySelectorAll('a')
   var thisDoc=document.location.origin+document.location.pathname;
-  for (idx in nodeList) { 
+  for (let idx in nodeList) { 
       var nodeHref = nodeList[idx].href;
       if (!nodeHref) { continue; }
       if (! (nodeHref.startsWith("http")) ) continue;
@@ -397,7 +398,7 @@ function onPageLoaded() {
   }
 
   nodeList = document.querySelectorAll('*[zoom]')
-  for (idx in nodeList) { 
+  for (let idx in nodeList) { 
      if (!!! nodeList[idx].addEventListener) continue;
      longPress.enableDblClick (nodeList[idx]);
      longPress.enableLongTouch(nodeList[idx]);
@@ -409,7 +410,7 @@ function onPageLoaded() {
   )
 
   nodeList = document.querySelectorAll('*[zoom]')
-  for (idx in nodeList) { 
+  for (let idx in nodeList) { 
       if (!!! nodeList[idx].innerHTML) { continue }
 
       Object.keys(spb.replaceMap).forEach( key => 
@@ -455,7 +456,7 @@ function onPageLoaded() {
 //    }
   }
 
-  for (idx=0; idx<spb.cssRules.length; idx++){
+  for (let idx=0; idx<spb.cssRules.length; idx++){
       if( spb.cssRules[idx].selectorText == "#zoomDiv") {
           spb.idxZoomDivRule=idx
       }
@@ -474,7 +475,7 @@ function onPageLoaded() {
 
   let csvLabels = getParameterByName("topics") || ""
       csvLabels = csvLabels.toLowerCase()
-  label_l = (!!csvLabels) ? csvLabels.split(",") : []
+  let label_l = (!!csvLabels) ? csvLabels.split(",") : []
   label_l.forEach(label => {
       onLabelClicked({value : label});
   })
@@ -487,6 +488,10 @@ function onPageLoaded() {
   if (!!doShowSearchMenu || doShowSearchMenu == "") {
     doExtraOptions();
   }
+
+  try {  
+      postLoad();
+  } catch(err) {console.dir(err)}
 }
 
 window.onload = onPageLoaded 
@@ -519,7 +524,7 @@ function resetTextFoundAttr(bKeepHighlightedSearch) {
    })
   var removeNodeList = document.querySelectorAll('*[textFound]');
   if (removeNodeList.length == 0) return; // Nothing to do.
-  for (idx in removeNodeList) {
+  for (let idx in removeNodeList) {
       if (!removeNodeList[idx].setAttribute) continue; // <- Umm: works fine at page-load, fails in following searchs
       if (bKeepHighlightedSearch && removeNodeList[idx].getAttribute("textFound") == "true") continue;
       removeNodeList[idx].removeAttribute("textFound"); 
@@ -572,7 +577,7 @@ function highlightSearch(query) {
   if (isAnyLabelSelected()) {
       let label_l=Object.keys(spb.labelMapSelected)
       innerZoom_l = getDomListForLabel(label_l[0]);
-      for (idx=0; idx<label_l.length; idx++) {
+      for (let idx=0; idx<label_l.length; idx++) {
         innerZoom_l = spb.labelANDMode 
               ? innerZoom_l.intersection( getDomListForLabel(label_l[idx]) )
               : innerZoom_l.union       ( getDomListForLabel(label_l[idx]) )
@@ -593,7 +598,7 @@ function highlightSearch(query) {
   spb.visited=[]
 
   var foundElement = false
-  for (idx2 in innerZoom_l) {
+  for (let idx2 in innerZoom_l) {
     var node = innerZoom_l[idx2]
     if (false/* true => change node background in debug mode */) {
         node.setAttribute("textFound", "debug") 
@@ -616,7 +621,7 @@ function highlightSearch(query) {
 
 function cleanUUIDSelected() {
   let label_l=Object.keys(spb.labelMapSelected)
-  for (idx=0; idx<label_l.length; idx++) {
+  for (let idx=0; idx<label_l.length; idx++) {
     label = label_l[idx] != null ? label_l[idx] : "";
     if (label.toLowerCase().startsWith("uuid:")) {
       spb.labelMapSelected[label] = false 

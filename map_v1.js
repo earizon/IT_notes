@@ -54,7 +54,7 @@ var spb = {
       finalRegex.lastIndex = 0;
       node.setAttribute("textFound", searchFound?"true":"false")
       if (searchFound) {
-          nodeListList =  (node.parentNode.parentNode.tagName != "BODY")
+          const nodeListList =  (node.parentNode.parentNode.tagName != "BODY")
             ? [node.parentNode.parentNode.querySelectorAll(':not(div)[title]'),
                node.parentNode.querySelectorAll('[title]')]
             : [node.parentNode.querySelectorAll('[title]')]

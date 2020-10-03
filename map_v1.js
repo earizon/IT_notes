@@ -1,6 +1,9 @@
 import { preLoad , postLoad } from '/custom.js';
+
 var spb = {
   zoomDivDOM : window,
+  searchFormDOM : window,
+  searchForm_labelsDOM : window,
   zoomStatus: 0, // 0 = inactive, 1 = zoomedContent, 2 = searchDialog
   idxZoomDivRule :-1,
   idxZoomRule:-1,
@@ -38,10 +41,6 @@ var spb = {
     if (e.key === "PageDown") { goForward(); return }
     if (e.key === "PageUp"  ) { goBack   (); return }
 
-//  if ( (e.key === "s" ) ) {
-//    if (spb.zoomStatus === 2) return
-//    doExtraOptions()
-//  }
     if (e.code === "Enter") { doCloseZoom() }
     if (e.code === "F1") doHelp(); 
   },
@@ -240,33 +239,19 @@ export function updateRegexQuery() {
     spb.regexQuery = this.value
 }
 
-export function doExtraOptions() {
-    let ctx = {
-        outerHTML : getSearchOptions()
-    }
-    document.getElementById("buttonZoomIn" ).innerHTML="";
-    document.getElementById("buttonZoomOut").innerHTML="";
-    doOpenZoom.call(ctx, ctx, true, false, highlightSearch, "Search Now!")
-    spb.zoomStatus = 2
-    domInputQuery = document.getElementById("inputQuery")
-    domInputQuery.addEventListener("change",  updateRegexQuery )
 
-    document.querySelector('.labelButton').addEventListener('click', onLabelClicked);
-     
-    domInputQuery.focus()
-}
 
 function onLabelClicked(e) {
-    let label = e.value;
-    if (!e.attributes) {
-         e.attributes = { selected : { value : "false" } }
+    const dom = e.target;
+    const label = dom.value;
+    if (!dom.attributes) {
+         dom.attributes = { selected : { value : "false" } }
     }
-
-    if (e.attributes.selected.value == "false") {
-        e.attributes.selected.value = "true"
+    if (dom.attributes.selected.value == "false") {
+        dom.attributes.selected.value = "true"
         spb.labelMapSelected[label] = true
     } else {
-        e.attributes.selected.value = "false"
+        dom.attributes.selected.value = "false"
         delete spb.labelMapSelected[label]
     }
     if (isAnyLabelSelected()){
@@ -290,36 +275,6 @@ function switchANDORSearch() {
 }
 function switchSingleLineMode() { spb.singleLineMode=document.getElementById("singleLineOnly").checked; }
 function switchCaseMode()       { spb.matchCaseMode=document.getElementById("caseSensitive").checked; }
-
-function getSearchOptions() {
-    var result = "<div style='font-size:2rem; margin:0;'>";
-    result += ""
-      + '  <input id="inputQuery" type="text" placeholder="(regex)search" maxlength="30" value="'+spb.regexQuery+'" />'
-      + "  <input id='singleLineOnly' type='checkbox' onClick='switchSingleLineMode()' "+(spb.singleLineMode ? "checked" :"")+" ><code style='font-size:0.7em;'>single-line</code>"
-      + "  <input id='caseSensitive'  type='checkbox' onClick='switchCaseMode      ()' "+(spb. matchCaseMode ? "checked" :"")+" ><code style='font-size:0.7em;'>Case-match </code>"
-      + "  <hr/>"
-    if (Object.keys(spb.labelMap).length > 0) {
-        result += 
-        "<span style='font-weight:bold;'>Filter</span> (Restrict search to selected topics):<br/>\n"
-      + "<input type='checkbox' "+(spb.labelANDMode?"checked":"")+" onClick='switchANDORSearch()'><span id='idLabelSearchAndMode' mono>"+spb.labelAndOrText[spb.labelANDMode]+"</span>"
-      + "<br/>\n"
-      + "<div>\n"
-      cleanUUIDSelected() 
-      Object.keys(spb.labelMap).sort()
-         .filter(label => {  
-             return !label.toLowerCase().startsWith("uuid:")
-         })
-         .forEach(label_i => {
-          result += renderLabel(label_i)
-      })
-        result += "</div><br/>\n"
-    } else {
-      result += "(No topics found).<br/> Add new topics in your source html and they will be displayed here automatically. <br/>Visit <a href=\"../help.html\">HelMan</a> for more details.\n"
-    }
-    result += "<hr/><span style='font-weight:bold;'>☞ Press key <code brown>'S'</code> or <code brown>'/'</code> to open this search menu☜ </span>"
-    result += "</div>"
-    return result;
-}
 
 function getDomListForLabel(label) {
     if (!!!spb.labelMap[label]) return [];
@@ -361,11 +316,77 @@ function spbQuickPrint() {
   }
 }
 
+function addSearchForm() { // @mb
+  const div = document.createElement('div');
+        div.setAttribute("id", "searchForm")
+  document.body.insertBefore(div,document.body.children[0])
+  let html = ''
+    + '  <input id="inputQuery" type="text" placeholder="(regex)search" maxlength="30" />'
+    + '  <input id="singleLineOnly" type="checkbox" onClick="switchSingleLineMode()" > '
+    + '  <code style="font-size:0.7em;">single-line</code>'
+    + '  <input id="caseSensitive"  type="checkbox" onClick="switchCaseMode()"><code style="font-size:0.7em;">Case-match </code>'
+    + '  <br/><hr/>'
+    if (Object.keys(spb.labelMap).length > 0) {
+        html += 
+         '<b>Filter by topic</b>:<br/>\n '
+      +  '<input type="checkbox" '+(spb.labelANDMode?"checked":"")+' onClick="switchANDORSearch()"><span id="idLabelSearchAndMode" mono>'+spb.labelAndOrText[spb.labelANDMode]+'</span>'
+      +  '<br/>\n'
+      +  '<div id="searchFormLabels">\n'
+      +  '</div><br/>\n'
+    } else {
+      html += "(No topics found).<br/>\n"
+    }
+    html += '<br/>'
+    + '<div id="doSearchButton">Search⏵</div>'
+    div.innerHTML = html;
+
+    const domInputQuery = document.getElementById("inputQuery")
+    domInputQuery.addEventListener("change",  updateRegexQuery )
+    const doSearchButton = document.getElementById("doSearchButton")
+    doSearchButton.addEventListener('click',  doHideSearchFormAndSearch )
+
+    domInputQuery.focus()
+
+    spb.searchFormDOM = div;
+    spb.searchForm_labelsDOM = document.getElementById("searchFormLabels")
+
+}
+
+
+function showSearchForm() {
+  spb.searchFormDOM.style.display="block";
+  document.getElementById("inputQuery").value = spb.regexQuery
+  document.getElementById("singleLineOnly").checked = spb.singleLineMode
+  document.getElementById("caseSensitive" ).checked = spb.matchCaseMode
+
+  var htmlLabels = ''
+  Object.keys(spb.labelMap).sort()
+     .forEach(label_i => {
+      htmlLabels += renderLabel(label_i)
+  })
+  spb.searchForm_labelsDOM.innerHTML = htmlLabels;
+  document.querySelectorAll('.labelButton').forEach(
+    domElement => {
+      domElement.addEventListener('click', onLabelClicked) // @ma
+    }
+  )
+}
+function hideSearchForm() {
+  spb.searchFormDOM.style.display="none";
+}
+function doHideSearchFormAndSearch() {
+    hideSearchForm();
+    highlightSearch();
+}
+
 function onPageLoaded() {
   try {   preLoad(); } catch(err) {console.dir(err)}
   spb.cssRules = document.styleSheets[0]['cssRules'][0].cssRules;
   var zoomDiv = document.createElement('div');
       zoomDiv.setAttribute("id", "zoomDiv")
+  document.body.insertBefore(zoomDiv,document.body.children[0])
+  var zoomSearch = document.createElement('div');
+      zoomDiv.setAttribute("id", "")
   document.body.insertBefore(zoomDiv,document.body.children[0])
   var searchDiv = document.createElement('div');
       searchDiv.setAttribute("id", "upper_bar")
@@ -379,7 +400,7 @@ function onPageLoaded() {
    + '&nbsp;<span id="buttonZoomOut" onclick="onZoomOut()" blue>[orbit]&nbsp;&nbsp;</span>'
    + '<br/>'
   document.body.insertBefore(searchDiv,document.body.children[0])
-  document.getElementById("idLabelsFilter").addEventListener("click",  function() {  doExtraOptions() })
+  document.getElementById("idLabelsFilter").addEventListener("click",  function() {  showSearchForm() })
 
   spb.zoomDivDOM = document.getElementById('zoomDiv')
 
@@ -486,8 +507,10 @@ function onPageLoaded() {
   }
   let doShowSearchMenu = getParameterByName("showSearchMenu") 
   if (!!doShowSearchMenu || doShowSearchMenu == "") {
-    doExtraOptions();
+    showSearchForm();
   }
+
+  addSearchForm()
 
   try {  
       postLoad();
@@ -615,17 +638,5 @@ function highlightSearch(query) {
       spb.zoomStatus = 1
   }
   unhideButton.removeAttribute("hidden","");
-  cleanUUIDSelected() 
   return false // avoid event propagation
-}
-
-function cleanUUIDSelected() {
-  let label_l=Object.keys(spb.labelMapSelected)
-  for (let idx=0; idx<label_l.length; idx++) {
-    label = label_l[idx] != null ? label_l[idx] : "";
-    if (label.toLowerCase().startsWith("uuid:")) {
-      spb.labelMapSelected[label] = false 
-    }
-  }
-
 }

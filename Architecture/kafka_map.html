@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
    <meta charset="UTF-8">
-   <title>Kafka map (v0.1)</title>  <!-- ignore -->
+   <title>Kafka map (WiP)</title>
 <head>
 <script src="/map_v1.js"></script>
 <link rel="stylesheet" type="text/css" href="/map_v1.css" />
@@ -53,9 +53,9 @@
 │        ··→ stream of··→(CATEGORY)│               │           │
 └────────┘ OºRECORDsº   └──────────┘               └───────────┘
   ↑          ======       1                          1 ← Normally, 1←→1, but not necesarelly
-  |          -key         ↑                          ↑       
-  ·          -value       ·                          ·     
-  ·          -timeStamp   ·                          ·
+  |        Oº·key       º ↑                          ↑       
+  ·        Oº·value     º ·                          ·     
+  ·        Oº·timeStamp º ·                          ·
   ·                       ·                          ·  GºCONSUMER GROUPº: cluster of consumers
   ·                       ·                          ↓    |  (vs single process consumer) º*1º
 (optionally) producers    ·                          1    ↓
@@ -487,7 +487,9 @@ BºWriting Producers/Consumers with Avro Serializers/Sche.Regº
       }
     }
 
-    Notice that just like with the producer, we have to tell the consumer where to find the Registry, and we have to configure the Kafka Avro Deserializer.
+    Notice that just like with the producer, we have to tell the 
+    consumer where to find the Registry, and we have to configure the 
+    Kafka Avro Deserializer.
 
 Configuring Schema Registry for the consumer:
 
@@ -499,27 +501,16 @@ props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG,
 
 //Use Specific Record or else you get Avro GenericRecord.
 
-props.put(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, "true");
-
-//Schema registry location.        props.put(KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG,
-
+props.put(KafkaAvroDeserializerConfig.SPECIFIC_AVRO_READER_CONFIG, "true"); //Schema registry location.
+props.put(KafkaAvroDeserializerConfig.SCHEMA_REGISTRY_URL_CONFIG,
                 "http://localhost:8081"); //<----- Run Schema Registry on 8081
 
-An additional step is that we have to tell it to use the generated version of the Employee object. If we did not, then it would use the Avro GenericRecord instead of our generated Employee object, which is a SpecificRecord. To learn more about using GenericRecord and generating code from Avro, read the Avro Kafka tutorial as it has examples of both.
-
-To run the above example, you need to start up Kafka and ZooKeeper. To learn how to do this if you have not done it before, see this Kafka tutorial. Essentially, there is a startup script for Kafka and ZooKeeper like there was with the Schema Registry and there is default configuration, you pass the default configuration to the startup scripts, and Kafka is running locally on your machine.
-
-Running ZooKeeper and Kafka:
-
-kafka/bin/zookeeper-server-start.sh kafka/config/zookeeper.properties &
-
-kafka/bin/kafka-server-start.sh kafka/config/server.properties
-
-Conclusion
-
-Confluent provides Schema Registry to manage Avro Schemas for Kafka consumers and producers. Avro provides schema migration, which is necessary for streaming and big data architectures.
-
-Confluent uses schema compatibility checks to see if the producer’s schema and consumer’s schemas are compatible and to do schema evolution if needed. You use KafkaAvroSerializer from the producer and point to the Schema Registry. You use KafkaAvroDeserializer from the consumer and point to the Schema Registry.
+An additional step is that we have to tell it to use the generated 
+version of the Employee object. If we did not, then it would use the 
+Avro GenericRecord instead of our generated Employee object, which is 
+a SpecificRecord. To learn more about using GenericRecord and 
+generating code from Avro, read the Avro Kafka tutorial as it has 
+examples of both.
 
 
 https://docs.confluent.io/current/schema-registry/index.html
@@ -620,35 +611,159 @@ KSQL :
 └RºNot support for complex transformations, "exploding" arrays,...º
    (as of 2019-11, gaps can be filled)
 </pre>
-<pre zoom labels="TODO">
-<span xsmall>Producer</span>
-@[http://kafka.apache.org/11/javadoc/index.html?org/apache/kafka/clients/producer/KafkaProducer.html]
-- send streams of data to topics in the cluster
+
+<pre zoom labels="TODO" bgorange>
+<span xsmall>Message Delivery Semantics</span>
+@[http://kafka.apache.org/documentation.html#semantics]
+</pre>
+
+<pre zoom labels="record_write,api,code_snippet">
+<span xsmall>producer</span>
+@[http://kafka.apache.org/11/javadoc/index.html?org/apache/kafka/clients/producer/kafkaproducer.html]
+- send streams of data to topics in the cluster.
+- thread safe → sharing a singleton across threads will generally be faster. 
+
+- ex:
+     import org.apache.kafka.clients.producer.KafkaProducer;
+     // pre-setup:
+     final properties kafkaconf = new Properties();
+     kafkaconf.put("bootstrap.servers", "localhost:9092");
+     kafkaconf.put("acks"             , "all");  ← "all" : slowest/safest setting: block until
+                                                   full commit of the record (in all partitions?)
+
+     // set how to turn key|value ProducerRecord instances into bytes.
+     kafkaconf.put("key.serializer"  , "org.apache.kafka.common.serialization.StringSerializer");
+     kafkaconf.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+     producer<string, string> producer = new kafkaproducer<>(kafkaconf);
+
+     producer.send(                        // ← sending-topics is async: (added to buffer 
+         new ProducerRecord<string, string>(    of pending records)
+             "my-topic",
+             integer.tostring(i),
+             integer.tostring(i)
+         )
+     );
+     producer.close(); // ← leak of resources if not done
+     
+    producer: 
+    · pool of buffer space holding records not yet transmitted for each partition
+      of size (config) batch.size
+
+  + · background i/o thread turning
+      "record"  to → (batch) network request.
+       ------------------------
+        automatically retry unless 
+        config.retries == 0
+      RºWARNº: config.retries ˃ 0 opens up the possibility of duplicates .
+               Kafka0.11+ idempotent mode avoid the risk
+               -"enable.idempotence" setting - 
+             RºWARNº: avoid application level re-sends in this case.
+             See more details in official doc.
+
+    tunning º"linger.ms"º tells producer to wait up to that number of milliseconds
+    before sending a request in hope that more records will arrive to fill up the
+    same batch. This can increase performance by introducing a determenistic delay
+    of at-least "linger.ms".
+  Bº(similar to nagle's algorithm in tcp)º.
+
+
+  - Kafka 0.11+ transactional producer allows clients to send messages to multiple
+    partitions and topics! atomically (producer.beginTransaction, producer.send, 
+    producer.commit, producer.abortTransaction ).
 <hr/>
-<span xsmall>Config</span>
-See full list @ @[http://kafka.apache.org/documentation/#producerconfigs]
+<span xsmall>config</span>
+see full list @ @[http://kafka.apache.org/documentation/#producerconfigs]
 -ºcleanup.policyº      : "delete"* or "compact" retention policy for old log segments. 
 -ºcompression.typeº    : 'gzip', 'snappy', lz4, 'uncompressed' 
--ºindex.interval.bytesº: how frequently Kafka adds an index entry to it's offset index.
--ºleader.replication.throttled.replicasº:  Ex:
-                         [PartitionId]º:[BrokerId],[PartitionId]:[BrokerId]:... or
+-ºindex.interval.bytesº: how frequently kafka adds an index entry to it's offset index.
+-ºleader.replication.throttled.replicasº:  ex:
+                         [partitionid]º:[brokerid],[partitionid]:[brokerid]:... or
                          wildcard '*' can be used to throttle all replicas for this topic.                            
 -ºmax.message.bytesº   : largest record batch size allowed
--ºmessage.format.versionº: valid ApiVersion ( 0.8.2, 0.9.0.0, 0.10.0, ...)
+-ºmessage.format.versionº: valid apiversion ( 0.8.2, 0.9.0.0, 0.10.0, ...)
 -ºmessage.timestamp º  : max dif allowed between the timestamp when broker receives
  º.difference.max.msº    a message and timestamp specified in message.
                          
--ºmessage.timestamp.typeº: "CreateTime"|"LogAppendTime"
--ºmin.insync.replicasº : all|-1|"N": number of replicas that must acknowledge a write
+-ºmessage.timestamp.typeº: "createtime"|"logappendtime"
+-ºmin.insync.replicasº : all|-1|"n": number of replicas that must acknowledge a write
                          for it to be considered  successful.
 -ºretention.msº        : time we will retain a log before old log segments are discarded.
-                       BºSLA on how soon consumers must read their dataº.
+                       bºsla on how soon consumers must read their dataº.
 </pre>
 
 
-<pre zoom labels="TODO">
+<pre zoom labels="record_read,api,code_snippet">
 <span xsmall>Consumer</span>
+@[http://kafka.apache.org/26/javadoc/index.html?org/apache/kafka/clients/consumer/KafkaConsumer.html]
 @[http://kafka.apache.org/11/javadoc/index.html?org/apache/kafka/streams/KafkaStreams.html]
+
+Class KafkaConsumer<K,V>
+
+- client consuming records from cluster.
+- transparently handles failure of Kafka brokers,
+- transparently adapts as topic partitions it fetches migrate within the cluster.
+- This client also interacts with the broker to 
+ ºallow consumer-groups to load balance consumption º.
+- consumer Rºis not thread-safeº.
+- Compatible with brokers ver. 0.10.0+.
+
+Basics:
+- Consumer  Position: offset of the next record that will be given out.
+- Committed position: last offset stored securely. Should the process
+                      fail and restart, this is the offset consumers will
+                      recover to.
+  - Consumer can either automatically commit offsets periodically; or
+    commit it manually.(commitSync, commitAsync).
+
+- Consumer Groups and Topic Subscriptions:
+  - consumer groups: consumer instances sharing same group.id creating a 
+                     pool of processes (same or remote machines) to split
+                     the processing of records.
+  - Each consumer in a group can dynamically set the list of topics it 
+    wants to subscribe to through one of the subscribe APIs. 
+  - Kafka will deliver each message in the subscribed topics to one process
+    in each consumer group by balancing partitions between all members so that
+  Bºeach partition is assigned to exactly one consumer in the groupº. 
+    (It makes no sense to have more consumers that partititions)
+    Group rebalancing (map from partitions to consumer in group) occurs when:
+    - Consumer is added/removed/not-available*1 to pool.
+      *1 liveness detection time defined in "max.poll.interval.ms".
+    - partition is added/removed from cluster.
+    - new topic matching a subscribed regex is created.
+    (Consumer groups just allow to have independent parallel multiprocess
+     clients acting as a same app with no need to manual synchronization).
+     (additional consumers are actually quite cheap).
+
+    (See official doc for advanced topics on balancing consumer groups)
+
+
+  - Simple Example Consumer: let Kafka dynamically assign a fair share of
+                             the partitions for subscribed-to topics
+    (See original doc for manual choosing partitions to consume from)
+    Properties configProps = new Properties();
+    configProps.setProperty("bootstrap.servers", "localhost:9092");
+    configProps.setProperty("group.id", "test");
+    configProps.setProperty("enable.auto.commit", "true");
+    configProps.setProperty("auto.commit.interval.ms", "1000");
+    configProps.setProperty("key.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+    props.setProperty("value.deserializer", "org.apache.kafka.common.serialization.StringDeserializer");
+    KafkaConsumer<String, String> consumer = new KafkaConsumer<>(configProps);
+    consumer.subscribe(Arrays.asList("foo", "bar"));
+    while (true) {
+        ConsumerRecords<String, String> records = consumer.poll(Duration.ofMillis(100));
+        for (ConsumerRecord<String, String> record : records)
+            System.out.printf("offset = %d, key = %s, value = %s%n", record.offset(), record.key(), record.value());
+           if (isManualCommit /*enable.auto.commit == false*/) {
+               ... ;  consumer.commitSync();  ...
+           }
+    
+
+    Use consumer.seek(TopicPartition, long) to skip up to some record.
+    Use seekToBeginning(Collection)/seekToEnd(Collection) to go to start/end of partition. 
+
+
+    See original doc for how to read Transactional Messages.
+    See original doc for Multi-threaded Processing.
 <hr/>
 <span xsmall>Config</span>
 @[http://kafka.apache.org/documentation/#consumerconfigs]

@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
    <meta charset="UTF-8">
-   <title>Blockchain Theory map <!-- ignore --></title>
+   <title>Blockchain Theory map (WiP)</title>
 <head>
 <script src="/map_v1.js"></script>
 <link rel="stylesheet" type="text/css" href="/map_v1.css" />
@@ -18,6 +18,28 @@
 <a href="https://github.com/ethereum/wiki/wiki/White-Paper">Ethereum White Paper</a>
 <a href="https://tendermint.com/static/docs/tendermint.pdf">Tendermint, Consensus without Mining</a>
 <a href="https://www.bigchaindb.com/whitepaper/bigchaindb-whitepaper.pdf">BigChainDB White Paper</a>
+</pre>
+
+<pre zoom labels="TODO" bgred>
+<span xsmall>Don't Use Blockchain</span>
+- Don't Use Blockchain:
+  - A single entity writes data    (Prefer a database) 
+  - A single entity is in control  (Prefer a database)
+  - There is trust among entitites (Prefer a database, maybe with audit logs for tracing)
+    writing data (There are no
+    bizantine attackers)
+  - Your data lacks legal,monetary (Prefer a database)
+    value.
+
+- Reasons to use a blockchain
+  + You need a shared vision (for example the money or token of each participant),
+  + the data must be distributed.
+  + There is no controlling entity.
+  + Non-using blockchain leads to outdated/duplicated data
+  + There is an economical motivation to cheat the system.
+    (money, identity forgery, ...)
+  + There is an interest in "digitalizing" rights/obligations
+
 </pre>
 
 <pre zoom labels="resource,economics,TODO">
@@ -1200,7 +1222,100 @@ within the GameCredits chain."""
 - <a href="https://media.consensys.net/using-machine-learning-to-understand-the-ethereum-blockchain-1778485d603a">(media.consensys.net)machine learning to understand the Ethereum Blockchain</a>
 
 </pre>
-</div>
+
+
+<pre zoom labels="comparative,TODO">
+<span xsmall>Blockchain vs DAG vs HashGraph</span>
+- Blockchain data structures are the most common DLT.
+  cryptography hashes link groups of signed transactions
+  forming the ledger.
+- Directed acyclic graph (DAG): IOTA
+
+- Hedera Hashgraph
+</pre>
+
+<pre zoom labels="101,consensus,TODO">
+<span xsmall>PoW vs Clique vs IBFT 1|2</span>
+https://www.youtube.com/watch?v=YmTUP_dWfME
+- minute  6:42, minute 15:27
+  - What's a 'legitimacy' seal in Consensus?
+    - PoW: Nonce/mixhash calculation result
+    - Clique: PoA Signature of 'Authorised' node
+              - Signers take turns to mine and sign blocks 
+              - if "in-turn" signer doesn't produce a block, other signers jump in 
+                - In-turn signer's block is preferred over all others
+              - Whole protocol is maintained/documented in blocks, no side-channel required.!!!
+              - Does NOT provide Transaction Finality (small forks)
+              - Critical Validation Rules:
+                - Ensure block signature is from authorised signer
+                  - Nodes mustr tracks votes to maintain current signer list
+                - Validate difficulty matches the signer's in/out turn status
+                - Ensure signer has not produced more a block in the previous n/2
+    - IBFT:   - PoA Multi-signature of 'Authorised' nodes
+                https//github.com/ethereum/EIPs/issues/650
+              - Requires extra side-channel in the network for validator-specific communications
+              - The group agree to import a block shared responsibility, not taking turns
+              - Block is signed by super-majority of validators.
+              - DOES provide TX finality
+              - Critical Validation Rules:
+                - Nodes ensure all signature in block are from known validators
+                - No uncles
+                - 0 difficulty
+                - Validators match locally tracked list (via voting)
+    - IBFT 2.0:
+              - High level operation: "The Round"
+                - One validator proposes a block to authorised "validator" group
+                - Validators collect each others signatures and endorse block
+                - Each validator imports sealed block, and propagates it to neighbours
+                - We call this process a "Round"
+                - A Round can fail/timeout!
+                  - If so, change proposer and start next round.
+                  - Next round has a longer timeout, we will eventually get a block on the chain!
+                - Each Round is uniquely indentified by chainHeight and 'rounds at height'
+
+                - IBFT2 Happy-path Workflow
+                          IS proposer --→  YES   --→ Go to "wait for prepares"
+                          for round?
+                                      ---→  NO --→ "Await proposal" --→ "Receive Proposal" -→ Block is valid?  -→ NO -→ Go to "Await Proposal"
+
+                   Received 2n/3 Commit   ←-  "wait for commits" ← Received 2n/3 Prep. ←-  "wait for prepares" ←- YES 
+                   import Block                                    Multicast Commit
+                          |
+                          v
+                    Change to next round
+
+                - IBFT2 "Round" errors
+                  - If a round timer expires:
+                    - Round is terminated  (related messages discarded)
+                    - New round started
+                    - Notifies other peers of the RoundChange (i.e, I am goint to Round-XY), along with a PrepareCertificate
+                  - If a node receives enough "RoundChange" messages targeting same round, it too shall jump to new round.
+                  - If a node is the proposer  for the new round, it will send a Proposal.
+
+              - Other "bits"
+                - All consensus side-channel messages are signed.
+                - (Round-specific) Every message specifies which Round it targets.
+                - Messages are 1st class citizens:
+                  - Need to be ordered , validated and gossipped.
+
+    - Monit IBFT 2.0:
+      Get validators at block 0
+      curl -X POST --data '{"jsonrpc":"2.0", "method":"ibft_getValidatorsByBlockNumber", "params":["0"], "id":1}' localhost:8545
+      {
+       "jsonrpc":"2.0",
+       "id":"1",
+       "result": [ "0xbe.....", "0x54.....", "0xedd....3" ]
+      }
+- min  ???
+  - PoW: public+trustless enviroments
+  - PoS: public+trustless Do the right thing or lose your money (Eth2.0)
+  - PoA: Externally defined trus: - specified nodes are authorised miners
+         - Initial Authorised nodes in Genesis file
+         - Voting Mechanism
+         - nearuly 0 runtime cost.
+</pre>
+
+</div> <!-- Non classified -->
 
 
 
@@ -1396,5 +1511,28 @@ run Markov-Chain Monte Carlo (MCMC) algorithms. MCMC algorithms have
 valuable real-world applications. Currently being used in 
 collaboration with Beijing Cancer Research Hospital to improve speed 
 and accuracy of cancer diagnosis.
+</pre>
+_______________________
+<pre zoom labels="TODO">
+<span xsmall>Jupyter Notebook: Basic Blockchain</span>
+https://github.com/butikofer/coding_a_basic_blockchain
+</pre>
+____________________
+<a href="https://www.linkedin.com/pulse/thoughts-taxonomy-blockchains-distributed-ledger-colin-platt/">Thoughts on the taxonomy of blockchains &amp; distributed ledger technologies</a>
+<a href="https://hackernoon.com/blockchains-versus-traditional-databases-c1a728159f79">Blockchain versus Traditional Databases</a>
+<a href="https://www.coindesk.com/information/what-is-the-difference-blockchain-and-database/">What is the Difference Between a Blockchain and a Database?</a>
+<a href="https://hbr.org/2017/01/the-truth-about-blockchain">The Truth About Blockchain</a>
+
+__________________________
+<pre zoom labels="TODO">
+<span xsmall>Merkle Tree</span>
+- A Merkle tree is a well-known cryptographic scheme that is commonly 
+  used to provide proofs of inclusion and data integrity. Merkle trees 
+  are widely used in peer-to-peer networks, blockchain systems and git!!!!
+
+- The advantage of a Merkle tree is that the parts of the transaction 
+  that were torn off when presenting the transaction to the oracle 
+  cannot later be changed without also invalidating the oracle’s 
+  digital signature.
 </pre>
 -->

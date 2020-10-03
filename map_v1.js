@@ -1,28 +1,33 @@
 import { preLoad , postLoad } from '/custom.js';
 
-var spb = {
-  zoomDivDOM : window,
+var labelMap = { /* label : dom_list*/ }
+
+var SF = {  /* search Form */
   searchFormDOM : window,
   searchForm_labelsDOM : window,
-  zoomStatus: 0, // 0 = inactive, 1 = zoomedContent, 2 = searchDialog
+  regexQuery: "",
+  singleLineMode : false,
+  matchCaseMode : false,
+  labelANDMode : true,
+}
+
+var ZC = { /* zoom Control */
+  zoomDivDOM : window,
   idxZoomDivRule :-1,
   idxZoomRule:-1,
   idxXSmallRule:-1,
   idxXTitleRule:-1,
+  zoomStatus: 0, // 0 = inactive, 1 = zoomedContent
   zoomableFontSize:0.05,
   xsmallFontSize:0.7, // must match initial size xsmall/title in css
   zoomFontSize:1.00,
   zoomStepIn:0.20,
   zoomStepOut:0.10,
+}
+var spb = {
   visited:[],
   visited_idx:-1,
-  replaceMap : { "wikipedia" : "https://en.wikipedia.org/wiki" },
   CallbackOnClose:false,
-  labelANDMode : true,
-  singleLineMode : false,
-  matchCaseMode : false,
-  regexQuery: "",
-  labelMap : { /* label : dom_list*/ },
   labelAndOrText : { 
       true : "←<span brown>AND</span> mode must contains <span brown>all</span> selected topics",
       false: "←<span green>OR </span> mode must contains <span green>any</span> selected topics"
@@ -32,7 +37,7 @@ var spb = {
     if (e.key === "z") { onZoomOut(); return }
     if (e.key === "Z") { onZoomIn (); return }
     if (e.code === "Escape") {
-      if (spb.zoomStatus === 0) {
+      if (ZC.zoomStatus === 0) {
         resetTextFoundAttr(true)
       } else {
            doCloseZoom()
@@ -45,7 +50,7 @@ var spb = {
     if (e.code === "F1") doHelp(); 
   },
   searchAndMark : function(node, finalRegex) {
-      var htmlContent = (spb.singleLineMode)
+      var htmlContent = (SF.singleLineMode)
            ? node.innerHTML 
            : node.innerHTML.replace(/\n/gm, ' ')
       var searchFound = finalRegex.test(htmlContent)
@@ -70,12 +75,14 @@ var spb = {
   }
 }
 
+var replaceMap = { "wikipedia" : "https://en.wikipedia.org/wiki" }
+
 export function doCloseZoom() {
-  spb.zoomStatus = 0 
+  ZC.zoomStatus = 0 
   document.getElementById("buttonZoomIn" ).innerHTML="[dive]";
   document.getElementById("buttonZoomOut").innerHTML="[orbit]";
-  spb.zoomDivDOM.innerHTML = ''; 
-  spb.zoomDivDOM.style.display="none";
+  ZC.zoomDivDOM.innerHTML = ''; 
+  ZC.zoomDivDOM.style.display="none";
   if (spb.CallbackOnClose) {
     spb.CallbackOnClose.call(window);
   }
@@ -99,7 +106,7 @@ var longPress = {
      if (longPress.presstimer === null) {
        longPress.presstimer = setTimeout(function() {
          doOpenZoom.call(self, self, false, true, false)
-         spb.zoomStatus = 1
+         ZC.zoomStatus = 1
          longPress.longpress = true
        }, 1000)
      }
@@ -116,7 +123,7 @@ var longPress = {
      let self = node
      node.addEventListener('dblclick', function() { 
        doOpenZoom.call(self, self, false, true, false) 
-       spb.zoomStatus = 1
+       ZC.zoomStatus = 1
        if (!!this.stopPropagation) { this.stopPropagation(); }
      } , true)
    },
@@ -132,39 +139,39 @@ var longPress = {
 }
 
 export function onZoomOut(){
-  if (spb.zoomDivDOM.innerHTML != '') {
-    spb.zoomFontSize = (spb.zoomFontSize > 0.05) ? spb.zoomFontSize - spb.zoomStepOut : 0.0006
-    spb.cssRules[spb.idxZoomDivRule].style['font-size']=spb.zoomFontSize+'rem'
+  if (ZC.zoomDivDOM.innerHTML != '') {
+    ZC.zoomFontSize = (ZC.zoomFontSize > 0.05) ? ZC.zoomFontSize - ZC.zoomStepOut : 0.0006
+    spb.cssRules[ZC.idxZoomDivRule].style['font-size']=ZC.zoomFontSize+'rem'
     return
   }
-  if     (spb.zoomableFontSize > 0.05) {
-     spb.zoomableFontSize = spb.zoomableFontSize - spb.zoomStepOut
-  } else if (spb.  xsmallFontSize > 0.4 ){
-     spb.zoomableFontSize = 0.0006 // Absolute cero causes rendering problems in Firefox.
+  if     (ZC.zoomableFontSize > 0.05) {
+     ZC.zoomableFontSize = spb.zoomableFontSize - ZC.zoomStepOut
+  } else if (ZC.xsmallFontSize > 0.4 ){
+     ZC.zoomableFontSize = 0.0006 // Absolute cero causes rendering problems in Firefox.
                                    // REF: https://bugzilla.mozilla.org/show_bug.cgi?id=1606305
-     spb.  xsmallFontSize = spb.  xsmallFontSize - spb.zoomStepOut
+     ZC.xsmallFontSize   = ZC.xsmallFontSize - ZC.zoomStepOut
   } else {
-     spb.zoomableFontSize = 0.0006
-     spb.  xsmallFontSize = 0.4
+     ZC.zoomableFontSize = 0.0006
+     ZC.xsmallFontSize   = 0.4
   }
-  spb.cssRules[spb.idxZoomRule  ].style['font-size']=spb.zoomableFontSize+'rem'
-  spb.cssRules[spb.idxXSmallRule].style['font-size']=spb.  xsmallFontSize+'rem'
-  spb.cssRules[spb.idxXTitleRule].style['font-size']=spb.  xsmallFontSize+'rem'
+  spb.cssRules[ZC.idxZoomRule  ].style['font-size']=ZC.zoomableFontSize+'rem'
+  spb.cssRules[ZC.idxXSmallRule].style['font-size']=ZC.xsmallFontSize  +'rem'
+  spb.cssRules[ZC.idxXTitleRule].style['font-size']=ZC.xsmallFontSize  +'rem'
 }
 export function onZoomIn(){
-  if (spb.zoomDivDOM.innerHTML != '') {
-    spb.zoomFontSize = spb.zoomFontSize + spb.zoomStepIn
-    spb.cssRules[spb.idxZoomDivRule].style['font-size']=spb.zoomFontSize+'rem'
+  if (ZC.zoomDivDOM.innerHTML != '') {
+    ZC.zoomFontSize = ZC.zoomFontSize + ZC.zoomStepIn
+    spb.cssRules[ZC.idxZoomDivRule].style['font-size']=ZC.zoomFontSize+'rem'
     return;
   }
-  if (spb.  xsmallFontSize < 1.2) {
-    spb.  xsmallFontSize = spb.  xsmallFontSize + spb.zoomStepIn
+  if (ZC.xsmallFontSize < 1.2) {
+    ZC.xsmallFontSize = ZC.xsmallFontSize + ZC.zoomStepIn
   } else {
-    spb.zoomableFontSize = spb.zoomableFontSize + spb.zoomStepIn
+    ZC.zoomableFontSize = ZC.zoomableFontSize + ZC.zoomStepIn
   }
-  spb.cssRules[spb.idxZoomRule  ].style['font-size']=spb.zoomableFontSize+'rem'
-  spb.cssRules[spb.idxXSmallRule].style['font-size']=spb.  xsmallFontSize+'rem'
-  spb.cssRules[spb.idxXTitleRule].style['font-size']=spb.  xsmallFontSize+'rem'
+  spb.cssRules[ZC.idxZoomRule  ].style['font-size']=ZC.zoomableFontSize+'rem'
+  spb.cssRules[ZC.idxXSmallRule].style['font-size']=ZC.xsmallFontSize  +'rem'
+  spb.cssRules[ZC.idxXTitleRule].style['font-size']=ZC.xsmallFontSize  +'rem'
 }
 
 export function goBack() {
@@ -172,14 +179,14 @@ export function goBack() {
     spb.visited_idx--
     let e = spb.visited[spb.visited_idx]
     doOpenZoom.call(e, e, true, true, false);
-    spb.zoomStatus = 1
+    ZC.zoomStatus = 1
 }
 export function goForward() {
     if(spb.visited_idx == spb.visited.length-1) return
     spb.visited_idx++
     let e = spb.visited[spb.visited_idx]
     doOpenZoom.call(e, e, true, true, false);
-    spb.zoomStatus = 1
+    ZC.zoomStatus = 1
 }
 
 
@@ -217,7 +224,7 @@ export function doOpenZoom(e, isHistoric, showTimeControl, CallbackOnClose, strC
       .forEach(label_i => { sLabels += renderLabel(label_i) })
   }
   strCloseLabel = (!!strCloseLabel)?strCloseLabel:"✕ (close)"
-  spb.zoomDivDOM.innerHTML = 
+  ZC.zoomDivDOM.innerHTML = 
      "<div style='margin-bottom:0.5rem'>" 
    + " <div id='divCloseZoom' onClick='doCloseZoom()'>"+strCloseLabel+"</div>" 
    + " <span style='font-weight:bold' text-align='center'>"+document.title+"</span>"
@@ -229,16 +236,11 @@ export function doOpenZoom(e, isHistoric, showTimeControl, CallbackOnClose, strC
    + "</div>" 
 
    + e.outerHTML; 
-  spb.zoomDivDOM.style.display="block";
-  spb.zoomDivDOM.scrollTop = 0;
+  ZC.zoomDivDOM.style.display="block";
+  ZC.zoomDivDOM.scrollTop = 0;
   if (!!this.stopPropagation) { this.stopPropagation(); }
   return false;
 }
-
-export function updateRegexQuery() {
-    spb.regexQuery = this.value
-}
-
 
 
 function onLabelClicked(e) {
@@ -265,20 +267,21 @@ function renderLabel(sLabel,selected) {
   sLabel = sLabel.toLowerCase()
   let cssAtribute    = (sLabel.startsWith("todo")) ? "red"  : ""
   return "<input "+cssAtribute+" class='labelButton' selected="+(!!spb.labelMapSelected[sLabel])+
-         " type='button' value='"+sLabel+"' /><span labelcount>"+spb.labelMap[sLabel].length+"</span>" ;
+         " type='button' value='"+sLabel+"' /><span labelcount>"+labelMap[sLabel].length+"</span>" ;
 }
 
 
-function switchANDORSearch() {
-  spb.labelANDMode=!spb.labelANDMode
-  document.getElementById("idLabelSearchAndMode").innerHTML= spb.labelAndOrText[spb.labelANDMode]
+function switchANDORSearch() { // @ma
+  SF.labelANDMode=!SF.labelANDMode  
+  document.getElementById("idLabelSearchAndMode").innerHTML = spb.labelAndOrText[SF.labelANDMode]
 }
-function switchSingleLineMode() { spb.singleLineMode=document.getElementById("singleLineOnly").checked; }
-function switchCaseMode()       { spb.matchCaseMode=document.getElementById("caseSensitive").checked; }
+
+function switchSingleLineMode() { SF.singleLineMode=document.getElementById("singleLineOnly").checked; }
+function switchCaseMode()       { SF.matchCaseMode=document.getElementById("caseSensitive").checked; }
 
 function getDomListForLabel(label) {
-    if (!!!spb.labelMap[label]) return [];
-    else return spb.labelMap[label];
+    if (!!!labelMap[label]) return [];
+    else return labelMap[label];
 }
 
 function labelMapSelectedToCSV() {
@@ -297,7 +300,7 @@ function createLabelIndex() {
         label = label.toLowerCase()
         let list = getDomListForLabel(label)
             list.push(node)
-        spb.labelMap[label] = list
+        labelMap[label] = list
         labelCount++
     })
     if (labelCount>0) {
@@ -307,7 +310,7 @@ function createLabelIndex() {
       node.insertBefore(countEl,node.children[0])
     }
   }
-  // console.dir(spb.labelMap)
+  // console.dir(labelMap)
 }
 
 function spbQuickPrint() {
@@ -316,7 +319,7 @@ function spbQuickPrint() {
   }
 }
 
-function addSearchForm() { // @mb
+function addSearchForm() {
   const div = document.createElement('div');
         div.setAttribute("id", "searchForm")
   document.body.insertBefore(div,document.body.children[0])
@@ -326,10 +329,11 @@ function addSearchForm() { // @mb
     + '  <code style="font-size:0.7em;">single-line</code>'
     + '  <input id="caseSensitive"  type="checkbox" onClick="switchCaseMode()"><code style="font-size:0.7em;">Case-match </code>'
     + '  <br/><hr/>'
-    if (Object.keys(spb.labelMap).length > 0) {
+    if (Object.keys(labelMap).length > 0) {
         html += 
          '<b>Filter by topic</b>:<br/>\n '
-      +  '<input type="checkbox" '+(spb.labelANDMode?"checked":"")+' onClick="switchANDORSearch()"><span id="idLabelSearchAndMode" mono>'+spb.labelAndOrText[spb.labelANDMode]+'</span>'
+      +  '<input id="searchAndMode" type="checkbox">'
+      +  '<span id="idLabelSearchAndMode" mono></span>'
       +  '<br/>\n'
       +  '<div id="searchFormLabels">\n'
       +  '</div><br/>\n'
@@ -340,39 +344,44 @@ function addSearchForm() { // @mb
     + '<div id="doSearchButton">Search⏵</div>'
     div.innerHTML = html;
 
+    const domSearchAndMode = document.getElementById("searchAndMode")
+    domSearchAndMode.addEventListener("change",  switchANDORSearch )
+
+
     const domInputQuery = document.getElementById("inputQuery")
-    domInputQuery.addEventListener("change",  updateRegexQuery )
+    domInputQuery.addEventListener("change",  function () { SF.regexQuery = this.value } )
     const doSearchButton = document.getElementById("doSearchButton")
     doSearchButton.addEventListener('click',  doHideSearchFormAndSearch )
 
     domInputQuery.focus()
 
-    spb.searchFormDOM = div;
-    spb.searchForm_labelsDOM = document.getElementById("searchFormLabels")
+    SF.searchFormDOM = div;
+    SF.searchForm_labelsDOM = document.getElementById("searchFormLabels")
 
 }
 
-
 function showSearchForm() {
-  spb.searchFormDOM.style.display="block";
-  document.getElementById("inputQuery").value = spb.regexQuery
-  document.getElementById("singleLineOnly").checked = spb.singleLineMode
-  document.getElementById("caseSensitive" ).checked = spb.matchCaseMode
+  SF.searchFormDOM.style.display="block";
+  document.getElementById("inputQuery").value = SF.regexQuery
+  document.getElementById("searchAndMode").checked = SF.labelANDMode
+  document.getElementById("singleLineOnly").checked = SF.singleLineMode
+  document.getElementById("caseSensitive" ).checked = SF.matchCaseMode
+  document.getElementById("idLabelSearchAndMode" ).innerHTML = spb.labelAndOrText[SF.labelANDMode]
 
   var htmlLabels = ''
-  Object.keys(spb.labelMap).sort()
+  Object.keys(labelMap).sort()
      .forEach(label_i => {
       htmlLabels += renderLabel(label_i)
   })
-  spb.searchForm_labelsDOM.innerHTML = htmlLabels;
+  SF.searchForm_labelsDOM.innerHTML = htmlLabels;
   document.querySelectorAll('.labelButton').forEach(
     domElement => {
-      domElement.addEventListener('click', onLabelClicked) // @ma
+      domElement.addEventListener('click', onLabelClicked)
     }
   )
 }
 function hideSearchForm() {
-  spb.searchFormDOM.style.display="none";
+  SF.searchFormDOM.style.display="none";
 }
 function doHideSearchFormAndSearch() {
     hideSearchForm();
@@ -402,7 +411,7 @@ function onPageLoaded() {
   document.body.insertBefore(searchDiv,document.body.children[0])
   document.getElementById("idLabelsFilter").addEventListener("click",  function() {  showSearchForm() })
 
-  spb.zoomDivDOM = document.getElementById('zoomDiv')
+  ZC.zoomDivDOM = document.getElementById('zoomDiv')
 
   document.addEventListener('keyup'  , spb.onKeyUp)
 
@@ -426,16 +435,16 @@ function onPageLoaded() {
   }
 
   // create re-usable regex outside loop.
-  Object.keys(spb.replaceMap).forEach( key => 
-     spb.replaceMap[key] = [new RegExp("[$][{]"+key+"[}]",'g'), spb.replaceMap[key]]
+  Object.keys(replaceMap).forEach( key => 
+     replaceMap[key] = [new RegExp("[$][{]"+key+"[}]",'g'), replaceMap[key]]
   )
 
   nodeList = document.querySelectorAll('*[zoom]')
   for (let idx in nodeList) { 
       if (!!! nodeList[idx].innerHTML) { continue }
 
-      Object.keys(spb.replaceMap).forEach( key => 
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(spb.replaceMap[key][0],spb.replaceMap[key][1])
+      Object.keys(replaceMap).forEach( key => 
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(replaceMap[key][0],replaceMap[key][1])
       )
    // COMMENTED: Needs more testings 
    // nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/(http.?:\/\/[^\b]*)\b/,"<a target='_blank' href='$1'>$1</a>")
@@ -479,16 +488,16 @@ function onPageLoaded() {
 
   for (let idx=0; idx<spb.cssRules.length; idx++){
       if( spb.cssRules[idx].selectorText == "#zoomDiv") {
-          spb.idxZoomDivRule=idx
+          ZC.idxZoomDivRule=idx
       }
       if( spb.cssRules[idx].selectorText == "[zoom]") {
-          spb.idxZoomRule=idx
+          ZC.idxZoomRule=idx
       }
       if( spb.cssRules[idx].selectorText == "[xsmall]") {
-          spb.idxXSmallRule=idx
+          ZC.idxXSmallRule=idx
       }
       if( spb.cssRules[idx].selectorText == "[title]") {
-          spb.idxXTitleRule=idx
+          ZC.idxXTitleRule=idx
       }
   }
 
@@ -501,7 +510,7 @@ function onPageLoaded() {
       onLabelClicked({value : label});
   })
   let query = getParameterByName("query")
-  if (!!query) { spb.regexQuery = query; }
+  if (!!query) { SF.regexQuery = query; }
   if (!!query || !!label_l) {
     highlightSearch()
   }
@@ -579,8 +588,8 @@ function highlightSearch(query) {
       unhideButton.setAttribute("hidden","");
 
   if (typeof query != "string") query = "";
-  if (!!query) { spb.regexQuery = query; }
-  let finalQueryRegex = spb.regexQuery.replace(/ +/g,".*");
+  if (!!query) { SF.regexQuery = query; }
+  let finalQueryRegex = SF.regexQuery.replace(/ +/g,".*");
   resetTextFoundAttr(false);
   let isEmptyQuery = /^\s*$/.test(finalQueryRegex)
 
@@ -601,7 +610,7 @@ function highlightSearch(query) {
       let label_l=Object.keys(spb.labelMapSelected)
       innerZoom_l = getDomListForLabel(label_l[0]);
       for (let idx=0; idx<label_l.length; idx++) {
-        innerZoom_l = spb.labelANDMode 
+        innerZoom_l = SF.labelANDMode 
               ? innerZoom_l.intersection( getDomListForLabel(label_l[idx]) )
               : innerZoom_l.union       ( getDomListForLabel(label_l[idx]) )
       }
@@ -610,8 +619,8 @@ function highlightSearch(query) {
       var innerZoom_l = document.querySelectorAll('*[zoom]')
   }
   var regexFlags = "g";
-  if (!spb.matchCaseMode) regexFlags += "i";
-  if (!spb.singleLineMode) regexFlags += "m";
+  if (!SF.matchCaseMode) regexFlags += "i";
+  if (!SF.singleLineMode) regexFlags += "m";
   var finalRegex = (isEmptyQuery) 
         ? new RegExp(".*")
         : new RegExp("[^=>;]?(" + finalQueryRegex + ")", regexFlags)
@@ -635,7 +644,7 @@ function highlightSearch(query) {
   }
   if (numberOfMatches == 1) {
       doOpenZoom.call(lastElementFound, lastElementFound, false, true, false);
-      spb.zoomStatus = 1
+      ZC.zoomStatus = 1
   }
   unhideButton.removeAttribute("hidden","");
   return false // avoid event propagation

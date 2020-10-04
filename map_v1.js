@@ -22,8 +22,9 @@ const SF = {  /* search Form */
     let html = ''
       + '  <input id="inputQuery" type="text" placeholder="(regex)search" maxlength="30" />'
       + '  <input id="singleLineOnly" type="checkbox" > '
-      + '  <code style="font-size:0.7em;">single-line</code>'
-      + '  <input id="caseSensitive"  type="checkbox" onClick="switchCaseMode"><code style="font-size:0.7em;">Case-match </code>'
+      + '  <span class="regexFlags">single-line</span>'
+      + '  <input id="caseSensitive"  type="checkbox">'
+      + '  <span class="regexFlags">Case-Match</span>'
       + '  <br/><hr/>'
       if (Object.keys(LM.labelMap).length > 0) {
           html += 
@@ -380,7 +381,58 @@ const IC = { // Input Control
 }
 
 const TPP = {  // (T)ext (P)re (P)rocessor
-  replaceMap : { "wikipedia" : "https://en.wikipedia.org/wiki" }
+  replaceMap : { "wikipedia" : "https://en.wikipedia.org/wiki" },
+  doTextPreProcessing : function () {
+    var nodeList = document.querySelectorAll('*[zoom]')
+    for (let idx in nodeList) { 
+        if (!!! nodeList[idx].innerHTML) { continue }
+
+        Object.keys(TPP.replaceMap).forEach( key => 
+          nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(TPP.replaceMap[key][0],TPP.replaceMap[key][1])
+        )
+     // COMMENTED: Needs more testings 
+     // nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/(http.?:\/\/[^\b]*)\b/,"<a target='_blank' href='$1'>$1</a>")
+        // Open new window with pre-recoded search:[[Troubleshooting+restorecon?]]
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(
+            /\[\[([^\?]*)\?\]\]/g,
+            "<a href='#' TODO onClick='SE.highlightSearch(\"$1\")'>$1</a>"
+          + "<a target='_blank' href='"+window.location.href.split('?')[0]+"?query=$1&labels="+LM.labelMapSelectedToCSV()+"'>( ⏏ )</a>"
+//          "<a href='"+window.location.href.split('?')[0]+"?query=$1'>$1</a>"
+        )
+    
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/@\[(http[^\]]*)\]/g,"<a target='_new' href='$1'> [$1]</a>")   
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/@\[([^\]]*)\]/g,    "<a               href='$1'> [$1]</a>")   
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Gº([^º\n]*)º/g, "<b green >  $1 </b>")   
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Rº([^º\n]*)º/g, "<b red   >  $1 </b>")   
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Bº([^º\n]*)º/g, "<b blue  >  $1 </b>")   
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Oº([^º\n]*)º/g, "<b orange>  $1 </b>")   
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Qº([^º\n]*)º/g, "<b brown >  $1 </b>")   
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Yº([^º\n]*)º/g, "<b yellow>  $1 </b>")   
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/[$]º([^º\n]*)º/g, "  <span console>$1</span> ")   
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /º([^º\n]*)º/g, "<b        > $1 </b>")   
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[˂]/g, "&lt;")   
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[˃]/g, "&gt;")   
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[⅋]/g, "&amp;")   
+        // Some utf-8 hand icons do not work properly while editing in vim/terminal
+        // but looks much better in the final HTML. Replace icons:
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☜/g, "👈")   
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☝/g, "👆")
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☞/g, "👉")
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☟/g, "👇")
+
+//      if (typeof window.orientation !== 'undefined') {
+//          // There ar some glitches with font support in mobiles :(
+//          nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/│/g, "|")
+//          nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/─/g, "-")
+//          nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/┌/g, "/")
+//          nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/┐/g, "\\")
+//          nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/└/g, "\\")
+//          nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/┘/g, "/")
+//      }
+    }
+
+  }
+
 }
 
 const MB = { // Menu Bar
@@ -446,54 +498,7 @@ function onPageLoaded() {
      TPP.replaceMap[key] = [new RegExp("[$][{]"+key+"[}]",'g'), TPP.replaceMap[key]]
   )
 
-  var nodeList = document.querySelectorAll('*[zoom]')
-  for (let idx in nodeList) { 
-      if (!!! nodeList[idx].innerHTML) { continue }
-
-      Object.keys(TPP.replaceMap).forEach( key => 
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(TPP.replaceMap[key][0],TPP.replaceMap[key][1])
-      )
-   // COMMENTED: Needs more testings 
-   // nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/(http.?:\/\/[^\b]*)\b/,"<a target='_blank' href='$1'>$1</a>")
-      // Open new window with pre-recoded search:[[Troubleshooting+restorecon?]]
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(
-          /\[\[([^\?]*)\?\]\]/g,
-          "<a href='#' TODO onClick='SE.highlightSearch(\"$1\")'>$1</a>"
-        + "<a target='_blank' href='"+window.location.href.split('?')[0]+"?query=$1&labels="+LM.labelMapSelectedToCSV()+"'>( ⏏ )</a>"
-//        "<a href='"+window.location.href.split('?')[0]+"?query=$1'>$1</a>"
-      )
-  
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/@\[(http[^\]]*)\]/g,"<a target='_new' href='$1'> [$1]</a>")   
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/@\[([^\]]*)\]/g,    "<a               href='$1'> [$1]</a>")   
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Gº([^º\n]*)º/g, "<b green >  $1 </b>")   
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Rº([^º\n]*)º/g, "<b red   >  $1 </b>")   
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Bº([^º\n]*)º/g, "<b blue  >  $1 </b>")   
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Oº([^º\n]*)º/g, "<b orange>  $1 </b>")   
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Qº([^º\n]*)º/g, "<b brown >  $1 </b>")   
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Yº([^º\n]*)º/g, "<b yellow>  $1 </b>")   
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/[$]º([^º\n]*)º/g, "  <span console>$1</span> ")   
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /º([^º\n]*)º/g, "<b        > $1 </b>")   
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[˂]/g, "&lt;")   
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[˃]/g, "&gt;")   
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[⅋]/g, "&amp;")   
-      // Some utf-8 hand icons do not work properly while editing in vim/terminal
-      // but looks much better in the final HTML. Replace icons:
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☜/g, "👈")   
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☝/g, "👆")
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☞/g, "👉")
-      nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☟/g, "👇")
-
-//    if (typeof window.orientation !== 'undefined') {
-//        // There ar some glitches with font support in mobiles :(
-//        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/│/g, "|")
-//        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/─/g, "-")
-//        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/┌/g, "/")
-//        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/┐/g, "\\")
-//        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/└/g, "\\")
-//        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/┘/g, "/")
-//    }
-  }
-
+  TPP.doTextPreProcessing()
   ZC.initCSSIndexes()
   LM.createLabelIndex()
 

@@ -427,6 +427,9 @@ const TPP = {  // (T)ext (P)re (P)rocessor
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☝/g, "👆")
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☞/g, "👉")
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☟/g, "👇")
+
+        // TODO: Add markdown table parser. REF: https://github.com/blattmann/mdtablesparser/blob/master/js/parser.js
+
     }
     document.querySelectorAll('.innerSearch').forEach(
       dom => {
@@ -434,8 +437,6 @@ const TPP = {  // (T)ext (P)re (P)rocessor
       }
     )
   },
-  
-
 }
 
 const MB = { // Menu Bar

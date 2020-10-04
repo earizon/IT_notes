@@ -2,6 +2,7 @@ import { preLoad , postLoad } from '/custom.js';
 
 const labelMap = { /* label : dom_list*/ }
 
+
 const SF = {  /* search Form */
   searchFormDOM : window,
   searchForm_labelsDOM : window,
@@ -36,7 +37,7 @@ const SF = {  /* search Form */
         html += "(No topics found).<br/>\n"
       }
       html += '<br/>'
-      + '<div id="doSearchButton">Search&#128065;</div>'
+      + '<div id="doSearchButton">&#128065;Search</div>'
       div.innerHTML = html;
   
       const domSearchAndMode = document.getElementById("searchAndMode")
@@ -69,7 +70,7 @@ const SF = {  /* search Form */
     SF.searchForm_labelsDOM.innerHTML = htmlLabels;
     document.querySelectorAll('.labelButton').forEach(
       domElement => {
-        domElement.addEventListener('click', onLabelClicked)
+        domElement.addEventListener('click', LM.onLabelClicked)
       }
     )
   },
@@ -181,9 +182,8 @@ const ZW = { /* ZOOM Window */
   },
   doCloseZoom : function() {
     ZC.zoomStatus = 0 
-    document.getElementById("buttonZoomIn" ).innerHTML="[dive]";
-    document.getElementById("buttonZoomOut").innerHTML="[orbit]";
     ZW.dom.style.display="none";
+    MB.onZoomClosed()
   }
 }
 
@@ -220,78 +220,12 @@ const NAV = { // Navigation
   }
 }
 
-function onKeyUp(e) {  // Keyboard controller
-  if (e.key === "z") { ZW.onZoomOut(); return }
-  if (e.key === "Z") { ZW.onZoomIn (); return }
-  if (e.code === "Escape") {
-    if (ZC.zoomStatus === 0) {
-      resetTextFoundAttr(true)
-    } else {
-         ZW.doCloseZoom()
-    }
-  }
-  if (e.key === "PageDown") { NAV.goForward(); return }
-  if (e.key === "PageUp"  ) { NAV.goBack   (); return }
-
-  if (e.code === "Enter") { ZW.doCloseZoom() }
-  if (e.code === "F1") doHelp(); 
-}
-
-var replaceMap = { "wikipedia" : "https://en.wikipedia.org/wiki" }
-var labelMapSelected = { /* label : isSelected true|false */ }
-
-
-
-var longPress = {
-   longpress : false,
-   presstimer : null,
-   click : function(e) {
-     if (longPress.presstimer !== null) {
-       clearTimeout(longPress.presstimer)
-       longPress.presstimer = null
-     }
-     if (longPress.longpress) { return false }
-   },
-   start : function(e) {
-     var self = this
-     if (e.type === "click" && e.button !== 0) { return }
-     longPress.longpress = false
-   
-     if (longPress.presstimer === null) {
-       longPress.presstimer = setTimeout(function() {
-         ZW.doOpenZoom(self)
-         ZC.zoomStatus = 1
-         longPress.longpress = true
-       }, 1000)
-     }
-   
-     return false;
-   },
-   cancel : function(e) {
-     if (longPress.presstimer !== null) {
-       clearTimeout(longPress.presstimer);
-       longPress.presstimer = null;
-     }
-   },
-   enableDblClick : function (node) {
-     let self = node
-     node.addEventListener('dblclick', function() { 
-       ZW.doOpenZoom(self) 
-       ZC.zoomStatus = 1
-     } , true)
-   },
-   enableLongTouch : function (node) { 
-     node.addEventListener("mousedown" , longPress.start);
-     node.addEventListener("touchstart", longPress.start);
-     node.addEventListener("click"     , longPress.click);
-     node.addEventListener("mouseout"  , longPress.cancel);
-     node.addEventListener("touchend"  , longPress.cancel);
-     node.addEventListener("touchleave", longPress.cancel);
-     node.addEventListener("touchcancel", longPress.cancel);
-   }
-}
-
-function onLabelClicked(e) {
+const LM = { // Lavel management
+  labelMapSelected : { /* label : isSelected true|false */ },
+  isAnyLabelSelected : function() {
+    return Object.keys(LM.labelMapSelected).length > 0
+  },
+  onLabelClicked : function (e) {
     const dom = e.target;
     const label = dom.value;
     if (!dom.attributes) {
@@ -299,22 +233,104 @@ function onLabelClicked(e) {
     }
     if (dom.attributes.selected.value == "false") {
         dom.attributes.selected.value = "true"
-        labelMapSelected[label] = true
+        LM.labelMapSelected[label] = true
     } else {
         dom.attributes.selected.value = "false"
-        delete labelMapSelected[label]
+        delete LM.labelMapSelected[label]
     }
-    if (isAnyLabelSelected()){
+    if (LM.isAnyLabelSelected()){
       document.getElementById("idLabelsFilter").setAttribute("active","true"); 
     } else {
       document.getElementById("idLabelsFilter").removeAttribute("active"); 
     }
+  }
+}
+
+const IC = {
+  onKeyUp: function(e) {  // Keyboard controller
+    if (e.key === "z") { ZW.onZoomOut(); return }
+    if (e.key === "Z") { ZW.onZoomIn (); return }
+    if (e.code === "Escape") {
+      if (ZC.zoomStatus === 0) {
+        SE.resetTextFoundAttr(true)
+      } else {
+           ZW.doCloseZoom()
+      }
+    }
+    if (e.key === "PageDown") { NAV.goForward(); return }
+    if (e.key === "PageUp"  ) { NAV.goBack   (); return }
+  
+    if (e.code === "Enter") { ZW.doCloseZoom() }
+    if (e.code === "F1") doHelp() 
+  },
+  initInputControl: function(){
+    document.addEventListener('keyup'  , IC.onKeyUp)
+    var nodeList = document.querySelectorAll('*[zoom]')
+    for (let idx in nodeList) { 
+       if (!!! nodeList[idx].addEventListener) continue
+       IC.longPress.enableDblClick (nodeList[idx])
+       IC.longPress.enableLongTouch(nodeList[idx])
+    }
+  },
+  longPress : {
+     longpress : false,
+     presstimer : null,
+     click : function(e) {
+       if (longPress.presstimer !== null) {
+         clearTimeout(longPress.presstimer)
+         longPress.presstimer = null
+       }
+       if (IC.longPress.longpress) { return false }
+     },
+     start : function(e) {
+       var self = this
+       if (e.type === "click" && e.button !== 0) { return }
+       IC.longPress.longpress = false
+     
+       if (IC.longPress.presstimer === null) {
+         IC.longPress.presstimer = setTimeout(function() {
+           ZW.doOpenZoom(self)
+           ZC.zoomStatus = 1
+           IC.longPress.longpress = true
+         }, 1000)
+       }
+     
+       return false;
+     },
+     cancel : function(e) {
+       if (IC.longPress.presstimer !== null) {
+         clearTimeout(IC.longPress.presstimer);
+         IC.longPress.presstimer = null;
+       }
+     },
+     enableDblClick : function (node) {
+       let self = node
+       node.addEventListener('dblclick', function() { 
+         ZW.doOpenZoom(self) 
+         ZC.zoomStatus = 1
+       } , true)
+     },
+     enableLongTouch : function (node) { 
+       node.addEventListener("mousedown" , IC.longPress.start);
+       node.addEventListener("touchstart", IC.longPress.start);
+       node.addEventListener("click"     , IC.longPress.click);
+       node.addEventListener("mouseout"  , IC.longPress.cancel);
+       node.addEventListener("touchend"  , IC.longPress.cancel);
+       node.addEventListener("touchleave", IC.longPress.cancel);
+       node.addEventListener("touchcancel",IC.longPress.cancel);
+     }
+  }
+
+}
+
+const TPP = {  // (T)ext (P)re (P)rocessor
+  replaceMap : { "wikipedia" : "https://en.wikipedia.org/wiki" }
 }
 
 function renderLabel(sLabel,selected) {
   sLabel = sLabel.toLowerCase()
   let cssAtribute    = (sLabel.startsWith("todo")) ? "red"  : ""
-  return "<input "+cssAtribute+" class='labelButton' selected="+(!!labelMapSelected[sLabel])+
+  return "<input "+cssAtribute+" class='labelButton' selected="+(!!LM.labelMapSelected[sLabel])+
          " type='button' value='"+sLabel+"' /><span labelcount>"+labelMap[sLabel].length+"</span>" ;
 }
 
@@ -332,7 +348,7 @@ function getDomListForLabel(label) {
 }
 
 function labelMapSelectedToCSV() {
-  return Object.keys(labelMapSelected).sort().join(",")
+  return Object.keys(LM.labelMapSelected).sort().join(",")
 }
 function createLabelIndex() {
   var labeled_dom_l = document.querySelectorAll('*[labels]');
@@ -360,66 +376,77 @@ function createLabelIndex() {
   // console.dir(labelMap)
 }
 
-function spbQuickPrint() {
-  if (window.confirm('Use browser [print...] for print-previsualization.-')) {
-      window.print()
-  }
+const MB = {
+  sOrbit:"📷 orbit",
+  sDive :"🔍︎ dive",
+  buttonZoomIn  :"buttonZoomIn",
+  buttonZoomOut :"buttonZoomOut",
+  renderMenuBar : function (){
+    var searchDiv = document.createElement('div');
+        searchDiv.setAttribute("id", "upper_bar")
+        searchDiv.innerHTML = ''
+     + '<img id="idLabelsFilter" class="noprint" src="/labelIcon.svg"  '
+     +   ' onerror="src = \'https://singlepagebookproject.github.io/SPB/labelIcon.svg\';" />'
+     + '&nbsp;<span blue class="noprint" id="unhide" hidden style="cursor:ns-resize">[unhide]</span>'
+     + '&nbsp;<a href="../help.html" class="noprint" style="cursor:help" target="_blank">[HelpMan]</a>'
+     + '&nbsp;<span blue id="printButton">[Print]</span>'
+     + '<span id="'+MB.buttonZoomIn +'"  blue>'+MB.sDive +'</span>'
+     + '<span id="'+MB.buttonZoomOut+'" blue>'+MB.sOrbit+'&nbsp;│</span>'
+     + '<br/>'
+    document.body.insertBefore(searchDiv,document.body.children[0])
+    document.getElementById("idLabelsFilter").addEventListener("click", SF.showSearchForm)
+    document.getElementById("idLabelsFilter").addEventListener("click", SF.showSearchForm)
+    document.getElementById(MB.buttonZoomIn ).addEventListener("click", ZW.onZoomIn   )
+    document.getElementById(MB.buttonZoomOut).addEventListener("click", ZW.onZoomOut  )
+    document.getElementById("unhide"        ).addEventListener("click", function () { SE.resetTextFoundAttr(true) })
+    document.getElementById("printButton"   ).addEventListener("click", MB.spbQuickPrint )
+  },
+  spbQuickPrint : function() {
+    if (window.confirm('Use browser [print...] for print-previsualization.-')) {
+        window.print()
+    }
+  },
+  onZoomClosed : function() {
+    document.getElementById(MB.buttonZoomIn ).innerHTML=MB.sDive 
+    document.getElementById(MB.buttonZoomOut).innerHTML=MB.sOrbit
+  },
 }
 
+function switchLinksToBlankTarget() {
+  // Change default a.target to blank.
+  var nodeList = document.querySelectorAll('a')
+  var thisDoc=document.location.origin+document.location.pathname;
+  for (let idx in nodeList) { 
+    var nodeHref = nodeList[idx].href
+    if (!nodeHref) { continue }
+    if (! (nodeHref.startsWith("http")) ) continue
+    if ( nodeHref.startsWith(thisDoc)) continue
+    nodeList[idx].target='_blank' 
+  }
 
+
+}
 
 function onPageLoaded() {
   try {   preLoad(); } catch(err) {console.dir(err)}
   ZC.cssRules = document.styleSheets[0]['cssRules'][0].cssRules;
   ZW.renderZoomBox();
-  var searchDiv = document.createElement('div');
-      searchDiv.setAttribute("id", "upper_bar")
-      searchDiv.innerHTML = ''
-   + '<img id="idLabelsFilter" class="noprint" src="/labelIcon.svg"  '
-   +   ' onerror="src = \'https://singlepagebookproject.github.io/SPB/labelIcon.svg\';" />'
-   + '&nbsp;<span blue class="noprint" id="unhide" hidden style="cursor:ns-resize" onClick="resetTextFoundAttr(true)">[unhide]</span>'
-   + '&nbsp;<a href="../help.html" class="noprint" style="cursor:help" target="_blank">[HelpMan]</a>'
-   + '&nbsp;<span onClick="spbQuickPrint()" blue id="printButton">[Print]</span>'
-   + '<span id="buttonZoomIn"  blue>[🔍︎ dive]             </span>'
-   + '<span id="buttonZoomOut" blue>[📷 orbit]&nbsp;&nbsp;</span>'
-   + '<br/>'
-  document.body.insertBefore(searchDiv,document.body.children[0])
-  document.getElementById("idLabelsFilter").addEventListener("click", SF.showSearchForm)
-  document.getElementById("buttonZoomIn"  ).addEventListener("click", ZW.onZoomIn   )
-  document.getElementById("buttonZoomOut" ).addEventListener("click", ZW.onZoomOut  )
+  MB.renderMenuBar();
 
-  document.addEventListener('keyup'  , onKeyUp)
-
-  // Change default a.target to blank. Ussually this is bad practice 
-  // but this is the exception to the rule
-  var nodeList = document.querySelectorAll('a')
-  var thisDoc=document.location.origin+document.location.pathname;
-  for (let idx in nodeList) { 
-      var nodeHref = nodeList[idx].href;
-      if (!nodeHref) { continue; }
-      if (! (nodeHref.startsWith("http")) ) continue;
-      if ( nodeHref.startsWith(thisDoc)) continue;
-      nodeList[idx].target='_blank'; 
-  }
-
-  nodeList = document.querySelectorAll('*[zoom]')
-  for (let idx in nodeList) { 
-     if (!!! nodeList[idx].addEventListener) continue;
-     longPress.enableDblClick (nodeList[idx]);
-     longPress.enableLongTouch(nodeList[idx]);
-  }
+  IC.initInputControl();
+  switchLinksToBlankTarget();
 
   // create re-usable regex outside loop.
-  Object.keys(replaceMap).forEach( key => 
-     replaceMap[key] = [new RegExp("[$][{]"+key+"[}]",'g'), replaceMap[key]]
+  Object.keys(TPP.replaceMap).forEach( key => 
+     TPP.replaceMap[key] = [new RegExp("[$][{]"+key+"[}]",'g'), TPP.replaceMap[key]]
   )
 
-  nodeList = document.querySelectorAll('*[zoom]')
+  var nodeList = document.querySelectorAll('*[zoom]')
   for (let idx in nodeList) { 
       if (!!! nodeList[idx].innerHTML) { continue }
 
-      Object.keys(replaceMap).forEach( key => 
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(replaceMap[key][0],replaceMap[key][1])
+      Object.keys(TPP.replaceMap).forEach( key => 
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(TPP.replaceMap[key][0],TPP.replaceMap[key][1])
       )
    // COMMENTED: Needs more testings 
    // nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/(http.?:\/\/[^\b]*)\b/,"<a target='_blank' href='$1'>$1</a>")
@@ -450,6 +477,7 @@ function onPageLoaded() {
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☝/g, "👆")
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☞/g, "👉")
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☟/g, "👇")
+
 //    if (typeof window.orientation !== 'undefined') {
 //        // There ar some glitches with font support in mobiles :(
 //        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/│/g, "|")
@@ -482,7 +510,7 @@ function onPageLoaded() {
       csvLabels = csvLabels.toLowerCase()
   let label_l = (!!csvLabels) ? csvLabels.split(",") : []
   label_l.forEach(label => {
-      onLabelClicked({value : label});
+      LM.onLabelClicked({value : label});
   })
   let query = getParameterByName("query")
   if (!!query) { SF.regexQuery = query; }
@@ -515,32 +543,6 @@ function getParameterByName(name, url) {
 
 var searchFound = false;
 
-function resetTextFoundAttr(bKeepHighlightedSearch) {
-  /*
-   * bKeepHighlightedSearch = true: => Do not reset textFound== true attribute
-   *                                  (keep highlighted content in the context of the full page)
-   *                                  Just remove textFound=false to 'unhide' non-matching zoomable content
-   *                                  (textFound==false is assigned to display none in css)
-   * bKeepHighlightedSearch = false => Reset all (remove any textFound attribute)
-   */
-  [document.querySelectorAll('body>div>[title]'),
-   document.querySelectorAll('body>div>div[title]')].forEach(nodeList => {
-      nodeList.forEach(node => {
-          node.removeAttribute("hidden")
-      })
-   })
-  var removeNodeList = document.querySelectorAll('*[textFound]');
-  if (removeNodeList.length == 0) return; // Nothing to do.
-  for (let idx in removeNodeList) {
-      if (!removeNodeList[idx].setAttribute) continue; // <- Umm: works fine at page-load, fails in following searchs
-      if (bKeepHighlightedSearch && removeNodeList[idx].getAttribute("textFound") == "true") continue;
-      removeNodeList[idx].removeAttribute("textFound"); 
-  }
-}
-
-function isAnyLabelSelected() {
-  return Object.keys(labelMapSelected).length > 0
-}
 
 Array.prototype.union = function(a) 
 {
@@ -588,10 +590,10 @@ const SE = { // (S)earch (E)ngine
     if (typeof query != "string") query = "";
     if (!!query) { SF.regexQuery = query; }
     let finalQueryRegex = SF.regexQuery.replace(/ +/g,".*");
-    resetTextFoundAttr(false);
+    SE.resetTextFoundAttr(false);
     let isEmptyQuery = /^\s*$/.test(finalQueryRegex)
 
-    if ((!isAnyLabelSelected()) && isEmptyQuery) { return false; /* Nothing to do */ }
+    if ((!LM.isAnyLabelSelected()) && isEmptyQuery) { return false; /* Nothing to do */ }
 
     [document.querySelectorAll('body>div>[title]'),
         document.querySelectorAll('body>div>div>[title]')].forEach(nodeList => {
@@ -604,8 +606,8 @@ const SE = { // (S)earch (E)ngine
         node.setAttribute("textFound", "false")
     })
     var innerZoom_l = []
-    if (isAnyLabelSelected()) {
-        let label_l=Object.keys(labelMapSelected)
+    if (LM.isAnyLabelSelected()) {
+        let label_l=Object.keys(LM.labelMapSelected)
         innerZoom_l = getDomListForLabel(label_l[0]);
         for (let idx=0; idx<label_l.length; idx++) {
             innerZoom_l = SF.labelANDMode 
@@ -646,5 +648,27 @@ const SE = { // (S)earch (E)ngine
     }
     unhideButton.removeAttribute("hidden","");
     return false // avoid event propagation
+  },
+  resetTextFoundAttr : function(bKeepHighlightedSearch) {
+    /*
+     * bKeepHighlightedSearch = true: => Do not reset textFound== true attribute
+     *                                  (keep highlighted content in the context of the full page)
+     *                                  Just remove textFound=false to 'unhide' non-matching zoomable content
+     *                                  (textFound==false is assigned to display none in css)
+     * bKeepHighlightedSearch = false => Reset all (remove any textFound attribute)
+     */
+    [document.querySelectorAll('body>div>[title]'),
+     document.querySelectorAll('body>div>div[title]')].forEach(nodeList => {
+        nodeList.forEach(node => {
+            node.removeAttribute("hidden")
+        })
+     })
+    var removeNodeList = document.querySelectorAll('*[textFound]');
+    if (removeNodeList.length == 0) return; // Nothing to do.
+    for (let idx in removeNodeList) {
+        if (!removeNodeList[idx].setAttribute) continue; // <- Umm: works fine at page-load, fails in following searchs
+        if (bKeepHighlightedSearch && removeNodeList[idx].getAttribute("textFound") == "true") continue;
+        removeNodeList[idx].removeAttribute("textFound"); 
+    }
   }
 }

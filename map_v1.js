@@ -179,7 +179,14 @@ const ZW = { /* ZOOM Window */
         .forEach(label_i => { sLabels += LM.renderLabel(label_i) })
     }
     document.getElementById("divElementLabels").innerHTML = sLabels;
-    document.getElementById("zoomHTMLContent").innerHTML = e.outerHTML; 
+    const zoomHTML = document.getElementById("zoomHTMLContent")
+    zoomHTML.innerHTML = e.outerHTML; 
+    zoomHTML.querySelectorAll('.innerSearch').forEach(
+      dom => {
+        dom.addEventListener('click', function() { SE.highlightSearch(dom.innerHTML) })
+      }
+    )
+
     ZW.dom.style.display="block";
     ZW.dom.scrollTop = 0;
     return false;
@@ -301,7 +308,6 @@ const LM = { // Lavel management
         node.insertBefore(countEl,node.children[0])
       }
     }
-    // console.dir(LM.labelMap)
   }
 }
 
@@ -390,16 +396,18 @@ const TPP = {  // (T)ext (P)re (P)rocessor
         Object.keys(TPP.replaceMap).forEach( key => 
           nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(TPP.replaceMap[key][0],TPP.replaceMap[key][1])
         )
-     // COMMENTED: Needs more testings 
-     // nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/(http.?:\/\/[^\b]*)\b/,"<a target='_blank' href='$1'>$1</a>")
+        // COMMENTED: Needs more testings 
+        // nodeList[idx].innerHTML = nodeList[idx].innerHTML
+        // .replace(/(http.?:\/\/[^\b]*)\b/,"<a target='_blank' href='$1'>$1</a>")
+        //
         // Open new window with pre-recoded search:[[Troubleshooting+restorecon?]]
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(
             /\[\[([^\?]*)\?\]\]/g,
-            "<a href='#' TODO onClick='SE.highlightSearch(\"$1\")'>$1</a>"
-          + "<a target='_blank' href='"+window.location.href.split('?')[0]+"?query=$1&labels="+LM.labelMapSelectedToCSV()+"'>( ⏏ )</a>"
-//          "<a href='"+window.location.href.split('?')[0]+"?query=$1'>$1</a>"
+            "<div class='innerSearch'>$1</div>"
+          + "<a target='_blank' "
+          + " href='"+window.location.href.split('?')[0]+"?query=$1&labels="+LM.labelMapSelectedToCSV()+"'>"
+          + " (⏏ )</a>"
         )
-    
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/@\[(http[^\]]*)\]/g,"<a target='_new' href='$1'> [$1]</a>")   
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/@\[([^\]]*)\]/g,    "<a               href='$1'> [$1]</a>")   
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Gº([^º\n]*)º/g, "<b green >  $1 </b>")   
@@ -419,19 +427,14 @@ const TPP = {  // (T)ext (P)re (P)rocessor
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☝/g, "👆")
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☞/g, "👉")
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☟/g, "👇")
-
-//      if (typeof window.orientation !== 'undefined') {
-//          // There ar some glitches with font support in mobiles :(
-//          nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/│/g, "|")
-//          nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/─/g, "-")
-//          nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/┌/g, "/")
-//          nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/┐/g, "\\")
-//          nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/└/g, "\\")
-//          nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/┘/g, "/")
-//      }
     }
-
-  }
+    document.querySelectorAll('.innerSearch').forEach(
+      dom => {
+        dom.addEventListener('click', function() { SE.highlightSearch(dom.innerHTML) })
+      }
+    )
+  },
+  
 
 }
 

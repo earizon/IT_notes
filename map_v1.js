@@ -1,8 +1,5 @@
 import { preLoad , postLoad } from '/custom.js';
 
-const labelMap = { /* label : dom_list*/ }
-
-
 const SF = {  /* search Form */
   searchFormDOM : window,
   searchForm_labelsDOM : window,
@@ -14,18 +11,21 @@ const SF = {  /* search Form */
       true : "←<span brown>AND</span> mode must contains <span brown>all</span> selected topics",
       false: "←<span green>OR </span> mode must contains <span green>any</span> selected topics"
   },
-
+  switchANDORSearch : function() {
+    SF.labelANDMode=!SF.labelANDMode  
+    document.getElementById("idLabelSearchAndMode").innerHTML = SF.labelAndOrText[SF.labelANDMode]
+  },
   renderSearchForm : function() {
     const div = document.createElement('div');
           div.setAttribute("id", "searchForm")
     document.body.insertBefore(div,document.body.children[0])
     let html = ''
       + '  <input id="inputQuery" type="text" placeholder="(regex)search" maxlength="30" />'
-      + '  <input id="singleLineOnly" type="checkbox" onClick="switchSingleLineMode()" > '
+      + '  <input id="singleLineOnly" type="checkbox" > '
       + '  <code style="font-size:0.7em;">single-line</code>'
-      + '  <input id="caseSensitive"  type="checkbox" onClick="switchCaseMode()"><code style="font-size:0.7em;">Case-match </code>'
+      + '  <input id="caseSensitive"  type="checkbox" onClick="switchCaseMode"><code style="font-size:0.7em;">Case-match </code>'
       + '  <br/><hr/>'
-      if (Object.keys(labelMap).length > 0) {
+      if (Object.keys(LM.labelMap).length > 0) {
           html += 
            '<b>Filter by topic</b>:<br/>\n '
         +  '<input id="searchAndMode" type="checkbox">'
@@ -40,15 +40,15 @@ const SF = {  /* search Form */
       + '<div id="doSearchButton">&#128065;Search</div>'
       div.innerHTML = html;
   
-      const domSearchAndMode = document.getElementById("searchAndMode")
-      domSearchAndMode.addEventListener("change",  switchANDORSearch )
-  
-  
+      document.getElementById("searchAndMode").addEventListener("change",  SF.switchANDORSearch )
+      document.getElementById("doSearchButton").addEventListener('click', SF.doHideSearchFormAndSearch )
+      const swithSingleLineDom = document.getElementById("singleLineOnly");
+            swithSingleLineDom.addEventListener('click', function (){ SF.singleLineMode=swithSingleLineDom.checked; } )
+      const swithCaseSensitDom = document.getElementById("caseSensitive");
+      swithCaseSensitDom.addEventListener('click',  function () { SF.matchCaseMode=swithCaseSensitDom.checked; } )
+
       const domInputQuery = document.getElementById("inputQuery")
       domInputQuery.addEventListener("change",  function () { SF.regexQuery = this.value } )
-      const doSearchButton = document.getElementById("doSearchButton")
-      doSearchButton.addEventListener('click', SF.doHideSearchFormAndSearch )
-  
       domInputQuery.focus()
   
       SF.searchFormDOM = div;
@@ -63,9 +63,9 @@ const SF = {  /* search Form */
     document.getElementById("idLabelSearchAndMode" ).innerHTML = SF.labelAndOrText[SF.labelANDMode]
   
     var htmlLabels = ''
-    Object.keys(labelMap).sort()
+    Object.keys(LM.labelMap).sort()
        .forEach(label_i => {
-        htmlLabels += renderLabel(label_i)
+        htmlLabels += LM.renderLabel(label_i)
     })
     SF.searchForm_labelsDOM.innerHTML = htmlLabels;
     document.querySelectorAll('.labelButton').forEach(
@@ -80,7 +80,9 @@ const SF = {  /* search Form */
   doHideSearchFormAndSearch : function () {
     SF.hideSearchForm();
     SE.highlightSearch();
-  }
+  },
+
+
 }
 
 const ZW = { /* ZOOM Window */ 
@@ -142,8 +144,9 @@ const ZW = { /* ZOOM Window */
     document.getElementById("GoForw"      ).addEventListener("click", NAV.goForward);
   },
   doOpenZoom : function(e) {
-    document.getElementById("buttonZoomIn" ).innerHTML="[zoom-in]";
-    document.getElementById("buttonZoomOut").innerHTML="[zoom-out]";
+    ZC.zoomStatus = 1
+    document.getElementById(MB.buttonZoomIn ).innerHTML="<span style='font-size:1.0em'>ABC</span>";
+    document.getElementById(MB.buttonZoomOut).innerHTML="<span style='font-size:0.7em'>🔍︎ABC</span>";
     // if(NAV.visited[NAV.visited.length-1] == e) { isHistoric = true }
     if(NAV.visited.indexOf(e)>=0) { 
         NAV.visited_idx = NAV.visited.indexOf(e)
@@ -172,7 +175,7 @@ const ZW = { /* ZOOM Window */
         .from(
           new Set(e.attributes.labels.value.split(",")))
         .filter(e => !!e)
-        .forEach(label_i => { sLabels += renderLabel(label_i) })
+        .forEach(label_i => { sLabels += LM.renderLabel(label_i) })
     }
     document.getElementById("divElementLabels").innerHTML = sLabels;
     document.getElementById("zoomHTMLContent").innerHTML = e.outerHTML; 
@@ -198,7 +201,24 @@ const ZC = { /* zoom Control */
   zoomFontSize:1.00,
   zoomStepIn:0.20,
   zoomStepOut:0.10,
-  cssRules : []
+  cssRules : [],
+  initCSSIndexes : function() {
+    ZC.cssRules = document.styleSheets[0]['cssRules'][0].cssRules;
+    for (let idx=0; idx<ZC.cssRules.length; idx++){
+        if( ZC.cssRules[idx].selectorText == "#zoomDiv, #searchForm") {
+            ZC.idxZoomDivRule=idx
+        }
+        if( ZC.cssRules[idx].selectorText == "[zoom]") {
+            ZC.idxZoomRule=idx
+        }
+        if( ZC.cssRules[idx].selectorText == "[xsmall]") {
+            ZC.idxXSmallRule=idx
+        }
+        if( ZC.cssRules[idx].selectorText == "[title]") {
+            ZC.idxXTitleRule=idx
+        }
+    }
+  }
 }
 
 const NAV = { // Navigation
@@ -209,19 +229,19 @@ const NAV = { // Navigation
     NAV.visited_idx--
     let e = NAV.visited[NAV.visited_idx]
     ZW.doOpenZoom(e);
-    ZC.zoomStatus = 1
   },
   goForward : function() {
     if(NAV.visited_idx == NAV.visited.length-1) return
     NAV.visited_idx++
     let e = NAV.visited[NAV.visited_idx]
     ZW.doOpenZoom(e);
-    ZC.zoomStatus = 1
   }
 }
 
 const LM = { // Lavel management
   labelMapSelected : { /* label : isSelected true|false */ },
+  labelMap : { /* label : dom_list*/ },
+
   isAnyLabelSelected : function() {
     return Object.keys(LM.labelMapSelected).length > 0
   },
@@ -243,10 +263,48 @@ const LM = { // Lavel management
     } else {
       document.getElementById("idLabelsFilter").removeAttribute("active"); 
     }
+  },
+  renderLabel : function(sLabel) {
+    sLabel = sLabel.toLowerCase()
+    let cssAtribute    = (sLabel.startsWith("todo")) ? "red"  : ""
+    return "<input "+cssAtribute+" class='labelButton' selected="+(!!LM.labelMapSelected[sLabel])+
+           " type='button' value='"+sLabel+"' /><span labelcount>"+LM.labelMap[sLabel].length+"</span>" ;
+  },
+  getDomListForLabel: function (label) {
+      if (!!!LM.labelMap[label]) return [];
+      else return LM.labelMap[label];
+  },
+  labelMapSelectedToCSV: function() {
+    return Object.keys(LM.labelMapSelected).sort().join(",")
+  },
+  createLabelIndex : function () {
+    var labeled_dom_l = document.querySelectorAll('*[labels]');
+    for (let idx1 in labeled_dom_l) {
+      var node = labeled_dom_l[idx1]
+      if (!node.getAttribute    ) continue
+      let csvAttributes = node.getAttribute("labels")
+      if (!csvAttributes || !csvAttributes.trim()) continue;
+      var labelCount = 0
+      csvAttributes.split(",").forEach( label => {
+          if (!!! label) return
+          label = label.toLowerCase()
+          let list = LM.getDomListForLabel(label)
+              list.push(node)
+          LM.labelMap[label] = list
+          labelCount++
+      })
+      if (labelCount>0) {
+        var countEl = document.createElement('div');
+            countEl.setAttribute("tagCount", "")
+            countEl.innerHTML = labelCount
+        node.insertBefore(countEl,node.children[0])
+      }
+    }
+    // console.dir(LM.labelMap)
   }
 }
 
-const IC = {
+const IC = { // Input Control
   onKeyUp: function(e) {  // Keyboard controller
     if (e.key === "z") { ZW.onZoomOut(); return }
     if (e.key === "Z") { ZW.onZoomIn (); return }
@@ -268,56 +326,54 @@ const IC = {
     var nodeList = document.querySelectorAll('*[zoom]')
     for (let idx in nodeList) { 
        if (!!! nodeList[idx].addEventListener) continue
-       IC.longPress.enableDblClick (nodeList[idx])
-       IC.longPress.enableLongTouch(nodeList[idx])
+       IC.LPC.enableDblClick (nodeList[idx])
+       IC.LPC.enableLongTouch(nodeList[idx])
     }
   },
-  longPress : {
+  LPC : { /* (L)ong (P)ress (C)control */
      longpress : false,
      presstimer : null,
      click : function(e) {
-       if (longPress.presstimer !== null) {
-         clearTimeout(longPress.presstimer)
-         longPress.presstimer = null
+       if (IC.LPC.presstimer !== null) {
+         clearTimeout(IC.LPC.presstimer)
+         IC.LPC.presstimer = null
        }
-       if (IC.longPress.longpress) { return false }
+       if (IC.LPC.longpress) { return false }
      },
      start : function(e) {
        var self = this
        if (e.type === "click" && e.button !== 0) { return }
-       IC.longPress.longpress = false
+       IC.LPC.longpress = false
      
-       if (IC.longPress.presstimer === null) {
-         IC.longPress.presstimer = setTimeout(function() {
+       if (IC.LPC.presstimer === null) {
+         IC.LPC.presstimer = setTimeout(function() {
            ZW.doOpenZoom(self)
-           ZC.zoomStatus = 1
-           IC.longPress.longpress = true
+           IC.LPC.longpress = true
          }, 1000)
        }
      
        return false;
      },
      cancel : function(e) {
-       if (IC.longPress.presstimer !== null) {
-         clearTimeout(IC.longPress.presstimer);
-         IC.longPress.presstimer = null;
+       if (IC.LPC.presstimer !== null) {
+         clearTimeout(IC.LPC.presstimer);
+         IC.LPC.presstimer = null;
        }
      },
      enableDblClick : function (node) {
        let self = node
        node.addEventListener('dblclick', function() { 
          ZW.doOpenZoom(self) 
-         ZC.zoomStatus = 1
        } , true)
      },
      enableLongTouch : function (node) { 
-       node.addEventListener("mousedown" , IC.longPress.start);
-       node.addEventListener("touchstart", IC.longPress.start);
-       node.addEventListener("click"     , IC.longPress.click);
-       node.addEventListener("mouseout"  , IC.longPress.cancel);
-       node.addEventListener("touchend"  , IC.longPress.cancel);
-       node.addEventListener("touchleave", IC.longPress.cancel);
-       node.addEventListener("touchcancel",IC.longPress.cancel);
+       node.addEventListener("mousedown" , IC.LPC.start);
+       node.addEventListener("touchstart", IC.LPC.start);
+       node.addEventListener("click"     , IC.LPC.click);
+       node.addEventListener("mouseout"  , IC.LPC.cancel);
+       node.addEventListener("touchend"  , IC.LPC.cancel);
+       node.addEventListener("touchleave", IC.LPC.cancel);
+       node.addEventListener("touchcancel",IC.LPC.cancel);
      }
   }
 
@@ -327,56 +383,7 @@ const TPP = {  // (T)ext (P)re (P)rocessor
   replaceMap : { "wikipedia" : "https://en.wikipedia.org/wiki" }
 }
 
-function renderLabel(sLabel,selected) {
-  sLabel = sLabel.toLowerCase()
-  let cssAtribute    = (sLabel.startsWith("todo")) ? "red"  : ""
-  return "<input "+cssAtribute+" class='labelButton' selected="+(!!LM.labelMapSelected[sLabel])+
-         " type='button' value='"+sLabel+"' /><span labelcount>"+labelMap[sLabel].length+"</span>" ;
-}
-
-function switchANDORSearch() { // @ma
-  SF.labelANDMode=!SF.labelANDMode  
-  document.getElementById("idLabelSearchAndMode").innerHTML = SF.labelAndOrText[SF.labelANDMode]
-}
-
-function switchSingleLineMode() { SF.singleLineMode=document.getElementById("singleLineOnly").checked; }
-function switchCaseMode()       { SF.matchCaseMode=document.getElementById("caseSensitive").checked; }
-
-function getDomListForLabel(label) {
-    if (!!!labelMap[label]) return [];
-    else return labelMap[label];
-}
-
-function labelMapSelectedToCSV() {
-  return Object.keys(LM.labelMapSelected).sort().join(",")
-}
-function createLabelIndex() {
-  var labeled_dom_l = document.querySelectorAll('*[labels]');
-  for (let idx1 in labeled_dom_l) {
-    var node = labeled_dom_l[idx1]
-    if (!node.getAttribute    ) continue
-    let csvAttributes = node.getAttribute("labels")
-    if (!csvAttributes || !csvAttributes.trim()) continue;
-    var labelCount = 0
-    csvAttributes.split(",").forEach( label => {
-        if (!!! label) return
-        label = label.toLowerCase()
-        let list = getDomListForLabel(label)
-            list.push(node)
-        labelMap[label] = list
-        labelCount++
-    })
-    if (labelCount>0) {
-      var countEl = document.createElement('div');
-          countEl.setAttribute("tagCount", "")
-          countEl.innerHTML = labelCount
-      node.insertBefore(countEl,node.children[0])
-    }
-  }
-  // console.dir(labelMap)
-}
-
-const MB = {
+const MB = { // Menu Bar
   sOrbit:"📷 orbit",
   sDive :"🔍︎ dive",
   buttonZoomIn  :"buttonZoomIn",
@@ -387,11 +394,12 @@ const MB = {
         searchDiv.innerHTML = ''
      + '<img id="idLabelsFilter" class="noprint" src="/labelIcon.svg"  '
      +   ' onerror="src = \'https://singlepagebookproject.github.io/SPB/labelIcon.svg\';" />'
-     + '&nbsp;<span blue class="noprint" id="unhide" hidden style="cursor:ns-resize">[unhide]</span>'
-     + '&nbsp;<a href="../help.html" class="noprint" style="cursor:help" target="_blank">[HelpMan]</a>'
-     + '&nbsp;<span blue id="printButton">[Print]</span>'
+     + ' <span blue class="noprint" id="unhide" hidden style="cursor:ns-resize">unhide</span>'
+     + '║<a href="../help.html" class="noprint" style="cursor:help" target="_blank" >HelpMan</a>'
+     + '║<span blue id="printButton">Print</span>'
      + '<span id="'+MB.buttonZoomIn +'"  blue>'+MB.sDive +'</span>'
-     + '<span id="'+MB.buttonZoomOut+'" blue>'+MB.sOrbit+'&nbsp;│</span>'
+     + '<span id="buttonZoomSep"             >⇆</span>'
+     + '<span id="'+MB.buttonZoomOut+'" blue>'+MB.sOrbit+'</span>'
      + '<br/>'
     document.body.insertBefore(searchDiv,document.body.children[0])
     document.getElementById("idLabelsFilter").addEventListener("click", SF.showSearchForm)
@@ -423,13 +431,10 @@ function switchLinksToBlankTarget() {
     if ( nodeHref.startsWith(thisDoc)) continue
     nodeList[idx].target='_blank' 
   }
-
-
 }
 
 function onPageLoaded() {
   try {   preLoad(); } catch(err) {console.dir(err)}
-  ZC.cssRules = document.styleSheets[0]['cssRules'][0].cssRules;
   ZW.renderZoomBox();
   MB.renderMenuBar();
 
@@ -454,7 +459,7 @@ function onPageLoaded() {
       nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(
           /\[\[([^\?]*)\?\]\]/g,
           "<a href='#' TODO onClick='SE.highlightSearch(\"$1\")'>$1</a>"
-        + "<a target='_blank' href='"+window.location.href.split('?')[0]+"?query=$1&labels="+labelMapSelectedToCSV()+"'>( ⏏ )</a>"
+        + "<a target='_blank' href='"+window.location.href.split('?')[0]+"?query=$1&labels="+LM.labelMapSelectedToCSV()+"'>( ⏏ )</a>"
 //        "<a href='"+window.location.href.split('?')[0]+"?query=$1'>$1</a>"
       )
   
@@ -489,22 +494,8 @@ function onPageLoaded() {
 //    }
   }
 
-  for (let idx=0; idx<ZC.cssRules.length; idx++){
-      if( ZC.cssRules[idx].selectorText == "#zoomDiv") {
-          ZC.idxZoomDivRule=idx
-      }
-      if( ZC.cssRules[idx].selectorText == "[zoom]") {
-          ZC.idxZoomRule=idx
-      }
-      if( ZC.cssRules[idx].selectorText == "[xsmall]") {
-          ZC.idxXSmallRule=idx
-      }
-      if( ZC.cssRules[idx].selectorText == "[title]") {
-          ZC.idxXTitleRule=idx
-      }
-  }
-
-  createLabelIndex()
+  ZC.initCSSIndexes()
+  LM.createLabelIndex()
 
   let csvLabels = getParameterByName("topics") || ""
       csvLabels = csvLabels.toLowerCase()
@@ -608,11 +599,11 @@ const SE = { // (S)earch (E)ngine
     var innerZoom_l = []
     if (LM.isAnyLabelSelected()) {
         let label_l=Object.keys(LM.labelMapSelected)
-        innerZoom_l = getDomListForLabel(label_l[0]);
+        innerZoom_l = LM.getDomListForLabel(label_l[0]);
         for (let idx=0; idx<label_l.length; idx++) {
             innerZoom_l = SF.labelANDMode 
-                ? innerZoom_l.intersection( getDomListForLabel(label_l[idx]) )
-                : innerZoom_l.union       ( getDomListForLabel(label_l[idx]) )
+                ? innerZoom_l.intersection( LM.getDomListForLabel(label_l[idx]) )
+                : innerZoom_l.union       ( LM.getDomListForLabel(label_l[idx]) )
         }
     } else {
         // By default search inside all zoomable elements
@@ -644,7 +635,6 @@ const SE = { // (S)earch (E)ngine
     }
     if (numberOfMatches == 1) {
         ZW.doOpenZoom(lastElementFound);
-        ZC.zoomStatus = 1
     }
     unhideButton.removeAttribute("hidden","");
     return false // avoid event propagation

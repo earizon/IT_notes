@@ -1,4 +1,7 @@
-import { preLoad , postLoad } from '/custom.js';
+import { preLoad , postLoad } from './custom.js';
+
+if  ( window.spbLoaded ) throw ""
+window.spbLoaded = true
 
 const SF = {  /* search Form */
   searchFormDOM : window,
@@ -20,7 +23,8 @@ const SF = {  /* search Form */
           div.setAttribute("id", "searchForm")
     document.body.insertBefore(div,document.body.children[0])
     let html = ''
-      + '  <input id="inputQuery" type="text" placeholder="(regex)search" maxlength="30" />'
+      + " <div id='divClose'>✕ (close)</div>" 
+      + '  <input id="inputQuery" type="text" placeholder="(regex)search" maxlength="30" />&nbsp;'
       + '  <input id="singleLineOnly" type="checkbox" > '
       + '  <span class="regexFlags">single-line</span>'
       + '  <input id="caseSensitive"  type="checkbox">'
@@ -38,9 +42,9 @@ const SF = {  /* search Form */
         html += "(No topics found).<br/>\n"
       }
       html += '<br/>'
-      + '<div id="doSearchButton">&#128065;Search</div>'
+      + '<div id="doSearchButton">&#128065;Search/Filter</div>'
       div.innerHTML = html;
-  
+      document.getElementById("divClose").addEventListener("click", SF.hideSearchForm);
       document.getElementById("searchAndMode").addEventListener("change",  SF.switchANDORSearch )
       document.getElementById("doSearchButton").addEventListener('click', SF.doHideSearchFormAndSearch )
       const swithSingleLineDom = document.getElementById("singleLineOnly");
@@ -79,7 +83,7 @@ const SF = {  /* search Form */
     SF.searchFormDOM.style.display="none";
   },
   doHideSearchFormAndSearch : function () {
-    SF.hideSearchForm();
+    // SF.hideSearchForm();
     SE.highlightSearch();
   },
 
@@ -128,7 +132,7 @@ const ZW = { /* ZOOM Window */
         dom1.setAttribute("id", "zoomDiv")
     dom1.innerHTML = ""
        + "<div style='margin-bottom:0.5rem'>" 
-       + " <div id='divCloseZoom'>✕ (close)</div>" 
+       + " <div id='divClose'>✕ (close)</div>" 
        + " <span style='font-weight:bold' text-align='center'>"+document.title+"</span>"
        + " <div id='historyBackFor' style='display:inline; '>"
        +    "<span id='GoBack'>?</span>"
@@ -140,9 +144,9 @@ const ZW = { /* ZOOM Window */
     ZW.dom = dom1
     ZW.dom = dom1
     document.body.insertBefore(dom1,document.body.children[0])
-    document.getElementById("divCloseZoom").addEventListener("click", ZW.doCloseZoom);
-    document.getElementById("GoBack"      ).addEventListener("click", NAV.goBack);
-    document.getElementById("GoForw"      ).addEventListener("click", NAV.goForward);
+    document.getElementById("divClose").addEventListener("click", ZW.doCloseZoom);
+    document.getElementById("GoBack" ).addEventListener("click", NAV.goBack);
+    document.getElementById("GoForw" ).addEventListener("click", NAV.goForward);
   },
   doOpenZoom : function(e) {
     ZC.zoomStatus = 1
@@ -389,6 +393,11 @@ const IC = { // Input Control
 const TPP = {  // (T)ext (P)re (P)rocessor
   replaceMap : { "wikipedia" : "https://en.wikipedia.org/wiki" },
   doTextPreProcessing : function () {
+    // create re-usable regex outside loop.
+    Object.keys(TPP.replaceMap).forEach( key => 
+       TPP.replaceMap[key] = [new RegExp("[$][{]"+key+"[}]",'g'), TPP.replaceMap[key]]
+    )
+
     var nodeList = document.querySelectorAll('*[zoom]')
     for (let idx in nodeList) { 
         if (!!! nodeList[idx].innerHTML) { continue }
@@ -489,44 +498,44 @@ function switchLinksToBlankTarget() {
   }
 }
 
-function onPageLoaded() {
-  try {   preLoad(); } catch(err) {console.dir(err)}
-  ZW.renderZoomBox();
-  MB.renderMenuBar();
-
-  IC.initInputControl();
-  switchLinksToBlankTarget();
-
-  // create re-usable regex outside loop.
-  Object.keys(TPP.replaceMap).forEach( key => 
-     TPP.replaceMap[key] = [new RegExp("[$][{]"+key+"[}]",'g'), TPP.replaceMap[key]]
-  )
-
-  TPP.doTextPreProcessing()
-  ZC.initCSSIndexes()
-  LM.createLabelIndex()
-
+function pageLoadedEnd() {
+  // Parse query parameters
   let csvLabels = getParameterByName("topics") || ""
       csvLabels = csvLabels.toLowerCase()
   let label_l = (!!csvLabels) ? csvLabels.split(",") : []
   label_l.forEach(label => {
-      LM.onLabelClicked({value : label});
+      LM.onLabelClicked({ target : {value : label} });
   })
   let query = getParameterByName("query")
   if (!!query) { SF.regexQuery = query; }
   if (!!query || !!label_l) {
     SE.highlightSearch()
   }
+
   let doShowSearchMenu = getParameterByName("showSearchMenu") 
   if (!!doShowSearchMenu || doShowSearchMenu == "") {
     SF.showSearchForm();
   }
-
-  SF.renderSearchForm()
-
   try {  
       postLoad();
   } catch(err) {console.dir(err)}
+}
+
+function onPageLoaded() {
+  try {   preLoad(); } catch(err) {console.dir(err)}
+
+  IC.initInputControl();
+  switchLinksToBlankTarget();
+
+  TPP.doTextPreProcessing()
+  ZC.initCSSIndexes()
+  LM.createLabelIndex()
+
+  ZW.renderZoomBox();
+  SF.renderSearchForm()
+  MB.renderMenuBar();
+
+  pageLoadedEnd()
 }
 
 window.onload = onPageLoaded 

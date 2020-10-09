@@ -1,8 +1,5 @@
 import { preLoad , postLoad } from './custom.js';
 
-if  ( window.spbLoaded ) throw ""
-window.spbLoaded = true
-
 const SF = {  /* search Form */
   searchFormDOM : window,
   searchForm_labelsDOM : window,
@@ -525,7 +522,13 @@ function pageLoadedEnd() {
 }
 
 function onPageLoaded() {
-  try {   preLoad(); } catch(err) {console.dir(err)}
+  if  ( window.spbLoaded ) {
+      console.log("Already loaded")
+      return
+  }
+  console.log("Initializing SPB")
+  window.spbLoaded = true
+  try { preLoad(); } catch(err) {console.dir(err)}
 
   IC.initInputControl();
   switchLinksToBlankTarget();
@@ -541,7 +544,7 @@ function onPageLoaded() {
   pageLoadedEnd()
 }
 
-window.onload = onPageLoaded 
+window.addEventListener('load', onPageLoaded )
 
 function getParameterByName(name, url) {
     if (!url) url = window.location.href;

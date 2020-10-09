@@ -23,28 +23,33 @@ const SF = {  /* search Form */
           div.setAttribute("id", "searchForm")
     document.body.insertBefore(div,document.body.children[0])
     let html = ''
-      + " <div id='divClose'>✕ (close)</div>" 
+      + ' <div id="divClose">✕ (close)</div>' 
+      + ' <div id="doSearchButton">&#128065;Search/Filter</div>&nbsp;'
+      + ' <div id="unhide" hidden >show all</div>'
       + '  <input id="inputQuery" type="text" placeholder="(regex)search" maxlength="30" />&nbsp;'
       + '  <input id="singleLineOnly" type="checkbox" > '
       + '  <span class="regexFlags">single-line</span>'
       + '  <input id="caseSensitive"  type="checkbox">'
       + '  <span class="regexFlags">Case-Match</span>'
-      + '  <br/><hr/>'
+      + '  <br/>'
       if (Object.keys(LM.labelMap).length > 0) {
           html += 
-           '<b>Filter by topic</b>:<br/>\n '
+           '<b>Filter by topic</b>:\n '
         +  '<input id="searchAndMode" type="checkbox">'
         +  '<span id="idLabelSearchAndMode" mono></span>'
         +  '<br/>\n'
         +  '<div id="searchFormLabels">\n'
-        +  '</div><br/>\n'
+        +  '</div>\n'
       } else {
         html += "(No topics found).<br/>\n"
       }
-      html += '<br/>'
-      + '<div id="doSearchButton">&#128065;Search/Filter</div>'
       div.innerHTML = html;
       document.getElementById("divClose").addEventListener("click", SF.hideSearchForm);
+      document.getElementById("unhide"        ).addEventListener("click", function () { 
+          SE.resetTextFoundAttr(true);
+          this.setAttribute("hidden","true"); 
+      })
+    
       document.getElementById("searchAndMode").addEventListener("change",  SF.switchANDORSearch )
       document.getElementById("doSearchButton").addEventListener('click', SF.doHideSearchFormAndSearch )
       const swithSingleLineDom = document.getElementById("singleLineOnly");
@@ -459,7 +464,6 @@ const MB = { // Menu Bar
         searchDiv.innerHTML = ''
      + '<img id="idLabelsFilter" class="noprint" src="/labelIcon.svg"  '
      +   ' onerror="src = \'https://singlepagebookproject.github.io/SPB/labelIcon.svg\';" />'
-     + ' <span blue class="noprint" id="unhide" hidden style="cursor:ns-resize">unhide</span>'
      + '║<a href="../help.html" class="noprint" style="cursor:help" target="_blank" >HelpMan</a>'
      + '║<span blue id="printButton">Print</span>'
      + '<span id="'+MB.buttonZoomIn +'"  blue>'+MB.sDive +'</span>'
@@ -471,7 +475,6 @@ const MB = { // Menu Bar
     document.getElementById("idLabelsFilter").addEventListener("click", SF.showSearchForm)
     document.getElementById(MB.buttonZoomIn ).addEventListener("click", ZW.onZoomIn   )
     document.getElementById(MB.buttonZoomOut).addEventListener("click", ZW.onZoomOut  )
-    document.getElementById("unhide"        ).addEventListener("click", function () { SE.resetTextFoundAttr(true) })
     document.getElementById("printButton"   ).addEventListener("click", MB.spbQuickPrint )
   },
   spbQuickPrint : function() {

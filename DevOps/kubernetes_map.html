@@ -1439,6 +1439,34 @@ HTTP optional parameters:
 - httpHeaders: Custom headers
 </pre>
 
+<pre zoom labels="101,pod,application">
+<span xsmall>PodDisruptionBudget</span>
+@[https://kubernetes.io/docs/concepts/workloads/pods/disruptions/#how-disruption-budgets-work]
+@[https://kubernetes.io/docs/tasks/run-application/configure-pdb/]
+
+A PodDisruptionBudget object (PDB) can be defined for each deployment(application),
+limiting the number of pods of a replicated application that
+are down simultaneously from ºvoluntaryº disruptions.
+
+Ex: A Deployment has:
+  - .spec.replicas: 5  (5 pods desired at any given time)
+  - The PDB is defined as:
+    apiVersion: policy/v1beta1
+    kind: PodDisruptionBudget
+    metadata:
+      name: zookeeper-pdb
+    spec:
+      maxUnavailable: 1  ←--   Eviction API will allow voluntary disruption of one,
+      selector:                but not two pods, at a time trying to have 4 running
+        matchLabels:           at all times
+          app: zookeeper
+
+Eviction API compatible tools/commands
+like 'kubectl drain' must be used
+(vs directly deleting pods/deployments)
+
+</pre>
+
 </div>
 <div groupv>
     <span title>Services</span><br/>
@@ -2095,7 +2123,8 @@ BºLIMITATIONS AND CAVEATSº:
 </pre>
 
 <pre zoom labels="persistence,TODO">
-<span xsmall>Running storage services(GlusterFS,iSCSI,...)</span> <!-- @ma -->
+<span xsmall>Running storage services</span>
+(GlusterFS,iSCSI,...)
 @[https://opensource.com/article/17/12/storage-services-kubernetes]
 </pre>
 
@@ -2159,10 +2188,129 @@ cost considerations, in the granularity of an application.
 </pre>
 
 
-</div><!-- Building blocks -->
+</div><!-- Storage -->
 
+<div group>
+<span title>Networking</span><br/>
 <div groupv>
-<span title>Controllers</span>
+<pre TODO zoom labels="k8s_code,network,TODO">
+<span xsmall>Networking Explained</span>
+@[https://www.slideshare.net/CJCullen/kubernetes-networking-55835829]
+</pre>
+
+
+<span title>SDNs</span>
+<pre zoom labels="sdn,TODO">
+<span xsmall>SDN intro: </span>
+@[https://www.redhat.com/sysadmin/getting-started-sdn]
+- provide sdns: allows admin teams to control network traffic in
+      complex networking topologies through a centralized panel,
+      rather than handling each network device, such as routers
+      and switches, manually ("hierarchical" topology)
+
+ºcontainer network interface (cni):º
+- library definition and a set of tools to configure network
+  interfaces in linux containers through many supported plugins.
+- multiple plugins can run at the same time in a container
+  that participates in a network driven by different plugins.
+- networks use json configuration files and instantiated as
+  new namespaces when the cni plugin is invoked.
+
+- common cni plugins include:
+  -ºcalicoº:
+    - high scalability.
+    @[https://docs.projectcalico.org/v3.7/getting-started/kubernetes/]
+    @[https://kubernetes.io/docs/tasks/administer-cluster/network-policy-provider/calico-network-policy/]
+  -ºciliumº:
+    - provides network connectivity and load balancing
+      between application workloads, such as application
+      containers and processes, and ensures transparent security.
+  -ºcontivº:
+    - integrates containers, virtualization, and physical servers
+      based on the container network using a single networking fabric.
+  -ºcontrailº:
+    - provides overlay networking for multi-cloud and
+      hybrid cloud through network policy enforcement.
+  -ºflannelº:
+    - makes it easier for developers to configure a layer 3
+      network fabric for kubernetes.
+  -ºmultusº:
+    - supports multiple network interfaces in a single pod on
+      kubernetes for sriov, sriov-dpdk, ovs-dpdk, and vpp workloads.
+  -ºopen vswitch (ovs)º:
+    - production-grade cni platform with a standard management
+      interface on openshift and openstack.
+  -ºovn-kubernetesº:
+    - enables virtual networks for multiple containers on different
+      hosts using an overlay function.
+  -ºromanaº:
+    - makes cloud network functions less expensive to build,
+      easier to operate, and better performing than traditional
+      cloud networks.
+
+- in addition to network namespaces, an sdn should increase security by
+offering isolation between multiple namespaces with the multi-tenant plugin:
+  packets from one namespace, by default, will not be visible to
+  other namespaces, so containers from different namespaces cannot
+  send packets to or receive packets from pods and services of a
+  different namespace.
+</pre>
+
+<pre zoom labels="sdn,TODO">
+<span xsmall>network policy providers</span>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/network-policy-provider/cilium-network-policy/">use cilium for networkpolicy</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/network-policy-provider/kube-router-network-policy/">use kube-router for networkpolicy</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/network-policy-provider/romana-network-policy/">romana for networkpolicy</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/network-policy-provider/weave-network-policy/">weave net for networkpolicy</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/access-cluster-api/">access clusters using the kubernetes api</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/access-cluster-services/">access services running on clusters</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/extended-resource-node/">advertise extended resources for a node</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/dns-horizontal-autoscaling/">autoscale the dns service in a cluster</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy/">change the reclaim policy of a persistentvolume</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/">change the default storageclass</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/cluster-management/">cluster management</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/configure-multiple-schedulers/">configure multiple schedulers</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/out-of-resource/">configure out of resource handling</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/quota-api-object/">configure quotas for api objects</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/cpu-management-policies/">control cpu management policies on the node</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/dns-custom-nameservers/">customizing dns service</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/">debugging dns resolution</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/declare-network-policy/">declare network policy</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/developing-cloud-controller-manager/">developing cloud controller manager</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/">encrypting secret data at rest</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/">guaranteed scheduling for critical add-on pods</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/ip-masq-agent/">ip masquerade agent user guide</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/running-cloud-controller/">kubernetes cloud controller manager</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/limit-storage-consumption/">limit storage consumption</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/">operating etcd clusters for kubernetes</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/reconfigure-kubelet/">reconfigure a node's kubelet in a live cluster</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/">reserve compute resources for system daemons</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/">safely drain a node while respecting application slos</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/securing-a-cluster/">securing a cluster</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/">set kubelet parameters via a config file</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/highly-available-master/">set up high-availability kubernetes masters</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/static-pod/">static pods</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/storage-object-in-use-protection/">storage object in use protection</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/coredns/">using coredns for service discovery</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/">using a kms provider for data encryption</a>
+<a href=https://kubernetes.io/docs/tasks/administer-cluster/sysctl-cluster/">using sysctls in a kubernetes cluster</a>
+</pre>
+
+<span title>service mesh</span>
+<pre zoom labels="sdn,TODO">
+<span xsmall>istio.io</span>
+</pre>
+<pre zoom labels="sdn,TODO">
+<span xsmall>linkerd</span>
+</pre>
+</div>
+</div>
+
+
+
+<div group>
+    <span title>Controllers</span><br>
+<div groupv>
 <pre zoom labels="101,application,replicaset,deployment,comparative">
 <span xsmall>ReplicaSet</span>
 @[https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/]
@@ -2250,7 +2398,8 @@ $º$ kubectl get pods                       º
   · frontend-qhloh   1/1       Running   0          1m
 
 <hr/>
-<span bgorange xsmall>Deployment(=="aplication")</span>
+<span bgorange xsmall>  Deployment</span>
+<span bgorange xsmall>("Application")</span>
 @[https://kubernetes.io/docs/concepts/workloads/controllers/deployment/]
 - Built "on top" of ReplicaSets adding lifecycle management (creation, updates,...).
   For example, if a Pod definition is changed, Deployments takes care of gradually 
@@ -2529,7 +2678,8 @@ using PersistentVolumes provisioned by a PersistentVolume Provisioner.
 <span xsmall>Debug</span>
 @[https://kubernetes.io/docs/tasks/debug-application-cluster/debug-stateful-set/]
 </pre>
-
+</div>
+<div groupv>
 <pre zoom labels="application,TODO">
 <a xsmall href="https://kubernetes.io/docs/concepts/workloads/controllers/daemonset/">DaemonSet</a>
 - ensures "N" Nodes run a Pod instance
@@ -2840,9 +2990,10 @@ pi-aiw0a
 
 </pre>
 </div>
+</div>
 
 <div groupv>
-<span title>Node Monitoring</span>
+<span title>Monitoring</span>
 <pre zoom labels="cluster_admin,monitoring,debug,troubleshooting,TODO">
 <span xsmall>Node Health</span>
 @[https://kubernetes.io/docs/tasks/debug-application-cluster/monitor-node-health/]
@@ -2860,7 +3011,7 @@ pi-aiw0a
 
 
 <pre zoom labels="cluster_admin,monitoring,troubleshooting,debug,TODO">
-<span title>Events in Stackdriver</span>
+<span xsmall>Events in Stackdriver</span>
 @[href=https://kubernetes.io/docs/tasks/debug-application-cluster/events-stackdriver/]
 - Kubernetes events are objects that provide insight into what is 
   happening inside a cluster, such as what decisions were made by 
@@ -2901,7 +3052,7 @@ pi-aiw0a
   """
 </pre>
 
-<span title>Node Auditing</span>
+<span title>Auditing</span>
 <pre zoom labels="audit,qa,TODO">
 <span xsmall>Auditing</span>
 @[https://kubernetes.io/docs/tasks/debug-application-cluster/audit/] <!-- @ma -->
@@ -2978,7 +3129,7 @@ TODO: @[https://helm.sh/docs/intro/using_helm/]
 
 NOTE:@[https://www.infoworld.com/article/3541608/kubernetes-helm-gets-full-cncf-approval.html]
 
-<span xsmall TODO>Kubeapps</span>
+<span xsmall>Kubeapps</span>
 - Application Dashboard for Kubernetes
 @[https://kubeapps.com/]
   - Deploy Apps Internally:
@@ -2992,26 +3143,13 @@ NOTE:@[https://www.infoworld.com/article/3541608/kubernetes-helm-gets-full-cncf-
     available Service Brokers.
 </pre>
 
-<pre zoom labels="application,low_code,TODO,">
+<pre zoom labels="application,low_code,TODO," bgorange>
 <span xsmall>Teresa</span>
 @[https://github.com/luizalabs/teresa]
 - extremely simple platform as a service that runs on top 
   of Kubernetes. It uses a client-server model: the client sends high 
   level commands (create application, deploy, etc.) to the server, 
   which translates them to the Kubernetes API.
-</pre>
-
-<pre zoom labels="aaa,audit,governance,TODO">
-<span xsmall>Gatekeeper policy controls</span>
-The Open Policy Agent project (OPA) provides a way to create policies 
-across cloud-native application stacks, from ingress to service-mesh 
-components to Kubernetes. Gatekeeper provides a Kubernetes-native way 
-to enforce OPA policies on a cluster automatically, and to audit for 
-any events or resources violating policy. All this is handled by a 
-relatively new mechanism in Kubernetes, admission controller 
-Webhooks, that fire on changes to resources. With Gatekeeper, OPA 
-policies can be maintained as just another part of your Kubernetes 
-cluster’s defined state, without needing constant babysitting. 
 </pre>
 
 <pre zoom labels="cluster_admin,backup,TODO">
@@ -3048,28 +3186,9 @@ Bºwithout relying on a container daemon (Docker Daemon)º.
 -
 </pre>
 
-<pre zoom labels="audit,billing,TODO">
-<span xsmall>Kubecost: Cost metrics running k8s</span>
 
-- monitor "the dollars" cost of running Kubernetes?
-
-- Kubecost uses real-time Kubernetes metrics, and real-world cost 
-  information derived from running clusters on the major cloud 
-  providers, to provide a dashboard view of the monthly cost of each 
-  cluster deployment. Costs for memory, CPU, GPU, and storage are all 
-  broken out by Kubernetes component (container, pod, service, 
-  deployment, etc.).
-
-- Kubecost can also track the costs of “out of cluster” resources, 
-  such as Amazon S3 buckets, although this is currently limited to AWS. 
-
-- Kubecost is free to use if you only need to keep 15 days of logs. For 
-  more advanced features, pricing starts at $199 per month for 
-  monitoring 50 nodes.
-</pre>
-
-<pre zoom labels="persistence,application,low_code,tool,TODO">
-<span xsmall>KubeDB: Run production DBs</span>
+<pre zoom labels="persistence,application,low_code,tool,qa,TODO">
+<span xsmall>KubeDB: Production DBs</span>
 - operators exists for MySQL/PostgreSQL/Redis/... Rºbut there are plenty of gapsº.
 
 BºKubeDB allows to create custom Kubernetes operators for managing databasesº
@@ -3097,65 +3216,56 @@ BºKubeDB allows to create custom Kubernetes operators for managing databasesº
 </div>
 
 <div groupv>
-<span title>Unordered notes</span><br/>
-<pre zoom labels="gpu,cluster_admin,TODO">
-<span xsmall>GPU and Kubernetes</span>
-@[https://www.infoq.com/news/2018/01/gpu-workflows-kubernetes]
-@[https://kubernetes.io/docs/tasks/manage-gpus/scheduling-gpus/]
+<span title>Governance</span>
+<pre zoom labels="aaa,audit,governance,TODO">
+<span xsmall>Gatekeeper policy controls</span>
+The Open Policy Agent project (OPA) provides a way to create policies 
+across cloud-native application stacks, from ingress to service-mesh 
+components to Kubernetes. Gatekeeper provides a Kubernetes-native way 
+to enforce OPA policies on a cluster automatically, and to audit for 
+any events or resources violating policy. All this is handled by a 
+relatively new mechanism in Kubernetes, admission controller 
+Webhooks, that fire on changes to resources. With Gatekeeper, OPA 
+policies can be maintained as just another part of your Kubernetes 
+cluster’s defined state, without needing constant babysitting. 
 </pre>
 
-<pre zoom labels="application,low_code,devops,tool,TODO">
-<span xsmall TODO>Skaffold</span>
-@[https://www.infoq.com/news/2018/03/skaffold-kubernetes/]
+<pre zoom labels="aaa,ssh,2FA,governance,auditing,compliance,qa,TODO">
+<span title>Teleport</span>
+- implement industry-best practices for SSH and 
+  Kubernetes access, meet compliance requirements, and have complete 
+  visibility into access and behavior.
 
-- Tool to facilitate Continuous Development by allowing Local Kubernetes Development.
-  optimized “Source to Kubernetes” - Skaffold detects changes in 
-  your source code and handles the pipeline to build, push, and deploy 
-  your application automatically with policy-based image tagging and 
-  highly optimized, fast local workflows.
-
-- Skaffold handles the workflow for building, pushing and deploying the application,
-   allowing to focus on what matters most: writing code. 
-
-- Lightweight: client-side only.
-- Works Everywhere: share your project with 'git clone' → 'skaffold run'.
-- Support for profiles, local user config, environment variables, and flags
-  to easily incorporate differences across environments.
-- Feature Rich:  policy-based image tagging, resource port-forwarding and
-  logging, file syncing, and much more.
-- Optimized Development: Skaffold's inner loop is tight and highly optimized,
-  providing instant feedback while developing.
-
+· Security best practices out-of-the-box.
+· Isolate critical infra and enforce 2FA with SSH and Kubernetes.
+· Provide role-based access controls (RBAC) using short-lived 
+certificates and your existing identity management service.
+· Log events and record session activity for full auditability.
 </pre>
 
-<pre zoom labels="deployment">
-<span xsmall>PodDisruptionBudget</span>
-@[https://kubernetes.io/docs/concepts/workloads/pods/disruptions/#how-disruption-budgets-work]
-@[https://kubernetes.io/docs/tasks/run-application/configure-pdb/]
+<pre zoom labels="audit,billing,governance,troubleshooting,TODO">
+<span xsmall>Kubecost: Cost metrics running k8s</span>
 
-A PodDisruptionBudget object (PDB) can be defined for each deployment(application),
-limiting the number of pods of a replicated application that
-are down simultaneously from ºvoluntaryº disruptions.
+- monitor "the dollars" cost of running Kubernetes?
 
-Ex: A Deployment has:
-  - .spec.replicas: 5  (5 pods desired at any given time)
-  - The PDB is defined as:
-    apiVersion: policy/v1beta1
-    kind: PodDisruptionBudget
-    metadata:
-      name: zookeeper-pdb
-    spec:
-      maxUnavailable: 1  ←--   Eviction API will allow voluntary disruption of one,
-      selector:                but not two pods, at a time trying to have 4 running
-        matchLabels:           at all times
-          app: zookeeper
+- Kubecost uses real-time Kubernetes metrics, and real-world cost 
+  information derived from running clusters on the major cloud 
+  providers, to provide a dashboard view of the monthly cost of each 
+  cluster deployment. Costs for memory, CPU, GPU, and storage are all 
+  broken out by Kubernetes component (container, pod, service, 
+  deployment, etc.).
 
-Eviction API compatible tools/commands
-like 'kubectl drain' must be used
-(vs directly deleting pods/deployments)
+- Kubecost can also track the costs of “out of cluster” resources, 
+  such as Amazon S3 buckets, although this is currently limited to AWS. 
 
+- Kubecost is free to use if you only need to keep 15 days of logs. For 
+  more advanced features, pricing starts at $199 per month for 
+  monitoring 50 nodes.
 </pre>
-</div> <!-- Unordered notes -->
+
+
+
+</div>
 
 <div group>
 <span title>cluster Administration</span><br/>
@@ -3238,7 +3348,7 @@ Example Tasks:
 </pre>
 
 <pre zoom labels="cluster_admin,image_management,secrets,network,TODO">
-<span xsmall>private registries</span>
+<span xsmall>private Reg.</span>
 - using a private (image) registry:
 @[https://kubernetes.io/docs/concepts/containers/images/#using-a-private-registry]
 - Pull Image from a Private Registry:
@@ -3250,7 +3360,7 @@ Example Tasks:
 </pre>
 
 <pre zoom labels="cluster_admin,TODO">
-<span xsmall>Manage Cluster DaemonSets</span>
+<span xsmall>Mng.Cluster DaemonSets</span>
 - Perform a Rollback on a DaemonSet:
 @[https://kubernetes.io/docs/tasks/manage-daemon/rollback-daemon-set/]
 - Perform a Rolling Update on a DaemonSet:
@@ -3265,7 +3375,7 @@ Example Tasks:
 @[https://kubernetes.io/docs/tasks/service-catalog/install-service-catalog-using-sc/]
 </pre>
 
-<pre zoom labels="cluster_admin,kubelet,network,TODO" bgblue>
+<pre zoom labels="101,cluster_admin,kubelet,network,troubleshooting,TODO" bgorange>
 <span xsmall>Max Node Lattency</span>
 @[https://stackoverflow.com/questions/46891273/kubernetes-what-is-the-maximum-distance-latency-supported-between-kubernetes-no]
    """....There is no latency limitation between nodes in kubernetes cluster. They are configurable parameters. 
@@ -3341,8 +3451,6 @@ in version control (eg: git).
 <span title>Cluster Federation </span>
 <pre zoom labels="cluster_federation,TODO">
 <span xsmall>Cluster Federation</span>
-<span xsmall>Run an App on </span>
-<span xsmall>Multiple Clusters</span>
 @[https://kubernetes.io/docs/concepts/cluster-administration/federation/]
 
 ºFederation APIº:
@@ -3354,10 +3462,6 @@ in version control (eg: git).
 ºExternal references:º
 - @[https://kubernetes.io/docs/reference/command-line-tools-reference/federation-apiserver/]
 - @[https://kubernetes.io/docs/reference/command-line-tools-reference/federation-controller-manager/]
-- <a href=https://kubernetes.io/docs/tasks/federation/federation-service-discovery/">Cross-cluster Service Discovery using Federated Services</a>
-- <a href=https://kubernetes.io/docs/tasks/federation/set-up-cluster-federation-kubefed/">Set up Cluster Federation with Kubefed</a>
-- <a href=https://kubernetes.io/docs/tasks/federation/set-up-coredns-provider-federation/">Set up CoreDNS as DNS provider for Cluster Federation</a>
-- <a href=https://kubernetes.io/docs/tasks/federation/set-up-placement-policies-federation/">Set up placement policies in Federation</a>
 - <a href=https://kubernetes.io/docs/tasks/administer-federation/cluster/">Federated Cluster</a>
 - <a href=https://kubernetes.io/docs/tasks/administer-federation/configmap/">Federated ConfigMap</a>
 - <a href=https://kubernetes.io/docs/tasks/administer-federation/daemonset/">Federated DaemonSet</a>
@@ -3376,14 +3480,23 @@ in version control (eg: git).
 - <a TODO href=https://kubernetes.io/docs/tasks/administer-federation/secret/">Federated Secrets</a>
 </pre>
 
-<pre zoom labels="cluster_federation,TODO">
-<span title>kubefed: Controls cluster federation</span>
+<pre zoom labels="custer_admin,cluster_federation,TODO">
+<span xsmall>kubefed(eration):</span>
+Controls cluster federation
+- Cross-cluster Service Discovery using Federated Services
+  https://kubernetes.io/docs/tasks/federation/federation-service-discovery/
+- https://kubernetes.io/docs/tasks/federation/set-up-cluster-federation-kubefed/
+- https://kubernetes.io/docs/tasks/federation/set-up-coredns-provider-federation/
+- https://kubernetes.io/docs/tasks/federation/set-up-placement-policies-federation/
+REFERENCE:
 @[https://kubernetes.io/docs/reference/setup-tools/kubefed/kubefed/]
 @[https://kubernetes.io/docs/reference/setup-tools/kubefed/kubefed-options/]
 @[https://kubernetes.io/docs/reference/setup-tools/kubefed/kubefed-init/]
 @[https://kubernetes.io/docs/reference/setup-tools/kubefed/kubefed-join/]
 @[https://kubernetes.io/docs/reference/setup-tools/kubefed/kubefed-unjoin/]
 @[https://kubernetes.io/docs/reference/setup-tools/kubefed/kubefed-version/]
+
+
 </pre>
 
 <pre zoom labels="cluster_federation,TODO">
@@ -3705,121 +3818,42 @@ Tools and techniques that can really help accelerate your ability to learn the k
 @[https://kubernetes.io/docs/tasks/access-kubernetes-api/http-proxy-access-api/]
 </pre>
 
-<pre TODO zoom labels="k8s_code,network,TODO">
-<span xsmall>K8s Networking Explained</span>
-@[https://www.slideshare.net/CJCullen/kubernetes-networking-55835829]
-</pre>
 </div>
+
 
 <div group>
-<span title>Networking</span><br/>
-<div groupv>
-<span title>SDNs</span>
-<pre zoom labels="sdn,TODO">
-<span xsmall>SDN intro: </span>
-@[https://www.redhat.com/sysadmin/getting-started-sdn]
-- provide sdns: allows admin teams to control network traffic in
-      complex networking topologies through a centralized panel,
-      rather than handling each network device, such as routers
-      and switches, manually ("hierarchical" topology)
-
-ºcontainer network interface (cni):º
-- library definition and a set of tools to configure network
-  interfaces in linux containers through many supported plugins.
-- multiple plugins can run at the same time in a container
-  that participates in a network driven by different plugins.
-- networks use json configuration files and instantiated as
-  new namespaces when the cni plugin is invoked.
-
-- common cni plugins include:
-  -ºcalicoº:
-    - high scalability.
-    @[https://docs.projectcalico.org/v3.7/getting-started/kubernetes/]
-    @[https://kubernetes.io/docs/tasks/administer-cluster/network-policy-provider/calico-network-policy/]
-  -ºciliumº:
-    - provides network connectivity and load balancing
-      between application workloads, such as application
-      containers and processes, and ensures transparent security.
-  -ºcontivº:
-    - integrates containers, virtualization, and physical servers
-      based on the container network using a single networking fabric.
-  -ºcontrailº:
-    - provides overlay networking for multi-cloud and
-      hybrid cloud through network policy enforcement.
-  -ºflannelº:
-    - makes it easier for developers to configure a layer 3
-      network fabric for kubernetes.
-  -ºmultusº:
-    - supports multiple network interfaces in a single pod on
-      kubernetes for sriov, sriov-dpdk, ovs-dpdk, and vpp workloads.
-  -ºopen vswitch (ovs)º:
-    - production-grade cni platform with a standard management
-      interface on openshift and openstack.
-  -ºovn-kubernetesº:
-    - enables virtual networks for multiple containers on different
-      hosts using an overlay function.
-  -ºromanaº:
-    - makes cloud network functions less expensive to build,
-      easier to operate, and better performing than traditional
-      cloud networks.
-
-- in addition to network namespaces, an sdn should increase security by
-offering isolation between multiple namespaces with the multi-tenant plugin:
-  packets from one namespace, by default, will not be visible to
-  other namespaces, so containers from different namespaces cannot
-  send packets to or receive packets from pods and services of a
-  different namespace.
+<span title>Unordered notes</span><br/>
+<pre zoom labels="gpu,cluster_admin,TODO">
+<span xsmall>GPU and Kubernetes</span>
+@[https://www.infoq.com/news/2018/01/gpu-workflows-kubernetes]
+@[https://kubernetes.io/docs/tasks/manage-gpus/scheduling-gpus/]
 </pre>
 
-<pre zoom labels="sdn,TODO">
-<span xsmall>network policy providers</span>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/network-policy-provider/cilium-network-policy/">use cilium for networkpolicy</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/network-policy-provider/kube-router-network-policy/">use kube-router for networkpolicy</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/network-policy-provider/romana-network-policy/">romana for networkpolicy</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/network-policy-provider/weave-network-policy/">weave net for networkpolicy</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/access-cluster-api/">access clusters using the kubernetes api</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/access-cluster-services/">access services running on clusters</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/extended-resource-node/">advertise extended resources for a node</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/dns-horizontal-autoscaling/">autoscale the dns service in a cluster</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/change-pv-reclaim-policy/">change the reclaim policy of a persistentvolume</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/change-default-storage-class/">change the default storageclass</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/cluster-management/">cluster management</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/configure-multiple-schedulers/">configure multiple schedulers</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/out-of-resource/">configure out of resource handling</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/quota-api-object/">configure quotas for api objects</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/cpu-management-policies/">control cpu management policies on the node</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/dns-custom-nameservers/">customizing dns service</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/dns-debugging-resolution/">debugging dns resolution</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/declare-network-policy/">declare network policy</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/developing-cloud-controller-manager/">developing cloud controller manager</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/">encrypting secret data at rest</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/guaranteed-scheduling-critical-addon-pods/">guaranteed scheduling for critical add-on pods</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/ip-masq-agent/">ip masquerade agent user guide</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/running-cloud-controller/">kubernetes cloud controller manager</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/limit-storage-consumption/">limit storage consumption</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/configure-upgrade-etcd/">operating etcd clusters for kubernetes</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/reconfigure-kubelet/">reconfigure a node's kubelet in a live cluster</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/reserve-compute-resources/">reserve compute resources for system daemons</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/safely-drain-node/">safely drain a node while respecting application slos</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/securing-a-cluster/">securing a cluster</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/kubelet-config-file/">set kubelet parameters via a config file</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/highly-available-master/">set up high-availability kubernetes masters</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/static-pod/">static pods</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/storage-object-in-use-protection/">storage object in use protection</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/coredns/">using coredns for service discovery</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/kms-provider/">using a kms provider for data encryption</a>
-<a href=https://kubernetes.io/docs/tasks/administer-cluster/sysctl-cluster/">using sysctls in a kubernetes cluster</a>
-</pre>
+<pre zoom labels="application,low_code,devops,tool,qa,TODO">
+<span xsmall TODO>Skaffold</span>
+@[https://www.infoq.com/news/2018/03/skaffold-kubernetes/]
 
-<span title>service mesh</span>
-<pre zoom labels="sdn,TODO">
-<span xsmall>istio.io</span>
+- Tool to facilitate Continuous Development by allowing Local Kubernetes Development.
+  optimized “Source to Kubernetes” - Skaffold detects changes in 
+  your source code and handles the pipeline to build, push, and deploy 
+  your application automatically with policy-based image tagging and 
+  highly optimized, fast local workflows.
+
+- Skaffold handles the workflow for building, pushing and deploying the application,
+   allowing to focus on what matters most: writing code. 
+
+-ºLightweightº: client-side only.
+-ºWorks Everywhereº: share your project with 'git clone' → 'skaffold run'.
+- Support forºprofiles, local user config, environment variables, and flagsº
+  to easily incorporate differences across environments.
+-ºFeature Richº:  policy-based image tagging, resource port-forwarding and
+  logging, file syncing, and much more.
+-ºOptimized Developmentº: Skaffold's inner loop is tight and highly optimized,
+  providing instant feedback while developing.
 </pre>
-<pre zoom labels="sdn,TODO">
-<span xsmall>linkerd</span>
-</pre>
-</div>
-</div>
+</div> <!-- Unordered notes -->
+
+
 
 </body>
 </html>

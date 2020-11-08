@@ -47,7 +47,9 @@ const SF = {  /* search Form */
           this.setAttribute("hidden","true"); 
       })
     
-      document.getElementById("searchAndMode").addEventListener("change",  SF.switchANDORSearch )
+      if (Object.keys(LM.labelMap).length > 0) {
+        document.getElementById("searchAndMode").addEventListener("change",  SF.switchANDORSearch )
+      }
       document.getElementById("doSearchButton").addEventListener('click', SF.doHideSearchFormAndSearch )
       const swithSingleLineDom = document.getElementById("singleLineOnly");
             swithSingleLineDom.addEventListener('click', function (){ SF.singleLineMode=swithSingleLineDom.checked; } )
@@ -135,7 +137,7 @@ const ZW = { /* ZOOM Window */
     dom1.innerHTML = ""
        + "<div style='margin-bottom:0.5rem'>" 
        + " <div id='divClose'>✕ (close)</div>" 
-       + " <span style='font-weight:bold' text-align='center'>"+document.title+"</span>"
+   //  + " <span style='font-weight:bold' text-align='center'>"+document.title+"</span>"
        + " <div id='historyBackFor' style='display:inline; '>"
        +    "<span id='GoBack'>?</span>"
        +    "<span id='GoForw'>?</span>"
@@ -428,6 +430,8 @@ const TPP = {  // (T)ext (P)re (P)rocessor
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Qº([^º\n]*)º/g, "<b brown >  $1 </b>")   
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Yº([^º\n]*)º/g, "<b yellow>  $1 </b>")   
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/[$]º([^º\n]*)º/g, "  <span console>$1</span> ")   
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/_º([^º\n]*)º/g, "<span sub>$1   </span>")
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/-º([^º\n]*)º/g, "<span super>$1   </span>")
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /º([^º\n]*)º/g, "<b        > $1 </b>")   
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[˂]/g, "&lt;")   
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[˃]/g, "&gt;")   

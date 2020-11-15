@@ -2,6 +2,7 @@
 <html>
    <meta charset="UTF-8">
     <meta name="keywords" content="ethereum,cryptography,solidity,mind map,tutorial,101,aaa,aragon,architecture,auditing,baseline,beus,casper,cloud,code snippet,comparative,consensus,debug,development,devops,diagram,DID,ecdsa scep256k1,eip,erc,error control,etl,events,evm,formal proofs,fungible asset,geth,governance,graphql,ibft,identity,infrastructure,integration,iot,ipfs,java,javascript,library,low code,mainnet,metamask,monitoring,offchain,oracle,parity,pkcs,plasma,privacy,profiling,python,quality assurance,qa,remix,rlp,scalability,security,signature,solidity,standars,storage,testing,token,tool,transaction,troubleshooting,truffle,wallet">
+   <meta http-equiv="Refresh" content="0; url='./devops_map.html'" />
    <title>Ethereum map</title>
 <head>
 <script type="module">import "/map_v1.js";</script>
@@ -4454,7 +4455,7 @@ A extension of the standard interface ERC20 for tokens with methods
 that allows the execution of calls inside transfer and approvals.
 </pre>
 
-<pre zoom labels="Identity,ERC,DID,TODO">
+<pre zoom labels="Identity,EIP/ERC,DID,TODO">
 <span xsmall>ERC725 Identity</span>
 
 Note: Current Identity Systems in Ethereum include
@@ -5491,10 +5492,118 @@ NOTE: bytecode vs deployedBytecode
 
 </pre>
 
-<pre zoom labels="truffle,tool,solidity,js,development,TODO">
-<span xsmall TODO>Migrations Explained</span>
+<pre zoom labels="truffle,solidity,library,devops,js,development">
+<span xsmall>Migrations Explained</span>
 - truffle migrations explained (Linking libraries, ...):
-@[https://www.youtube.com/watch?v=8i03-M_4aT0]
+
+
+
+- Migration "==" Javascript file to deploy smart-contracts to the blockchain.
+  A JS migration script will fetch as input the
+
+  $ truffle create \              ─────────┐
+    migration deploy_myContract            │
+                                           v
+  $ truffle compile → JSON artifacts → migrations/...deploy_myContract....js
+                                                  └┬┘                 └┬┘
+                                      prefixed by random number:   suffixed by
+                       Bºhistory of previously run migrations isº  description
+                       Bºrecorded on the blockchain º 
+                         "truffle migrate" will start execution
+                         from the last run migration.
+                         The prefix is used to record either a
+                         migration has been run successfully or not.
+
+    
+  Open and edit file in text editor and change the contents as follows:
+
+  const A  = artifacts.require('PersistenceContract');  ← artifacts.require() is similar to node.js "require" 
+                                └────────┬─────────┘      but it returns a contract proxy.
+                           refers to the concrete       
+                       contract (vs the .sol file,      
+                       that can contains more than
+                       one Smart Contract
+
+  const B  = artifacts.require('Logic_dependingOnA'); 
+
+  module.exports = function(deployer) {   ← 'export' invoqued by truffle. 'deployer' interface instance injects
+    if (network == "test") {                 deployer full API available at: 
+       deployer.deploy(LibA);     ← Deploy runs synchronously. Code waits until transaction has been mined
+                                    in blockchain.
+       deployer.link(library, A)  ← ☞ Link must be done before deployment
+                                    (Ignored if contract doesn't rely on the library)
+                                    @[https://github.com/trufflesuite/truffle/tree/master/packages/contract]
+       deployer.deploy(A)         ← Set "A".address after correct deployment
+       deployer.deploy(B,           overriding any previous one.
+              A.address,          ← First constructor argument of B (A instance)
+              { overwrite: true } ← Other options: gas, from
+          );
+       } );
+    } else if (network == "test") {
+       // Fetch A address from "somewhere"
+       deployer.deploy(
+           B, A.address,
+            { overwrite: false } );
+    }
+  };
+
+<hr/>
+<span xsmall>Migrations.sol explained</span>
+@[https://medium.com/@blockchain101/demystifying-truffle-migrate-21afbcdf3264?utm_source=oficina24x7] by Bernard Peh
+- truffle migrate uses a Migrations.sol instance to "bookmark" last succesful migration. 
+
+  Migrations.sol summary:
+  ...
+  contract Migrations {
+    uint public last_completed_migration;  ← On truffle console value can be check like:
+    ...                                    $º˃ Migrations.deployed().then(                   º
+                                           $º    function(sc){                               º
+                                           $º      sc.last_completed_migration.call().then(  º
+                                           $º        function(v) {  console.log(v)} )        º
+                                           $º    }                                           º
+                                           $º  )                                             º
+  Qºfunction setCompleted(uint completed)º  ← Invoqued whenever a migration/*.js script
+    public {                                  is completed successfully.
+      last_completed_migration = completed;
+    }
+    ... (upgrade ) ...
+  }
+
+ º1st Migration executionº                          º2nd UPGRADED Metacoin migrationº
+  migration SETUP:                                   migration SETUP:
+  └./migrations/1_initial_migration.js               └./migrations/1_initial_migration.js
+  └./migrations/2_deploy_contracts.js                └./migrations/2_deploy_contracts.js 
+                └───────┬────┘                       └./migrations/3_deploy_upgraded_metacoin.js 
+                ┌───────┘                                          └───────────┬───────────────┘ 
+                │                                        ┌─────────────────────┘ 
+                ...                                      ...
+                deployer.deploy(ConvertLib);             // deployer.deploy(ConvertLib); ← Commented (Save gas)
+                deployer.link(ConvertLib, MetaCoin);     deployer.link(ConvertLib, MetaCoin);
+                deployer.deploy(MetaCoin);               deployer.deploy(MetaCoin);
+
+
+  (or --reset flag added) 
+$º$ truffle migrateº                                 $º$ truffle migrateº
+  Compiling ...                                        ...
+  ...                                                  last_completed_migration == 2 → start at migrations/3_*.js
+  Running migration:Qº1_initial_migration.jsº        (☞Migration and ConvertLib skipped)
+    Deploying Migrations...                            Running migration:Qº3_deploy_upgraded_metacoin.jsº
+    ... 0x68fe0...         (deploy TX hash )             Replacing MetaCoin...
+    Migrations: 0x213....  (Contract address)            ... 0xe9d0481...      (deploy TX hash )
+QºSaving successful migration to network...º             MetaCoin: 0xf55...    (Contract address)
+    ... 0xe2807...         (setCompleted() TX hash)  QºSaving successful migration to network...º
+  Saving artifacts...                                    ... 0xcf8f9...         (setCompleted TX hash)
+  Running migration:Qº2_deploy_contracts.jsº           Saving artifacts...
+    Deploying ConvertLib...
+    ... 0xce792...         (deploy TX hash )
+    ConvertLib: 0x13e...   (Contract address)
+    Linking ConvertLib to MetaCoin
+    Deploying MetaCoin...
+    ... 0x2fcab...         (deploy TX hash )
+    MetaCoin: 0x0d9...    (Contract address)
+QºSaving successful migration to network...º
+    ... 0xe2807...         (setCompleted() TX hash)
+  Saving artifacts...
 </pre>
 
 
@@ -9629,7 +9738,7 @@ E.g.
 
 <div groupv>
 <span title>Baseline Protocol</span>
-<pre zoom labels="baseline,zkp,erp,TODO"><!-- @ma -->
+<pre zoom labels="baseline,zkp,EIP/ERC,TODO"><!-- @ma -->
 <span xsmall>Summary</span>
 @[https://docs.baseline-protocol.org/]
 @[https://github.com/ethereum-oasis/baseline]
@@ -11889,7 +11998,7 @@ https://www.blunderingcode.com/ether-vaults/
   money to your hotwallet.
 </pre>
 
-<pre zoom labels="testing,qa,EIP,evm,TODO">
+<pre zoom labels="testing,qa,EIP/ERC,evm,TODO">
 <span xsmall>Ephemeral Testnet YOLO</span>
 In preparation for the next network upgrade, Berlin, an ephemeral 
 testnet called YOLO was launched with two new EIPs enabled: EIP-2315, 
@@ -12089,6 +12198,34 @@ Manage secrets such as IAM tokens, database and SSH credentials,
 X.509 certificates, and signing/encryption keys across dynamic 
 environments.
 </pre>
+
+
+<pre zoom labels="financial,stablecoins,comparative,TODO">
+<span xsmall>Algorithmic stablecoins</span>
+REF: @[https://frax.finance/whitepaper/]
+     @[https://github.com/FraxFinance/frax-truffle/blob/master/test/Frax-Tests.js]
+- Although there are many ways to categorise stablecoins, two distinct 
+  design concepts have stood out over time:
+  - collateralized stablecoins:
+    - Main categories:
+      - crypto-collateralized (MakerDAO’s Dai)
+      - fiat-collateralized tokens (Tether, BUSD, USDC)
+    (both subgroups having had significant adoption).
+  - algorithmic stablecoins :
+    - attempt to change the circulating supply of the token
+      so that changes in demand for the stablecoin minimally
+      affect its price.
+    - Bºnot collateralized or redeemable forº
+      Bºan underlying asset.º
+    - no significant traction (high profile attempts done):
+      " ... We contend that a prevailing reason
+        for the lack of traction of algorithmic 
+        stablecoins was not their economic 
+        infeasibility, but their flawed designs
+        and execution..."
+        https://frax.finance/whitepaper/
+</pre>
+
 
 
 

@@ -11347,7 +11347,7 @@ Ex. Dev Pipeline:                                  Flux CD scans every 2
                    │CodeCommit│    - testº*1º         │ECR│     │EKS│
                    │repository│    - package            │        ^
                                    - build OCI image    └────────┘
-                                                     On new image detected
+                   (or Github)                       On new image detected
                                                      trigger new deployment
 
                                                            └────┬────┘
@@ -11406,6 +11406,76 @@ Example Buildspec:
 <span xsmall>ECS vs EKS</span>
 @[https://www.missioncloud.com/blog/amazon-ecs-vs-eks-which-service-is-right-for-you]
 </pre>
+
+<pre zoom labels="aws,CodeCommit,git,TODO">
+<span xsmall>Setup CodeCommit Access</span>
+REF: @[https://docs.aws.amazon.com/codecommit/latest/userguide/setting-up-gc.html?icmpid=docs_acc_console_connect_np]
+(Cli REF @[https://docs.aws.amazon.com/codecommit/latest/userguide/cmd-ref.html])
+- Setup for HTTPS users using Git credentials
+  configure Git credentials:
+  - simplest way: Setup credentials in IAM console
+    then use those credentials for HTTPS connections.
+
+NOTE: if local computer already configured to use 
+      credential helper for CodeCommit, then remove 
+      such info in '.gitconfig'.
+
+Step 1: Initial configuration for CodeCommit
+
+Follow these steps to set up an AWS account, create an IAM user, and configure access to CodeCommit.
+
+To create and configure an IAM user for accessing CodeCommit
+
+    http://aws.amazon.com → Sign Up
+      → Create or reuse IAM user 
+        - Check  access-key-ID and a secret-access-key associated
+          to IAM user are in place.
+        - Check  no policies attached to the user expressly deny
+          AWS KMS actions required by CodeCommit.
+          (CodeCommit requires 'KMS')
+          (see AWS KMS and encryption)
+        → Sign into https://console.aws.amazon.com/
+          → Open IAM console https://console.aws.amazon.com/iam/
+            → choose Users (@navigation pane)
+              → choose IAM user for CodeCommit:
+                → choose Add Permissions (@Permissions tab)
+                  → "Attach existing policies directly"
+                    (@Grant permissions)
+                    → List of Policies: 
+                      select AWSCodeCommitPowerUser 
+                      (or another managed policy for CodeCommit access).
+                      → Next → Review (review list of policies)
+                        →  click "Add permissions".
+
+      → Create Git credentials for HTTPS connections to CodeCommit
+        → https://console.aws.amazon.com/iam/
+        RºWARNº: Sign in as IAM user who will create and use Git credentials
+          → Users → choose IAM user from list.
+            → Security Credentials tab@User Details
+              → HTTPS Git credentials for AWS CodeCommit
+                → Generate (You cannot choose your own user name
+                  or password for Git credentials).
+                → Copy user name + password  and Close
+                  RºWARNº: Password can not be recovered later on, 
+                           it must be reseted.
+
+      → Connect to the CodeCommit console and clone the repository
+        (Can be skipted if some admin has already sent the name and
+         connection details for the CodeCommit repository)
+        → Open https://console.aws.amazon.com/codesuite/codecommit/home
+          → Choose correct AWS Region.
+            → Find and choose appropiate repository
+              → click Clone URL  → choose protocol → copy URL
+              → Al local PC console: $ git clone $URL 
+                Ex:
+                $ git clone https://git-codecommit.us-east-2.amazonaws.com\
+                            /v1/repos/MyDemoRepo my-demo-repo
+
+- See also:
+  https://docs.aws.amazon.com/codecommit/latest/userguide/how-to-share-repository.html
+  https://docs.aws.amazon.com/codecommit/latest/userguide/auth-and-access-control.html
+</pre>
+
 </div>
 
 <div groupv>
@@ -11751,6 +11821,66 @@ https://aws.amazon.com/rds/proxy/
 </div>
 <div group><!-- AWS App Development -->
 <span title>App Development</span><br/>
+
+<pre zoom labels="development,git,ci,devops,low_code,aws,TODO">
+<span xsmall>CodeStar</span>
+@[https://aws.amazon.com/codestar/]
+Easily manage software development activities in one place.
+
+- Applications on AWS.
+- Set up your entire continuous delivery toolchain 
+  (develop, build, deploy/delivery) in minutes.
+- Unified user interface.
+- Easily manage access with project built-in role-based
+  policies that follow IAM best practices:
+  - owners
+  - contributors
+  - viewers
+  (No need to manually configure custom policies for each service)
+
+- Integration with AWS CodeDeploy and AWS CloudFormation 
+  to deploy in EC2 and AWS Lambda.
+
+- project templates for EC2, AWS Lambda, and AWS Elastic Beanstalk
+  (Java, JS, Python, Ruby, PHP)
+  -  Visual Studio, Eclipse or AWS cli.  
+- project management dashboard.
+  - issue tracking (powered by JIRA)
+    from backlog of work items to teams' recent code deployments. 
+
+    https://aws.amazon.com/codestar/features/
+
+-OºZERO COSTº
+  - Charged only for AWS resources provisioned for devel/run
+    apps.
+
+- Source Control alternatives:
+  - AWS CodeCommit
+  - GitHub
+
+- Centralize monitoring for commits, builds, tests, deployments.
+
+BºAWS CodeCommitº:
+  - "Github" like fully-managed build service that makes it
+    possible to build, test, and integrate code more frequently. 
+  - High Availability and Durability
+    (S3 and DynamoDB as storage backend).
+  - Encrypted data redundantly stored across multiple facilities.
+  - up to 1,000 repositories by default and no limits upon request.
+  - AWS SNS Notifications and Custom Scripts.
+    notifications include status message + link to resource
+  - Amazon SNS HTTP webhooks or Lambda functions reactive
+    programming
+
+BºAWS CodeBuildº:
+  - fully-managed build service (build, test, integrate)
+
+BºAWS CodePipelineº:
+  - Continuous integration and continuous delivery (CI/CD) service.
+  - Each project comes pre-configured with an automated pipeline
+    that continuously builds, tests, and deploys your code with 
+    each commit.
+</pre>
 <pre zoom labels="aws,IaaS,tool,UML,TODO">
 <span xsmall>AWS-PlantUML</span>
 @[https://github.com/milo-minderbinder/AWS-PlantUML]
@@ -12151,6 +12281,7 @@ hand in the process...""
 <pre zoom labels="low_code,aws,TODO">
 <span xsmall>honeycode.aws</span>
 @[https://www.honeycode.aws/]
+- Build form-like apps in "minutes".
 </pre>
 
 <pre zoom labels="azure,ias,terraform,TODO">
@@ -12166,6 +12297,47 @@ described, an introduction of custom timeouts
 Openfit: ChatOps with Slack and AWS Lambda
 https://youtu.be/Kebb0LOVC28
 </pre>
+
+<pre zoom labels="terraform,IaC,low_code,aws,azure,scaleway,openstack,gcp,tool,qa,TODO" bgorange>
+<span xsmall>BrainBoard.co</span>
+@[https://www.brainboard.co/]
+
+- The WYSIWYG of the Multi-Cloud. 
+- Design, Deploy and Depict all resources across all cloud providers around the world. 
+
+- Terraform file generated & versionned
+  """ You can define variables to use in your products configuration, 
+     visualise the resulting code and download it.  Or simply commit your 
+     architecture using the integrated Git."""
+
+- Worldwide overview of all your resources
+  Visualize all cloud resources around the world for all cloud providers in ONE place.
+</pre>
+
 </body>
 </html>
+<!--
+AWS, Queue Services:
+    https://www.infoq.com/news/2020/11/aws-amazon-mq-rabbitmq/
+
+- AWS announced Amazon MQ will now support RabbitMQ, a popular 
+  open-source message broker. With the support for RabbitMQ, customers 
+  can migrate their existing RabbitMQ message brokers to AWS without 
+  rewriting code.
+
+- In 2017, AWS released Amazon MQ as a managed message broker 
+  service for Apache ActiveMQ, an open-sourced, enterprise-grade 
+  message broker compatible with most industry-standard protocols like 
+  JMS, NMS, AMQP 1.0 and 0-9-1, STOMP, MQTT, and WebSocket. Since then, 
+  the public cloud vendor enhanced the service with new features to 
+  improve high scalability and availability, such as vertical scaling, 
+  throughput-optimized message brokers with a 99.9% Service Level 
+  Agreement (SLA), and LDAP Authentication and Authorization support. 
+  The company now expands Amazon MQ with an additional message broker 
+  providing customers an option to reduce their operational overhead 
+  managing RabbitMQ message brokers by moving their existing brokers to 
+  AWS.
+
+
+-->
 

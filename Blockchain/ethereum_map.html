@@ -2,7 +2,6 @@
 <html>
    <meta charset="UTF-8">
     <meta name="keywords" content="ethereum,cryptography,solidity,mind map,tutorial,101,aaa,aragon,architecture,auditing,baseline,beus,casper,cloud,code snippet,comparative,consensus,debug,development,devops,diagram,DID,ecdsa scep256k1,eip,erc,error control,etl,events,evm,formal proofs,fungible asset,geth,governance,graphql,ibft,identity,infrastructure,integration,iot,ipfs,java,javascript,library,low code,mainnet,metamask,monitoring,offchain,oracle,parity,pkcs,plasma,privacy,profiling,python,quality assurance,qa,remix,rlp,scalability,security,signature,solidity,standars,storage,testing,token,tool,transaction,troubleshooting,truffle,wallet">
-   <meta http-equiv="Refresh" content="0; url='./devops_map.html'" />
    <title>Ethereum map</title>
 <head>
 <script type="module">import "/map_v1.js";</script>
@@ -229,7 +228,7 @@ mether                      :   1^6  ethers
 gether                      :   1^9  ethers
 tether                      :   1^12 ethers
 </pre>
-<pre zoom zoom labels="scalability">
+<pre zoom zoom labels="consensus,scalability,ethereum2,">
 <span xsmall>Network Versions</span>
 @[https://en.wikipedia.org/wiki/Ethereum#Milestones]
 ºPublic Ethereum Network versionsº
@@ -337,8 +336,7 @@ CHAIN_ID    Chain(s)
 
 
 </pre>
-<span title>Related</span>
-<span title>Taxonomies</span>
+<span title>Related Taxonomies</span>
 <pre zoom>
 <span xsmall TODO>Laws Taxo.</span>
 @[https://law.stackexchange.com/tags]
@@ -6371,9 +6369,8 @@ and ABI with a single button press.
 <div group bggreen>
     <span title>Scalability</span><br/>
 <div groupv>
-<pre zoom bgorange labels="101,architecture,consensus,scalability">
-<span xsmall>Serenity/Eth v2.0</span>
-<span xsmall>nomenclature</span>
+<pre zoom bgorange labels="consensus,scalability,101,architecture,ethereum2,eip">
+<span xsmall>Serenity/Eth v2.0 nomenclature</span>
 - REF: @[https://medium.com/alethio/ethereum-2-0-terms-demystified-8398357429d7]
   2019-08-13
 
@@ -6434,6 +6431,114 @@ and ABI with a single button press.
     ETH1 back, but there is an escape hatch 
     to sell your stake once transfers 
     between validators become possible
+
+
+BºIstambul Bizantine Fault Tolerant(IBFT)º
+@[https://github.com/ethereum/EIPs/issues/650]
+- Target banks and fin.instutions, replacing PoW
+  since validator scalability is not required.
+- Hash settlement finality and minimum latency.
+- Deeply inspired by Clique PoA @[https://github.com/ethereum/EIPs/issues/225]
+- also inspired by Hyperledger's SBFT, Tendermint, HydraChain, and NCCU BFT.
+
+ºROUNDº                                      ºROUND STATEº 
+Consensus round. A round starts with         Consensus messages of a specific 
+the proposer creating a block proposal       sequence and round, including 
+and ends with a block commitment or          pre-prepare message, prepare message, 
+round change.                                and commit message.
+
+ºPROPOSALº                                ºSEQUENCEº
+New block generation proposal which is    Sequence number of a proposal. A 
+undergoing consensus processing           sequence number should be greater than 
+                                          all previous sequence numbers. 
+                                          Currently each proposed block height is 
+                                          its associated sequence number.
+
+ºBACKLOGº                                 ºCONSENSUS PROOF:º
+The storage to keep future consensus      The commitment signatures of a block 
+messages due to the async nature of the   that can prove the block has gone 
+network.                                  through the consensus process.
+
+ºSNAPSHOT:º
+The validator voting state from last 
+epoch
+
+
+BºVALIDATION ROUND LOOPº
+  [validators] → [validators]:  enter ºvalidator.state NEW-ROUNDº
+  [validators] → [validators]:  pick one (round-robin by default or sticky) as
+                                the OºPROPOSERº
+  OºPROPOSERº  →OºPROPOSERº  :  propose new block proposal
+  OºPROPOSERº  →  network    :  broadast Bºblock-proposal + PRE-PREPARE messageº
+  [validators] → [validators]:  enter ºvalidator.state PRE-PREPAREDº
+  [validators] → network     :  broadcast BºPREPARE messageº
+                                (make sure all validators are working on the
+                                 same sequence and the same round)
+  [validators] → [validators]:Bºwait for (2F + 1) PREPARE messagesº
+                                then enter ºvalidator.state PREPAREDº
+  [validators] → network     :  broadcasts BºCOMMIT messageº.
+                                (inform peers that validator accepts proposed block
+                                and is going to insert the block to the chain)
+  [validators] → [validators]:Bºwait for (2F + 1) COMMIT messagesº
+                                enter ºvalidator.state COMMITTEDº
+                                insert the block to the chain
+                                enter ºvalidator.state FINAL-COMMITTEDº
+  [validators] → network     :  broadcasts BºROUND-CHANGE messageº
+  [validators] → [validators]:Bºwait for (2F + 1) ROUND-CHANGE messagesº
+                                then enter ºvalidator.state NEW-ROUNDº
+
+
+BºRUNNING ISTANBUL BFT VALIDATORS&AMP;NODES:º
+$º$ geth  --datadir "/eth" init "/eth/genesis.json"                 º // ← Initialize the data folder as (PRE-SETUP)
+$º$ geth --datadir "/eth" --mine --minerthreads 1 --syncmode "full" º // ← Start-up validators
+$º$ geth --datadir "/eth"                                           º // ← Start-up regular nodes
+
+BºISTANBUL OPTIONS:º                                                                           
+  --istanbul.requesttimeout value  round in milliseconds (default: 10000)                     
+  --istanbul.blockperiod    value  Default min.difference between two consecutive             
+                                   block's timestamps in seconds (default: 1)                 
+                                                                                              
+BºNODEKEY AND VALIDATORº                                                                       
+  To be a validator, a node needs to meet the following conditions:                            
+  - Its account (nodekey-derived) address MUST be listed in extraData's validators section     
+  - validator nodekey is used as priv.key to sign consensus messages                           
+                                                                                              
+BºEncoding:º                                                   
+  Before encoding you need to define a toml file with vanity and validators fields             
+  to define proposer vanity and validator set. Please refer to example.toml for                
+  the example. The output would be a hex string which can be put into extraData                
+  field directly.  Command:                                                                    
+$º$ istanbul encode --config ./config.tomlº 
+                                                                                              
+BºDecoding:º                                                                                   
+  Use --extradata option to give the extraData hex string. The output would show               
+  the following if presents: vanity, validator set, seal, and committed seal.
+  Command:
+  $ istanbul decode --extradata ˂EXTRA_DATA_HEX_STRING˃
+  to define proposer vanity and validator set. Please refer to example.toml for
+  the example. The output would be a hex string which can be put into extraData
+  field directly.  Command:
+$º$ istanbul encode --config ./config.tomlº
+
+Bºgenesis.jsonº
+  - config field is required, and the pbft subfield must present. Ex:
+  - See also genesis.json helper tools at:
+  @[https://github.com/getamis/Istanbul-tools]
+  {
+    "config": {
+      "chainId": 2016,
+      "istanbul": { "epoch": 30000, "policy" 0 }
+    },
+    "timestamp": "0x0",
+    "parentHash": "0x000...000",
+    "extraData": "0x0000...000f89af85494475...aad0312b84100000...0c0",
+    "gasLimit": "0x47e7c4",
+    "mixhash": "0x6374...6e6365",
+    "coinbase": "0x333...33333",
+    "nonce": "0x0",
+    "difficulity": "0x0",
+    "alloc": {}
+  }
 </pre>
 
 <pre zoom labels="consensus,comparative,scalability,mainnet">
@@ -6508,7 +6613,7 @@ PoS: Proof-of-Stake
 
 </pre>
 
-<pre zoom labels="TODO">
+<pre zoom labels="comparative,scalability,TODO">
 <span xsmall>Cosmos and Tendermint</span>
 
 Cosmos is also building an ecosystem that relies on the Tendermint consensus 
@@ -8721,7 +8826,7 @@ Youtube Channel          @[https://www.youtube.com/channel/UClC49LtcE4Wuo4POqa4J
 
 </pre>
 
-<pre zoom labels="eea">
+<pre zoom labels="eea,scalability,integration">
   <span xsmall>EEA Summary</span>
 [P]SMRT-030:Enterprise Ethereum clients MUST support
    smart contracts of at least 24,576bytes in size
@@ -8821,92 +8926,6 @@ Youtube Channel          @[https://www.youtube.com/channel/UClC49LtcE4Wuo4POqa4J
 - RAFT:
 - IBFT: (Istambul) Bizantine Fault Tolerant
 </pre>
-<pre zoom  labels="consensus">
-<span xsmall>IBFT</span>
-<span xsmall>(Istambul)BFT</span>
-@[https://github.com/ethereum/EIPs/issues/650]
-- Target banks and fin.instutions, replacing PoW
-  since validator scalability is not required.
-- Hash settlement finality and minimum latency.
-- Deeply inspired by Clique PoA @[https://github.com/ethereum/EIPs/issues/225]
-- also inspired by Hyperledger's SBFT, Tendermint, HydraChain, and NCCU BFT.
-
-Validator  : Block validation participant.
-Proposer   : A block validation participant that is chosen
-             to propose block in a consensus round.
-Round      : Consensus round. A round starts with the proposer creating
-             a block proposal and ends with a block commitment or round change.
-Proposal   : New block generation proposal which is undergoing consensus processing
-Sequence   : Sequence number of a proposal. A sequence number should be greater than
-             all previous sequence numbers. Currently each proposed block height is its
-             associated sequence number.
-Backlog    : The storage to keep future consensus messages due to the async nature of the
-             network.
-Round state: Consensus messages of a specific sequence and round, including pre-prepare
-             message, prepare message, and commit message.
-Consensus
-      proof: The commitment signatures of a block that can prove the block has gone
-             through the consensus process.
-Snapshot   : The validator voting state from last epoch
-
-
-ºVALIDATION ROUND LOOPº
-[validators] → [validators]:  enter ºvalidator.state NEW-ROUNDº
-[validators] → [validators]:  pick one (round-robin by default or sticky) as
-                              the OºPROPOSERº
-OºPROPOSERº  →OºPROPOSERº  :  propose new block proposal
-OºPROPOSERº  →  network    :  broadast Bºblock-proposal + PRE-PREPARE messageº
-[validators] → [validators]:  enter ºvalidator.state PRE-PREPAREDº
-[validators] → network     :  broadcast BºPREPARE messageº
-                              (make sure all validators are working on the
-                               same sequence and the same round)
-[validators] → [validators]:Bºwait for (2F + 1) PREPARE messagesº
-                              then enter ºvalidator.state PREPAREDº
-[validators] → network     :  broadcasts BºCOMMIT messageº.
-                              (inform peers that validator accepts proposed block
-                              and is going to insert the block to the chain)
-[validators] → [validators]:Bºwait for (2F + 1) COMMIT messagesº
-                              enter ºvalidator.state COMMITTEDº
-                              insert the block to the chain
-                              enter ºvalidator.state FINAL-COMMITTEDº
-[validators] → network     :  broadcasts BºROUND-CHANGE messageº
-[validators] → [validators]:Bºwait for (2F + 1) ROUND-CHANGE messagesº
-                              then enter ºvalidator.state NEW-ROUNDº
-
-
-ºRUNNING ISTANBUL BFT VALIDATORS&AMP;NODES:º
-| $ geth  --datadir "/eth" init "/eth/genesis.json"                  // ← Initialize the data folder as (PRE-SETUP)
-| $ geth --datadir "/eth" --mine --minerthreads 1 --syncmode "full"  // ← Start-up validators
-| $ geth --datadir "/eth"                                            // ← Start-up regular nodes
-
-ºISTANBUL OPTIONS:º                                                                           |ºgenesis.jsonº
-| --istanbul.requesttimeout value  round in milliseconds (default: 10000)                     |- config field is required, and the pbft subfield must present. Ex:
-| --istanbul.blockperiod    value  Default min.difference between two consecutive             |- See also genesis.json helper tools at:
-|                                  block's timestamps in seconds (default: 1)                 |@[https://github.com/getamis/Istanbul-tools]
-                                                                                              |{
-ºNODEKEY AND VALIDATORº                                                                       |  "config": {
-|To be a validator, a node needs to meet the following conditions:                            |    "chainId": 2016,
-|- Its account (nodekey-derived) address MUST be listed in extraData's validators section     |    "istanbul": { "epoch": 30000, "policy" 0 }
-|- validator nodekey is used as priv.key to sign consensus messages                           |  },
-                                                                                              |  "timestamp": "0x0",
-ºEncoding:º                                                                                   |  "parentHash": "0x000...000",
-|Before encoding you need to define a toml file with vanity and validators fields             |  "extraData": "0x0000...000f89af85494475...aad0312b84100000...0c0",
-|to define proposer vanity and validator set. Please refer to example.toml for                |  "gasLimit": "0x47e7c4",
-|the example. The output would be a hex string which can be put into extraData                |  "mixhash": "0x6374...6e6365",
-|field directly.  Command:                                                                    |  "coinbase": "0x333...33333",
-|  $ istanbul encode --config ./config.toml                                                   |  "nonce": "0x0",
-                                                                                              |  "difficulity": "0x0",
-ºDecoding:º                                                                                   |  "alloc": {}
-|Use --extradata option to give the extraData hex string. The output would show               |}
-|the following if presents: vanity, validator set, seal, and committed seal.
-|Command:
-|$ istanbul decode --extradata ˂EXTRA_DATA_HEX_STRING˃
-|to define proposer vanity and validator set. Please refer to example.toml for
-|the example. The output would be a hex string which can be put into extraData
-|field directly.  Command:
-|  $ istanbul encode --config ./config.toml
-</pre>
-
 <pre zoom  labels="consensus">
 <span xsmall>Raft-based consensus</span>
 @[https://github.com/jpmorganchase/quorum/blob/master/raft/doc.md]

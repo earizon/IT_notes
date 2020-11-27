@@ -678,6 +678,58 @@ REF: @[https://dzone.com/articles/heap-memory-in-java-performance-testing?utm_so
 - Eclipse Memory Analyzer Manual:
 @[https://help.eclipse.org/2019-06/index.jsp?topic=%2Forg.eclipse.mat.ui.help%2Fwelcome.html&cp=62]
 </pre>
+
+<pre zoom  labels="jvm,memory_leaks,qa,troubleshooting,">
+<span xsmall>˂˂AutoClosable˃˃ (1.7+)</span>
+- The java garbage collector can not automatically clean any
+  other resource appart from memory. All resources related to
+  I/O (virtual/physical devices) must be closed programatically,
+  for example sockets, http connections, database connections, ...
+  since neither the compiler, not the runtime can not take control of
+  external (non-controlled) devices/resources.
+
+  Java 1.7+ includes the interface java.lang.AutoClosable to simplify
+  the resource cleaning.
+
+  When a class representing an external resource implement this 
+  interface and isºused inside a try-with-resourcesº, its close
+  method will be invoqued automatically (the compiler will add 
+  the required code).
+
+  Most core java I/O classes  already implemente this interface.
+
+  Ex:
+  public class MyClassWithExternalResources 
+  implements ºjava.lang.AutoCloseableº, ... {
+        private final MyExternalEventListener listener;
+        private final MyIODevice device;
+        private final MyHTTPConnection connection;
+        ...
+       ºpublic void close()º{
+            listener  .close();
+            device    .close();
+            connection.close();
+        }
+        ...
+    }
+
+    public class SomeLongRunningClass {
+      ...
+      void useManyResourcesManyTimes(String path)  {
+
+        for (int repeat=0; repeat˂100; repeat++) {
+         ºtry (MyClassWithExternalResources i = º
+              º new MyClassWithExternalResources(...))º {
+                ...
+         º} catch( ... ) {º
+            //
+         º}º
+
+         º// At this point all resouces have been closed.  º
+         º// If a runtime exception exits the function the º
+         º// resource is also closed.                      º
+        }
+    }
 </div>
 
 </div>

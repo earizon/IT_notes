@@ -1,0 +1,2217 @@
+<!DOCTYPE html>
+<html>
+   <meta charset="UTF-8">
+   <title>Containers Maps (WiP)</title>
+<head>
+<script type="module">import "/map_v1.js";</script>
+<link rel="stylesheet" type="text/css" href="/map_v1.css" />
+</head>
+
+<body>
+<div groupv>
+<span title>Container Standars</span>
+<pre zoom labels="OCI,comparative">
+<span xsmall>OCI Spec.</span>
+@[https://www.opencontainers.org/faq]
+
+OCI mission: promote a set of common, minimal, open standards 
+             and specifications around container technology
+             focused on creating formal specification for 
+             container image formats and runtime
+
+- values: (mostly adopted from the appc founding values)
+  - Composable: All tools for downloading, installing, and running containers should be well integrated, but independent and composable.
+  - Portable: runtime standard should be usable across different hardware, 
+    operating systems, and cloud environments.
+  - Secure: Isolation should be pluggable, and the cryptographic primitives
+    for strong trust, image auditing and application identity should be solid.
+  - Decentralized: Discovery of container images should be simple and
+    facilitate a federated namespace and distributed retrieval.
+  - Open: format and runtime should be well-specified and developed by
+          a community. 
+  - Code leads spec, rather than vice-versa.
+  - Minimalist: do a few things well, be minimal and stable, and 
+  - Backward compatible:
+
+- Docker donated both a draft specification and a runtime and code
+  associated with a reference implementation of that specification:
+
+BºIt includes entire contents of the libcontainer project, includingº
+Bº"nsinit" and all modifications needed to make it run independentlyº 
+Bºof Docker.  . This codebase, called runc, can be found at         º
+Bºhttps://github.com/opencontainers/runc                            º
+
+- the responsibilities of the Technical Oversight Board (TOB)
+  ca be followed at https://github.com/opencontainers/tob:
+  - Serving as a source of appeal if the project technical leadership 
+    is not fulfilling its duties or is operating in a manner that is
+    clearly biased by the commercial concerns of the technical 
+    leadership’s employers.
+  - Reviewing the tests established by the technical leadership for 
+    adherence to specification
+  - Reviewing any policies or procedures established by the technical leadership.
+
+- The OCI seeks rough consensus and running code first.
+
+What is the OCI’s perspective on the difference between a standard and a specification?
+
+The v1.0.0 2017-07-19.
+
+- Adopted by:
+  - Cloud Foundry community by embedding runc via Garden 
+  - Kubernetes is incubating a new Container Runtime Interface (CRI) 
+    that adopts OCI components via implementations like CRI-O and rklet.
+  - rkt community is adopting OCI technology already and is planning
+    to leverage the reference OCI container runtime runc in 2017.
+  - Apache Mesos.
+  - AWS announced OCI image format in its Amazon EC2 Container Registry (ECR).
+
+- Will the runtime and image format specs support multiple platforms?
+
+- How does OCI integrate with CNCF?
+    A container runtime is just one component of the cloud native 
+  technical architecture but the container runtime itself is out of 
+  initial scope of CNCF (as a CNCF project), see the charter Schedule A 
+  for more information.
+</pre>
+
+<pre zoom labels="OCI">
+<span xsmall>runc</span>
+@[https://github.com/opencontainers/runc]
+- Reference runtime and cli tool donated by Docker
+  for spawning and running containers according to the OCI 
+  specification:
+@[https://www.opencontainers.org/]
+
+- Based on Go.
+
+-BºIt reads a runtime specification and configures the Linux kernel.º
+  - Eventually it creates and starts container processes.
+  RºGo might not have been the best programming language for this taskº.
+  Rºsince it does not have good support for the fork/exec model of computing.º
+  Rº- Go's threading model expects programs to fork a second process      º
+  Rº  and then to exec immediately.                                       º
+  Rº- However, an OCI container runtime is expected to fork off the first º
+  Rº  process in the container.  It may then do some additional           º
+  Rº  configuration, including potentially executing hook programs, beforeº
+  Rº  exec-ing the container process. The runc developers have added a lotº
+  Rº  of clever hacks to make this work but are still constrained by Go's º
+  Rº  limitations.                                                        º
+  Bºcrun, C based, solved those problems.º
+
+- reference implementation of the OCI runtime specification.
+
+<hr/>
+
+<span xsmall>crun</span>
+@[https://github.com/containers/crun/issues]
+@[https://www.redhat.com/sysadmin/introduction-crun]
+- fast, low-memory footprint container runtime by Giuseppe Scrivanoby 
+  (RedHat).
+- C based: Unlike Go, C is not multi-threaded by default, and was built
+  and designed around the fork/exec model. 
+  It could handle the fork/exec OCI runtime requirements in a much cleaner
+  fashion than 'runc'. C also interacts very well with the Linux kernel.
+  It is also lightweight, with much smaller sizes and memory than runc(Go):
+  compiled with -Os, 'crun' binary is ~300k (vs ~15M 'runc') 
+  "" We have experimented running a container with just Bº250K limit setº.""
+Bºor 50 times smaller.º and up to Bºtwice as fast.
+
+- cgroups v2 ("==" Upstream kernel, Fedora 31+) compliant from the scratch 
+  while runc -Docker/K8s/...- Rºgets "stuck" into cgroups v1.º
+  (experimental support in 'runc' for v2 as of v1.0.0-rc91, thanks to
+   Kolyshkin and Akihiro Suda).
+
+- feature-compatible with "runc" with extra experimental features.
+
+- Given the same Podman CLI/k8s YAML we get the same containers "almost
+  always" since Bºthe OCI runtime's job is to instrument the kernel toº
+Bºcontrol how PID 1 of the container runs.º
+BºIt is up to higher-level tools like conmon or the container engine toº
+Bºmonitor the container.º
+
+- Sometimes users want to limit number of PIDs in containers to just one.
+  With 'runc' PIDs limit can not be set too low, because the Go runtime
+  spawns several threads.
+  'crun', written in C, does not have that problem.
+  Ex: 
+$º$ RUNC="/usr/bin/runc" , CRUN="/usr/bin/crun" º
+$º$ podman --runtime $RUNC run --rm --pids-limit 5 fedora echo it works º
+                                    └────────────┘
+  →RºError: container create failed (no logs from conmon): EOFº
+$º$ podman --runtime $CRUN run --rm --pids-limit 1 fedora echo it works º
+                                    └────────────┘
+  →Bºit worksº
+
+- OCI hooks supported, allowing the execution of specific programs at 
+  different stages of the container's lifecycle.
+
+- runc/crun comparative:
+  $º$ CMD_RUNC="for i in {1..100}; do runc run foo ˂ /dev/null; done"º
+  $º$ CMD_CRUN="for i in {1..100}; do crun run foo ˂ /dev/null; done"º
+  $º$ time -v sh -c "$CMD_RUNC"                                      º
+    → User time (seconds): 2.16
+    → System time (seconds): 4.60
+    → Elapsed (wall clock) time (h:mm:ss or m:ss): 0:06.89
+    → Maximum resident set size (kbytes): 15120
+    → ...
+  $º$ time -v sh -c "$CMD_CRUN"                                      º
+    → ...
+    → User time (seconds): 0.53
+    → System time (seconds): 1.87
+    → Elapsed (wall clock) time (h:mm:ss or m:ss): 0:03.86
+    → Maximum resident set size (kbytes): 3752
+    → ...
+
+- Experimental features:
+  - redirecting hooks STDOUT/STDERR via annotations.
+    - Controlling stdout and stderr of OCI hooks
+      Debugging hooks can be quite tricky because, by default, 
+      it's not possible to get the hook's stdout and stderr.
+    - Getting the error or debug messages may require some yoga.
+    - common trick: log to syslog to access hook-logs via journalctl.
+                     (Not always possible)
+    - With 'crun' + 'Podman':
+    $º$ podman run --annotation run.oci.hooks.stdout=/tmp/hook.stdoutº
+                                └───────────────────────────────────┘ 
+                                 executed hooks will write:
+                                  STDOUT → /tmp/hook.stdout
+                                  STDERR → /tmp/hook.stderr
+   Bº(proposed fo OCI runtime spec)º
+
+  - crun supports running older versions of systemd on cgroup v2 using
+    --annotation run.oci.systemd.force_cgroup_v1, 
+    This forces a cgroup v1 mount inside the container for the name=systemd hierarchy, 
+    which is enough for systemd to work.
+    Useful to run older container images, such as RHEL7, on a cgroup v2-enabled system.
+    Ej:   
+  $º$ podman run --annotation run.oci.systemd.force_cgroup_v1=/sys/fs/cgroup \ º
+  $º  centos:7 /usr/lib/systemd/systemd                                        º
+
+  - Crun as a library:
+    "We are considering to integrate it with Bºconmon, the container monitor used byº
+   BºPodman and CRI-O, rather than executing an OCI runtime."º
+
+- 'crun' Extensibility:
+  """... easily to use all the kernel features, including syscalls not enabled in Go."""
+  -Ex: openat2 syscall protects against link path attacks (already supported by crun).
+
+- 'crun' is more portable: Ex: Risc-V.
+</pre>
+
+<pre zoom labels="networking,TODO">
+<span xsmall>Container Network Iface (CNI)</span>
+@[https://github.com/containernetworking/cni]
+- specification and libraries for writing plugins to configure network interfaces
+  in Linux containers, along with a number of supported plugins.
+- CNI concerns itself only with network connectivity of containers 
+  and removing allocated resources when the container is deleted.
+- <a href="https://github.com/containernetworking/cni/blob/master/SPEC.md">CNI Spec</a>
+
+- CNI concerns itself only with network connectivity of
+  containers and removing allocated resources when container
+  are deleted.
+- specification and libraries for writing plugins 
+  to configure network interfaces in Linux containers, 
+  along with a number of supported plugins:
+  - libcni, a CNI runtime implementation
+  - skel, a reference plugin implementation
+    github.com/cotainernetworking/cni
+- Set of reference and example plugins:
+  - Inteface plugins:  ptp, bridge,macvlan,...
+  - "Chained" plugins: portmap, bandwithd, tuning,
+    github.com/cotainernetworking/pluginds
+
+    NOTE: Plugins are executable programs with STDIN/STDOUT
+                                  ┌ Network
+                ┌─────→(STDIN)    │
+  Runtime → ADD JSON    CNI ···───┤ 
+   ^        ^^^         executable│
+   │        ADD         plugin    └ Container(or Pod)
+   │        DEL         └─┬──┘      Interface
+   │        CHECK         v
+   │        VERSION    (STDOUT) 
+   │                 └────┬──────┘
+   │                      │
+   └──── JSON result ─────┘
+
+ ºRuntimesº            º3rd party pluginsº
+  K8s, Mesos, podman,   Calico ,Weave, Cilium,
+  CRI-O, AWS ECS, ...   ECS CNI, Bonding CNI,...
+
+- The idea of CNI is to provide common interface between
+  the runtime and the CNI (executable) plugins through
+  standarised JSON messages.
+
+  Example cli Tool  executing CNI config:
+@[https://github.com/containernetworking/cni/tree/master/cnitool]
+   INPUT_JSON
+   {
+     "cniVersion":"0.4.0",   ← Standard attribute
+     "name":Bº"myptp"º,
+     "type":"ptp",
+     "ipMasq":true,
+     "ipam": {               ← Plugin specific attribute
+       "type":"host-local",
+       "subnet":"172.16.29.0/24",
+       "routes":[{"dst":"0.0.0.0/0"}]
+     }
+   }
+   $ echo $INPUT_JSON | \                  ← Create network config
+     sudo tee /etc/cni/net.d/10-myptp.conf   it can be stored on file-system
+                                             or runtime artifacts (k8s etcd,...)
+
+   $ sudo ip netns add testing             ← Create network namespace.
+                       └-----┘
+
+   $ sudo CNI_PATH=./bin \                 ← Add container to network
+     cnitool add Bºmyptpº  \
+     /var/run/netns/testing
+
+   $ sudo CNI_PATH=./bin \                ← Check config
+     cnitool check myptp \
+     /var/run/netns/testing
+
+
+   $ sudo ip -n testing addr               ← Test
+   $ sudo ip netns exec testing \
+     ping -c 1 4.2.2.2
+
+   $ sudo CNI_PATH=./bin \                 ← Clean up
+     cnitool del myptp \
+     /var/run/netns/testing
+   $ sudo ip netns del testing
+
+BºMaintainers (2020):º
+  - Bruce Ma (Alibaba)
+  - Bryan Boreham (Weaveworks)
+  - Casey Callendrello (IBM Red Hat)
+  - Dan Williams (IBM Red Hat)
+  - Gabe Rosenhouse (Pivotal)
+  - Matt Dupre (Tigera)
+  - Piotr Skamruk (CodiLime)
+  - "CONTRIBUTORS"
+
+BºChat channelsº
+  - https.//slack.cncf.io  - topic #cni
+</pre>
+
+
+
+<pre zoom labels="gui,tool,TODO">
+<span xsmall>Portainer UI</span>
+(See also LazyDocker)
+- Portainer, an open-source management interface used to manage a 
+  Docker host, Swarm and k8s cluster.
+- It's used by software engineers and DevOps teams to simplify and
+  speed up software deployments.
+
+Available on LINUX, WINDOWS, & OSX
+$ docker container run -d \
+  -p 9000:9000 \
+  -v /var/run/docker.sock:/var/run/docker.sock portainer/portainer
+</pre>
+</div>
+
+
+<div group>
+<span title>Docker</span><br/>
+<div groupv>
+<pre zoom labels="docker">
+<span xsmall>External Links</span>
+- @[https://docs.docker.com/]
+- @[https://github.com/jdeiviz/docker-training] D.Peman@github
+- @[https://github.com/jpetazzo/container.training] container.training@Github
+- @[http://container.training/]
+
+<span xsmall>Docker API</span>
+- @[https://docs.docker.com/engine/api/])
+- @[https://godoc.org/github.com/docker/docker/api]
+- @[https://godoc.org/github.com/docker/docker/api/types]
+
+</pre>
+<pre zoom labels="storage,cluster,cri,OCI,AAA,bridge,cgroup,shm,dns,IPv4,IPv6,security,seccomp,selinux,TODO,swarn">
+<span xsmall>DockerD summary</span>
+
+dockerD can listen for Engine API requests via:
+ - IPC socket: default /var/run/docker.sock
+ - tcp       : WARN: default setup un-encrypted/un-authenticated 
+ - fd        : Systemd based systems only. 
+               dockerd -H fd://. 
+
+
+BºDaemon configuration Optionsº
+@[https://docs.docker.com/engine/reference/commandline/dockerd/#daemon-configuration-file]
+
+  └ In the Official docker install options must be set in the file:
+   º/lib/systemd/system/docker.serviceº, adding to the ExecStart= line.
+    After editing the file, systemd must reload the service:
+    $º$ sudo systemctl stop  docker.serviceº 
+    $º$ sudo systemctl daemon-reload       º
+    $º$ sudo systemctl start docker.serviceº 
+--config-file string default "/etc/docker/daemon.json"
+  -D, --debug           Enable debug mode
+  
+  --experimental        Enable experimental features
+  
+  --icc         Enable inter-container communication (default true)
+  --log-driver string   default "json-file"
+  -l, --log-level string  default "info"
+  
+  --mtu int  Set the containers network MTU
+  --network-control-plane-mtu int         Network Control plane MTU (default 1500)
+  
+  --rootless  Enable rootless mode; typically used with RootlessKit (experimental)
+
+BºSTORAGE:º
+Oº--data-root   def:"/var/lib/docker"º
+Oº--exec-root   def:"/var/run/docker"º
+
+  --storage-driver def: overlay2
+  --storage-opt  "..."
+
+ ºENVIRONMENT VARIABLESº
+    DOCKER_DRIVER     The graph driver to use.
+    DOCKER_RAMDISK    If set this will disable "pivot_root".
+  BºDOCKER_TMPDIR     Location for temporary Docker files.º
+    MOBY_DISABLE_PIGZ Do not use unpigz to decompress layers in parallel
+                      when pulling images, even if it is installed.
+    DOCKER_NOWARN_KERNEL_VERSION Prevent warnings that your Linux kernel is 
+                     unsuitable for Docker.
+
+
+
+BºDaemon storage-driverº:
+  See also: @[https://docs.docker.com/storage/storagedriver/]
+  Docker daemon support next storage drivers:
+  └ aufs        :Rºoldest (linux kernel patch unlikely to be merged)º
+  ·              BºIt allows containers to share executable and shared library memory, º
+  ·              Bº→ useful choice when running thousands of repeated containersº
+  └ devicemapper:
+  · thin provisioning and Copy on Write (CoW) snapshots. 
+  · - For each devicemapper graph location - /var/lib/docker/devicemapper -
+  ·   a thin pool is created based on two block devices:
+  ·   - data    : loopback mount of automatically created sparse file
+  ·   - metadata: loopback mount of automatically created sparse file
+  ·
+  └ btrfs       :
+  · -Bºvery fastº
+  · -Rºdoes not share executable memory between devicesº
+  · -$º# dockerd -s btrfs -g /mnt/btrfs_partition º
+  ·
+  └ zfs         :
+  · -Rºnot as fast as btrfsº
+  · -Bºlonger track record on stabilityº.
+  · -BºSingle Copy ARC shared blocks between clones allowsº
+  ·  Bºto cache just onceº
+  · -$º# dockerd -s zfsº  ← select a different zfs filesystem by setting
+  ·                         set zfs.fsname option
+  ·
+  └ overlay     :
+  · -Bºvery fast union filesystemº.
+  · -Bºmerged in the main Linux kernel 3.18+º
+  · -Bºsupport for page cache sharingº
+  ·    (multiple containers accessing the same file
+  ·     can share a single page cache entry/ies)
+  · -$º# dockerd -s overlay º
+  · -RºIt can cause excessive inode consumptionº
+  ·
+  └ overlay2    :
+    -Bºsame fast union filesystem of overlayº
+    -BºIt takes advantage of additional features in Linux kernel 4.0+
+     Bºto avoid excessive inode consumption.º
+    -$º#Call dockerd -s overlay2    º
+    -Rºshould only be used over ext4 partitions (vs Copy on Write FS like btrfs)º
+
+  @[https://www.infoq.com/news/2015/02/under-hood-containers]
+  └ Vfs: a no thrills, no magic, storage driver, and one of the few 
+  ·      that can run Docker in Docker.
+  └ Aufs: fast, memory hungry, not upstreamed driver, which is only 
+  ·       present in the Ubuntu Kernel. If the system has the aufs utilities 
+  ·       installed, Docker would use it. It eats a lot of memory in cases 
+  ·       where there are a lot of start/stop container events, and has issues 
+  ·       in some edge cases, which may be difficult to debug.
+  ·
+  └ "... Diffs are a big performance area because the storage driver needs to 
+     calculate differences between the layers, and it is particular to 
+     each driver. Btrfs is fast because it does some of the diff 
+     operations natively..."
+    
+    - The Docker portable image format is composed of tar archives that 
+      are largely for transit:
+      - Committing container to image with commit.
+      - Docker push and save.
+      - Docker build to add context to existing image.
+    
+    - When creating an image, Docker will diff each layer and create a 
+      tar archive of just the differences. When pulling, it will expand the 
+      tar in the filesystem. If you pull and push again, the tarball will 
+      change, because it went through a mutation process, permissions, file 
+      attributes or timestamps may have changed.
+    
+    - Signing images is very challenging, because, despite images being 
+      mounted as read only, the image layer is reassembled every time. Can 
+      be done externally with docker save to create a tarball and using gpg 
+      to sign the archive.
+
+
+BºDocker runtime execution optionsº
+  └ The daemon relies on a OCI compliant runtime (invoked via the 
+    containerd daemon) as its interface to the Linux kernel namespaces, 
+    cgroups, and SELinux.
+
+  └ By default,Bºdockerd automatically starts containerdº.
+    - to control/tune containerd startup, manually start 
+      containerd and pass the path to the containerd socket
+      using the --containerd flag. For example:
+    $º# dockerd --containerd /var/run/dev/docker-containerd.sockº
+
+
+BºInsecure registriesº
+
+  └ Docker considers a private registry either:
+    - secure
+      - It uses TLS.
+      - CA cert exists in /etc/docker/certs.d/myregistry:5000/ca.crt. 
+    - insecure
+      - not TLS used or/and
+      - CA-certificate unknown.
+      -º--insecure-registry myRegistry:5000º needs to docker daemon
+        config file . The config path can vary depending on the system.
+        It can be similar to next one in a SystemD enabled OS:
+       º/etc/systemd/system/docker.service.d/docker-options.confº
+        [Service]
+        Environment="DOCKER_OPTS= --iptables=false \
+         \
+         \
+        --data-root=/var/lib/docker \
+        --log-opt max-size=50m --log-opt max-file=5 \
+        --insecure-registry steps.everis.com:10114 \
+        "
+
+
+BºDaemon user namespace optionsº
+  - The Linux kernel user namespace support provides additional security 
+    by enabling a process, and therefore a container, to have a unique 
+    range of user and group IDs which are outside the traditional user 
+    and group range utilized by the host system. Potentially the most 
+    important security improvement is that, by default, container 
+ ☞Bºprocesses running as the root user will have expected administrativeº
+  Bºprivilege (with some restrictions) inside the container but willº
+  Bºeffectively be mapped to an unprivileged uid on the host.º
+    More info at:
+  @[https://docs.docker.com/engine/security/userns-remap/]
+
+- Docker supports softlinks for :
+  - Docker data directory:  (def. /var/lib/docker)
+  - temporal    directory:  (def. /var/lib/docker/tmp) 
+</pre>
+
+<pre zoom labels="TODO,storage,">
+<span xsmall>Resizing containers with the Device Mapper</span>
+@[http://jpetazzo.github.io/2014/01/29/docker-device-mapper-resize/]
+</pre>
+
+<pre zoom>
+<span xsmall>$ docker help</span>
+Usage:	docker COMMAND
+
+A self-sufficient runtime for containers
+
+Options:
+      --config string      Location of client config files (default "/root/.docker")
+  -D, --debug              Enable debug mode
+  -H, --host list          Daemon socket(s) to connect to
+  -l, --log-level string   Set the logging level ("debug"|"info"|"warn"|"error"|"fatal") (default "info")
+      --tls                Use TLS; implied by --tlsverify
+      --tlscacert string   Trust certs signed only by this CA (default "/root/.docker/ca.pem")
+      --tlscert string     Path to TLS certificate file (default "/root/.docker/cert.pem")
+      --tlskey string      Path to TLS key file (default "/root/.docker/key.pem")
+      --tlsverify          Use TLS and verify the remote
+  -v, --version            Print version information and quit
+
+Management Commands:       | Commands:
+            Manage ...     |   attach      Attach local STDIN/OUT/ERR streams to a running container
+config      Docker configs |   build       Build an image from a Dockerfile
+container   containers     |   commit      Create a new image from a container's changes
+image       images         |   cp          Copy files/folders between a container and the local filesystem
+network     networks       |   create      Create a new container
+node        Swarm nodes    |   diff        Inspect changes to files or directories on a container's filesystem
+plugin      plugins        |   events      Get real time events from the server
+secret      Docker secrets |   exec        Run a command in a running container
+service     services       |   export      Export a container's filesystem as a tar archive
+swarm       Swarm          |   history     Show the history of an image
+system      Docker         |   images      List images
+trust       trust on       |   import      Import the contents from a tarball to create a filesystem image
+            Docker images  |   info        Display system-wide information
+volume      volumes        |   inspect     Return low-level information on Docker objects
+                           |   kill        Kill one or more running containers
+                           |   load        Load an image from a tar archive or STDIN
+                           |   login       Log in to a Docker registry
+                           |   logout      Log out from a Docker registry
+                           |   logs        Fetch the logs of a container
+                           |   pause       Pause all processes within one or more containers
+                           |   port        List port mappings or a specific mapping for the container
+                           |   ps          List containers
+                           |   pull        Pull an image or a repository from a registry
+                           |   push        Push an image or a repository to a registry
+                           |   rename      Rename a container
+                           |   restart     Restart one or more containers
+                           |   rm          Remove one or more containers
+                           |   rmi         Remove one or more images
+                           |   run         Run a command in a new container
+                           |   save        Save one or more images to a tar archive (streamed to STDOUT by default)
+                           |   search      Search the Docker Hub for images
+                           |   start       Start one or more stopped containers
+                           |   stats       Display a live stream of container(s) resource usage statistics
+                           |   stop        Stop one or more running containers
+                           |   tag         Create a tag TARGET_IMAGE that refers to SOURCE_IMAGE
+                           |   top         Display the running processes of a container
+                           |   unpause     Unpause all processes within one or more containers
+                           |   update      Update configuration of one or more containers
+                           |   version     Show the Docker version information
+                           |   wait        Block until one or more containers stop, then print their exit codes
+</pre>
+<span title>Install ⅋ setup</span>
+<pre zoom>
+<span xsmall>Proxy settings</span>
+To configure Docker to work with an HTTP or HTTPS proxy server, follow
+instructions for your OS:
+Windows - <a href="https://docs.docker.com/docker-for-windows/#proxies">Get Started with Docker for Windows</a>
+macOS   - <a href="https://docs.docker.com/docker-for-mac/">Get Started with Docker for Mac</a>
+Linux   - <a href="https://docs.docker.com/engine/admin/systemd/#httphttps-proxy">Control⅋config. Docker with Systemd</a>
+</pre>
+
+<pre zoom>
+<span xsmall>docker global info</span>
+<span xsmall>system setup</span>
+<span xsmall>running/paused/stopped cont.</span>
+$ sudo docker info
+Containers: 23
+ Running: 10
+ Paused: 0
+ Stopped: 1
+Images: 36
+Server Version: 17.03.2-ce
+ºStorage Driver: devicemapperº
+ Pool Name: docker-8:0-128954-pool
+ Pool Blocksize: 65.54 kB
+ Base Device Size: 10.74 GB
+ Backing Filesystem: ext4
+ Data file: /dev/loop0
+ Metadata file: /dev/loop1
+ºData Space Used: 3.014 GBº
+ºData Space Total: 107.4 GBº
+ºData Space Available: 16.11 GBº
+ºMetadata Space Used: 4.289 MBº
+ºMetadata Space Total: 2.147 GBº
+ºMetadata Space Available: 2.143 GBº
+ºThin Pool Minimum Free Space: 10.74 GBº
+ Udev Sync Supported: true
+ Deferred Removal Enabled: false
+ Deferred Deletion Enabled: false
+ Deferred Deleted Device Count: 0
+ºData loop file: /var/lib/docker/devicemapper/devicemapper/dataº
+ºMetadata loop file: /var/lib/docker/devicemapper/devicemapper/metadataº
+ Library Version: 1.02.137 (2016-11-30)
+ºLogging Driver: json-fileº
+ºCgroup Driver: cgroupfsº
+Plugins:
+ Volume: local
+ Network: bridge host macvlan null overlay
+Swarm: inactive
+Runtimes: runc
+Default Runtime: runc
+Init Binary: docker-init
+containerd version: 4ab9917febca54791c5f071a9d1f404867857fcc
+runc version: 54296cf40ad8143b62dbcaa1d90e520a2136ddfe
+init version: 949e6fa
+ºSecurity Options:º
+º seccompº
+º  Profile: defaultº
+Kernel Version: 4.17.17-x86_64-linode116
+Operating System: Debian GNU/Linux 9 (stretch)
+OSType: linux
+Architecture: x86_64
+CPUs: 2
+Total Memory: 3.838 GiB
+Name: 24x7
+ID: ZGYA:L4MN:CDCP:DANS:IEHQ:XYLD:C5KG:SUL4:3XLQ:ZO6M:3RSY:V6VB
+ºDocker Root Dir: /var/lib/dockerº
+ºDebug Mode (client): falseº
+ºDebug Mode (server): falseº
+*Registry: https://index.docker.io/v1/*
+Experimental: false
+Insecure Registries:
+ 127.0.0.0/8
+Live Restore Enabled: false
+</pre>
+
+<pre zoom>
+<span xsmall>/var/run/docker.sock</span>
+@[https://medium.com/better-programming/about-var-run-docker-sock-3bfd276e12fd]
+- Unix socket the Docker daemon listens on by default,
+  used to communicate with the daemon from within a container.
+- Can be mounted on containers to allow them to control Docker:
+$ docker runº-v /var/run/docker.sock:/var/run/docker.sockº  ....
+
+USSAGE EXAMPLE:
+
+# STEP 1. Create new container
+$ curl -XPOSTº--unix-socket /var/run/docker.sockº \
+  -d '{"Image":"nginx"}' \
+  -H 'Content-Type: application/json' \
+  http://localhost/containers/create
+Returns something similar to:
+→ {"Id":"fcb65c6147efb862d5ea3a2ef20e793c52f0fafa3eb04e4292cb4784c5777d65","Warnings":null}
+
+# STEP 2. Use /containers/<ID>/start to start the newly created container.
+$ curl -XPOSTº--unix-socket /var/run/docker.sockº \
+  http://localhost/containers/fcb6...7d65/start
+
+# STEP 3: Verify it's running:
+$ docker container ls
+CONTAINER ID IMAGE COMMAND CREATED STATUS PORTS NAMES
+fcb65c6147ef nginx “nginx -g ‘daemon …” 5 minutes ago Up 5 seconds 80/tcp, 443/tcp ecstatic_kirch
+...
+
+ºStreaming events from the Docker daemonº
+
+- Docker API also exposes the*/events endpoint*
+
+$ curlº--unix-socket /var/run/docker.sockº http://localhost/events
+  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  command hangs on, waiting for new events from the daemon.
+  Each new event will then be streamed from the daemon.
+</pre>
+
+<pre zoom labels="docker">
+<span xsmall>avoid "sudo" docker</span>
+$º $ sudo usermod -a -G docker "myUser"º
+</pre>
+</div>
+
+<div groupv>
+<span title>Docker components</span>
+<pre zoom labels="docker,networking">
+<span xsmall>Docker Networks</span>
+Create new network and use it in containers:
+  $ docker ºnetwork createº OºredisNetworkº
+  $ docker run --rm --name redis-server --network OºredisNetworkº -d redis
+  $ docker run --rm --network OºredisNetworkº -it redis redis-cli -h redis-server -p 6379
+
+List networks:
+  $ docker network ls
+
+Disconect and connect a container to the network:
+  $ docker disconnect OºredisNetworkº redis-server
+  $ docker connect --alias db OºredisNetworkº redis-server
+</pre>
+
+<pre zoom labels="docker,storage">
+<span xsmall>Volumes</span>
+
+REUSE VOLUME FROM CONTAINER:
+  STEP 0: Create new container with volume
+    host-mach $ docker run -it Oº--name alphaº º-v "hostPath":/var/logº ubuntu bash
+    container $ date &gt; /var/log/now
+
+  STEP 1: Create new container using volume from previous container:
+    host-mach $ docker run --volumes-from Oºalphaº ubuntu
+    container $ cat /var/log/now
+
+CREAR VOLUME FOR REUSE IN DIFFERENT CONTAINERS
+
+  STEP 0: Create Volume
+  host-mach $ docker volume create --name=OºwebsiteVolumeº
+  STEP 1: Use volume in new container
+  host-mach $ docker run -d -p 8888:80 \
+              -v OºwebsiteVolumeº:/usr/share/nginx/html
+              -v logs:/var/log/nginx nginx
+  host-mach $ docker run
+              -v OºwebsiteVolumeº:/website
+              -w /website \
+              -it alpine vi index.html
+
+Ex.: Update redis version without loosing data:
+  host-mach $ docker network create dbNetwork
+  host-mach $ docker run -d --network dbNetwork \
+              --network-alias redis \
+              --name redis28 redis:2.8
+  host-mach $ docker run -it --network dbNetwork \
+              alpine telnet redis 6379
+              → SET counter 42
+              → INFO server
+              → SAVE
+              → QUIT
+  host-mach $ docker stop redis28
+  host-mach $ docker run -d --network dbNetwork \
+              --network-alias redis \
+              --name redis30 \
+              --volumes-from redis28 \
+              redis:3.0
+  host-mach $ docker run -it --network dbNetwork \
+              alpine telnet redis 6379
+              → GET counter
+              → INFO server
+              → QUIT
+</pre>
+
+<pre zoom labels="docker">
+<span xsmall>docker-compose</span>
+
+- YAML file defining services, networks and volumes. 
+  Full ref: @[https://docs.docker.com/compose/compose-file/]
+
+Best Patterns:
+ @[https://docs.docker.com/compose/production/]
+
+C⅋P from https://github.com/bcgov/moh-prime/blob/develop/docker-compose.yml
+
+version: "3"
+
+services:
+######################################################### Database #
+  postgres:
+    restart: always
+    container_name: primedb
+  Bºimage: postgres:10.6º                 # ← use pre-built image
+    environment:
+      POSTGRES_PASSWORD: postgres
+      ...
+    ports:
+      - "5432:5432"
+    volumes:
+      - local_postgres_data:/var/lib/postgresql/data
+  Bºnetworks:º                            # ← Networks to connect to
+  Bº  - primenetº
+########################################################## MongoDB #
+  mongo:
+    restart: always
+    container_name: primemongodb
+    image: mongo:3
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      ...
+    ports:
+      - 8081:8081
+    volumes:
+      - local_mongodb_data:/var/lib/mongodb/data
+    networks:
+      - primenet
+############################################################## API #
+  dotnet-webapi:
+    container_name: primeapi
+    restart: always
+   ºbuild:º                               # ← use Dockerfile to build image
+      context: prime-dotnet-webapi/  RºWARNº: remember to rebuild image and recreate
+                                            app’s containers like:
+                                          ┌───────────────────────────────────────────────┐
+                                          │ $ docker-compose build dotnet-webapi          │
+                                          │                                               │
+                                          │ $ docker-compose up \ ← stop,destroy,recreate │
+                                          │   --no-deps           ← prevents from also    │
+                                          │   -d dotnet-webapi      recreating any service│
+                                          │                         primeapi depends on.  │
+                                          └───────────────────────────────────────────────┘
+    command: "..."
+    environment:
+      ...
+  Oºports:          º  ← Exposed ports outside private "primenet" network
+  Oº  - "5000:8080" º  ← Map internal port (right) to "external" port
+  Oº  - "5001:5001" º
+  Oºexpose:º          ←   Expose ports without publishing to host machine 
+  Oº   - "5001"º          (only accessible to linked services).
+                           Use internal port.
+    networks:
+      - primenet
+    depends_on:
+      - postgres
+##################################################### Web Frontend #
+  nginx-angular:
+    build:
+         context: prime-angular-frontend/
+    ...
+################################################ Local SMTP Server #
+  mailhog:
+    container_name: mailhog
+    restart: always
+    image: mailhog/mailhog:latest
+    ports:
+      - 25:1025
+      - 1025:1025
+      - 8025:8025 # visit localhost:8025 to see the list of captured emails
+    ...
+########################################################### Backup #
+  backup:
+    ...
+    restart: on-failure
+    volumes:
+    Oº- db_backup_data:/opt/backupº
+    ...
+
+volumes:
+  local_postgres_data:
+  local_mongodb_data:
+  db_backup_data:
+
+networks:
+  primenet:
+    driver: bridge
+
+<hr/>
+<span title>SystemD Integration</span>
+REF: https://gist.github.com/Luzifer/7c54c8b0b61da450d10258f0abd3c917
+- /etc/compose/docker-compose.yml  
+
+- /etc/systemd/system/docker-compose.service
+  (Service unit to start and manage docker compose)
+  [Unit]
+  Description=Docker Compose container starter
+  After=docker.service network-online.target
+  Requires=docker.service network-online.target
+  
+  [Service]
+  WorkingDirectory=/etc/compose
+  Type=oneshot
+  RemainAfterExit=yes
+  
+  ExecStartPre=-/usr/local/bin/docker-compose pull --quiet
+  ExecStart=/usr/local/bin/docker-compose up -d
+  
+  ExecStop=/usr/local/bin/docker-compose down
+  
+  ExecReload=/usr/local/bin/docker-compose pull --quiet
+  ExecReload=/usr/local/bin/docker-compose up -d
+  
+  [Install]
+  WantedBy=multi-user.target
+
+- /etc/systemd/system/docker-compose-reload.service   
+  (Executing unit to trigger reload on docker-compose.service)
+  [Unit]
+  Description=Refresh images and update containers
+  
+  [Service]
+  Type=oneshot
+  
+  ExecStart=/bin/systemctl reload-or-restart docker-compose.service
+
+- /etc/systemd/system/docker-compose-reload.timer
+  (Timer unit to plan the reloads)
+  [Unit]
+  Description=Refresh images and update containers
+  Requires=docker-compose.service
+  After=docker-compose.service
+  
+  [Timer]
+  OnCalendar=*:0/15
+  
+  [Install]
+  WantedBy=timers.target
+</pre>
+
+<pre zoom labels="docker,image_registry,TODO,">
+<span title>Registry ("Image repository")</span>
+@[https://docs.docker.com/registry/#what-it-is]
+@[https://docs.docker.com/registry/introduction/]
+BºSummaryº
+  $º$ docker run -d -p 5000:5000 \ º ← Start registry
+  $º  --restart=always             º 
+  $º  --name registry registry:2   º 
+
+  $º$ docker pull ubuntu           º ← Pull (example) image
+  $º$ docker image tag ubuntu \    º ← Tag the image to "point" 
+  $º  localhost:5000/myfirstimage  º   to local registry
+  $º$ docker push \                º ← Push to local registry
+  $º  localhost:5000/myfirstimage  º   
+  $º$ docker pull \                º ← final Check
+  $º  localhost:5000/myfirstimage  º   
+  
+  NOTE: clean setup testing like:
+  $º$ docker container stop  registry º
+  $º$ docker container rm -v registry º
+
+
+
+
+</pre>
+
+<pre zoom labels="image_build,tool,low_code,TODO" bgorange>
+<span xsmall>Dockerize</span>
+@[https://github.com/jwilder/dockerize]
+- utility to simplify running applications in docker containers. 
+  BºIt allows you to:º
+  Bº- generate app config. files at container startup timeº
+  Bº  from templates and container environment variablesº
+  Bº- Tail multiple log files to stdout and/or stderrº
+  Bº- Wait for other services to be available using TCP, HTTP(S),º
+  Bº  unix before starting the main process.º
+
+typical use case:
+ - application that has one or more configuration files and
+   you would like to control some of the values using environment variables.
+ - dockerize allows to set an environment variable and update the config file before
+   starting the contenerized application
+ - other use case: forward logs from harcoded files on the filesystem to stdout/stderr
+   (Ex: nginx logs to /var/log/nginx/access.log and /var/log/nginx/error.log by default)
+</pre>
+
+<span title>Managing Containers</span>
+<pre zoom labels="docker">
+<span xsmall>Boot-up/run container:</span>
+$ docker run \                             $ docker run \
+  --rm  \        ←------ Remove ---------→   --rm  \
+  --name clock  \        on exit             --name clock  \
+ º-dº\             ← Daemon    interactive →º-tiº\
+                     mode      mode
+  jdeiviz/clock                              jdeiviz/clock
+
+
+<span xsmall>Show container logs:</span>
+$ docker logs docker
+$ logs --tail 3
+$ docker logs --tail 1 --follow
+
+<span xsmall>Stop container:</span>
+$ docker stop # Espera 10s docker kill
+
+<span xsmall>Prune stopped containers:</span>
+
+$ docker container prune
+
+<span xsmall>container help:</span>
+$ docker container
+</pre>
+<pre zoom labels="docker,101,OCI,">
+<span xsmall>ENTRYPOINT vs COMMAND</span>
+Extracted from:
+https://stackoverflow.com/questions/21553353/what-is-the-difference-between-cmd-and-entrypoint-in-a-dockerfile
+
+- Docker default entrypoint is /bin/sh -c.
+  - ENTRYPOINT allows to override the default.
+    - $ docker --entrypoint allows to override effective entrypoint.
+    (ºENTRYPOINT is (purposely) more difficult to overrideº)
+    - ENTRYPOINT is similar to the "init" process in Linux. It is the
+      first command to be executed. Command are the params passed to
+      the ENTRYPOINT.
+
+- There is no default command (to be executed by the entrypoint).
+  It must be indicated either as:
+   $ docker run -i -t ubuntu bash 
+                             └─┬─┘ 
+                        /bin/sh -c bash will be executed.
+                        └───┬─────┘ 
+                        Or non-default entrypoint 
+
+BºAs everything is passed to the entrypoint, very nice behavior
+  appearsº: They will act as binary executables:
+  Ex. If using ENTRYPOINT ["/bin/cat"] then 
+      $ ALIAS CAT="docker run myImage"
+      $ CAT  /etc/passwd 
+        └┬┘ 
+       will effectively execute next command on container image:
+        ┌──┴────┐ 
+      $ /bin/cat  /etc/passwd 
+
+  Ex. If using ENTRYPOINT ["redis", "-H", "something", "-u", "toto"]
+      will be equivalent to executing redis with default params 
+
+      $ docker run redisimg get key
+</pre>
+
+<span title>Monitoring running containers</span>
+
+<pre zoom labels="docker,monitoring">
+<span xsmall>Monitoring (Basic)</span>
+List containers instances:
+   $ docker ps     # only running
+   $ docker ps -a  # also finished, but not yet removed (docker rm ...)
+   $ docker ps -lq # TODO:
+
+"top" containers showing Net IO read/writes, Disk read/writes:
+   $ docker stats
+   | CONTAINER ID   NAME                    CPU %   MEM USAGE / LIMIT     MEM %   NET I/O          BLOCK I/O      PIDS
+   | c420875107a1   postgres_trinity_cache  0.00%   11.66MiB / 6.796GiB   0.17%   22.5MB / 19.7MB  309MB / 257kB  16
+   | fdf2396e5c72   stupefied_haibt         0.10%   21.94MiB / 6.796GiB   0.32%   356MB / 693MB    144MB / 394MB  39
+
+   $ docker top 'containerID'
+   | UID       PID     PPID    C  STIME  TTY   TIME     CMD
+   | systemd+  26779   121423  0  06:11  ?     00:00:00 postgres: ddbbName cache 172.17.0.1(35678) idle
+   | ...
+   | systemd+  121423  121407  0  Jul06  pts/0 00:00:44 postgres
+   | systemd+  121465  121423  0  Jul06  ?     00:00:01 postgres: checkpointer process
+   | systemd+  121466  121423  0  Jul06  ?     00:00:26 postgres: writer process
+   | systemd+  121467  121423  0  Jul06  ?     00:00:25 postgres: wal writer process
+   | systemd+  121468  121423  0  Jul06  ?     00:00:27 postgres: autovacuum launcher process
+   | systemd+  121469  121423  0  Jul06  ?     00:00:57 postgres: stats collector process
+
+</pre>
+
+<pre zoom labels="docker,monitoring,troubleshooting,TODO">
+<span xsmall TODO>SysDig</span>
+Container-focused Linux troubleshooting and monitoring tool.
+
+Once Sysdig is installed as a process (or container) on the server,
+it sees every process, every network action, and every file action
+on the host. You can use Sysdig "live" or view any amount of historical
+data via a system capture file.
+
+Example: take a look at the total CPU usage of each running container:
+   $ sudo sysdig -c topcontainers\_cpu
+   | CPU% container.name
+   | ----------------------------------------------------
+   | 80.10% postgres
+   | 0.14% httpd
+   | ...
+   |
+
+Example: Capture historical data:
+   $ sudo sysdig -w historical.scap
+
+Example: "Zoom into a client":
+   $ sudo sysdig -pc -c topprocs\_cpu container. name=client
+   | CPU% Process container.name
+   | ----------------------------------------------
+   | 02.69% bash client
+   | 31.04%curl client
+   | 0.74% sleep client
+</pre>
+
+<pre zoom TODO labels="docker,gui,monitoring,">
+<span xsmall>Dockviz</span>
+@[https://github.com/justone/dockviz]
+Show a graph of running containers dependencies and
+image dependencies.
+
+Other options:
+$ºdockviz images -tº
+└─511136ea3c5a Virtual Size: 0.0 B
+  ├─f10ebce2c0e1 Virtual Size: 103.7 MB
+  │ └─82cdea7ab5b5 Virtual Size: 103.9 MB
+  │   └─5dbd9cb5a02f Virtual Size: 103.9 MB
+  │     └─74fe38d11401 Virtual Size: 209.6 MB Tags: ubuntu:12.04, ubuntu:precise
+  ├─ef519c9ee91a Virtual Size: 100.9 MB
+  └─02dae1c13f51 Virtual Size: 98.3 MB
+    └─e7206bfc66aa Virtual Size: 98.5 MB
+      └─cb12405ee8fa Virtual Size: 98.5 MB
+        └─316b678ddf48 Virtual Size: 169.4 MB Tags: ubuntu:13.04, ubuntu:raring
+
+$ºdockviz images -t -l º← show only labelled images
+└─511136ea3c5a Virtual Size: 0.0 B
+  ├─f10ebce2c0e1 Virtual Size: 103.7 MB
+  │ └─74fe38d11401 Virtual Size: 209.6 MB Tags: ubuntu:12.04, ubuntu:precise
+  ├─ef519c9ee91a Virtual Size: 100.9 MB
+  │ └─a7cf8ae4e998 Virtual Size: 171.3 MB Tags: ubuntu:12.10, ubuntu:quantal
+  │   ├─5c0d04fba9df Virtual Size: 513.7 MB Tags: nate/mongodb:latest
+  │   └─f832a63e87a4 Virtual Size: 243.6 MB Tags: redis:latest
+  └─02dae1c13f51 Virtual Size: 98.3 MB
+    └─316b678ddf48 Virtual Size: 169.4 MB Tags: ubuntu:13.04, ubuntu:raring
+
+
+$ºdockviz images -tº-i º ← Show incremental size rather than cumulative
+└─511136ea3c5a Virtual Size: 0.0 B
+  ├─f10ebce2c0e1 Virtual Size: 103.7 MB
+  │ └─82cdea7ab5b5 Virtual Size: 255.5 KB
+  │   └─5dbd9cb5a02f Virtual Size: 1.9 KB
+  │     └─74fe38d11401 Virtual Size: 105.7 MB Tags: ubuntu:12.04, ubuntu:precise
+  └─02dae1c13f51 Virtual Size: 98.3 MB
+    └─e7206bfc66aa Virtual Size: 190.0 KB
+      └─cb12405ee8fa Virtual Size: 1.9 KB
+        └─316b678ddf48 Virtual Size: 70.8 MB Tags: ubuntu:13.04, ubuntu:raring
+
+</pre>
+<pre zoom labels="docker,monitoring,TODO">
+<span xsmall>Weave</span>
+</hr>
+<span xsmall>cAdvisor+Prometheus+Grafana</span>
+@[https://blog.couchbase.com/monitoring-docker-containers-docker-stats-cadvisor-universal-control-plane/]
+@[https://dzone.com/refcardz/intro-to-docker-monitoring?chapter=6]
+@[https://github.com/google/cadvisor/blob/master/docs/running.md#standalone]
+</pre>
+</div>
+
+<div groupv>
+<span title>Managing Images</span>
+<pre zoom labels="docker">
+  <span xsmall>Managing images</span>
+(List all image related commands with: $ docker image)
+
+  $ docker images        # ← List local ("downloaded/instaled") images
+
+  $ docker search redis  # ← Search remote images @ Docker Hub: 
+
+  $ docker rmi /${IMG_NAME}:${IMG_VER}  # ← remove (local) image
+  $ docker image prune                  # ← removeºallºnon used images
+
+-ºPUSH/PULL Images from Private Registry:º
+
+  -ºPRE-SETUP:º(Optional opinionated, but recomended)
+    Define ENV. VARS. in BºENVIRONMENTº file
+
+    $ catBºENVIRONMENTº
+    #  COMMON ENV. PARAMS for PRIVATE/PUBLIC REGISTRY: {{
+    USER=user01
+    IMG_NAME="postgres_custom"
+    IMG_VER="1.0"  # ← Defaults to 'latest'
+    # }} 
+    # PRIVATE REGISTRY ENV. PARAMS ONLY : {{
+    SESSION_TOKEN="dAhYK9Z8..."  # ← Updated Each 'N' hours
+    REGISTRY=docker_registry.myCompany.com
+    # }}
+
+
+  -ºUPLOAD IMAGEº 
+   ºALT1: UPLOAD TO PRIVATE REGISTRY:º      │ ºALT2: UPLOAD TO DOCKER HUB:º
+    $ cat push_image_to_private_registry.sh │  $ cat push_image_to_dockerhub_registry.sh
+    #!/bin/bash                             │  #!/bin/bash
+    set -e # ← stop on first error          │  set -e # ← stop on first error
+    .BºENVIRONMENTº                         │  .BºENVIRONMENTº
+                                            │  
+    sudo dockerºloginº\                     │  sudo dockerºloginº\
+       -u ${LOGIN_USER} \                   │     -u ${LOGIN_USER} \
+       -p ${SESSION_TOKEN} \                │ 
+       ${REGISTRY}                          │ 
+                                            │  
+    sudo dockerºpushº \                     │  sudo dockerºpushº \
+       ${REGISTRY}/${USER}/\                │  /\
+       /${IMG_NAME}:${IMG_VER}              │  /${IMG_NAME}:${IMG_VER}
+
+
+  -ºDOWNLOAD IMAGEº 
+   ºALT1: DOWNLOAD FROM PRIVATE REGISTRY:º  │ ºALT2: DOWNLOAD FROM DOCKER HUB:º
+   $ docker pull \                          │ $ docker pull \
+     ${REGISTRY}/${USER}/\                  │   \
+     ${IMG_NAME}:${IMG_VER}                 │   ${IMG_NAME}:${IMG_VER}
+</pre>
+
+<pre zoom labels="docker">
+<span xsmall>Build image</span>
+72.7 MB layer ←→ FROM registry.redhat.io/ubi7/ubi              Put most frequently changed layer
+40.0 MB layer ←→ COPY target/dependencies /app/dependencies    down the layer "stack", so that
+ 9.0 MB layer ←→ COPY target/resources    /app/resources       when uploading new images only it
+ 0.5 MB layer ←→ COPY target/classes      /app/classes       ← will be uploaded. Probably the most
+                                                               frequently changed layer is also 
+                                                               the smaller layer
+                 ENTRYPOINT java -cp \
+                   /app/dependencies/*:/app/resources:/app/classes \
+                   my.app.Main
+
+$ docker build \
+   --build-arg http_proxy=http://...:8080 \
+   --build-arg https_proxy=https://..:8080 \
+   -t figlet .
+
+$ cat ./Dockerfile
+FROM ubuntu
+
+RUN apt-get update
+# Instalar figlet
+
+ENTRYPOINT ["figlet", "-f", "script"]
+
+Note: Unless you tell Docker otherwise, it will do as little work as possible when 
+building an image. It caches the result of each build step of a Dockerfile that 
+it has executed before and uses the result for each new build.
+RºWARN:º 
+   If a new version of the base image you’re using becomes available that 
+   conflicts with your app, however, you won’t notice that when running the tests in 
+   a container using an image that is built upon the older, cached version of the base image.
+ BºYou can force build to look for newer verions of base image "--pull" flagº.
+   Because new base images are only available once in a while, it’s not really 
+   wasteful to use this argument all the time when building images.
+   (--no-cache can also be useful)
+
+
+
+</pre>
+
+<pre zoom labels="docker">
+  <span xsmall>Image tags</span>
+adding a tag to the image essentially adds an alias
+The tags consists of:
+    'registry_server'/'user_name'/'image_name':'tag'
+    ^^^^^^^^^^^^^^^^^
+    default one if not
+    indicated
+
+Tag image:
+  $ docker tag jdeiviz/clock /clock:1.0
+</pre>
+<pre zoom labels="docker">
+<span xsmall>Show image</span>
+<span xsmall>change history</span>
+   $ docker history /clock:1.0
+</pre>
+<pre zoom labels="docker">
+<span xsmall>Commit image</span>
+<span xsmall>modifications</span>
+(Discouraged most of the time, modify Dockerbuild instead)
+host-mach $ docker run -it ubuntu bash     # Boot up existing image
+container # apt-get install ...            # Apply changes to running instance
+host-mach $ docker diff $(docker ps -lq)   # Show changes done in running container
+host-mach $ docker commit $(docker ps -lq) # Commit/Confirm changes
+host-mach $ docker tag figlet              # Tage new image
+host-mach $ docker run -it figlet          # Boot new image instance
+</pre>
+
+<pre zoom labels="image_registry,resource,">
+<span xsmall>Future Improvements</span>
+@[https://lwn.net/Articles/788282/]
+"Rethinking container image delivery"
+Container images today are mostly delivered via container registries, 
+like Docker Hub for public access, or an internal registry deployment 
+within an organization. Crosby explained that Docker images are 
+identified with a name, which is basically a pointer to content in a 
+given container registry. Every container image comes down to a 
+digest, which is a content address hash for the JSON files and layers 
+contained in the image. Rather than relying on a centralized registry 
+to distribute images, what Crosby and Docker are now thinking about 
+is an approach whereby container images can also be accessed and 
+shared via some form of peer-to-peer (P2P) transfer approach across 
+nodes.
+
+Crosby explained that a registry would still be needed to handle the 
+naming of images, but the content address blobs could be transferred 
+from one machine to another without the need to directly interact 
+with the registry. In the P2P model for image delivery, a registry 
+could send a container image to one node, and then users could share 
+and distribute images using something like BitTorrent sync. Crosby 
+said that, while container development has matured a whole lot since 
+2013, there is still work to be done. "From where we've been over the 
+past few years to where we are now, I think we'll see a lot of the 
+same type of things and we'll still focus on stability and 
+performance," he said.
+</pre>
+
+<span title>Advanced Image creation</span>
+<pre zoom labels="docker">
+<span xsmall>ONBUILD</span>
+<span xsmall>(base Dockerfile</span>
+<span xsmall> for devel)</span>
+
+Modify base image adding "ONBUILD" in places that are executed just during build
+in the image extending base image:
+| Dockerfile.base                | Dockerfile
+| FROM node:7.10-alpine          | FROM node-base
+|                                |
+| RUN mkdir /src                 | EXPOSE 8000
+| WORKDIR /src
+|
+| ONBUILD ARG NODE_ENV
+| ONBUILD ENV NODE_ENV $NODE_ENV
+|
+| COPY package.json /src
+|
+| RUN npm install
+|
+| COPY . /src
+|
+| CMD [ "npm", "start" ]
+
+  $ docker build -t node-base -f Dockerfile.base . # STEP 1: Compile base image
+  $ docker build -t node -f Dockerfile .           # STEP 2: Compile image
+  $ docker run -p 8000:8000 -d node
+</pre>
+
+<pre zoom labels="docker">
+<span xsmall>Multi-Stage</span>
+- Multi-Stage allows for final "clean" images that will
+  contain just the application binaries, with no building
+  or compilation intermediate tools needed during the build.
+  This allow for much lighter final images.
+                   ┌───────────────────────────────┼────────────────────────────────────────────────┐
+                   │ "STANDARD" BUILD              │ multi─stage BUILD                              │
+┌──────────────────┼───────────────────────────────┼────────────────────────────────────────────────┤
+│Dockerfile        │ Dockerfile                    │ Dockerfile.ms                                  │
+│                  │ FROM golang:alpine            │ FROM ºgolang:alpineº AS Oºbuild─envº           │
+│                  │ WORKDIR /app                  │ ADD . /src                                     │
+│                  │ ADD . /app                    │ RUN cd /src ; go build ─o app                  │
+│                  │ RUN cd /app ; go build ─o app │                                                │
+│                  │ ENTRYPOINT ./app              │ FROMºalpineº                                   │
+│                  │                               │ WORKDIR /app                                   │
+│                  │                               │ COPY ──from=Oºbuild─envº /src/app /app/        │
+│                  │                               │ ENTRYPOINT ./app                               │
+├──────────────────┼───────────────────────────────┼────────────────────────────────────────────────┤
+│ Compile image    │ $ docker build . ─t hello─go  │ $ docker build . ─f Dockerfile.ms ─t hello─goms│
+├──────────────────┼───────────────────────────────┼────────────────────────────────────────────────┤
+│ Exec container   │ $ docker run hello─go         │ $ docker run hello─goms                        │
+├──────────────────┼───────────────────────────────┼────────────────────────────────────────────────┤
+│ Check image size │ $ docker images               │ $ docker images                                │
+└──────────────────┴───────────────────────────────┴────────────────────────────────────────────────┘
+</pre>
+<pre zoom labels="docker">
+  <a xsmall href="https://github.com/GoogleContainerTools/distroless">Distroless</a>
+- "Distroless" images contain only your application and its runtime dependencies.
+(not package managers, shells,...)
+Notice: In kubernetes we can also use init containers with non-light images
+        containing all set of tools (sed, grep,...) for pre-setup, avoiding
+        any need to include in the final image.
+
+Stable:                      experimental (2019-06)
+gcr.io/distroless/static     gcr.io/distroless/python2.7
+gcr.io/distroless/base       gcr.io/distroless/python3
+gcr.io/distroless/java       gcr.io/distroless/nodejs
+gcr.io/distroless/cc         gcr.io/distroless/java/jetty
+                             gcr.io/distroless/dotnet
+
+Ex java Multi-stage Dockerfile:
+@[https://github.com/GoogleContainerTools/distroless/blob/master/examples/java/Dockerfile]
+ ºFROMºopenjdk:11-jdk-slim  ASOºbuild-envº
+  ADD . /app/examples
+  WORKDIR /app
+  RUN javac examples/*.java
+  RUN jar cfe main.jar examples.HelloJava examples/*.class
+
+  FROM gcr.io/distroless/java:11
+  COPY --from=Oºbuild-envº /app /app
+  WORKDIR /app
+  CMD ["main.jar"]
+</pre>
+
+<pre zoom labels="docker">
+<span xsmall>rootless Buildah</span>
+@[https://opensource.com/article/19/3/tips-tricks-rootless-buildah]
+- Building containers in unprivileged environments
+  - Buildah is a tool and library for building Open Container Initiative (OCI) container images.
+  - In previous articles, including How does rootless Podman work?, I talked
+  - about Podman, a tool that enables users to manage pods, containers, and container images.
+  - Buildah is a tool and library for building Open Container Initiative (OCI)
+    container images that is complementary to Podman. (Both projects are
+    maintained by the containers organization, of which I'm a member.) In this
+    article, I will talk about rootless Buildah, including the differences between it and Podman.
+
+<hr/>
+<span title TODO>Build speed</span>
+@[https://www.redhat.com/sysadmin/speeding-container-buildah]
+This article will address a second problem with build speed when using dnf/yum 
+commands inside containers. Note that in this article I will use the name dnf 
+(which is the upstream name) instead of what some downstreams use (yum) These 
+comments apply to both dnf and yum.
+
+</pre>
+
+<pre zoom labels="docker,k8s,low_code,TODO">
+<span xsmall>Appsody</span>
+@[https://appsody.dev/docs]
+pre-configured application stacks for rapid development
+of quality microservice-based applications.
+
+Stacks include language runtimes, frameworks, and any additional
+libraries and tools needed for local development, providing 
+consistency and best practices.
+
+It consists of:
+
+-ºbase-container-imageº:
+  - local development
+  - It defines the environment and specifies the stack behavior
+    during the development lifecycle of the application.
+
+-ºProject templatesº
+  - starting point ('Hello World')
+  - They can be customized/shared.
+
+- Stack layout example, my-stack: 
+  my-stack
+  ├── README.md               # describes stack and how to use it
+  ├── stack.yaml              # different attributes and which template 
+  ├── image/                  # to use by default
+  |   ├── config/
+  |   |   └── app-deploy.yaml # deploy config using Appsody Operator
+  |   ├── project/
+  |   |   ├── php/java/...stack artifacts
+  |   |   └── Dockerfile      # Final   (run) image ("appsody build")
+  │   ├── Dockerfile-stack    # Initial (dev) image and ENV.VARs
+  |   └── LICENSE             # for local dev.cycle. It is independent
+  └── templates/              # of Dockerfile
+      ├── my-template-1/
+      |       └── "hello world"
+      └── my-template-2/
+              └── "complex application"
+
+BºGenerated filesº
+  -º".appsody-config.yaml"º. Generated by $º$ appsody initº
+    It specifies the stack image used and can be overridden
+    for testing purposes to point to a locally built stack.
+
+Bºstability levels:
+  -ºExperimentalº ("proof of concept")
+    - Support  appsody init|run|build
+
+  -ºIncubatorº: not production-ready.
+    - active contributions and reviews by maintainers
+    - Support  appsody init|run|build|test|deploy
+    - Limitations described in README.md
+
+  -ºStableº: production-ready.
+    - Support all Appsody CLI commands
+    - Pass appsody stack 'validate' and 'integration' tests
+      on all three operating systems that are supported by Appsody
+      without errors. 
+      Example:
+      - stack must not bind mount individual files as it is
+        not supported on Windows.
+      - Specify the minimum Appsody, Docker, and Buildah versions
+        required in the stack.yaml
+      - Support appsody build command with Buildah
+      - Prevent creation of local files that cannot be removed 
+        (i.e. files owned by root or other users)
+      - Specify explicit versions for all required Docker images
+      - Do not introduce any version changes to the content
+        provided by the parent container images
+        (No yum upgrade, apt-get dist-upgrade, npm audit fix).
+         - If package contained in the parent image is out of date,
+           contact its maintainers or update it individually.
+      - Tag stack with major version (at least 1.0.0)
+      - Follow Docker best practices, including:
+        - Minimise the size of production images 
+        - Use the official base images
+        - Images must not have any major security vulnerabilities
+        - Containers must be run by non-root users
+      - Include a detailed README.md, documenting:
+        - short description
+        - prerequisites/setup required
+        - How to access any endpoints provided
+        - How users with existing projects can migrate to
+          using the stack
+        - How users can include additional dependencies 
+          needed by their application
+
+BºOfficial Appsody Repositories:º
+https://github.com/appsody/stacks/releases/latest/download/stable-index.yaml
+https://github.com/appsody/stacks/releases/latest/download/incubator-index.yaml
+https://github.com/appsody/stacks/releases/latest/download/experimental-index.yaml
+
+- By default, Appsody comes with the incubator and experimental repositories
+  (RºWARNº: Not stable by default). Repositories can be added by running :
+  $º$ appsody repoº
+</pre>
+
+
+
+<pre zoom labels="docker">
+<span xsmall>alpine how-to</span>
+Next image (golang) is justº6Mbytesºin size:
+@[https://hub.docker.com/r/ethereum/solc/dockerfile]
+Dockerfile:
+    01	FROM alpine
+    02	MAINTAINER chriseth <chris@ethereum.org>
+    03	
+    04	RUN \
+    05	  apk --no-cache --update add build-base cmake boost-dev git ⅋⅋ \
+    06	  sed -i -E -e 's/include ˂sys\/poll.h˃/include ˂poll.h˃/' /usr/include/boost/asio/detail/socket_types.hpp  ⅋⅋ \
+    07	  git clone --depth 1 --recursive -b release https://github.com/ethereum/solidity                           ⅋⅋ \
+    08	  cd /solidity ⅋⅋ cmake -DCMAKE_BUILD_TYPE=Release -DTESTS=0 -DSTATIC_LINKING=1                             ⅋⅋ \
+    09	  cd /solidity ⅋⅋ make solc ⅋⅋ install -s  solc/solc /usr/bin                                               ⅋⅋\
+    10	  cd / ⅋⅋ rm -rf solidity                                                                                   ⅋⅋ \
+    11	  apk del sed build-base git make cmake gcc g++ musl-dev curl-dev boost-dev                                 ⅋⅋ \
+    12	  rm -rf /var/cache/apk/*
+
+Notes:
+  - line 07: º--depth 1º: faster cloning (just last commit)
+  - line 07: the cloned repo contains next º.dockerignoreº:
+    01 # out-of-tree builds usually go here. This helps improving performance of uploading
+    02 # the build context to the docker image build server
+    03*/build*
+    04
+    05 # in-tree builds
+    06*/deps*
+</pre>
+</div>
+
+<div groupv>
+<span title>TODO Classify</span>
+<pre zoom labels="docker,troubleshooting">
+<span xsmall>Troubleshooting</span>
+- /var/lib/docker/devicemapper/devicemapper/data consumes too much space
+$ sudo du -sch /var/lib/docker/devicemapper/devicemapper/data
+14G     /var/lib/docker/devicemapper/devicemapper/data
+<a href="https://meta.discourse.org/t/why-is-docker-devicemapper-taking-so-much-hard-drive-space/34378">[REF@StackOverflow]</a>
+</pre>
+
+<pre zoom labels="docker,TODO">
+<span xsmall>Live Restore</span>
+@[https://docs.docker.com/config/containers/live-restore/]
+Keep containers alive during daemon downtime
+</pre>
+
+<pre zoom labels="gitops,monitoring,low_code,charts,TODO" bgorange>
+<span xsmall>weave</span>
+https://github.com/weaveworks/weave
+Weaveworks is the company that delivers the most productive way for 
+developers to connect, observe and control Docker containers.
+
+This repository contains Weave Net, the first product developed by 
+Weaveworks, with over 8 million downloads to date. Weave Net enables 
+you to get started with Docker clusters and portable apps in a 
+fraction of the time required by other solutions.
+
+- Weave Net
+  - Quickly, easily, and securely network and cluster containers 
+    across any environment. Whether on premises, in the cloud, or hybrid, 
+    there’s no code or configuration.
+  - Build an ‘invisible infrastructure’
+  - powerful cloud native networking toolkit. It creates a virtual network
+    that connects Docker containers across multiple hosts and enables their 
+    automatic discovery. Set up subsystems and sub-projects that provide
+    DNS, IPAM, a distributed virtual firewall and more.
+
+- Weave Scope:
+  - Understand your application quickly by seeing it in a real time 
+    interactive display. Pick open source or cloud hosted options.
+  - Zero configuration or integration required — just launch and go.
+  - automatically detects processes, containers, hosts.
+    No kernel modules, agents, special libraries or coding.
+  - Seamless integration with Docker, Kubernetes, DCOS and AWS ECS.
+
+- Cortex: horizontally scalable, highly available, multi-tenant, 
+  long term storage for Prometheus.
+
+- Flux:
+  - Flux is the operator that Bºmakes GitOps happen in your clusterº.
+    It ensures that the cluster config matches the one in git and
+    automates your deployments.
+  - continuous delivery of container images, using version control
+    for each step to ensure deployment is reproducible, 
+    auditable and revertible. Deploy code as fast as your team creates 
+    it, confident that you can easily revert if required.
+  
+    Learn more about GitOps. 
+  @[https://www.weave.works/technologies/gitops/]
+</pre>
+
+<pre zoom labels="security,auditing,TODO">
+<span xsmall>Clair</span>
+@[https://coreos.com/clair/docs/latest/]
+open source project for the static analysis of vulnerabilities in 
+appc and docker containers.
+
+Vulnerability data is continuously imported from a known set of sources and
+correlated with the indexed contents of container images in order to produce
+lists of vulnerabilities that threaten a container. When vulnerability data
+changes upstream, the previous state and new state of the vulnerability along
+with the images they affect can be sent via webhook to a configured endpoint.
+All major components can be customized programmatically at compile-time
+without forking the project.
+</pre>
+
+<pre zoom labels="TODO,cli,tool,">
+<span xsmall>Skopeo</span>
+@[https://www.redhat.com/en/blog/skopeo-10-released]
+
+Skopeo is a tool for moving container images between different types 
+of container storages.  It allows you to copy container images 
+between container registries like docker.io, quay.io, and your 
+internal container registry or different types of storage on your 
+local system. You can copy to a local container/storage repository, 
+even directly into a Docker daemon.  
+
+@[https://github.com/containers/skopeo]
+skopeo is a command line utility that performs various operations on container images and image repositories.
+skopeo does not require the user to be running as root to do most of its operations.
+skopeo does not require a daemon to be running to perform its operations.
+skopeo can work with OCI images as well as the original Docker v2 images.
+</pre>
+
+<pre zoom labels="security,TODO">
+<span xsmall>Security Tunning</span>
+@[https://opensource.com/business/15/3/docker-security-tuning]
+</pre>
+
+<pre zoom labels="gui,tool,TODO">
+<span xsmall>LazyDocker</span>
+@[https://github.com/jesseduffield/lazydocker]
+A simple terminal UI for both docker and docker-compose, written in 
+Go with the gocui library.
+</pre>
+
+<pre zoom labels="storage,backup,troubleshooting,TODO">
+<span xsmall>Convoy (Volume Driver for backups)</span>
+@[https://rancher.com/introducing-convoy-a-docker-volume-driver-for-backup-and-recovery-of-persistent-data/]
+Introducing Convoy a Docker Storage Driver for Backup and Recovery of Volumes
+</pre>
+
+</div>
+</div>
+
+<!-- docker -->
+
+<div groupv>
+<span title>Podman (IBM/RedHat)</span>
+<pre zoom labels="podman,TODO,comparative">
+<span xsmall>Podman</span>
+Podman
+- No system daemon required
+- No daemon required.
+- rootless containers 
+- Podman is set to be the default container engine for the single-node
+  use case in Red Hat Enterprise Linux 8.
+  (CRI-O for OpenShift clusters)
+
+- easy to use and intuitive.
+  - Most users can simply alias Docker to Podman (alias docker=podman) 
+
+-$º$ podman generate kubeº creates a Pod that can then be exported as Kubernetes-compatible YAML. 
+
+- enables users to run different containers in different user namespaces
+
+
+- Runs at native Linux speeds.
+  (no daemon getting in the way of handling client/server requests)
+
+
+-  OCI compliant Container Runtime (runc, crun, runv, etc)
+  to interface with the OS.
+
+- Podman  libpod library manages container ecosystem:
+  - pods.
+  - containers.
+  - container images (pulling, tagging, ...)
+  - container volumes.
+
+
+Introduction
+
+$º$ podman search busybox                             º
+→ INDEX       NAME                          DESCRIPTION             STARS  OFFICIAL AUTOMATED
+→ docker.io   docker.io/library/busybox     Busybox base image.     1882   [OK]
+→ docker.io   docker.io/radial/busyboxplus  Full-chain, Internet... 30     [OK]
+→ ...
+$º$ podman run -it docker.io/library/busybox         º
+$º/ #                                                º
+
+$º$ URL="https://raw.githubusercontent.com/nginxinc/docker-nginx"º 
+$º$ URL="${URL}/594ce7a8bc26c85af88495ac94d5cd0096b306f7/       "º 
+$º$ URL="${URL}/mainline/buster/Dockerfile                      "º
+$º$ podman build -t nginx ${URL}                                 º ← build Nginx web server using 
+                    └─┬─┘                                            official Nginx Dockerfile
+                      └────────┐
+                             ┌─┴─┐
+$º$ podman run -d -p 8080:80 nginx                               º ← run new image from local cache
+                     └─┬─┘└┘
+                       │   ^Port Declared @ Dockerfile
+                 Effective
+                 (Real)port 
+                   
+
+- To make it public publish to any other Register compatible with the
+BºOpen Containers Initiative (OCI) formatº. The options are:
+  - Private Register:
+  - Public  Register:
+    - quay.io
+    - docker.io  
+
+$º$ podman login quay.io                            º ← Login into quay.io
+$º$ podman tag localhost/nginx quay.io/${USER}/nginxº ← re-tag the image
+$º$ podman push quay.io/${USER}/nginx               º ← push the image
+→ Getting image source signatures
+→ Copying blob 38c40d6c2c85 done
+→ ..
+→ Writing manifest to image destination
+→ Copying config 7f3589c0b8 done
+→ Writing manifest to image destination
+→ Storing signatures
+
+$º$ podman inspect quay.io/${USER}/nginx            º ← Inspect image
+→ [
+→     {
+→         "Id": "7f3589c0b8849a9e1ff52ceb0fcea2390e2731db9d1a7358c2f5fad216a48263",
+→         "Digest": "sha256:7822b5ba4c2eaabdd0ff3812277cfafa8a25527d1e234be028ed381a43ad5498",
+→         "RepoTags": [
+→             "quay.io/USERNAME/nginx:latest",
+→ ...
+</pre>
+
+
+<pre  zoom labels="podman,resouce">
+<span xsmall>Podman commands</span>
+@[https://podman.readthedocs.io/en/latest/Commands.html]
+BºImage Management:º
+  build        Build an image using instructions from Containerfiles
+  commit       Create new image based on the changed container
+  history      Show history of a specified image
+  image        
+  └ build   Build an image using instructions from Containerfiles
+    exists  Check if an image exists in local storage
+    history Show history of a specified image
+    prune   Remove unused images
+    rm      Removes one or more images from local storage
+    sign    Sign an image
+    tag     Add an additional name to a local image
+    tree    Prints layer hierarchy of an image in a tree format
+    trust   Manage container image trust policy
+
+  images       List images in local storage  ( == image list)
+  inspect      Display the configuration of a container or image ( == image inspect)
+  pull         Pull an image from a registry  (== image pull)
+  push         Push an image to a specified destination (== image push)
+  rmi          Removes one or more images from local storage
+  search       Search registry for image
+  tag          Add an additional name to a local image
+
+BºImage Archive/Backups:º
+  import       Import a tarball to create a filesystem image (== image import)
+  load         Load an image from container archive ( == image load)
+  save         Save image to an archive ( == image save)
+
+BºPod Control:º
+  attach       Attach to a running container ( == container attach)
+  containers Management
+  └ cleanup    Cleanup network and mountpoints of one or more containers
+    commit     Create new image based on the changed container
+    exists     Check if a container exists in local storage
+    inspect    Display the configuration of a container or image
+    list       List containers
+    prune      Remove all stopped containers
+    runlabel   Execute the command described by an image label
+
+BºPod Checkpoint/Live Migration:º
+  container checkpoint Checkpoints one or more containers
+  container restore    Restores one or more containers from a checkpoint
+
+  $º$ podman container checkpoint $container_id\ º← Checkpoint and prepareºmigration archiveº
+  $º    -e /tmp/checkpoint.tar.gz                º
+  $º$ podman container restore \                 º← Restore from archive at new server
+  $º  -i /tmp/checkpoint.tar.gz                  º
+
+  create       Create but do not start a container ( == container create)
+  events       Show podman events
+  exec         Run a process in a running container ( == container exec)
+  healthcheck  Manage Healthcheck
+  info         Display podman system information
+  init         Initialize one or more containers ( == container init)
+  kill         Kill one or more running containers with a specific signal ( == container kill)
+  login        Login to a container registry
+  logout       Logout of a container registry
+  logs         Fetch the logs of a container ( == container logs)
+  network      Manage Networks
+  pause        Pause all the processes in one or more containers ( == container pause)
+  play         Play a pod
+  pod          Manage pods
+  port         List port mappings or a specific mapping for the container ( == container port)
+  ps           List containers
+  restart      Restart one or more containers ( == container restart)
+  rm           Remove one or more containers ( == container rm)
+  run          Run a command in a new container ( == container run)
+  start        Start one or more containers ( == container start)
+  stats        Display a live stream of container resource usage statistics (== container stats)
+  stop         Stop one or more containers ( == container stop)
+  system       Manage podman
+  top          Display the running processes of a container ( == container top)
+  unpause      Unpause the processes in one or more containers ( == container unpause)
+  unshare      Run a command in a modified user namespace
+  version      Display the Podman Version Information
+  volume       Manage volumes
+  wait         Block on one or more containers ( == container wait)
+
+BºPod Control: File systemº
+  cp           Copy files/folders container ←→ filesystem (== container cp)
+  diff         Inspect changes on container’s file systems ( == container diff)
+  export       Export container’s filesystem contents as a tar archive ( ==  container export )
+  mount        Mount a working container’s root filesystem  ( == container mount)
+  umount       Unmounts working container’s root filesystem ( == container mount)
+
+
+BºPod Integrationº
+  generate     Generated structured data 
+    kube       kube Generate Kubernetes pod YAML from a container or pod
+    systemd    systemd Generate a BºSystemD unit fileº for a Podman container
+</pre>
+
+<pre zoom labels="podman,systemd">
+<span xsmall>SystemD Integration</span>
+https://www.redhat.com/sysadmin/improved-systemd-podman
+- auto-updates help to make managing containers even more straightforward.
+
+- SystemD is used in Linux to  managing services (background long-running jobs listening for client requests) and their dependencies.
+
+BºPodman running SystemD inside a containerº
+  └ /run               ← tmpfs
+    /run/lock          ← tmpfs
+    /tmp               ← tmpfs 
+    /var/log/journald  ← tmpfs
+    /sys/fs/cgroup      (configuration)(depends also on system running cgroup V1/V2 mode).
+    └───────┬───────┘
+     Podman automatically mounts next file-systems in the container when:
+     - entry point of the container is either º/usr/sbin/init or /usr/sbin/systemdº
+     -º--systemd=alwaysºflag is used 
+
+BºPodman running inside SystemD servicesº
+  - SystemD needs to know which processes are part of a service so it 
+    can manage them, track their health, and properly handle dependencies.
+  - This is problematic in Docker  (according to RedHat rival) due to the
+    server-client architecture of Docker:
+    - It's practically impossible to track container processes, and 
+      pull-requests to improve the situation have been rejected.
+    - Podman implements a more traditional architecture by forking processes:
+      - Each container is a descendant process of Podman.
+      - Features like sd-notify and socket activation make this integration
+        even more important.
+        - sd-notify service manager allows a service to notify SystemD that
+          the process is ready to receive connections
+        - socket activation permits SystemD to launch the containerized process
+          only when a packet arrives from a monitored socket.
+          
+    - Compatible with audit subsystem (track records user actions).
+      - the forking architecture allows systemd to track processes in a
+        container and hence opens the door for seamless integration of
+        Podman and systemd.
+
+  $º$ podman generate systemd --new $containerº  ← Auto-generate containerized systemd units:
+                              └─┬─┘
+                              Ohterwise it will be tied to creating host 
+
+
+     - Pods are also supported in Podman 2.0
+       Container units that are part of a pod can now be restarted.
+       especially helpful for auto-updates.
+
+BºPodman auto-update  (1.9+)º
+  - To use auto-updates:
+    - containers must be created with :
+      --label "io.containers.autoupdate=image"
+
+    - run in a SystemD unit generated by
+      $ podman generate systemd --new.
+
+  $º$ podman auto-update º  ← Podman will first looks up running containers with the
+                              "io.containers.autoupdate" label set to "image" and then
+                              query the container registry for new images. 
+                            $ºIf that's the case Podman restarts the corresponding º
+                            $ºSystemD unit to stop the old container and create a  º
+                            $ºnew one with the modified image.                     º
+
+   (still marked as experimental while  collecting user feedback)
+
+</pre>
+
+<pre zoom labels="podman,image_registry,security,TODO">
+<span xsmall>Setup Insec. HTTP registry</span>
+@[https://www.projectatomic.io/blog/2018/05/podman-tls/]
+
+   /etc/containers/registries.conf. 
+   
+   # This is a system-wide configuration file used to
+   # keep track of registries for various container backends.
+   # It adheres to TOML format and does not support recursive
+   # lists of registries.
+   
+   [registries.search]
+   registries = ['docker.io', 'registry.fedoraproject.org', 'registry.access.redhat.com']
+   
+   # If you need to access insecure registries, add the registry's fully-qualified name.
+   # An insecure registry is one that does not have a valid SSL certificate or only does HTTP.
+   [registries.insecure]
+ Bºregistries = ['localhost:5000']º
+
+</pre>
+
+</div>
+<div group>
+    <span title>Un-ordered</span><br/>
+<pre zoom labels="101,networking,calico,flannel,TODO">
+<span xsmall>Container Networking</span>
+@[https://jvns.ca/blog/2016/12/22/container-networking/]
+By Julia Evans
+
+""" There are a lot of different ways you can network containers 
+  together, and the documentation on the internet about how it works is 
+  often pretty bad. I got really confused about all of this, so I'm 
+  going to try to explain what it all is in laymen's terms. """
+
+Bºwhat even is container networking?º
+
+  When you run a program in a container, you have two main options:
+  - run the program in the host network namespace. This is normal 
+    networking – if you run a program on port 8282, it will run on port 
+    8282 on the computer. No surprises.
+  - run the program in its ownºnetwork namespaceº:
+    other programs on other computers need to be able 
+    to make network connections to that program and 
+  RºIt turns out that this problem of how to connect º
+  Rºtwo programs in containers together has a ton of º
+  Rºdifferent solutions. º
+
+
+- "every container gets an IP".  (k8s requirement)
+  - any other program inside you cluster can talk to your container
+    just using that IP address.
+  RºSo this might mean that on one computer you might haveº
+  Rºcontainers with hundreds or thousands of IP addresses º
+  Rº(instead of just one IP address and many ports).      º
+
+    Q: How to get many IPs in a single host? 
+    - Start: We have a  computer with a single IP address (172.9.9.9)
+    - We want a container with its new private IP address (10.4.4.4)
+    - We want to route from 10.4.4.4 to 172.9.9.9.
+
+   - REMEMBER:
+     - (Ethernet,...)  MAC : Layer 2
+       -  Ex MAC Address: 
+          $º$ ip link                         º
+          $º$ ...                             º
+          $º$ link/ether 3c:97:ae:44:b3:7f ...º
+       -  kenrel sends packets in same network
+          directly to the MAC address.
+     -  src/dst IP         : Layer 3
+        - Used when routing to different network.
+        - To add new routes:
+          $º$ sudo ip route add 10.4.4.0/24 via 172.23.1.1 dev eth0º
+     -  (UDP/TCP) port, ...: Layer 4
+     -  HTTP (text) content: Layer 7
+
+
+Encapsulating to ohter networks:
+
+LOCAL NETWORK     REMOTE NETWORK
+                  (encapsulation)
+IP: 10.4.4.4      IP: 172.9.9.9
+TCP stuff         (extra wrapper stuff)
+HTTP stuff        IP: 10.4.4.4
+                  TCP stuff
+                  HTTP stuff
+
+- 2 different ways of doing encapsulation: 
+  - "ip-in-ip": add extra IP-header on top "current" IP header.
+    MAC:  11:11:11:11:11:11
+    IP: 172.9.9.9
+    IP: 10.4.4.4
+    TCP stuff
+    HTTP stuff
+    Ex:
+    $º$ sudo ip tunnel add mytun mode ipip \       º ← Create tunnel "mytun"
+    $º   remote 172.9.9.9 local 10.4.4.4 ttl 255   º 
+    $º   sudo ifconfig mytun 10.42.1.1             º 
+    $º$ sudo route add -net 10.42.2.0/24 dev mytun º ← set up a route table
+    $º$ sudo route list 
+
+
+  - "vxlan": take whole packet
+     (including the MAC address) and wrap
+     it inside a UDP packet. Ex:
+     MAC address: 11:11:11:11:11:11
+     IP: 172.9.9.9
+     UDP port 8472 (the "vxlan port")
+     MAC address: ab:cd:ef:12:34:56
+     IP: 10.4.4.4
+     TCP port 80
+     HTTP stuff
+
+  -BºEvery container networking "thing" runs some kind of daemon program º
+   Bºon every box which is in charge of adding routes to the route table.º
+   Bºfor automatic route configuration.º
+
+     - Alt1: routes are in etcd cluster, and program talks to the 
+             etcd cluster to figure out which routes to set.
+     - Alt2: use BGP protocol to gossip to each other about routes,
+             and a daemon (BIRD) that listens for BGP messages on
+             every box.
+
+BºQ: How does that packet actually end up getting to your container program?º
+  A: bridge networking
+
+  - Docker/... creates fake (virtual) network interfaces for every 
+    single one of your containers with a given IP address.
+  - The fake interfaces are bridges to a real one.
+
+BºFlannel:º
+  - Supports vxlan (encapsulate all packets) and
+    host-gw (just set route table entries, no encapsulation)
+  - The daemon that sets the routes gets them ºfrom an etcd clusterº.
+
+BºCalico:º
+  - Supports ip-in-ip encapsulation and
+    "regular" mode, (just set route table entries, no encaps.)
+  - The daemon that sets the routes gets them ºusing BGP messagesº
+    from other hosts. (etcd is  not used for distributing routes).
+</pre>
+
+
+<pre zoom labels="101,qa,TODO">
+<span xsmall>Reproducible Builds</span>
+@[https://reproducible-builds.org/]
+- Reproducible builds are a set of software development practices 
+  that create an independently-verifiable path from source to binary 
+  code.
+
+</pre>
+
+<pre zoom labels="image_build,ballerina,metaparticle,pulumi,TODOs">
+<span xsmall>Packaging Apps</span>
+@[https://www.infoq.com/articles/metaparticle-pulumi-ballerina/]
+Packaging Applications for Docker and Kubernetes:
+Metaparticle vs Pulumi vs Ballerina
+https://v1-0.ballerina.io/learn/by-example/
+</pre>
+
+<pre zoom labels="rootless,TODO">
+<span xsmall>Rootless Docker</span>
+@[https://docs.docker.com/engine/security/rootless/]
+</pre>
+
+
+<pre zoom labels="TODO">
+<span xsmall>CRI-O</span>
+CRI-O: container runtime for K8s / OpenShift.
+OCI compliant Container Runtime Engines:
+- Docker
+- CRI-O
+- containerd
+</pre>
+
+<pre zoom labels="rootless,image_build,TODO">
+<span xsmall>Kaniko</span>
+☞ NOTE: To build ºJAVA imagesº see also @[/JAVA/java_map.html?query=jib]
+
+@[https://github.com/GoogleContainerTools/kaniko]
+- tool to build container images inside an unprivileged container or
+  Kubernetes cluster.
+- Although kaniko builds the image from a supplied Dockerfile, it does
+  not depend on a Docker daemon, and instead executes each command completely
+  in userspace and snapshots the resulting filesystem changes.
+- The majority of Dockerfile commands can be executed with kaniko, with
+  the current exception of SHELL, HEALTHCHECK, STOPSIGNAL, and ARG.
+  Multi-Stage Dockerfiles are also unsupported currently. The kaniko team
+  have stated that work is underway on both of these current limitations.
+</pre>
+
+<pre zoom labels="security,image,TODO">
+<span xsmall>OpenSCAP: Scanning Vulnerabilities</span>
+- Scanning Containers for Vulnerabilities on RHEL 8.2 With OpenSCAP and Podman:
+@[https://www.youtube.com/watch?v=nQmIcK1vvYc]
+</pre>
+
+<pre zoom labels="testing,qa,TODO">
+<span xsmall>Testcontainers</span>
+@[https://www.testcontainers.org/#who-is-using-testcontainers]
+- Testcontainers is a Java library that supports JUnit tests, 
+  providing lightweight, throwaway instances of common databases, 
+  Selenium web browsers, or anything else that can run in a Docker 
+  container.
+
+- Testcontainers make the following kinds of tests easier:
+
+  - Data access layer integration tests: use a containerized instance 
+    of a MySQL, PostgreSQL or Oracle database to test your data access 
+    layer code for complete compatibility, but without requiring complex 
+    setup on developers' machines and safe in the knowledge that your 
+    tests will always start with a known DB state. Any other database 
+    type that can be containerized can also be used.
+  - Application integration tests: for running your application in a 
+    short-lived test mode with dependencies, such as databases, message 
+    queues or web servers.
+  - UI/Acceptance tests: use containerized web browsers, compatible 
+    with Selenium, for conducting automated UI tests. Each test can get a 
+    fresh instance of the browser, with no browser state, plugin 
+    variations or automated browser upgrades to worry about. And you get 
+    a video recording of each test session, or just each session where 
+    tests failed.
+  - Much more! 
+    Testing Modules
+    - Databases
+      JDBC, R2DBC, Cassandra, CockroachDB, Couchbase, Clickhouse, DB2, Dynalite, InfluxDB, MariaDB, MongoDB, 
+      MS SQL Server, MySQL, Neo4j, Oracle-XE, OrientDB, Postgres, Presto
+
+    - Docker Compose Module
+    - Elasticsearch container
+    - Kafka Containers
+    - Localstack Module
+    - Mockserver Module
+    - Nginx Module
+    - Apache Pulsar Module
+    - RabbitMQ Module
+    - Solr Container
+    - Toxiproxy Module
+    - Hashicorp Vault Module
+    - Webdriver Containers
+
+
+Who is using Testcontainers?
+-   ZeroTurnaround - Testing of the Java Agents, micro-services, Selenium browser automation
+-   Zipkin - MySQL and Cassandra testing
+-   Apache Gora - CouchDB testing
+-   Apache James - LDAP and Cassandra integration testing
+-   StreamSets - LDAP, MySQL Vault, MongoDB, Redis integration testing
+-   Playtika - Kafka, Couchbase, MariaDB, Redis, Neo4j, Aerospike, MemSQL
+-   JetBrains - Testing of the TeamCity plugin for HashiCorp Vault
+-   Plumbr - Integration testing of data processing pipeline micro-services
+-   Streamlio - Integration and Chaos Testing of our fast data platform based on Apache Puslar, Apache Bookeeper and Apache Heron.
+-   Spring Session - Redis, PostgreSQL, MySQL and MariaDB integration testing
+-   Apache Camel - Testing Camel against native services such as Consul, Etcd and so on
+-   Infinispan - Testing the Infinispan Server as well as integration tests with databases, LDAP and KeyCloak
+-   Instana - Testing agents and stream processing backends
+-   eBay Marketing - Testing for MySQL, Cassandra, Redis, Couchbase, Kafka, etc.
+-   Skyscanner - Integration testing against HTTP service mocks and various data stores
+-   Neo4j-OGM - Testing new, reactive client implementations
+-   Lightbend - Testing Alpakka Kafka and support in Alpakka Kafka Testkit
+-   Zalando SE - Testing core business services
+-   Europace AG - Integration testing for databases and micro services
+-   Micronaut Data - Testing of Micronaut Data JDBC, a database access toolkit
+-   Vert.x SQL Client - Testing with PostgreSQL, MySQL, MariaDB, SQL Server, etc.
+-   JHipster - Couchbase and Cassandra integration testing
+-   wescale - Integration testing against HTTP service mocks and various data stores
+-   Marquez - PostgreSQL integration testing
+-   Transferwise - Integration testing for different RDBMS, kafka and micro services
+-   XWiki - Testing XWiki under all supported configurations
+-   Apache SkyWalking - End-to-end testing of the Apache SkyWalking, 
+    and plugin tests of its subproject, Apache SkyWalking Python, and of 
+    its eco-system built by the community, like SkyAPM NodeJS Agent
+-   jOOQ - Integration testing all of jOOQ with a variety of RDBMS
+
+
+</pre>
+
+<pre zoom labels="TODO">
+<span xsmall>docker-compose: dev vs pro</span>
+https://stackoverflow.com/questions/60604539/how-to-use-docker-in-the-development-phase-of-a-devops-life-cycle/60780840#60780840
+
+Modify your Compose file for production🔗
+</pre>
+
+<pre zoom labels="TODO" bgorange>
+<span xsmall>CRIU.org: Container Live Migration</span>
+@[https://criu.org/Main_Page]
+
+CRIU: project to implement checkpoint/restore functionality for Linux.
+
+Checkpoint/Restore In Userspace, or CRIU (pronounced kree-oo, IPA: 
+/krɪʊ/, Russian: криу), is a Linux software. It can freeze a 
+running container (or an individual application) and checkpoint its 
+state to disk. The data saved can be used to restore the application 
+
+Used for example to bootstrap JVMs in millisecs (vs secs)
+@[/JAVA/java_map.html?query=a445afac-182d-11eb-b060-d788237e0853]
+and run it exactly as it was during the time of the freeze. Using 
+this functionality, application or container live migration, 
+snapshots, remote debugging, and many other things are now possible. 
+</pre>
+
+
+</div>
+</body>
+</html>
+<!--
+
+FROM node:12-alpine
+
+ADD . / payid-cli/
+
+RUN cd payid-cli/ &&\
+    npm set unsafe-perm true &&\
+    npm cache clean --force &&\
+    npm install &&\
+    npm run build && \
+    npm link
+
+FROM node:12-alpine
+
+RUN mkdir /opt/payid-cli
+
+WORKDIR /opt/payid-cli
+
+COPY --from=0 /payid-cli/dist  /opt/payid-cli/dist
+COPY --from=0 /payid-cli/node_modules  /opt/payid-cli/node_modules
+
+ENTRYPOINT ["node", "/opt/payid-cli/dist/cli.js"]
+-->

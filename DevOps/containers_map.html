@@ -766,99 +766,312 @@ Ex.: Update redis version without loosing data:
 Best Patterns:
  @[https://docs.docker.com/compose/production/]
 
-C⅋P from https://github.com/bcgov/moh-prime/blob/develop/docker-compose.yml
+BºExample 1º
+  C⅋P from https://github.com/bcgov/moh-prime/blob/develop/docker-compose.yml
 
-version: "3"
-
-services:
-######################################################### Database #
-  postgres:
-    restart: always
-    container_name: primedb
-  Bºimage: postgres:10.6º                 # ← use pre-built image
-    environment:
-      POSTGRES_PASSWORD: postgres
+  version: "3"
+  
+  services:
+  ######################################################### Database #
+    postgres:
+      restart: always
+      container_name: primedb
+    Bºimage: postgres:10.6º                 # ← use pre-built image
+      environment:
+        POSTGRES_PASSWORD: postgres
+        ...
+      ports:
+        - "5432:5432"
+      volumes:
+        - local_postgres_data:/var/lib/postgresql/data
+    Oºnetworks:º                            # ← Networks to connect to
+    Oº  - primenetº
+  ########################################################## MongoDB #
+    mongo:
+      restart: always
+      container_name: primemongodb
+      image: mongo:3
+      environment:
+        MONGO_INITDB_ROOT_USERNAME: root
+        ...
+      ports:
+        - 8081:8081
+      volumes:
+        - local_mongodb_data:/var/lib/mongodb/data
+    Oºnetworks:º
+    Oº  - primenetº
+  ############################################################## API #
+    dotnet-webapi:
+      container_name: primeapi
+      restart: always
+     ºbuild:º                               # ← use Dockerfile to build image
+        context: prime-dotnet-webapi/  RºWARNº: remember to rebuild image and recreate
+                                              app’s containers like:
+                                            ┌───────────────────────────────────────────────┐
+                                            │ $ docker-compose build dotnet-webapi          │
+                                            │                                               │
+                                            │ $ docker-compose up \ ← stop,destroy,recreate │
+                                            │   --no-deps           ← prevents from also    │
+                                            │   -d dotnet-webapi      recreating any service│
+                                            │                         primeapi depends on.  │
+                                            └───────────────────────────────────────────────┘
+      command: "..."
+      environment:
+        ...
+    Oºports:          º  ← Exposed ports outside private "primenet" network
+    Oº  - "5000:8080" º  ← Map internal port (right) to "external" port
+    Oº  - "5001:5001" º
+    Oºexpose:º          ←   Expose ports without publishing to host machine 
+    Oº   - "5001"º          (only accessible to linked services).
+                             Use internal port.
+    Oºnetworks:º
+    Oº  - primenetº
+      depends_on:
+        - postgres
+  ##################################################### Web Frontend #
+    nginx-angular:
+      build:
+           context: prime-angular-frontend/
       ...
-    ports:
-      - "5432:5432"
-    volumes:
-      - local_postgres_data:/var/lib/postgresql/data
-  Bºnetworks:º                            # ← Networks to connect to
-  Bº  - primenetº
-########################################################## MongoDB #
-  mongo:
-    restart: always
-    container_name: primemongodb
-    image: mongo:3
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
+  ################################################ Local SMTP Server #
+    mailhog:
+      container_name: mailhog
+      restart: always
+      image: mailhog/mailhog:latest
+      ports:
+        - 25:1025
+        - 1025:1025
+        - 8025:8025 # visit localhost:8025 to see the list of captured emails
       ...
-    ports:
-      - 8081:8081
-    volumes:
-      - local_mongodb_data:/var/lib/mongodb/data
-    networks:
-      - primenet
-############################################################## API #
-  dotnet-webapi:
-    container_name: primeapi
-    restart: always
-   ºbuild:º                               # ← use Dockerfile to build image
-      context: prime-dotnet-webapi/  RºWARNº: remember to rebuild image and recreate
-                                            app’s containers like:
-                                          ┌───────────────────────────────────────────────┐
-                                          │ $ docker-compose build dotnet-webapi          │
-                                          │                                               │
-                                          │ $ docker-compose up \ ← stop,destroy,recreate │
-                                          │   --no-deps           ← prevents from also    │
-                                          │   -d dotnet-webapi      recreating any service│
-                                          │                         primeapi depends on.  │
-                                          └───────────────────────────────────────────────┘
-    command: "..."
-    environment:
+  ########################################################### Backup #
+    backup:
       ...
-  Oºports:          º  ← Exposed ports outside private "primenet" network
-  Oº  - "5000:8080" º  ← Map internal port (right) to "external" port
-  Oº  - "5001:5001" º
-  Oºexpose:º          ←   Expose ports without publishing to host machine 
-  Oº   - "5001"º          (only accessible to linked services).
-                           Use internal port.
-    networks:
-      - primenet
-    depends_on:
-      - postgres
-##################################################### Web Frontend #
-  nginx-angular:
-    build:
-         context: prime-angular-frontend/
-    ...
-################################################ Local SMTP Server #
-  mailhog:
-    container_name: mailhog
-    restart: always
-    image: mailhog/mailhog:latest
+      restart: on-failure
+      volumes:
+      Oº- db_backup_data:/opt/backupº
+      ...
+  
+  volumes:
+    local_postgres_data:
+    local_mongodb_data:
+    db_backup_data:
+  
+Oºnetworks:º
+    primenet:
+      driver: bridge
+
+BºExample 2º
+  ---
+  version: '3.6'
+  
+  x-besu-bootnode-def:
+    ⅋besu-bootnode-def
+    restart: "on-failure"
+    image: hyperledger/besu:${BESU_VERSION:-latest}
+    environment:
+      - LOG4J_CONFIGURATION_FILE=/config/log-config.xml
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        /opt/besu/bin/besu public-key export --to=/tmp/bootnode_pubkey;
+        /opt/besu/bin/besu \
+        --config-file=/config/config.toml \
+        --p2p-host=$$(hostname -i) \
+        --genesis-file=/config/genesis.json \
+        --node-private-key-file=/opt/besu/keys/key \
+        --min-gas-price=0 \
+        --rpc-http-api=EEA,WEB3,ETH,NET,PERM,${BESU_CONS_API:-IBFT} \
+        --rpc-ws-api=EEA,WEB3,ETH,NET,PERM,${BESU_CONS_API:-IBFT} ;
+  
+  x-besu-def:
+    ⅋besu-def
+    restart: "on-failure"
+    image: hyperledger/besu:${BESU_VERSION:-latest}
+    environment:
+      - LOG4J_CONFIGURATION_FILE=/config/log-config.xml
+    entrypoint:
+      - /bin/bash
+      - -c
+      - |
+        while [ ! -f "/opt/besu/public-keys/bootnode_pubkey" ]; do sleep 5; done ;
+        /opt/besu/bin/besu \
+        --config-file=/config/config.toml \
+        --p2p-host=$$(hostname -i) \
+        --genesis-file=/config/genesis.json \
+        --node-private-key-file=/opt/besu/keys/key \
+        --min-gas-price=0 \
+        --rpc-http-api=EEA,WEB3,ETH,NET,PERM,${BESU_CONS_API:-IBFT} \
+        --rpc-ws-api=EEA,WEB3,ETH,NET,PERM,${BESU_CONS_API:-IBFT} ;
+  
+  
+  
+  
+  
+  
+  
+  x-ethsignerProxy-def:
+    ⅋ethsignerProxy-def
+    image: consensys/quorum-ethsigner:${QUORUM_ETHSIGNER_VERSION:-latest}
+    command: [
+      "--chain-id=2018",
+      "--http-listen-host=0.0.0.0",
+      "--downstream-http-port=8545",
+      "--downstream-http-host=rpcnode",
+      "file-based-signer",
+      "-k",
+      "/opt/ethsigner/keyfile",
+      "-p",
+      "/opt/ethsigner/passwordfile"
+    ]
     ports:
-      - 25:1025
-      - 1025:1025
-      - 8025:8025 # visit localhost:8025 to see the list of captured emails
-    ...
-########################################################### Backup #
-  backup:
-    ...
-    restart: on-failure
-    volumes:
-    Oº- db_backup_data:/opt/backupº
-    ...
+      - 8545
+  
+  services:
+  
+    validator1:
+      ˂˂ : *besu-bootnode-def
+      volumes:
+        - public-keys:/tmp/
+        - ./config/besu/config.toml:/config/config.toml
+        - ./config/besu/permissions_config.toml:/config/permissions_config.toml
+        - ./config/besu/log-config.xml:/config/log-config.xml
+        - ./logs/besu:/var/log/
+        - ./config/besu/${BESU_CONS_ALGO:-ibft2}Genesis.json:/config/genesis.json
+        - ./config/besu/networkFiles/validator1/keys:/opt/besu/keys
+      networks:
+        quorum-dev-quickstart:
+          ipv4_address: 172.16.239.11
+  
+    validator2:
+      ˂˂ : *besu-def
+      volumes:
+        - public-keys:/opt/besu/public-keys/
+        - ./config/besu/config.toml:/config/config.toml
+        - ./config/besu/permissions_config.toml:/config/permissions_config.toml
+        - ./config/besu/log-config.xml:/config/log-config.xml
+        - ./logs/besu:/var/log/
+        - ./config/besu/${BESU_CONS_ALGO:-ibft2}Genesis.json:/config/genesis.json
+        - ./config/besu/networkFiles/validator2/keys:/opt/besu/keys
+      depends_on:
+        - validator1
+      networks:
+        quorum-dev-quickstart:
+          ipv4_address: 172.16.239.12
+  
+    validator3:
+      ˂˂ : *besu-def
+      volumes:
+        - public-keys:/opt/besu/public-keys/
+        - ./config/besu/config.toml:/config/config.toml
+        - ./config/besu/permissions_config.toml:/config/permissions_config.toml
+        - ./config/besu/log-config.xml:/config/log-config.xml
+        - ./logs/besu:/var/log/
+        - ./config/besu/${BESU_CONS_ALGO:-ibft2}Genesis.json:/config/genesis.json
+        - ./config/besu/networkFiles/validator3/keys:/opt/besu/keys
+      depends_on:
+        - validator1
+      networks:
+        quorum-dev-quickstart:
+          ipv4_address: 172.16.239.13
+  
+    validator4:
+      ˂˂ : *besu-def
+      volumes:
+        - public-keys:/opt/besu/public-keys/
+        - ./config/besu/config.toml:/config/config.toml
+        - ./config/besu/permissions_config.toml:/config/permissions_config.toml
+        - ./config/besu/log-config.xml:/config/log-config.xml
+        - ./logs/besu:/var/log/
+        - ./config/besu/${BESU_CONS_ALGO:-ibft2}Genesis.json:/config/genesis.json
+        - ./config/besu/networkFiles/validator4/keys:/opt/besu/keys
+      depends_on:
+        - validator1
+      networks:
+        quorum-dev-quickstart:
+          ipv4_address: 172.16.239.14
+  
+    rpcnode:
+      ˂˂ : *besu-def
+      volumes:
+        - public-keys:/opt/besu/public-keys/
+        - ./config/besu/config.toml:/config/config.toml
+        - ./config/besu/permissions_config.toml:/config/permissions_config.toml
+        - ./config/besu/log-config.xml:/config/log-config.xml
+        - ./logs/besu:/var/log/
+        - ./config/besu/${BESU_CONS_ALGO:-ibft2}Genesis.json:/config/genesis.json
+        - ./config/besu/networkFiles/rpcnode/keys:/opt/besu/keys
+      depends_on:
+        - validator1
+      ports:
+        - 8545:8545/tcp
+        - 8546:8546/tcp
+      networks:
+        quorum-dev-quickstart:
+          ipv4_address: 172.16.239.15
+  
+    ethsignerProxy:
+      ˂˂ : *ethsignerProxy-def
+      volumes:
+        - ./config/ethsigner/password:/opt/ethsigner/passwordfile
+        - ./config/ethsigner/key:/opt/ethsigner/keyfile
+      depends_on:
+        - validator1
+        - rpcnode
+      ports:
+        - 18545:8545/tcp
+      networks:
+        quorum-dev-quickstart:
+          ipv4_address: 172.16.239.40
 
-volumes:
-  local_postgres_data:
-  local_mongodb_data:
-  db_backup_data:
-
-networks:
-  primenet:
-    driver: bridge
-
+    explorer:
+      build: block-explorer-light/.
+      image: quorum-dev-quickstart/block-explorer-light:develop
+      depends_on:
+        - rpcnode
+      ports:
+        - 25000:80/tcp
+      networks:
+        quorum-dev-quickstart:
+          ipv4_address: 172.16.239.31
+  
+    prometheus:
+      image: "prom/prometheus"
+      volumes:
+        - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+        - prometheus:/prometheus
+      command:
+        - --config.file=/etc/prometheus/prometheus.yml
+      ports:
+        - 9090:9090/tcp
+      networks:
+        quorum-dev-quickstart:
+          ipv4_address: 172.16.239.32
+  
+    grafana:
+      image: "grafana/grafana"
+      environment:
+        - GF_AUTH_ANONYMOUS_ENABLED=true
+      volumes:
+        - ./config/grafana/provisioning/:/etc/grafana/provisioning/
+        - grafana:/var/lib/grafana
+      ports:
+        - 3000:3000/tcp
+      networks:
+        quorum-dev-quickstart:
+          ipv4_address: 172.16.239.33
+  
+  volumes:
+    public-keys:
+    prometheus:
+    grafana:
+  
+Oºnetworks:                           º
+Oº  quorum-dev-quickstart:            º
+Oº    driver: bridge                  º
+Oº    ipam:                           º
+Oº      config:                       º
+Oº        - subnet: 172.16.239.0/24   º
 <hr/>
 <span title>SystemD Integration</span>
 REF: https://gist.github.com/Luzifer/7c54c8b0b61da450d10258f0abd3c917
@@ -1522,12 +1735,48 @@ Notes:
 
 <div groupv>
 <span title>TODO Classify</span>
-<pre zoom labels="docker,troubleshooting">
+<pre zoom labels="docker,podman,troubleshooting">
 <span xsmall>Troubleshooting</span>
-- /var/lib/docker/devicemapper/devicemapper/data consumes too much space
-$ sudo du -sch /var/lib/docker/devicemapper/devicemapper/data
-14G     /var/lib/docker/devicemapper/devicemapper/data
+Bº/var/lib/docker/devicemapper/devicemapper/data consumes too much spaceº
+$º$ sudo du -sch /var/lib/docker/devicemapper/devicemapper/dataº
+$º14G     /var/lib/docker/devicemapper/devicemapper/data       º
 <a href="https://meta.discourse.org/t/why-is-docker-devicemapper-taking-so-much-hard-drive-space/34378">[REF@StackOverflow]</a>
+
+BºDNS works on host, fails on continers:º
+  Try to launch with --network host flag. Ex.:
+  ... 
+  DOCKER_OPTS="${DOCKER_OPTS} º--network hostº" 
+  SCRIPT="wget https://repo.maven.apache.org/maven2" # ← DNS can fail with bridge
+  echo "${MVN_SCRIPT}" | docker run ${DOCKER_OPTS} ${SCRIPT}
+
+BºInspecting Linux namespaces of running containerº
+  Use nsenter (Bºutil-linuxº package) to "enter" into the
+  container (network, filesystem, IPC, ...) namespace.
+
+  $ cat enterNetworkNamespace.sh
+  #!/bin/bash
+  
+  # REF: man nsenter
+  # Run shell with network namespace of container.
+  # Allows to use ping, ss/netstat, wget, trace,.. in
+  # in contect of the container.
+  # Useful to check network setup is the appropiate one.
+  CONT_PID=$( sudo docker inspect -f '{{.State.Pid}}' $1 )
+  shift 1
+  sudoºnsenterº-t ${CONT_PID}º-nº
+                              ^^
+                         Use network namespace of container
+
+  Ex Ussage: 
+  $ ./enterNetworkNamespace.sh myWebContainer01
+  $ netstat -ntlp  
+  Active Internet connections (only servers)
+  Proto Recv-Q Send-Q Local Address           Foreign Address         State      
+  tcp        0      0 0.0.0.0:80              0.0.0.0:*               LISTEN     
+   
+  * netstat installed on host (vs container). 
+</pre>
+
 </pre>
 
 <pre zoom labels="docker,TODO">
@@ -2186,6 +2435,7 @@ and run it exactly as it was during the time of the freeze. Using
 this functionality, application or container live migration, 
 snapshots, remote debugging, and many other things are now possible. 
 </pre>
+
 
 
 </div>

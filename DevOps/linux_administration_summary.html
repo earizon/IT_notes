@@ -2241,19 +2241,47 @@ Fixing errors:
 
 
 <span xsmall>CoC: Intellisense support</span>
-Full Language Server Support (LSP).
+@[https://github.com/neoclide/coc.nvim]
+- Add "Visual Studio Plugins" to vim thanks to 
+  Full Language Server Protocol (LSP) support.
+
+BºCoC Tunningº
+  - Open definition/references/... in new tab:
+    → :CocConfig
+      → Fix entry:
+        "coc.preferences.jumpCommand": "tab drop"
 
 
-https://github.com/neoclide/coc.nvim
+BºCoC Troubleshootingº
+  - Try ':CocOpenLog' to find anything there that might indicate the issue
+  - ':CocConfig' to review/update coc-settings.json 
+  
+  - Fix CoC JAVA:
+    → :CocConfig
+      → Fix entry:
+        "java.home": "/usr/lib/jvm/java-14-openjdk"
+        → :CocCommand java.clean.workspace 
+          → restart coc
+  
+    - TODO: Package Java 11 error: 
+      "...pakcage accessible from more than one module: ˂unnamed˃, java.base ...
+      https://stackoverflow.com/questions/55902512/package-accessible-from-more-than-one-module-unnamed
+      - "Patchy" fix: change source to: 8 
+        For example in maven:
+        maven-compiler-plugin → configuration → source
+  
+      - RºTODO:º Proposed fix (doesn't work): 
+        Right click Eclipse project → Properties → Java Build Path
+        In Libraries tab, remove all the external jar files under
+        Modulepath and add them under Classpath
+        (you can just select all the jars and drag them under Classpath)
+        Click Apply and Close
+        Note: JRE System Library will remain under Modulepath.
 <hr/>
-<span xsmall TOD>abbreviations and mappings</span>
-
-
-
+<span xsmall TODO>abbreviations and mappings</span>
 <hr/>
 <span xsmall TODO>History of vim</span>
 @[https://begriffs.com/posts/2019-07-19-history-use-vim.html]
-
 <hr/>
 <span xsmall>Plugin Manager</span>
 @[https://github.com/junegunn/vim-plug]
@@ -3036,84 +3064,118 @@ Information on Packages
 <div groupv>
 <pre zoom labels="learn_x_in_y_min,storage">
 <span xsmall>File System Management Basics</span>
-┌──────────────────┬────────────────────────────────────┐ ┌────────────────┬────────────────────────────────────┐ ┌─────────────────┬─────────────────────────────────────┐
-│ºMOVING AROUND FSº│                                    │ │ºLISTING  FILESº│                                    │ │ºHARD/SOFT LINKSº│                                     │
-├──────────────────┘                                    │ ├────────────────┘                                    │ ├─────────────────┘                                     │
-│ $ pwd            ← "P"rint "W"orking "D"irectory      │ │$ ls" -"optionalFlags"   ← list files in current     │ │- In UNIX anOºinodeº is the low-level structure        │
-│ $ cd /my/new/dir ← "C"hange "d"irectory               │ │      ^^^^^^^^^^^^^^^^     directory                 │ │  that stores the physical location in disk of         │
-│ $ cd             ← move to $HOME directory            │ │ -l: ("long"), show permissions, size,               │ │  a given file. This "inode" is not visible to         │
-│ $ cd ~           ← '~' is alias for $HOME             │ │     modification date, ownership                    │ │  the user.                                            │
-│ $ pushd.         ← Remember current dir.              │ │ -a: ("all" ), shows also hidden (.*) files          │ │- The user visible entities are the file system        │
-│                    (put on FILO stack)                │ │ -d: Show only directory entry(vs directory contents)│ │  paths, that point to the real inodes:                │
-│ $ cd ..   # Change to parent directory                │ │ -F: ("format") append helper symbol                 │ │ /my/file/path →points→Oºinodeº →points→  physical     │
-│ $ popd           ← change to last dir. in stack       │ │ -S: sort by size in descending order                │ │                  to               to   block_on_disk  │
-└───────────────────────────────────────────────────────┘ │ -R: ("recursive") list recursively children dirs    │ │ ^^^^^^^^^^^^^           ^^^^^^         ^^^^^^^^^^^^^  │
-                                                          └─────────────────────────────────────────────────────┘ │ visible in          invisible to      managed by HD,  │
-┌──────────────────────┬────────────────────────────┐     ┌──────────────┬──────────────────────────────────────┐ │ user shells,        users, managed    internal circuit│
-│ºCREATE NEW DIRECTORYº│                            │     │ºMOVING FILESº│                                      │ │ GUI explorers,..    by the OS kernel  networks NAS,...│
-├──────────────────────┘                            │     ├──────────────┘                                      │ │                                                       │
-│$ mkdir -p ~/projects/project01 # ←  Make directory│     │$ mv myFile1 /my/path02/  # ← move myFile1 to        │ │                                                       │
-│         ↑                                         │     │                       ^      /my/path02 directory   │ │$ ln -s /my/file/path  /my/symbolic/link               │
-│     withouth -p will fail if                      │     │                    ┌──┘                             │ │  ^^ ^^                                                │
-│     ~/projects directory does                     │     │RºWARNº: The final '/' indicates taht path02         │ │ ºcreate symbolic (-s) linkº                           │
-│     NOT YET exits. With -p it                     │     │         is a directory.                             │ │- A symbolic links is a sortcut                        │
-│     will be created automatically                 │     │         Otherwise if "path02" does NOT exits,       │ │  pointing to a visible filepath                       │
-└───────────────────────────────────────────────────┘     │         myFile1 will move to the '/my/' directory   │ │                                                       │
-                                                          │         and renamed as wrongl 'path02' file.        │ │                                                       │
-                                                          └─────────────────────────────────────────────────────┘ │RºWARN:ºIf the original /my/file/path is               │
-┌────────────────┬───────────────────────────────┐        ┌──────────────┬──────────────────────────────────────┐ │        deleted or moved the link is broken.           │
-│ºCOPYING FILESºº│                               │        │ºRENAME FILESº│                                      │ │                                                       │
-├────────────────┘                               │        ├──────────────┘                                      │ │$ ln  my/file/path  /my/hard/link                      │
-│$ cp    fileToCopy      /destination/directory/ │        │$ mv myFile1 finalName # ← move myFile1 to new name  │ │  ^^                                                   │
-│$ cp -R directoryToCopy /destination/directory/ │        │                       ^   (rename) finalName        │ │- With no -s(ymbolyc) flag the link will point         │
-│     ^^                                         │        └─────────────────────────────────────────────────────┘ │  to the realOºinodeº. Deleting the original file      │
-│     -R: Recursive copy of dir.content          │                                                                │  will not affect the new path.                        │
-└────────────────────────────────────────────────┘        ┌───────────────────────────────────────────────┬─────┐ │- In can also be created pointing directly to          │
-┌──────────────────────────┬─────────────────────┐        │ºREMOVE FILES AND CONTENT BY OVERWRITING FIRSTº│     │ │  the Oºinodeº.                                        │
-│ºREMOVE FILES/DIRECTORIESº│                     │        ├───────────────────────────────────────────────┘     │ │                                                       │
-├──────────────────────────┘                     │        │$ shred -n 2 -z -v /tmp/myImportantSecret            │ │  /my/symbolic/Link                                    │
-│$ rm -r -f file                                 │        │           ↑  ↑  ↑                                   │ │   ↓                                                   │
-│     ^^ ^^                                      │        │           │  │  └── show progress                   │ │  /my/file/path ──────┐                                │
-│     |  force deletetion, do not confirm        │        │           │  └───── Finally write over with zeroes  │ │                      ↓        physical                │
-│     |  useful for automated scripts            │        │           └──────── Overwrite twice with random data│ │                   Oºinodeº──→ block                   │
-│     |                                          │        │                                                     │ │                      ↑ ↑      on disk                 │
-│     Recursive deletion.                        │        │@[https://linux.die.net/man/1/shred]                 │ │  /my/hard/link ──────┘ |                              │
-│   RºWARNº: Be very careful,                    │        │prevent data from being recovered by                 │ │                        |                              │
-│            specially as root user              │        │hackers using software (and most                     │ │                  - the inode will increase its        │
-└────────────────────────────────────────────────┘        │probably hardware)                                   │ │                    number of references after a       │
-                                                          └─────────────────────────────────────────────────────┘ │                    hard-link.                         │
-                                                                                                                  │                  - the inode (file) will exists       │
-┌──────────────────────┬──────────────────────────────┐    ┌────────────────────────────┬────────────────────┐    │                    until all hardlinks(references)    │
-│ºSEARCHING FILES/DATAº│                              │    │ºCHECK DISK FREE/USED SPACEº│                    │    │                    are deleted.                       │
-├──────────────────────┘                              │    ├────────────────────────────┘                    │    └───────────────────────────────────────────────────────┘
-│@[https://linux.die.net/man/1/find]                  │    │@[https://linux.die.net/man/0/df]                │
-│                                                     │    │$ df -k -h  -x devtmpfs -x tmpfs # ºDºiskº Fºree │  ┌─────────────────┬───────────────────────────────┐
-│$ find            \                                  │    │      ↑  ↑   ↑           ↑                       │  │ºGRAPHICAL TOOLSº│                               │
-│   /var/lib       \   ←     find inside /var/lib     │    │      │  │   Skip "false" filesystems(dev,...)   │  ├─────────────────┘                               │
-│   -type f        \   ←     objects of type 'file'   │    │      │  └── show in human readable units        │  │- Easier to use, but not scriptable.             │
-│                            (ignore dirs, links, ...)│    │      └───── scale size by 1K before printing    │  │- Discouraged for system administration.         │
-│   -iname "*html" \   ← AND whose name matches *html │    │@[https://linux.die.net/man/1/du]                │  │                                                 │
-│                             name:do NOT ignore case │    │$ du -sch dir1 file2 # ºDºisk  ºUºssage          │  │$ mc       ← Execute the Midnight Commander      │
-│                            iname:do     ignore case │    │      ↑↑↑                                        │  │$ rancher  ← Execute rancher.                    │
-│   -mmin  -30     \   ← AND whose modification time  │    │      ││└── show in human readable units         │  │             Light and Nice Console File Manager │
-│                            is '30 or less'(-30)     │    │      │└─── produce a grand total                │  │             with VI Key Bindings                │
-│                            minutes (mmin)           │    │      └──── display only total for each arg      │  │$ nnn      ← one of the fastest and most         │
-│   -msize +20k        ← AND whose size (msize) is    │    └─────────────────────────────────────────────────┘  │             lightweight file managers:          │
-│                            20k(ilobytes) or more    │   ┌──────────────────┬──────────────────────────┐       │             ~50KB binary using ~3.5MB resident  │
-│                                                     │   │ºFILE PERMISSIONSº│                          │       │             memory at runtime:                  │
-│$ findº           \   ←     find                     │   ├──────────────────┘                          │       │        @[https://github.com/jarun/nnn#features] │
-│   /var/lib       \   ←     inside /var/lib          │   │- Change who can read,write or execute a file│       └─────────────────────────────────────────────────┘
-│   -type f        \   ←     object of type 'file'    │   │  $ chmod go-rwx mySecretDir                 │
-│   -iname "*html" \   ← AND whose name matches '*html│   │            ↑↑                               │
-│ Oº-execº Bºgrep "myStyleSheet.css"ºBº{} \;º         │   │            │└──  (r)ead, (w)rite e(x)ecute  │
-│    ^^^^    ^^^^^^^^^^^^^^^^^^^^^^    ^^^^^          │   │            │      4       2        1        │
-│+ºexecuteºBºthis commandº           Bºfor each º     │   │            │                                │
-│                                   Bºfound fileº     │   │            └───   - remove                  │
-└─────────────────────────────────────────────────────┘   │                   + add                     │
-                                                          │                                             │
-                                                          │- Change someFile owner and group            │
-                                                          │  $ chown newOwner:newGroup someFile         │
-                                                          └─────────────────────────────────────────────┘
+
+BºMOVING AROUND FSº                                       | BºMOVING FILESº
+$º$ pwd            º ← "P"rint "W"orking "D"irectory      | $º$ mv myFile1 /my/path02/ º  # ← move myFile1 to      
+                                                          |                         ^      /my/path02 directory 
+$º$ cd /my/new/dir º ← "C"hange "d"irectory               |                      ┌──┘                           
+                                                          |  RºWARNº: The final '/' indicates taht path02       
+$º$ cd             º ← move to $HOME directory            |           is a directory.                           
+                                                          |           Otherwise if "path02" does NOT exits,     
+$º$ cd ~           º ← '~' is alias for $HOME             |           myFile1 will move to the '/my/' directory 
+                                                          |           and renamed as wrongl 'path02' file.      
+$º$ pushd.         º ← Remember current dir.              | 
+                       (put on FILO stack)                | BºCOPYING FILES - Cool wayº
+                                                          | $º$ tar cf - dirToCopy | \  º ←    Compress to STDOUT
+$º$ cd ..          º ← Change to parent directory         | $º  tar -C newBaseDir -xf - º ← Decrompress from STDIN
+                                                          | 
+$º$ popd           º ← change to last dir. in stack       | BºREMOVE FILES/DIRECTORIESº
+                                                          | $º$ rm -r -f dirOrFile º ← Alternative 1: Unsafe way:
+BºDIRECTORIESº                                            |                            -r recursive deletion of directories
+$º$ mkdir -p ~/projects/project01 º←  Make directory      |                            -f force deletion (do not confirm)
+          ↑                                               |                          RºNever ever "-r -f" as rootº
+      Create any intermediate dir. if it doesn't exists   | 
+                                                          | $º$ find ./dir -mmtime +10 \ º ← Alternative 2: Find files 
+BºCOPYING FILESº                                          | $º  | xargs rm -f            º   and send to STDOUT.
+$º$ cp    fileToCopy      /destination/directory/ º       |                                  Exec. rm -f for each line
+$º$ cp -R directoryToCopy /destination/directory/ º       |                                  in STDIN
+       ^^                                                 |
+       -R: Recursive copy of dir.content                  | BºREMOVE FILES AND CONTENT BY OVERWRITING FIRSTº        
+                                                          | 
+                                                          |  $ shred -n 2 -z -v /tmp/myImportantSecret             
+BºRENAME FILESº                                           |             ↑  ↑  ↑                                    
+ $ mv myFile1 finalName # ← move myFile1 to new name      |             │  │  └── show progress                    
+                        ^   (rename) finalName            |             │  └───── Finally write over with zeroes   
+                                                          |             └──────── Overwrite twice with random data 
+                                                          |                                                        
+BºLISTING  FILESº                                         |  @[https://linux.die.net/man/1/shred]                  
+$º$ ls" -"optionalFlags"   º ← list files in current      |  prevent data from being recovered by                  
+         ^^^^^^^^^^^^^^^       directory                  |  hackers using software (and most                      
+  -l: ("long"), show permissions, size,                   |  probably hardware)                                    
+      modification date, ownership                     
+  -a: ("all" ), shows also hidden (.*) files           
+  -d: Show only directory entry(vs directory contents) 
+  -F: ("format") append helper symbol                  
+  -S: sort by size in descending order                 
+  -R: ("recursive") list recursively children dirs     
+ 
+BºCHECK DISK FREE/USED SPACEº                             | BºFILE PERMISSIONSº
+  @[https://linux.die.net/man/0/df]                       |  - Change who can read,write or execute a file 
+$º$ df -k -h  -x devtmpfs -x tmpfs º ← df: (D)isk (F)ree  |  $º$ chmod go-rwx mySecretDir                 º
+        ↑  ↑   ↑           ↑                              |              ↑↑                               
+        │  │   Skip "false" filesystems(dev,...)          |              │└──  (r)ead, (w)rite e(x)ecute  
+        │  └── show in human readable units               |              │      4       2        1        
+        └───── scale size by 1K before printing           |              │                                
+  @[https://linux.die.net/man/1/du]                       |              └───   - remove                  
+  $ du -sch dir1 file2 # ºDºisk  ºUºssage                 |                     + add                     
+        ↑↑↑                                               |                                               
+        ││└── show in human readable units                |  - Change someFile owner and group            
+        │└─── produce a grand total                       |  $º$ chown newOwner:newGroup someFile         º
+        └──── display only total for each arg      
+
+BºSEARCHING FILES/DATAº                                            | BºGRAPHICAL TOOLSº
+ @[https://linux.die.net/man/1/find]                               | - Easier to use, but not scriptable.             
+$º$ find /var/lib                º                                 | - Discouraged for system administration.         
+$º   -type f        \            º ←     f: only files             |                                                  
+$º                               º       d: only directories       | $ mc       ← Execute the Midnight Commander      
+$º                               º       l: only sym.links         | $ rancher  ← Execute rancher.                    
+$º   -iname "*html" \            º ←ºANDºwhose name matches *html  |              Light and Nice Console File Manager  
+$º                               º        name:do NOT ignore case  |              with VI Key Bindings                 
+$º                               º       iname:do     ignore case  | $ nnn      ← one of the fastest and most          
+$º   -mmin  -30     \            º ←ºANDºwhose modification time   |              lightweight file managers:           
+$º                               º       is '30 or less'(-30)      |              ~50KB binary using ~3.5MB resident   
+$º                               º       minutes (mmin)            |              memory at runtime:                   
+$º   -msize +20k    \            º ←ºANDºwhose size (msize) is     |         @[https://github.com/jarun/nnn#features]  
+$º                               º       20k(ilobytes) or more       
+$º   -not \(  \                  º ← Skip 
+$º     -path "./node_modules/*" \º ← node_modules dir.
+$º     -o \                      º ← OR
+$º     -path "./build/*"         º ← build  dir.
+$º    \)                         º
+$º   -exec  Bºgrep "Variable01" \º ← execute Bºcommand...º 
+$º     {} \;                     º   for each found file     
+
+BºHARD/SOFT LINKSº
+ - In UNIX anOºinodeº is the low-level structure that stores the physical location in disk of         
+   a given file. This "inode" is not visible to the user.                                            
+ - The user visible entities are the file system paths, that point to the real inodes:
+
+  /my/file/path → points to → Oºinodeº → points to → physical block_on_disk  
+  ^^^^^^^^^^^^^                 ^^^^^^               ^^^^^^^^^^^^^^^^^^^^^^
+  visible in                  invisible to           managed by HD,  
+  user shells,                users, managed         internal circuit
+  GUI explorers,..            by the OS kernel       networks NAS,...
+                                                        
+
+$º$ ln -s /my/file/path  /my/symbolic/link º  ← create symbolic (-s) link
+                                                (shortcut to filepath).
+                                                If the original /my/file/path is
+                                                deleted or moved the link is broken.           
+$º$ ln   /my/file/path  /my/hard/link      º  ← Hard link  (no -s)
+                                                /my/hard/link will point to the 
+                                                same Oºinodeº of /my/file/path
+
+   /my/symbolic/Link                                    
+    ↓                                                   
+   /my/file/path ──────┐                                
+                       ↓        physical                
+                    Oºinodeº──→ block                   
+                       ↑ ↑      on disk                 
+   /my/hard/link ──────┘ |                              
+                         |                              
+                   - the inode will increase its number of references after a hard-link.                         
+                   - the inode and disk content will exists until all hardlinks(references)    
+                     are deleted.         
 </pre>
 <pre zoom labels="monitoring">
   <span xsmall>Monitor files:</span>
@@ -6903,4 +6965,7 @@ https://www.youtube.com/watch?v=ICU9OEsNiRA
 ____________________
 How to check if CentOS / RHEL needs a full reboot
 - https://www.cyberciti.biz/faq/how-to-check-if-centos-rhel-needs-a-full-reboot/
+_______________
+https://www.2daygeek.com/linux-remove-delete-physical-volume-pv-from-volume-group-vg-in-lvm/
+____________
 

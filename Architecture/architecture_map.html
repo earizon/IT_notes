@@ -2159,8 +2159,7 @@ These processes and tools are further described in this documentation.
 
 <div groupv>
 <span title>AAA</span>
-
-<pre zoom labels="">
+<pre zoom labels="aaa,oauth,">
 <span xsmall>keycloak</span>
 @[https://www.keycloak.org/]
 """Add authentication to applications and secure services with minimum fuss"""
@@ -2183,8 +2182,232 @@ These processes and tools are further described in this documentation.
    Customize through code
    Password Policies
    Customize password policies
+
+
+- AA using the Keycloak REST API
+@[https://developers.redhat.com/blog/2020/11/24/authentication-and-authorization-using-the-keycloak-rest-api/]
+@[https://github.com/edwin/java-keycloak-integration]
+Ex Use Case:
+- centralized ID platform for Indonesia’s Ministry of Education
+  single sign-on:
+  Identity Roles:
+  - Students (IDs)
+  - Teachers (IDs)
+ - each user have different access and privileges at each school.
+
+BºSETUP:º {
+  → Creating Keycloak realm:
+    → Add 'education' realm for ministry.
+      (click enable and create)
+      → go to 'Roles' page:
+        → choose tab "Realm Roles".
+          → Create two roles:
+            - "teacher"
+            - "student"
+            → (Clients page) click Create to add a client:
+              - create "jakarta-school" client and save
+              → Go to jakarta-school details page → "Settings tab":
+                - Enter next client config:
+                  Client ID: jakarta-school
+                  Enabled: ON
+                  Consent Required: OFF
+                BºClient Protocol: openid-connectº
+                  Access Type: confidential
+                BºStandard Flow Enabled: ONº
+                  Impact Flow Enabled: OFF
+                BºDirect Access Grants Enabled: ONº
+                  Browser Flow: browser            (← Scroll to bottom)
+                  Direct Grant Flow: direct grant
+                → Go to tab "Roles" tab → Add next Roles:
+                  - "create-student-grade"
+                  - "view-student-grade"
+                  - "view-student-profile"
+                  → go to tab "Client Scopes" → Default Client Scopes and   
+                    add “roles” and “profile” to Assigned Default Client
+                    Scopes.
+                    → go to "jakarta-school details" page → Mappers →
+                      Create Protocol Mappers: 
+                      - Set mappers to display the client roles on the
+                        Userinfo API:
+                        Name               : roles
+                        Mapper Type        : User Realm Role
+                        Multivalued        : ON
+                        Token Claim Name   : roles
+                        Claim JSON Type    : String
+                        Add to ID token    : OFF
+                        Add to access token: OFF
+                        Add to userinfo    : ON
+                      → go to "Users page" → "Add user".
+                        - create the new users and Save. Ex:
+                          Username      : edwin
+                        BºEmail         : edwin@redhat.comº
+                          First Name    : Edwin
+                          Last Name     : M
+                          User Enabled  : ON
+                        BºEmail Verified: OFFº
+                        → Go to tab "Role Mappings" → Client Roles 
+                          (for each user in jakarta-school)
+                          Check that roles perm. are enabled:
+                          "create-student-grade"
+                          "view-student-grade"
+                          "view-student-profile".
+}
+
+BºSpring Boot Java App using Keycloak for AAº
+  - pom.xml:
+    ˂?xml version="1.0" encoding="UTF-8"?˃
+    ...  
+        ˂dependencies˃
+        ...  
+            ˂dependency˃
+                ˂groupId˃com.auth0˂/groupId˃
+                ˂artifactId˃jwks-rsa˂/artifactId˃
+                ˂version˃0.12.0˂/version˃
+            ˂/dependency˃
+    
+            ˂dependency˃
+                ˂groupId˃com.auth0˂/groupId˃
+                ˂artifactId˃java-jwt˂/artifactId˃
+                ˂version˃3.8.3˂/version˃
+            ˂/dependency˃
+        ˂/dependencies˃
+    ˂/project˃
+
+  - Config. properties file:
+    server.error.whitelabel.enabled=false
+    spring.mvc.favicon.enabled=false
+    server.port = 8082
+    
+    keycloak.client-id=jakarta-school
+    keycloak.client-secret=197bc3b4-64b0-452f-9bdb-fcaea0988e90
+    keycloak.scope=openid, profile
+    keycloak.authorization-grant-type=password
+    
+    keycloak.authorization-uri=http://localhost:8080/auth/realms/education/protocol/openid-connect/auth
+    keycloak.user-info-uri=http://localhost:8080/auth/realms/education/protocol/openid-connect/userinfo
+    keycloak.token-uri=http://localhost:8080/auth/realms/education/protocol/openid-connect/token
+    keycloak.logout=http://localhost:8080/auth/realms/education/protocol/openid-connect/logout
+    keycloak.jwk-set-uri=http://localhost:8080/auth/realms/education/protocol/openid-connect/certs
+    keycloak.certs-id=vdaec4Br3ZnRFtZN-pimK9v1eGd3gL2MHu8rQ6M5SiE
+    
+    logging.level.root=INFO
+    
+  - Config: Get the Keycloak public certificate ID from:
+    Keycloak → Education → Keys → Active (with RSA-generated key selected).
+
+  - Integration code: (several Keycloak APIs are involved).
+
+    - logout API:
+      @Value("${keycloak.logout}")
+      private String keycloakLogout;
+
+      public void logout(String refreshToken) throws Exception {
+        MultiValueMap˂String, String˃ map = new LinkedMultiValueMap˂˃();
+        map.add("client_id",clientId);
+        map.add("client_secret",clientSecret);
+        map.add("refresh_token",refreshToken); // ← RºWARNº: Use refresh 
+                                               //   (vs access) token
+
+        HttpEntity˂MultiValueMap˂String, String˃˃ request = new HttpEntity˂˃(map, null);
+        restTemplate.postForObject(keycloakLogout, request, String.class);
+      }
+
+    - Check whether a bearer token is valid and active or not
+      @Value("${keycloak.user-info-uri}")
+      private String keycloakUserInfo;
+      private String getUserInfo(String token) {
+        MultiValueMap˂String, String˃ headers = new LinkedMultiValueMap˂˃();
+        headers.add("Authorization", token);
+        HttpEntity˂MultiValueMap˂String, String˃˃ request =
+          new HttpEntity˂˃(null, headers);
+        return restTemplate.postForObject(keycloakUserInfo, request, String.class);
+      }
+
+    - Authorization (== "role valid for a given API"?) alternatives:
+      - Alt 1. determine what role a bearer token brings by verifying it 
+               against Keycloak’s userinfo API
+             RºDrawback:º multiple roundtrip request needed
+        following response from Keycloak is expected:
+        {
+            "sub": "ef2cbe43-9748-40e5-aed9-fe981e3082d5",
+          Oº"roles": [ "teacher" ],º
+            "name": "Edwin M",
+            "preferred_username": "edwin",
+            "given_name": "Edwin",
+            "family_name": "M"
+        }
+
+      - Alt 2: decode JWT bearer token and validate it.
+        - code needs firt the public key used for signing the token:
+          (It requires a round trip but can be cached)
+          - Keycloak provides a JWKS endpoint. Ex:
+            $ curl -L -X GET 'http://.../auth/realms/education/protocol/openid-connect/certs'
+            { "keys": [
+                {
+                  "kid": "vdaec4Br3ZnRFtZN-pimK9v1eGd3gL2MHu8rQ6M5SiE", ← key id
+                  "kty": "RSA",
+                  "alg": "RS256",
+                  "use": "sig",
+                  "n": "4OPCc_LDhU6ADQj7cEgRei4....",← Oºpublic key usedº
+                  "e": "AQAB"                          Oºfor decodingº
+                }
+              ] }
+        - A sample decoded JWT token will look like:
+          {
+            "jti": "85edca8c-a4a6-4a4c-b8c0-356043e7ba7d",
+            "exp": 1598079154,
+            "nbf": 0,
+            "iat": 1598078854,
+            "iss": "http://localhost:8080/auth/realms/education",
+            "sub": "ef2cbe43-9748-40e5-aed9-fe981e3082d5",
+            "typ": "Bearer",
+            "azp": "jakarta-school",
+            "auth_time": 0,
+            "session_state": "f8ab78f8-15ee-403d-8db7-7052a8647c65",
+            "acr": "1",
+            "realm_access": { "roles": [ "teacher" ] },
+            "resource_access": {
+              "jakarta-school": {
+                "roles": [ "create-student-grade", "view-student-profile",
+                  "view-student-grade" ]
+              }
+            },
+            "scope": "profile",
+            "name": "Edwin M",
+            "preferred_username": "edwin",
+            "given_name": "Edwin",
+            "family_name": "M"
+          }
+          Ex JWT validation code:
+          @GetMapping("/teacher")
+          HashMap teacher(
+              @RequestHeader("Authorization") String authHeader) {
+                  try {
+              DecodedJWT jwt = JWT.decode(
+                                 authHeader.replace("Bearer", "").trim());
+              Jwk jwk = jwtService.getJwk();
+              Algorithm algorithm = Algorithm.RSA256(
+                        (RSAPublicKey) jwk.getPublicKey(), null);
+              algorithm.verify(jwt);                // ← Bºcheck signatureº
+
+              List˂String˃ roles = ((List)jwt.getClaim("realm_access").
+                                    asMap().get("roles"));
+              if(!roles.contains("teacher"))        //  ← Bºcheck rolesº
+                  throw new Exception("not a teacher role");
+
+              Date expiryDate = jwt.getExpiresAt(); // ← Bºcheck expirationº
+              if(expiryDate.before(new Date()))
+                  throw new Exception("token is expired");
+
+              return new HashMap() {{ put("role", "teacher"); }}; // validation OK
+                  } catch (Exception e) {
+              throw new RuntimeException(e);
+                  }
+          }
+
+
 </pre>
-<pre zoom>
+<pre zoom labels="aaa,TODO,">
 <span xsmall>FreeIPA</span>
 @[https://www.reddit.com/r/linuxadmin/comments/apbjtc/freeipa_groups_and_linux_usernames/]
 </pre>

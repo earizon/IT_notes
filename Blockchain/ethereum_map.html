@@ -215,6 +215,10 @@ StackExchange Top users:
   - Chainlink network provides reliable tamper-proof inputs and outputs
     (aka ºORACLESº) for complex smart contracts on any blockchain,
 </pre>
+<pre zoom labels="TODO">
+<span xsmall>Patricia tree</span>
+@[https://eth.wiki/en/fundamentals/patricia-tree] <!-- @ma -->
+</pre>
 
 <pre bgorange zoom labels="101">
 <span xsmall>wei,ether,.. Units</span>
@@ -363,6 +367,22 @@ CHAIN_ID    Chain(s)
 <div group bggreen>
 <span title>EVM</span><br/>
 <div groupv>
+<pre zoom labels="evm,101,storage,">
+<span xsmall>EVM state</span>
+@[https://blog.ethereum.org/2019/12/30/eth1x-files-state-of-stateless-ethereum/]
+- 400 million nodes in the state trie. Of these, about 3,000 (but as
+  many as 6,000) need to be added or modified every 15 seconds. 
+  Staying in sync with the Ethereum blockchain is, effectively,
+  constantly building a new version of the state trie over 
+  and over again.
+   ... This multi-step process of state trie database operations is why 
+  Ethereum implementations are so taxing on disk I/O and memory, and 
+  why even a “fast sync” can take up to 6 hours to complete, even 
+  on fast connections. To run a full node in Ethereum, a fast SSD (as 
+  opposed to a cheap, reliable HDD) is a requirement, because 
+  processing state changes is extremely demanding on disk read/writes.
+</pre>
+
 <pre zoom labels="evm,resource,">
 <span xsmall>External Refs:</span>
 @[https://github.com/ethereum/yellowpaper]
@@ -914,18 +934,6 @@ Note: This can be used to pre-fill a hardcoded smart-contract with given status 
 </div>
 
 <div groupv>
-<pre zoom labels="evm,101,TODO">
-<span xsmall>State-of-Stateless!!!</span>
-<!-- @ma -->
-@[https://blog.ethereum.org/2019/12/30/eth1x-files-state-of-stateless-ethereum/]
-@[https://blog.ethereum.org/2020/01/28/eth1x-files-the-stateless-ethereum-tech-tree/]
-@[https://blog.ethereum.org/2020/02/18/eth1x-files-the-statelessness-of-the-union/]
-@[https://blog.ethereum.org/2020/03/12/eth1x-files-stateless-summit-summary/]
-@[https://blog.ethereum.org/2020/04/02/eth1x-stateless-tech-tree/]
-
-
-</pre>
-
 <pre zoom  labels="101,transaction,evm,signature,ecdsa_secp256k1">
 <span title>Transactions</span>
 Transaction
@@ -11572,6 +11580,9 @@ more private and scalable at the same time.
 Ben Fisch, Benedikt, and Alan Szepeniec also recently introduced
 SuperSonic, the first fully practical zero-knowledge SNARK that 
 doesn't require a trusted setup.
+
+... guest speaker Brecht Devos of Loopring for a presentation and
+Q+A about scaling with ZKPs and Loopring.
 </pre>
 
 <pre zoom labels="101,TODO">
@@ -12274,6 +12285,63 @@ Bºconducted within the Ethereum ecosystem.º
 
 </pre>
 
+<pre zoom labels="besu,devops,contenarization,TODO">
+<span xsmall>Besu + Docker </span>
+@[https://besu.hyperledger.org/en/stable/HowTo/Get-Started/Installation-Options/Run-Docker-Image/]
+@[https://hub.docker.com/r/hyperledger/besu/tags]
+
+$º$ docker run hyperledger/besu:latestº   
+
+  $ docker run -p $JSON_RPC:8545 \   ←  run Besu in MainNet
+    -p $localportWS:8546 \
+    -p $localportP2P:30303  \
+    hyperledger/besu:latest --rpc-http-enabled --rpc-ws-enabled
+                            ^^^^^^^^^^^^^^^^^^
+                            == -e BESU_RPC_HTTP_ENABLED=true 
+   ( --rpc-http-port, --p2p-port, --rpc-ws-port, --metrics-port,
+     --graphql-http-port, and --metrics-push-port )
+
+RºWARNº: Do not mount a volume at the default data path (/opt/besu).
+        Mounting a volume at the default data path interferes with 
+        the operation of Besu and prevents Besu from safely launching.
+        To run a node that maintains the node state (key and database), 
+        --data-path must be set to a location other than /opt/besu and
+        a storage volume mounted at that location.
+
+        --nat-method must be set to DOCKER or AUTO (vs NONE or UPNP).
+
+Problems founds:
+- Next error happens after closing besu:
+  - First run works ok and a new database is generated properly.
+    Then it is closed (through Docker kill -???)
+  - Secont rund fails to restart with next exception:
+    ... | main | INFO  | RocksDBKeyValueStorageFactory | Existing database detected at /
+                                                         opt/besu/data. Version 0
+ Rº picocli.CommandLine$ParameterException: org.rocksdb.RocksDBException:º     ← !!!!
+ Rº You have to open all column families. Column families not opened: , , , ,º
+        at org.hyperledger.besu.cli.BesuCommand.run(BesuCommand.java:1080)
+        at picocli.CommandLine.executeUserObject(CommandLine.java:1769)
+        at picocli.CommandLine.access$900(CommandLine.java:145)
+        at picocli.CommandLine$RunLast.handle(CommandLine.java:2141)
+        at picocli.CommandLine$RunLast.handle(CommandLine.java:2108)
+        at picocli.CommandLine$AbstractParseResultHandler.handleParseResult(CommandLine.java:1968)
+        at picocli.CommandLine.parseWithHandlers(CommandLine.java:2322)
+        ...
+   It looks to be caused by non-clear close in Docker enviroments:
+@[https://github.com/facebook/rocksdb/wiki/RocksJava-Basics#opening-a-database-with-column-families]
+  RºWARNº: RocksDB is a native C++ library and there can be some JNI issue
+</pre>
+
+<pre zoom labels="escalability,performance,TODO">
+<span xsmall>Turbo Geth</span>
+@[https://eth.wiki/en/fundamentals/patricia-tree]
+...  Turbo-geth is one implementation that gets to the root of the 
+problem: It flattens the trie database and uses the path of a node 
+(rather than its hash) as the [key, value] pair. This effectively 
+makes the depth of the tree irrelevant for lookups, and allows for a 
+variety of nifty features that can improve performance and reduce the 
+load on disk when running a full node.
+</pre>
 
 
 </div><!-- Non Classified -->
@@ -12307,4 +12375,13 @@ Security Attack:
 https://www.theblockcrypto.com/post/84804/defi-protocol-origin-attack-7-million-lost
 
 https://academy.binance.com/en/articles/what-are-flash-loans-in-defi
+______________
+Besu: troubleshooting:
+https://besu.hyperledger.org/en/stable/Reference/API-Methods/
+
+eth_getLogs
+
+Returns an array of logs matching a specified filter object.
+
+Leave the --auto-log-bloom-caching-enabled command line option at the default value of true to improve log retrieval performance.
 -->

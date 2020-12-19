@@ -1498,7 +1498,7 @@ performance," he said.
 </pre>
 
 <span title>Advanced Image creation</span>
-<pre zoom labels="docker">
+<pre zoom labels="nodejs,docker">
 <span xsmall>ONBUILD</span>
 <span xsmall>(base Dockerfile</span>
 <span xsmall> for devel)</span>
@@ -1525,33 +1525,65 @@ in the image extending base image:
   $ docker build -t node-base -f Dockerfile.base . # STEP 1: Compile base image
   $ docker build -t node -f Dockerfile .           # STEP 2: Compile image
   $ docker run -p 8000:8000 -d node
+
+
+</pre>
 </pre>
 
-<pre zoom labels="docker">
+<pre zoom labels="docker,qa,nodejs,performance">
 <span xsmall>Multi-Stage</span>
 - Multi-Stage allows for final "clean" images that will
   contain just the application binaries, with no building
   or compilation intermediate tools needed during the build.
   This allow for much lighter final images.
-                   ┌───────────────────────────────┼────────────────────────────────────────────────┐
-                   │ "STANDARD" BUILD              │ multi─stage BUILD                              │
-┌──────────────────┼───────────────────────────────┼────────────────────────────────────────────────┤
-│Dockerfile        │ Dockerfile                    │ Dockerfile.ms                                  │
-│                  │ FROM golang:alpine            │ FROM ºgolang:alpineº AS Oºbuild─envº           │
-│                  │ WORKDIR /app                  │ ADD . /src                                     │
-│                  │ ADD . /app                    │ RUN cd /src ; go build ─o app                  │
-│                  │ RUN cd /app ; go build ─o app │                                                │
-│                  │ ENTRYPOINT ./app              │ FROMºalpineº                                   │
-│                  │                               │ WORKDIR /app                                   │
-│                  │                               │ COPY ──from=Oºbuild─envº /src/app /app/        │
-│                  │                               │ ENTRYPOINT ./app                               │
-├──────────────────┼───────────────────────────────┼────────────────────────────────────────────────┤
-│ Compile image    │ $ docker build . ─t hello─go  │ $ docker build . ─f Dockerfile.ms ─t hello─goms│
-├──────────────────┼───────────────────────────────┼────────────────────────────────────────────────┤
-│ Exec container   │ $ docker run hello─go         │ $ docker run hello─goms                        │
-├──────────────────┼───────────────────────────────┼────────────────────────────────────────────────┤
-│ Check image size │ $ docker images               │ $ docker images                                │
-└──────────────────┴───────────────────────────────┴────────────────────────────────────────────────┘
+              ┌───────────────────────────────┬─────────────────────────────────────────┐
+              │ "STANDARD" BUILD              │ multi─stage BUILD                       │
+┌─────────────┼───────────────────────────────┼─────────────────────────────────────────┤
+│Dockerfile   │ Dockerfile                    │ Dockerfile.ms                           │
+│             │ FROMºgolang:alpineº           │ FROM ºgolang:alpineº AS Oºbuild─envº    │
+│             │ WORKDIR /app                  │ ADD . /src                              │
+│             │ ADD . /app                    │ RUN cd /src ; go build ─o app           │
+│             │ RUN cd /app ; go build ─o app │                                         │
+│             │ ENTRYPOINT ./app              │ FROMºalpineº                            │
+│             │                               │ WORKDIR /app                            │
+│             │                               │ COPY --from=Oºbuild─envº /src/app /app/ │
+│             │                               │ ENTRYPOINT ./app                        │
+├─────────────┼───────────────────────────────┼─────────────────────────────────────────┤
+│ Compile     │ $ docker build . ─t hello─go  │ $ docker build . ─f Dockerfile.ms       │
+│ image       │                               │   ─t hello─goms                         │
+├─────────────┼───────────────────────────────┼─────────────────────────────────────────┤
+│ Exec        │ $ docker run hello─go         │ $ docker run hello─goms                 │
+├─────────────┼───────────────────────────────┼─────────────────────────────────────────┤
+│ Check image │ $ docker images               │ $ docker images                         │
+│ size        │                               │                                         │
+└─────────────┴───────────────────────────────┴─────────────────────────────────────────┘
+
+ Ex 2: Multi-stage NodeJS Build
+
+    FROM node:12-alpine
+    
+    ADD . / app01_src/
+    RUN cd app01_src/ ⅋⅋\            ←ºSTAGE 1: Compileº
+        npm set unsafe-perm true ⅋⅋\ ← By default npm changes uid to the one specified 
+                                       in user config or 'nobody' by default.
+                                       Set to true to exec as root. Needed for
+                                       installs.
+        npm cache clean --force ⅋⅋\
+        npm install ⅋⅋                 npm link in a package folder will create
+        npm run build ⅋⅋ \             a symlink in the global folder 
+        npm link                     ← {prefix}/lib/node_modules/$package
+                                       linking to the package where the npm
+                                       link command was executed.
+                                        It will also link any bins in the package
+                                       to {prefix}/bin/{name}.
+    
+    FROM node:12-alpine              ←ºSTAGE 2º
+    RUN mkdir /opt/app01_src
+    WORKDIR /opt/app01_src
+    COPYº--from=0º/app01_src/dist  /opt/app01_src/dist
+    COPYº--from=0º/app01_src/node_modules  /opt/app01_src/node_modules
+    
+    ENTRYPOINT ["node", "/opt/app01_src/dist/cli.js"]
 </pre>
 <pre zoom labels="docker">
   <a xsmall href="https://github.com/GoogleContainerTools/distroless">Distroless</a>
@@ -2437,31 +2469,26 @@ snapshots, remote debugging, and many other things are now possible.
 </pre>
 
 
+<pre zoom labels="troubleshooting,TODO">
+<span xsmall>Avoid huge log dumps</span>
+https://devops.stackexchange.com/questions/12944/any-way-to-limit-docker-logs-output-by-default/12970#12970
 
+- Problem Context:
+  - Container output huge logs (maybe gigabytes).
+  - $ docker logs 'container' knocks down the host server when output is processed.
+
+- To limit docker logs, specify limits in docker daemon's config file like:
+  /etc/docker/daemon.json
+  {
+    "log-driver": "json-file",
+    "log-opts": {
+      "max-size": "10m",
+      "max-file": "3" 
+    }
+  }
+  (then restart docker daemon after edit)
+NOTE: maybe ulimit can fix it at global (Linux OS) scope.
+</pre>
 </div>
 </body>
 </html>
-<!--
-
-FROM node:12-alpine
-
-ADD . / payid-cli/
-
-RUN cd payid-cli/ &&\
-    npm set unsafe-perm true &&\
-    npm cache clean --force &&\
-    npm install &&\
-    npm run build && \
-    npm link
-
-FROM node:12-alpine
-
-RUN mkdir /opt/payid-cli
-
-WORKDIR /opt/payid-cli
-
-COPY --from=0 /payid-cli/dist  /opt/payid-cli/dist
-COPY --from=0 /payid-cli/node_modules  /opt/payid-cli/node_modules
-
-ENTRYPOINT ["node", "/opt/payid-cli/dist/cli.js"]
--->

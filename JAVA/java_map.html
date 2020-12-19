@@ -735,7 +735,7 @@ REF: @[https://dzone.com/articles/heap-memory-in-java-performance-testing?utm_so
 </div>
 
 <div groupv>
-<pre zoom labels="101,strings,TODO">
+<pre zoom labels="strings,101,TODO">
 <span xsmall>Strings</span>
 final String formatedNumber = String.format("%4d",100);
 See also: [[Format String Checker?]]
@@ -743,24 +743,108 @@ See also: [[Format String Checker?]]
 String[] args = ...
 Strings.join(List.of(args),"'")); // ← String array to CSV.
 
-Bºjava.util.StringJoinerº (1.8+)
+Bºjava.util.StringJoinerº (1.8+) Concatenate Strings
   https://docs.oracle.com/javase/8/docs/api/java/util/StringJoiner.html
-- Ex:  "[George:Sally:Fred]" may be constructed as follows:
-        StringJoiner sj = new StringJoiner(":" /*Delimiter*/, "[" /*prefix*/, "]" /*sufix*/);
-        sj.add("George").add("Sally").add("Fred");
-        String desiredString = sj.toString();
+- Ex:
+  "[George:Sally:Fred]" may be constructed as follows:
+  final StringJoiner sj = new StringJoiner(
+                             ":" /*Delimiter*/,
+                             "[" /*prefix*/,
+                             "]" /*sufix*/);
+  sj.add("George").add("Sally").add("Fred");
+  String desiredString = sj.toString();
 
-        StringJoiner may be employed to create formatted output from a Stream using 
-        Collectors.joining(CharSequence):
+  Collectors.joining(CharSequence):
 
-         List<Integer> numbers = Arrays.asList(1, 2, 3, 4);
-         String commaSeparatedNumbers = numbers.stream()
-             .map(i -˃ i.toString())
-             .collect(ºCollectors.joining(", ")º);
+  List˂Integer˃ numbers = Arrays.asList(1, 2, 3, 4);
+  String commaSeparatedNumbers = numbers.stream()
+      .map(i -˃ i.toString())
+      .collect(ºCollectors.joining(", ")º);
 </pre>
 
+<pre zoom labels="io,persistence,fs,101">
+<span xsmall>Reading file</span>
+BºReading as lines of textº
+  final File input = new File("input.txt"); 
+  final String result =
+        Files.toString(input, Charsets.UTF_8);   // ← Alt 1.(Guava) Read to String
+                                                     RºWARN:ºOnly for small sizesº
+
+  final File input = new File("input.txt");
+  final List<String> result =
+       Files.readLines(input, Charsets.UTF_8);   // ← Alt 2.(Guava) Read to List
+             ^^^^^^^^^                              RºWARN:ºOnly for small sizesº
+             readFirstLine() can be useful sometimes
+
+  final File input = new File("input.txt");
+  final CharSource source = 
+      Files.asCharSource(input, Charsets.UTF_8); // ← Alt 3.(Guava) Use CharSource
+  final String result = source.read();           // ← RºWARN:ºOnly for small sizesº
+
+  final File input1 = new File("input1.txt"),
+             input2 = new File("input1.txt");
+  final CharSource
+      source1 = Files.asCharSource(input1, Charsets.UTF_8),
+      source2 = Files.asCharSource(input2, Charsets.UTF_8),
+      source  = 
+         CharSource.concat(source1, source2);   // ← Alt 3.2(Guava) Concat CharSources
+  final String result = source.read();
+
+  final FileReader reader = new FileReader("input.txt");
+  final String result =
+        CharStreams.toString(reader);          // ← Alt 4. (Big Files) CharStreams
+  reader.close();                              // ← RºWARN:º Don't forget to close
+
+BºRead file as bytesº
+  final File file = new File("input.raw");
+  final ByteSource source                      // ← Alt 1: (Guava) Use ByteSource
+        = Files.asByteSource(file).              
+          .slice(20 /*initial offset*/, 100 /*len */);
+  final byte[] result = source.read();
+
+  FileInputStream reader = 
+     new FileInputStream("input.raw");        // ←   Using FileInputStream
+  byte[] result =
+     ByteStreams.toByteArray(reader);         // ← + ByteStreams
+  reader.close();
+
+  final URL url =
+       Resources.getResource("test.txt");     // ← Read Resource in classpath
+  final String resource =
+       Resources.toString(url, Charsets.UTF_8);
+<hr/>
+<span xsmall>Reading big files</span>
+    ºtry (º
+  final FileInputStream inputStream = new FileInputStream(path);
+  final Scanner sc =                        ← Use Scanner to read line-by-line
+            new Scanner(inputStream, "UTF-8");
+    º) {º
+  while (sc.hasNextLine()) {
+      final String line = sc.nextLine();
+      // ... do any process ...
+      if (sc.ioException() != null) {    ← // scanner captures ioExceptions
+          // handle error                  // It's good to have a look
+      }
+  }
+    º} finally {º
+  ...       
+    º}º
+
+final LineIterator it =                       ← Alt 2. From  Apache Commons IO
+   FileUtils.lineIterator(theFile, "UTF-8"); 
+   try {
+while (it.hasNext()) {
+   String line = it.nextLine();               ← Read line-by-line
+   // ...
+}
+   } finally {
+LineIterator.closeQuietly(it);                ← Close resources
+   }
+</pre>
+
+
 <pre zoom labels="101,concurrency">
-<span title>java.time</span>
+<span xsmall>java.time</span>
 java.time.*
 - JDK 1.8+
 - "deprecates" java.util.(Date|Calendar|TimeZome)
@@ -1106,7 +1190,7 @@ BºExample Ussageº
       ...                                                   be "huge" if log.debug is inside a loop. 
 
 <hr/>
-<span title>MDC: "Better Way of Logging"</span>
+<span xsmall>MDC: "Better Way of Logging"</span>
 @[https://dzone.com/articles/mdc-better-way-of-logging-1]
 RºPROBLEMº: How do we related logs together originating 
             from a (single user, single data-flow)
@@ -7166,6 +7250,16 @@ jLine: GNU/readline alike library for JAVA:
 - Builtin support for console variables, scripts, custom pipes, widgets and object printing.
 - Autosuggestions
 - Language REPL Support
+
+<hr/>
+<span xsmall>PicoCli</span>
+@[https://picocli.info/]
+Picocli is a one-file framework for creating Java command line 
+applications with almost zero code. It supports a variety of command 
+line syntax styles including POSIX, GNU, MS-DOS and more. It 
+generates highly customizable usage help messages that use ANSI 
+colors and styles to contrast important elements and reduce the 
+cognitive load on the user.
 </pre>
 
 <pre zoom labels="resource,TODO">
@@ -7943,4 +8037,24 @@ _____________________________________
 https://stackoverflow.com/questions/53452713/why-is-2-i-i-faster-than-2-i-i-in-java
 _____________________________________
 https://www.roseindia.net/eclipse/plugins/codemanagement/Anyedittools.shtml
+_____________________________________
+TODO:
+Write to Files with Guava.
+_____________________________________
+https://clig.dev/
+Use a command-line argument parsing library where you can. Either 
+your language’s built-in one, or a good third-party one. They will 
+normally handle arguments, flag parsing, help text, and even spelling 
+suggestions in a sensible way.
+
+Here are some that we like:
+Go: Cobra, cli
+
+
+Node: oclif
+Python: Click, Typer
+Ruby: TTY
+Rust: clap, structopt
+PHP: console
+
 -->

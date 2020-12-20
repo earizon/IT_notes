@@ -18,6 +18,7 @@ const SF = {  /* search Form */
   renderSearchForm : function() {
     const div = document.createElement('div');
           div.setAttribute("id", "searchForm")
+          div.classList.add("noprint")
     document.body.insertBefore(div,document.body.children[0])
     let html = ''
       + ' <div id="divClose">✕ (close)</div>' 
@@ -142,7 +143,7 @@ const ZW = { /* ZOOM Window */
        +    "<span id='GoBack'>?</span>"
        +    "<span id='GoForw'>?</span>"
        + " </div>" 
-       + " <div id='divElementLabels'></div>" 
+       + " <div id='divElementLabels' class='noprint'></div>" 
        + "</div>"
        + "<div id='zoomHTMLContent'/>"
     ZW.dom = dom1
@@ -431,7 +432,7 @@ const TPP = {  // (T)ext (P)re (P)rocessor
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Yº([^º\n]*)º/g, "<b yellow>  $1 </b>")   
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/[$]º([^º\n]*)º/g, "  <span console>$1</span> ")   
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/_º([^º\n]*)º/g, "<span sub>$1   </span>")
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/-º([^º\n]*)º/g, "<span super>$1   </span>")
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/^º([^º\n]*)º/g, "<span super>$1   </span>")
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /º([^º\n]*)º/g, "<b        > $1 </b>")   
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[˂]/g, "&lt;")   
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[˃]/g, "&gt;")   

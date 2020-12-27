@@ -198,6 +198,7 @@ const ZW = { /* ZOOM Window */
 
     ZW.dom.style.display="block";
     ZW.dom.scrollTop = 0;
+    zoomHTML.scrollIntoView({ behavior: 'smooth', block: 'center' })
     return false;
   },
   doCloseZoom : function() {

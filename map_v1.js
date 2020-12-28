@@ -140,18 +140,23 @@ const ZW = { /* ZOOM Window */
        + " <div id='divClose'>✕ (close)</div>" 
    //  + " <span style='font-weight:bold' text-align='center'>"+document.title+"</span>"
        + " <div id='historyBackFor' style='display:inline; '>"
-       +    "<span id='GoBack'>?</span>"
+       +    "<span id='GoBack'>?</span> "
        +    "<span id='GoForw'>?</span>"
        + " </div>" 
+       + ' <div id="butSwitchZoomFont" >Clean</div>'
+       + ' <div id="textZoomIn" ><span style="font-size:0.7em">🔍︎+</span></div>'
+       + ' <div id="textZoomOut"><span style="font-size:0.7em">🔍︎-</span></div>'
        + " <div id='divElementLabels' class='noprint'></div>" 
        + "</div>"
        + "<div id='zoomHTMLContent'/>"
-    ZW.dom = dom1
     ZW.dom = dom1
     document.body.insertBefore(dom1,document.body.children[0])
     document.getElementById("divClose").addEventListener("click", ZW.doCloseZoom);
     document.getElementById("GoBack" ).addEventListener("click", NAV.goBack);
     document.getElementById("GoForw" ).addEventListener("click", NAV.goForward);
+    document.getElementById("butSwitchZoomFont" ).addEventListener("click", ZW.switchZoomFont);
+    document.getElementById("textZoomIn"  ).addEventListener("click", ZW.onZoomIn);
+    document.getElementById("textZoomOut" ).addEventListener("click", ZW.onZoomOut);
   },
   doOpenZoom : function(e) {
     ZC.zoomStatus = 1
@@ -196,10 +201,19 @@ const ZW = { /* ZOOM Window */
       }
     )
 
-    ZW.dom.style.display="block";
-    ZW.dom.scrollTop = 0;
+    ZW.dom.style.display="block"
+    ZW.dom.scrollTop = 0
     zoomHTML.scrollIntoView({ behavior: 'smooth', block: 'center' })
     return false;
+  },
+  switchZoomFontCounter : 0,
+  switchZoomFont : function () {
+     const zoomHTML = document.getElementById("zoomHTMLContent").querySelector('pre[zoom]')
+     zoomHTML.classList.remove("zoomDivMode"+ZW.switchZoomFontCounter)
+     ZW.switchZoomFontCounter++
+     if (ZW.switchZoomFontCounter > 2) { ZW.switchZoomFontCounter = 0 }
+     zoomHTML.classList.add("zoomDivMode"+ZW.switchZoomFontCounter)
+console.log("zoom font counter:"+ZW.switchZoomFontCounter)
   },
   doCloseZoom : function() {
     ZC.zoomStatus = 0 

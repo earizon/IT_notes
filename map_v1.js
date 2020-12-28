@@ -91,46 +91,15 @@ const SF = {  /* search Form */
     // SF.hideSearchForm();
     SE.highlightSearch();
   },
-
-
 }
 
 const ZW = { /* ZOOM Window */ 
-    dom : window,
-  onZoomOut : function(){
-    if (ZC.zoomStatus == 1) {
-      ZC.zoomFontSize = (ZC.zoomFontSize > 0.05) ? ZC.zoomFontSize - ZC.zoomStepOut : 0.0006
-      ZC.cssRules[ZC.idxZoomDivRule].style['font-size']=ZC.zoomFontSize+'rem'
-      return
-    }
-    if     (ZC.zoomableFontSize > 0.05) {
-       ZC.zoomableFontSize = ZC.zoomableFontSize - ZC.zoomStepOut
-    } else if (ZC.xsmallFontSize > 0.4 ){
-       ZC.zoomableFontSize = 0.0006 // Absolute cero causes rendering problems in Firefox.
-                                     // REF: https://bugzilla.mozilla.org/show_bug.cgi?id=1606305
-       ZC.xsmallFontSize   = ZC.xsmallFontSize - ZC.zoomStepOut
-    } else {
-       ZC.zoomableFontSize = 0.0006
-       ZC.xsmallFontSize   = 0.4
-    }
-    ZC.cssRules[ZC.idxZoomRule  ].style['font-size']=ZC.zoomableFontSize+'rem'
-    ZC.cssRules[ZC.idxXSmallRule].style['font-size']=ZC.xsmallFontSize  +'rem'
-    ZC.cssRules[ZC.idxXTitleRule].style['font-size']=ZC.xsmallFontSize  +'rem'
-  },
-  onZoomIn : function() {
-    if (ZC.zoomStatus == 1) {
-      ZC.zoomFontSize = ZC.zoomFontSize + ZC.zoomStepIn
-      ZC.cssRules[ZC.idxZoomDivRule].style['font-size']=ZC.zoomFontSize+'rem'
-      return;
-    }
-    if (ZC.xsmallFontSize < 1.2) {
-      ZC.xsmallFontSize = ZC.xsmallFontSize + ZC.zoomStepIn
-    } else {
-      ZC.zoomableFontSize = ZC.zoomableFontSize + ZC.zoomStepIn
-    }
-    ZC.cssRules[ZC.idxZoomRule  ].style['font-size']=ZC.zoomableFontSize+'rem'
-    ZC.cssRules[ZC.idxXSmallRule].style['font-size']=ZC.xsmallFontSize  +'rem'
-    ZC.cssRules[ZC.idxXTitleRule].style['font-size']=ZC.xsmallFontSize  +'rem'
+  dom : window,
+  zoomFontSize:1.00,
+  onZoomText : function(mode /* 0 => Zoom In, 1 => Zoom Out*/){
+    ZW.zoomFontSize = ZW.zoomFontSize + ((mode == 0) ? 0.1 : -0.1)
+    document.getElementById("zoomHTMLContent").querySelector("*[zoom]").style.fontSize=""+ZW.zoomFontSize+"rem"
+    return
   },
   renderZoomBox : function() {
     const dom1 = document.createElement('div');
@@ -155,14 +124,11 @@ const ZW = { /* ZOOM Window */
     document.getElementById("GoBack" ).addEventListener("click", NAV.goBack);
     document.getElementById("GoForw" ).addEventListener("click", NAV.goForward);
     document.getElementById("butSwitchZoomFont" ).addEventListener("click", ZW.switchZoomFont);
-    document.getElementById("textZoomIn"  ).addEventListener("click", ZW.onZoomIn);
-    document.getElementById("textZoomOut" ).addEventListener("click", ZW.onZoomOut);
+    document.getElementById("textZoomIn"  ).addEventListener("click", () => ZW.onZoomText(0));
+    document.getElementById("textZoomOut" ).addEventListener("click", () => ZW.onZoomText(1));
   },
   doOpenZoom : function(e) {
     ZC.zoomStatus = 1
-    document.getElementById(MB.buttonZoomIn ).innerHTML="<span style='font-size:1.0em'>ABC</span>";
-    document.getElementById(MB.buttonZoomOut).innerHTML="<span style='font-size:0.7em'>🔍︎ABC</span>";
-    // if(NAV.visited[NAV.visited.length-1] == e) { isHistoric = true }
     if(NAV.visited.indexOf(e)>=0) { 
         NAV.visited_idx = NAV.visited.indexOf(e)
     } else { // Apend new visits only
@@ -216,30 +182,24 @@ const ZW = { /* ZOOM Window */
 console.log("zoom font counter:"+ZW.switchZoomFontCounter)
   },
   doCloseZoom : function() {
-    ZC.zoomStatus = 0 
     ZW.dom.style.display="none";
     MB.onZoomClosed()
   }
 }
 
-const ZC = { /* zoom Control */
-  idxZoomDivRule :-1,
+const ZC = { /* map zoom Control */
   idxZoomRule:-1,
   idxXSmallRule:-1,
   idxXTitleRule:-1,
   zoomStatus: 0, // 0 = inactive, 1 = zoomedContent
   zoomableFontSize:0.05,
   xsmallFontSize:0.7, // must match initial size xsmall/title in css
-  zoomFontSize:1.00,
   zoomStepIn:0.20,
   zoomStepOut:0.10,
   cssRules : [],
   initCSSIndexes : function() {
     ZC.cssRules = document.styleSheets[0]['cssRules'][0].cssRules;
     for (let idx=0; idx<ZC.cssRules.length; idx++){
-        if( ZC.cssRules[idx].selectorText == "#zoomDiv, #searchForm") {
-            ZC.idxZoomDivRule=idx
-        }
         if( ZC.cssRules[idx].selectorText == "[zoom]") {
             ZC.idxZoomRule=idx
         }
@@ -250,7 +210,32 @@ const ZC = { /* zoom Control */
             ZC.idxXTitleRule=idx
         }
     }
-  }
+  },
+  onZoomOut : function(mode /* 0 = Zoom Map; 1 = Zoom Text*/){
+    if     (ZC.zoomableFontSize > 0.05) {
+       ZC.zoomableFontSize = ZC.zoomableFontSize - ZC.zoomStepOut
+    } else if (ZC.xsmallFontSize > 0.4 ){
+       ZC.zoomableFontSize = 0.0006 // Absolute cero causes rendering problems in Firefox.
+                                     // REF: https://bugzilla.mozilla.org/show_bug.cgi?id=1606305
+       ZC.xsmallFontSize   = ZC.xsmallFontSize - ZC.zoomStepOut
+    } else {
+       ZC.zoomableFontSize = 0.0006
+       ZC.xsmallFontSize   = 0.4
+    }
+    ZC.cssRules[ZC.idxZoomRule  ].style['font-size']=ZC.zoomableFontSize+'rem'
+    ZC.cssRules[ZC.idxXSmallRule].style['font-size']=ZC.xsmallFontSize  +'rem'
+    ZC.cssRules[ZC.idxXTitleRule].style['font-size']=ZC.xsmallFontSize  +'rem'
+  },
+  onZoomIn : function(mode /* 0 = Zoom Map; 1 = Zoom Text*/) {
+    if (ZC.xsmallFontSize < 1.2) {
+      ZC.xsmallFontSize = ZC.xsmallFontSize + ZC.zoomStepIn
+    } else {
+      ZC.zoomableFontSize = ZC.zoomableFontSize + ZC.zoomStepIn
+    }
+    ZC.cssRules[ZC.idxZoomRule  ].style['font-size']=ZC.zoomableFontSize+'rem'
+    ZC.cssRules[ZC.idxXSmallRule].style['font-size']=ZC.xsmallFontSize  +'rem'
+    ZC.cssRules[ZC.idxXTitleRule].style['font-size']=ZC.xsmallFontSize  +'rem'
+  },
 }
 
 const NAV = { // Navigation
@@ -337,8 +322,6 @@ const LM = { // Lavel management
 
 const IC = { // Input Control
   onKeyUp: function(e) {  // Keyboard controller
-    if (e.key === "z") { ZW.onZoomOut(); return }
-    if (e.key === "Z") { ZW.onZoomIn (); return }
     if (e.code === "Escape") {
       if (ZC.zoomStatus === 0) {
         SE.resetTextFoundAttr(true)
@@ -471,10 +454,6 @@ const TPP = {  // (T)ext (P)re (P)rocessor
 }
 
 const MB = { // Menu Bar
-  sOrbit:"📷 orbit",
-  sDive :"🔍︎ dive",
-  buttonZoomIn  :"buttonZoomIn",
-  buttonZoomOut :"buttonZoomOut",
   renderMenuBar : function (){
     var searchDiv = document.createElement('div');
         searchDiv.setAttribute("id", "upper_bar")
@@ -483,15 +462,15 @@ const MB = { // Menu Bar
      +   ' onerror="src = \'https://singlepagebookproject.github.io/SPB/labelIcon.svg\';" />'
      + '║<a href="../help.html" class="noprint" style="cursor:help" target="_blank" >HelpMan</a>'
      + '║<span blue id="printButton">Print</span>'
-     + '<span id="'+MB.buttonZoomIn +'"  blue>'+MB.sDive +'</span>'
-     + '<span id="buttonZoomSep"             >⇆</span>'
-     + '<span id="'+MB.buttonZoomOut+'" blue>'+MB.sOrbit+'</span>'
+     + '<span id="buttonZoomIn"  blue>🔍︎ dive</span>'
+     + '<span id="buttonZoomSep" >⇆</span>'
+     + '<span id="buttonZoomOut" blue>📷 orbit</span>'
      + '<br/>'
     document.body.insertBefore(searchDiv,document.body.children[0])
     document.getElementById("idLabelsFilter").addEventListener("click", SF.showSearchForm)
     document.getElementById("idLabelsFilter").addEventListener("click", SF.showSearchForm)
-    document.getElementById(MB.buttonZoomIn ).addEventListener("click", ZW.onZoomIn   )
-    document.getElementById(MB.buttonZoomOut).addEventListener("click", ZW.onZoomOut  )
+    document.getElementById("buttonZoomIn"  ).addEventListener("click", ZC.onZoomIn  )
+    document.getElementById("buttonZoomOut" ).addEventListener("click", ZC.onZoomOut )
     document.getElementById("printButton"   ).addEventListener("click", MB.spbQuickPrint )
   },
   spbQuickPrint : function() {
@@ -499,10 +478,7 @@ const MB = { // Menu Bar
         window.print()
     }
   },
-  onZoomClosed : function() {
-    document.getElementById(MB.buttonZoomIn ).innerHTML=MB.sDive 
-    document.getElementById(MB.buttonZoomOut).innerHTML=MB.sOrbit
-  },
+  onZoomClosed : function() { },
 }
 
 function switchLinksToBlankTarget() {

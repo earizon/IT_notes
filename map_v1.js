@@ -109,10 +109,11 @@ const ZW = { /* ZOOM Window */
        + " <div id='divClose'>✕ (close)</div>" 
    //  + " <span style='font-weight:bold' text-align='center'>"+document.title+"</span>"
        + " <div id='historyBackFor' style='display:inline; '>"
-       +    "<span id='GoBack'>?</span> "
-       +    "<span id='GoForw'>?</span>"
+       +    "<span id='GoBack'>←</span>&nbsp;"
+       +    "<span id='GoForw'>→</span>"
+       +    "<span id='cellNofM'>?</span> "
        + " </div>" 
-       + ' <div id="butSwitchZoomFont" >Clean</div>'
+       + ' <div id="butSwitchLectureMode" >?</div>'
        + ' <div id="textZoomIn" ><span style="font-size:0.7em">🔍︎+</span></div>'
        + ' <div id="textZoomOut"><span style="font-size:0.7em">🔍︎-</span></div>'
        + " <div id='divElementLabels' class='noprint'></div>" 
@@ -123,9 +124,10 @@ const ZW = { /* ZOOM Window */
     document.getElementById("divClose").addEventListener("click", ZW.doCloseZoom);
     document.getElementById("GoBack" ).addEventListener("click", NAV.goBack);
     document.getElementById("GoForw" ).addEventListener("click", NAV.goForward);
-    document.getElementById("butSwitchZoomFont" ).addEventListener("click", ZW.switchZoomFont);
+    document.getElementById("butSwitchLectureMode" ).addEventListener("click", ZW.switchLectureMode);
     document.getElementById("textZoomIn"  ).addEventListener("click", () => ZW.onZoomText(0));
     document.getElementById("textZoomOut" ).addEventListener("click", () => ZW.onZoomText(1));
+    ZW.updateButtonSwitchLectureMode()
   },
   doOpenZoom : function(e) {
     ZC.zoomStatus = 1
@@ -136,14 +138,9 @@ const ZW = { /* ZOOM Window */
       NAV.visited_idx =NAV.visited.length-1
     }
 
-    if (NAV.visited.length > 0) {
-      let nbackNumber =  NAV.visited_idx                       
-      let nforwNumber = (NAV.visited.length-1)-NAV.visited_idx
-      let backNumber = ((nbackNumber>0) ? ("xxx"+nbackNumber).slice(-3)+"←" : "xxxx").replace(/x/g,"&nbsp;")
-      let forwNumber = ((nforwNumber>0) ? "→"+("xxx"+nforwNumber).slice(-3) : "xxxx").replace(/x/g,"&nbsp;")
+    if (NAV.visited.length > 1) {
       document.getElementById("historyBackFor").style.display="inline"
-      document.getElementById("GoBack").innerHTML = backNumber
-      document.getElementById("GoForw").innerHTML = forwNumber
+      document.getElementById("cellNofM").innerHTML = NAV.visited_idx+1 + "/"+(NAV.visited.length)
     } else {
       document.getElementById("historyBackFor").style.display="none"
     }
@@ -172,14 +169,22 @@ const ZW = { /* ZOOM Window */
     zoomHTML.scrollIntoView({ behavior: 'smooth', block: 'center' })
     return false;
   },
-  switchZoomFontCounter : 0,
-  switchZoomFont : function () {
+  lectureModePtr : 0,
+  lecturModeDescriptionList : ["Schema", "SchemaCompaq", "Lecture" ],
+  getNextLectureMode : function () {
+     let result = (ZW.lectureModePtr+1) % ZW.lecturModeDescriptionList.length;
+     return result;
+  },
+  switchLectureMode : function () {
      const zoomHTML = document.getElementById("zoomHTMLContent").querySelector('pre[zoom]')
-     zoomHTML.classList.remove("zoomDivMode"+ZW.switchZoomFontCounter)
-     ZW.switchZoomFontCounter++
-     if (ZW.switchZoomFontCounter > 2) { ZW.switchZoomFontCounter = 0 }
-     zoomHTML.classList.add("zoomDivMode"+ZW.switchZoomFontCounter)
-console.log("zoom font counter:"+ZW.switchZoomFontCounter)
+     zoomHTML.classList.remove("lectureMode"+ZW.lectureModePtr)
+     ZW.lectureModePtr =  ZW.getNextLectureMode();
+     zoomHTML.classList.add("lectureMode"+ZW.lectureModePtr)
+     ZW.updateButtonSwitchLectureMode()
+  },
+  updateButtonSwitchLectureMode : function() {
+    document.getElementById("butSwitchLectureMode" ).innerHTML = 
+             ZW.lecturModeDescriptionList[ ZW.getNextLectureMode() ];
   },
   doCloseZoom : function() {
     ZW.dom.style.display="none";
@@ -441,6 +446,9 @@ const TPP = {  // (T)ext (P)re (P)rocessor
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☝/g, "👆")
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☞/g, "👉")
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☟/g, "👇")
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/[.]\n/g, ".<br/>")   
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/[:]\n/g, ":<br/>")   
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/\n\s*\n/g, "<br/><br/>")   
 
         // TODO: Add markdown table parser. REF: https://github.com/blattmann/mdtablesparser/blob/master/js/parser.js
 

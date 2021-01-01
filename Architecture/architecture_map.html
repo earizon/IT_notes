@@ -2536,46 +2536,118 @@ companies and 60% of Fortune 500 companies.[3]
 @[https://cucumber.io/docs/guides/10-minute-tutorial/]
 </pre>
 
-<pre zoom labels="tracing,debugging,decoupled_systems,">
+<pre zoom labels="tracing,debugging,decoupled_systems,k8s,">
 <span xsmall>Infra vs App Monitoring</span>
 BºInfrastructure Monitoring:º
   - Prometheus + Grafana
     (Alternatives include Monit, Datadog, Nagios, Zabbix, ...)
 
 BºApplication Monitoring (End-to-End Request Tracing)º
-  - Jaeger, New Relic
-    (Alternatives include AppDynamics, Instana, OpenTracing) 
-- ºtrack operations inside and across different systemsº.
-   - Check for example how an incomming request affected to the web server, database, app code, queue system, all presented along a timeline.
-- Especially valuable in distributed systems.
-- It complements logs and metrics:
-  - App.request metrics warns about latencies in remote requests
-    while local traces just do at local isolated systems. 
-  - Logs on each isolated system can explain why such system is "slow".
-  - Infra. monitoring warn about scarcity of CPU/memory/storage resources.
+  - Jaeger (OpenTracing compatible), Zipkin, New Relic
+    (Alternatives include AppDynamics, Instana, ...) 
+  -ºtrack operations inside and across different systemsº.
+  - Check for example how an incomming request affected to the web
+    server, database, app code, queue system, all presented along 
+    a timeline.
+  - Especially valuable in distributed systems.
+  - It complements logs and metrics:
+    - App.request metrics warns about latencies in remote requests
+      while local traces just do at local isolated systems. 
+    - Logs on each isolated system can explain why such system is "slow".
+    - Infra. monitoring warn about scarcity of CPU/memory/storage resources.
 
-- How To:
+BºLogging How Toº:
   → Start by adding logs and infra monitoring
     → add application monitoring:
       ( requires support from programming languages/libraires, developpers and devOps teams)
-      - instrument code
+      - instrument code (Jaeger)
       - add tracing to infrastructure components 
         - load balancers
       → deploy App tracing system itself. 
+        (Ex.: Jaeger server, ...)
  
-BºLog Managementº
+Bº(Bulk) Log Managementº
   - Elastic Stack
     (Alternative include Graylog, Splunk, Papertrail, ...)
 
 <span xsmall>Jaeger (App.Monit)</span>
 @[https://www.jaegertracing.io/]
 @[https://logz.io/blog/zipkin-vs-jaeger/]
+- Support 
+- Support for Open Tracing instrumentation libraries
+  like @[https://github.com/opentracing-contrib].
+- K8s Templates and Operators supported. [k8s]
+  
 - Jaeger addresses next problems:
   - distributed transaction monitoring.
   - performance and latency optimization.
   - root cause analysis.
   - service dependency analysis.
   - distributed context propagation.
+
+  Jaeger Log Data Architecture Schema:
+  (Based on OpenTracing)
+@[https://www.jaegertracing.io/docs/1.21/architecture/]
+@[https://github.com/opentracing/specification/blob/master/specification.md]
+
+  ºSPANº                    ºTRACEº:
+   (logical work-unit)       - data/execution path 
+   ----------------            through system components
+   - operation name            (sort of directed acyclic
+   - start time                 graph of spans).
+   - duration.
+   - Spans may be nested
+     and ordered to model 
+     causal relationships.
+
+     Unique ID → │A│
+     (Context)    └─│B│
+                  └─│C│─│D│
+                  └········│E│
+                   ^^^^^^^^
+                   barrier waiting for 
+                   │B│,│C│ results
+     
+
+     ········→ time line →··············· 
+                                          ┐
+     ├─────────────  SPAN A ────────────┤ │TRACE
+       ├──── SPAN B ───┤                  │
+       ├─ SPAN C ─┤                       │
+                  ├─ SPAN D ─┤            │
+                             ├─ SPAN E ─┤ │
+                                          ┘
+   
+   
+   
+   
+
+Components
+  Jaeger Components Schema:
+
+BºDATA INPUTº
+  Application                             jaeger-collector
+  └→ App Instrumetation                ┌→ (Go Lang)
+     └→ OpenTracing API                ·  + memory-queue ·┐
+        └→ Jaeger-client ···→ Jaeger ··┘                  · 
+                              agent                       ·
+                            (Go lang)                     ·
+                                                          ·
+                                           Data Store  ←··┘
+                                          (Cassandra,
+                                           Elastic Search,
+                                           Kafka, Memory)
+                                              ^  ^
+                                              ·  ·
+BºDATA QUERY (App. Monit)º                    ·  ·
+                                              ·  ·
+  Jaeger-UI    ←····→  jaeger-query ←·········┘  ·
+  (Web React)          (GO lang)                 ·
+   (Alt.1)                                       ·
+                                                 ·
+     Spark ······································┘
+   (Alt.2) 
+
 </pre>
 
 

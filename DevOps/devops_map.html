@@ -209,22 +209,179 @@ TODO:
 
 </pre>
 
+<pre zoom labels="git,101,diagram,">
+<span xsmall>Git Plumbings</span>
+https://alexwlchan.net/a-plumbers-guide-to-git/ 
+BºObject Storeº
+  https://alexwlchan.net/a-plumbers-guide-to-git/1-the-git-object-store/
+  
+  $ git init  ← Creates .git/
+                        objects/     ← Object store for objects, trees and commits
+                        refs/
+                        HEAD         ← pointer to branch
+                        description  ← used by GitWeb
+                        info/exclude ← like .gitignore but non-checked in
+                        config
+                        hooks
+  
+  $ echo "..." ˃ animals.txt
+  $ git hash-object -w animals.txt           ← (Plumbing) Hash file content, then 
+  a37f3f668f09c61b7c12e857328f587c311e5d1d     → Save content to Object store
+  └────────────────┬─────────────────────┘
+  saved to  .git/objects/a3/7f3f668f09c61b7c12e857328f587c311e5d1d
+                         └───────────────────┬───────────────────┘
+                         content-addressable filesystem.
+                       RºWARN:º original File name/path is lost. We need
+                                trees to save them.
+  
+  $ git cat-file -p a37f3f668f09c61b7c12e857328f587c311e5d1d
+                 ^^
+                 pretty print
 
-<pre zoom labels="git,">
-<a xsmall todo >Filter-branch</a>
-- rewrite history in Git using several of the built-in filters that the command provides.   
-  - rev-list command, which provides a way to list out revisions based on a range or criteria.
-  - filter-branch: split a subdirectory into a separate repository
-  - how to use to use filter-branch to delete a file from all versions in a repository 
-    and change the email address on versions in Git history
+BºBlobs and treesº
+  https://alexwlchan.net/a-plumbers-guide-to-git/2-blobs-and-trees/
+  
+  Git index: staging area (temporary snapshot) of the repository.
+             - files modified, but not yet saved to the permanent history.
+               (git add to add to index, then git commit to take a
+                permanent snapshot using porcelain)
+              
+  $ git update-index --add animals.txt  ← Plumbing to save file to .git/index 
+                                          content-addressable hash-object
+                                          created automatically if not
+                                          yet done.
+  $ git ls-files                        ← Porcelain git status for verbose view 
+  animals.txt
+  
+  $ git write-tree                      ← Take permanent snapshot of .git/index
+  dc6b8ea09fb7573a335c5fb953b49b85bb6ca985 to object of type "tree"
+  └────────────────┬─────────────────────┘
+  saved to .git/objects/dc/6b8ea09fb7573a335c5fb953b49b85bb6ca985
+  
+  $ git cat-file -p dc6b8ea09fb7573a335c5fb953b49b85bb6ca985
+  100644 blob b133... animals.txt   ← tree is a list of pointers to other objects
+                                                (one object per row)
+  040000 tree 8972... subdirectory  ← Pointer to (sub)tree (sub-directory) 
+  
+  ^^^^^^ ^^^^ ^^^^^^^^^^^^^^^^^ ^^^^^^^^^^^   ← tree is a list of pointers to other objects
+  file   type cont.add. ID      Name of file
+  permis.
+  
+  $ git cat-file -t a37f... ← blob (file path/name ignored by blob)
+  $ git cat-file -t dc6b... ← tree. Maps blobs to file path/names
+                 ^^
+                show object type
+  
+   ☞KEY-POINT:☜
+  BºIf we start at a tree, we can rebuild everything it points to.º
+  BºAll that rest is mapping trees to some "context" in history.º
+
+BºContext from commitsº
+@[https://alexwlchan.net/a-plumbers-guide-to-git/3-context-from-commits/]
+  
+  - We can have many trees to start rebuilding from but just a few
+  of them has historic importance.
+  
+  $ echo "initial commit" | git commit-tree $tree_id ← create commit from a tree 
+  65b080f1fe43e6e39b72dd79bda4953f7213658b           
+  └────────────────┬─────────────────────┘
+  saved to .git/objects/65/b080f1fe43e6e39b72dd79bda4953f7213658b
+  
+  $ git cat-file -t 65b...
+  commit
+  $ git cat-file -p 65b...
+  $ git cat-file -p 65b080f1fe43e6e39b72dd79bda4953f7213658b
+  tree 11e2f923d36175b185cfa9dcc34ea068dc2a363c   ← Pointer to tree of interest 
+  author Alex Chan ... 1520806168 +0000           ← Context with author/commiter/
+  committer Alex Chan ... 1520806168 +0000          creation time/ ...
+  ...
+  
+  BºBuilding a linear history (ordered list of commits)º:
+  $ git update-index --add ... 
+  $ git write-tree
+  $ echo "commit message" | \
+    git commit-tree $tree_id \
+  Bº-p $previous_commitº     ← ☞BºAdd commit orderº
+                                (next to previous one)
+  fd9274...........  ← git cat-file -p will show a line
+                       parent $previous_commit_id
+
+BºRefs and branchesº
+@[https://alexwlchan.net/a-plumbers-guide-to-git/4-refs-and-branches/]
+  
+  $ ls .git/refs
+  heads/ tags/
+ 
+  
+  $ git update-ref refs/heads/master       ← Create named reference to commit
+  fd9274dbef2276ba8dc501be85a48fbfe6fc3e31   $ cat  .git/refs/heads/master
+                                             fd92...  (pointer to commit)
+  
+  Now master is an alias for the fd92... commit ID.
+  
+  git cat-file -p master == git cat-file -p fd92...
+  
+  
+  $ git rev-parse master                   ← check value of ref
+  fd92...
+  
+ ☞BºA ref in the heads folder is more commonly called a branch.º
+
+  $ git update-index --add ... 
+  $ git write-tree
+  $ echo "..." | git commit-tree   ← (Not yet added to master branch)
+                                      branches/refs aren’t automatically 
+                                      advanced to point at new commits in
+                                      plumbing.
+  $ git update-ref \                ← update heads/master to point to 
+    refs/heads/master $new_commit_id  latest commit.
+  b023d92829d5d076dc31de5cca92cf0bd5ae8f8e
+  
+ 
+  - BºWorking with multiple branchesº
+  
+  $ git update-ref refs/heads/dev    ← Create a second head/ref (==branch)
+  65b0...
+  
+  $ git branch
+    dev
+  * master                           ← current branch is determined by the
+                                       contents of .git/HEAD. 
+                                       $ cat .git/HEAD. 
+                                       ref: refs/heads/master
+  
+  $ git symbolic-ref HEAD \          ← HEAD now point to dev ref/branch
+    refs/heads/dev 
+  
+  HEAD reference can be used as a shortcut for "commit hashes". 
+  
+https://alexwlchan.net/a-plumbers-guide-to-git/conclusion/
+
+     
+   Rºrefs/heads/masterº···→ Gºcommit id02º ···→  Bºtreeº 
+                              └────┬────┘
+                                   ·
+     Oº.git/HEADº                  ·
+             ·                     ·
+             v                     v
+   Rºrefs/heads/devº   ···→ Gºcommit id01º ···→  Bºtreeº ····→  Blog
+                                                  └──┬─┘
+                                                     ·
+                                                     ·
+                                                     ·
+                                                     v
+                                                 Bºtreeº ····→  Blog
+                                                    └········→  Blog
+</pre>
+<pre zoom labels="git,TODO">
+<a xsmall TODO href="https://opensource.com/article/18/11/gitbase">gitbase: Query Git with SQL</a>
+- Gitbase is a Go-powered open source project that allows SQL queries to be run on Git repositories.
+
 </pre>
 
-<pre zoom labels="git,TODO">
-<a xsmall TODO href="https://opensource.com/article/18/11/gitbase">gitbase</a>
-</pre>
-
-<pre zoom labels="git,TODO">
-<a xsmall TODO href="https://www.systutorials.com/2845/how-to-revert-changes-in-git/">Revert Changes</a>
+<pre zoom labels="git,101,TODO">
+<span xsmall>Revert Changes</span>
+https://www.systutorials.com/2845/how-to-revert-changes-in-git/
 </pre>
 
 <pre zoom labels="git,TODO">
@@ -783,16 +940,30 @@ https://github.com/awslabs/git-secrets#synopsis
 </pre>
 
 
-<pre zoom labels="git,performance,TODO">
+<pre zoom labels="git,performance,">
 <span xsmall>What's new</span>
+-º2.28:º
+@[https://github.blog/2020-07-27-highlights-from-git-2-28/]
+
+ - Git 2.28 takes advantage of 2.27 commit-graph optimizations to
+   deliver a handful of sizeable performance improvements.
+
+
+-º2.27:º
+ - commit-graph file format was extended to store changed-path Bloom
+   filters. What does all of that mean? In a sense, 
+   this new information helps Git find points in history that touched a 
+   given path much more quickly (for example, git log -- ˂path˃, or git 
+   blame). 
+
 -º2.25:º
 @[https://www.infoq.com/news/2020/01/git-2-25-sparse-checkout/]
   500+ changes since 2.24. 
 
  º[performance]º 
-  Sparse checkouts are one of several approaches Git supports to improve 
-  performance when working with big(huge or monolithic) repositories.
-   They are useful to keep working directory clean by specifying which
+  Sparse checkouts are one of several approaches Git supports to improve   [performance]
+  performance when working with big(huge or monolithic) repositories.      [monolitic]
+   They are useful to keep working directory clean by specifying which   
   directories to keep. This is useful, for example, with repositories 
   containing thousands of directories.
 
@@ -851,15 +1022,151 @@ Ex:search by topic ex "troubleshooting" and language "java"
 https://github.com/topics/troubleshooting?l=java 
 </pre>
 
+<pre zoom labels="git,security,qa,TODO">
+<span xsmall>Gitsec</span>
+@[https://github.com/BBVA/gitsec]
+
+gitsec is an automated secret discovery service for git that helps 
+you detect sensitive data leaks.
+
+gitsec doesn't directly detect sensitive data but uses already 
+available open source tools with this purpose and provides a 
+framework to run them as one.
+</pre>
+
+<pre zoom labels="git,bitbucket,qa,jenkins,throubleshooting">
+<span xsmall>Unbreakable Branches</span>
+@[https://github.com/AmadeusITGroup/unbreakable-branches-jenkins]
+
+- plugins for Bitbucket and Jenkins trying to fix next problem:
+
+  Normal Pull Request workflow:
+  Open pull-request (PR) to merge changes in target-branch
+    → (build automatically triggered)
+      → build OK
+        repo.owner merges PR
+         → second build triggered on target-branch
+           →Rºsecond build randomnly fails     º
+            Rºleading to broken targeted branchº
+              └───────────────┬───────────────┘ 
+               Reasons include:
+               - Race condition: Parallel PR was merged in-between
+               - Environment issue (must never happens)
+               - lenient dependency declaration got another version
+                 leading to a build break
+
+  - If the Jenkins job is eligible to unbreakable build
+    (by having environment variables such as UB_BRANCH_REF)
+    at the end of the build a notification to Bitbucket is
+    sent according to the build status.
+    (or  manually through two verbs: ubValidate|ubFail)
+
+- Difference stashnotifier-plugin:
+  - stashplugin reports status-on-a-commit
+  - unbreakable build a different API is dedicated on Bitbucket.
+
+- On the Bitbucket side:
+  - GIT HEAD@target-branch moved to  top-of-code to be validated in PR
+    (target-branch can then always have a successful build status).
+
+- Security restrictions added to Bitbucket:
+  (once you activate the unbreakable build on a branch for your repository)
+  -  merge button replaced by merge-request-button to queue the build.
+  -  The merge will happen automatically at the end of the build if the build succeeds
+  -  direct push on the branch is forbidden
+  -BºMerge requests on different PRs will process the builds sequentiallyº
+
+- Prerequisites to run the code locally:
+  - Maven (tested agains 3.5)
+  - Git should be installed
+
+- PRE-SETUP:
+  - Install UnbreakableBranch plugin at Bitbucket
+  - bitbucketBranch source plugin Jenkins plugin should be
+    a patched so that mandatory environment variables are
+    injected. RºNote that this plugin hasn't been released yetº
+</pre>
+
+<pre zoom labels="git,qa,troubleshooting,secret">
+<a xsmall todo >Filter-repo</a>
+@[https://github.com/newren/git-filter-repo/]
+- Create new repository from old ones, keeping just the 
+  history of a given subset of directories.
+
+(Replace: (buggy)filter-branch @[https://git-scm.com/docs/git-filter-branch])
+- Python script for rewriting history:
+  - cli for simple use cases.
+  - library for writing complex tools.
+
+- Presetup:
+  - git 2.22.0+  (2.24.0+ for some features)
+  - python 3.5+
+
+  $ git filter-repo \
+       --path src/ \                         ← commits not touching src/ removed
+       --to-subdirectory-filter my-module \  ← rename  src/** → my-module/src/**
+       --tag-rename '':'my-module-'            add 'my-module-' prefix to any tags 
+                                               (avoid any conflicts later merging 
+                                                into something else)
+
+BºDesign rationale behind filter-repoº:
+  - None existing tools with similr features.  
+  - [Starting report] Provide analysis before pruning/renaming.
+  - [Keep vs. remove] Do not just allow to remove selected paths
+                      but to keep certain ones. 
+    (removing all paths except a subset can be painful.
+     We need to specify all paths that ever existed in
+     any version of the repository)
+  - [Renaming] It should be easy to rename paths:
+  - [More intelligent safety].
+  - [Auto shrink] Automatically remove old cruft and repack the 
+    repository for the user after filtering (unless overridden); 
+  - [Clean separation] Avoid confusing users (and prevent accidental 
+    re-pushing of old stuff) due to mixing old repo and rewritten repo 
+    together.
+  - [Versatility] Provide the user the ability to extend the tool  
+    ... rich data structures (vs hashes, dicts, lists, and arrays
+        difficult to manage in shell)
+    ... reasonable string manipulation capabilities 
+  - [Old commit references] Provide a way for users to use old commit 
+    IDs with the new repository.
+  - [Commit message consistency] Rewrite commit messages pointing to other 
+    commits by ID.
+  - [Become-empty pruning] empty commits should be pruned.
+  - [Speed]
+
+- Work on filter-repo and predecessor has driven
+  improvements to fast-export|import (and occasionally other 
+  commands) in core git, based on things filter-repo needs to do its 
+  work:
+ 
+BºManual Summaryº:
+@[https://htmlpreview.github.io/?https://github.com/newren/git-filter-repo/blob/docs/html/git-filter-repo.html]
+- Overwrite entire repository history using user-specified filters.
+  (WARN: deletes original history)
+  - Use cases:
+    - stripping large files (or large directories or large extensions)
+    - stripping unwanted files by path (sensitive secrests) [secret]
+    - Keep just an interesting subset of paths, remove anything else.
+    - restructuring file layout. Ex:
+      - move all files subdirectory
+      - making subdirectory as new toplevel.
+      - Merging two directories with independent filenames.
+      - ...
+    - renaming tags
+    - making mailmap rewriting of user names or emails permanent
+    - making grafts or replacement refs permanent
+    - rewriting commit messages
+</pre>
 </div>
 </div> <!-- git Non Classified-->
 </div> <!-- git -->
 
 
 <div group>
-    <span title>Shell</span><br/>
+    <span title>Shell Scripting</span><br/>
 <div groupv>
-<pre zoom labels="TODO">
+<pre zoom labels="shell_script,101">
 <span xsmall bgorange>Reference Script</span>
 Source: @[https://github.com/earizon/utility_shell_scripts/blob/master/scriptTemplate.sh]
 
@@ -955,17 +1262,17 @@ echo "Exiting with status:$GLOBAL_EXIT_STATUS"
 exit $GLOBAL_EXIT_STATUS
 </pre>
 
-<pre zoom labels="101,shell">
+<pre zoom labels="shell_script,101">
 <span xsmall>Init Vars</span>
 complete Shell parameter expansion list available at:
 - @[http://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html]
 var1=$1 # init var $1 with first param
 var1=$# # init var $1 with number of params
 var1=$! # init var with PID of last executed command.
-var1=${parameter:-word} # init $var1 with $parameter value or 'word'(or word expansion) if parameter unset or null
-var1=${parameter:=word} # init $var1 with $parameter value or 'word'(or word expansion) if parameter unset or null. Also asign word to $parameter
-var1=${parameter:?word} # If parameter is null/unset word (or word expansion) is written to the STDERR and exits.
-var1=${parameter:+word} # If parameter is null or unset, nothing is substituted, otherwise the expansion of word is substituted.
+var1=${parameter:-word} # == $parameter if parameter set or 'word' (expansion)
+var1=${parameter:=word} # == $parameter if parameter set or 'word' (expansion), then parameter=word 
+var1=${parameter:?word} # == $parameter if parameter set or 'word' (expansion) written to STDERR, then exit.
+var1=${parameter:+word} # == var1       if parameter set or 'word' (expansion).
 ${parameter:offset}
 ${parameter:offset:length}
 # Substring Expansion. It expands to up to length characters of the value
@@ -999,22 +1306,22 @@ TMP_DIR=$(mktemp --directory)
 
 </pre>
 
-<pre zoom labels="shell">
+<pre zoom labels="shell_script,">
 <span xsmall>Barrier synchronization</span>
 UUID:[9737647d-58dc-4999-8db4-4cd3c2682edd] 
 Wait for background jobs to complete example:
 (
-  ( sleep 3 ; echo "job 1 ended" ) &
-  ( sleep 1 ; echo "job 2 ended" ) &
-  ( sleep 1 ; echo "job 3 ended" ) &
-  ( sleep 9 ; echo "job 4 ended" ) &
+  ( sleep 3 ; echo "job 1 ended" ) ⅋
+  ( sleep 1 ; echo "job 2 ended" ) ⅋
+  ( sleep 1 ; echo "job 3 ended" ) ⅋
+  ( sleep 9 ; echo "job 4 ended" ) ⅋
   wait ${!}       # alt.1: Wait for all background jobs to complete
 # wait %1 %2 %3   # alt.2: Wait for jobs 1,2,3. Do not wait for job 4
   echo "All subjobs ended"
-) &
+) ⅋
 </pre>
 
-<pre zoom labels="shell">
+<pre zoom labels="shell_script,">
 <span xsmall>bash REPL loop</span>
 REPL stands for Read-eval-print loop: More info at:
 @[https://en.wikipedia.org/wiki/Read%E2%80%93eval%E2%80%93print_loop]
@@ -1029,12 +1336,12 @@ REPL stands for Read-eval-print loop: More info at:
    ºdoneº
 </pre>
 
-<pre zoom labels="shell,TODO">
+<pre zoom labels="shell_script,TODO">
 <span xsmall>trap: Exit script cleanly</span>
 @[https://www.putorius.net/using-trap-to-exit-bash-scripts-cleanly.html]
 </pre>
 
-<pre zoom labels="shell,resource">
+<pre zoom labels="shell_script,,resource">
 <span xsmall>Bash-it</span>
 @[https://www.tecmint.com/bash-it-control-shell-scripts-aliases-in-linux/]
 - bundle of community Bash commands and scripts for Bash 3.2+,
@@ -1044,7 +1351,7 @@ REPL stands for Read-eval-print loop: More info at:
 </pre>
 
 
-<pre zoom labels="">
+<pre zoom labels="shell_script,101,">
 <span xsmall>Bash 4+ Maps</span>
 #!/usr/bin/env bash
 
@@ -1060,8 +1367,8 @@ for sound in "${!animals[@]}"; do echo "$sound - ${animals[$sound]}"; done
 Bash 3
 </pre>
 
-<pre zoom labels="">
-<span xsmall>test</span>
+<pre zoom labels="shell_script,101">
+<span xsmall>test (shell conditionals)</span>
 (man test summary from GNU coreutils)
 
 test
@@ -1128,6 +1435,96 @@ RºWARN,WARN,WARNº: your shell may have its own version of test and/or '[',
 Full documentation at: @[https://www.gnu.org/software/coreutils/]
 
 
+</pre>
+
+<pre zoom labels="shell_script,http,network,troubleshooting,testing">
+<span xsmall>Curl Summary</span>
+
+- Suport for DICT, FILE, FTP, FTPS, GOPHER, HTTP GET/POST, HTTPS, HTTP2, IMAP,
+           IMAPS, LDAP, LDAPS, POP3, POP3S, RTMP, RTSP, SCP, SFTP, SMB, SMBS,
+           SMTP, SMTPS, TELNET,  TFTP, unix socket protocols.
+- proxy support.
+- kerberos support.
+- HTTP  cookies, etags
+- file transfer resume.
+- Metalink
+- SMTP / IMAP Multi-part 
+- HAProxy PROXY protocol
+- ...
+
+BºHTTP Exampleº
+  $ curl http://site.{one,two,three}.com  \    
+         --silent                         \    ← Disable progress meter
+         --anyauth                        \    ← make curl figure out auth. method
+                                                 (--basic, --digest, --ntlm, and --negotiate)
+                                                 not recommended if uploading from stdin since 
+                                                 data can be sent 2+ times
+                                                 - Used together with -u, --user.
+         --cacert file_used_to_verify_peer \   ← Alt: Use CURL_CA_BUNDLE
+                                                 - See also --capath dir, --cert-status,  --cert-type PEM|DER|...
+         --cert certificate[:password]     \   ← Use cert to indentify curl client
+         --ciphers list of TLS_ciphers     \
+         --compressed                      \   ← (HTTP) Request compressed response. Save uncompressed response. 
+         --config text_file_with_curl_args \   
+         --connect-timeout sec_number      \
+         --create-dirs                     \   ← When using --output 
+         --data-binary data                \   ← HTTP POST alt 1: posts data with no extra processing whatsoever.
+                                                 Or @data_file
+         --data-urlencode data             \   ← HTTP POST alt 2
+         --data           data             \   ← HTTP POST alt 3: post data in the same way that a browser  does for formats
+                                                 (content-type application/x-www-form-urlencoded)
+         --header ... 
+         --limit-rate speed
+         --location                        \  ← follow redirects 
+         --include                         \  ← Include the HTTP response headers in the output.
+                                                             See also -v, --verbose.
+        --oauth2-bearer ...                \  ← (IMAP POP3 SMTP) 
+        --output out_file                  \  ← Write output to file (Defaults to stdout)
+  
+</pre>
+
+<pre zoom labels="shell_script,low_code,API">
+<span xsmall>Kapow!: Shell Script to HTTP API</span>
+@[https://github.com/BBVA/kapow]
+by BBVA-Labs Security team members.
+" If you can script it, you can HTTP it !!!!"
+
+ Ex:
+ Initial Script:
+   $ cat /var/log/apache2/access.log | grep 'File does not exist' 
+ 
+ To expose it as HTTP:
+
+   $ cat search-apache-errors
+   #!/usr/bin/env sh
+   kapow route add /apache-errors - ˂-'EOF'
+       cat /var/log/apache2/access.log | grep 'File does not exist' | kapow set /response/body
+   EOF
+
+ Run HTTP Service like:
+
+ $ kapow server search-apache-errors  ← Client can access it like 
+                                        curl http://apache-host:8080/apache-errors
+                                        [Fri Feb 01 ...] [core:info] File does not exist: ../favicon.ico
+                                        ...
+
+    We can share information without having to grant SSH access to anybody.
+
+
+- "Alternatives" include socat:
+  (Extracted from https://fossies.org/linux/socat/EXAMPLES:)
+  make a program available on the network chrooted, unprivileged; 
+  parent process stays in / running as root
+  EXEC="EXEC"
+  EXEC="${EXEC}:/bin/myscript"         ←  NOTE: path is already relative to chrooted enviromnet
+  EXEC="${EXEC},chroot=/home/sandbox"     "Real" path in non-chrooted env. would be:
+  EXEC="${EXEC},su=sandbox,pty,stderr"    /home/sandbox/bin/myscript
+
+  $ sudo ./socat -lm -d -d TCP-LISTEN:5555,fork ${EXEC}
+    └───────────────────────┬─────────────────────────┘
+    to avoid terminal problems with telnet socat can also
+    be used to trigger execution like:
+    $ socat -,icanon=0,echo=0 tcp:target:5555; reset
 </pre>
 </div>
 </div><!-- shell -->
@@ -2034,6 +2431,7 @@ work the way you want.
 
 </div>
 
+
 <div groupv>
 <span title>QA/Testing</span><br/>
 <pre zoom labels="ci/cd,qa,kayenta,TODO">
@@ -2067,6 +2465,8 @@ See also QAWolf:
     - What is the most recent commit message in a given repository?
     - Who are the most prolific contributors in a repository
 </pre>
+
+
 
 <pre zoom labels="troubleshooting,ci/cd,qa,testing,TODO">
 <span xsmall>Charles Proxy</span>
@@ -4119,6 +4519,8 @@ https://blog.sonatype.com/using-nexus-3-as-your-repository-part-1-maven-artifact
 https://blog.sonatype.com/using-nexus-3-as-your-repository-part-2-npm-packages
 https://blog.sonatype.com/using-nexus-3-as-your-repository-part-3-docker-images
 </pre>
+
+
 </div>
 
 
@@ -4128,15 +4530,12 @@ https://blog.sonatype.com/using-nexus-3-as-your-repository-part-3-docker-images
 </html>
 
 <!--
-
-_____________________
 https://github.com/dbohdan/structured-text-tools/blob/master/sql-based.md
 
 https://github.com/dbohdan/structured-text-tools#sql-based-tools
 
 https://github.com/dbohdan/structured-text-tools/blob/master/sql-based.md
-
-______________________
+######################
 git, hooks, node.js, go, Python pip, ...
 https://github.com/Arkweid/lefthook
 Fast and powerful Git hooks manager for Node.js, Ruby or any other type of projects.
@@ -4159,8 +4558,28 @@ pre-push:
       files: git diff --name-only HEAD @{push}
       glob: "*.md"
       run: npx markdown-link-check {files}
-_________________
+###############################
 
+####################################
+https://github.com/AmadeusITGroup/GraphDash 
+GitHub - AmadeusITGroup/GraphDash: A web-based dashboard built on graphs and their metadata.#####################################
+################################
+########################
+Use libguestfs to manage virtual machine disk images
+https://www.redhat.com/sysadmin/libguestfs-manage-vm 
+
+#########################
+https://github.com/AmadeusITGroup/workflow-cps-global-lib-http-plugin
+The current official plugin workflow-cps-global-lib does provide a way to retrieve shared libraries through a SCM, such as Git. The goal of this plugin is to provide another way to retrieve shared libraries via the @Library declaration in a Jenkinsfile.This is a way to separate to concerns : source code (SCM) and built artefacts (binaries). Built artefacts are immutable, tagged and often stored on a different kind of infrastructure. Since pipelines can be used to make production loads, it makes sense to host the libraries on a server with a production-level SLA for example. You can also make sure that your artefact repository is close to your pipelines and share the same SLA. Having your Jenkins and your artefact repository close limitsr latency and limits network issues.
+########################## Uber Open-Sources Tool to Automatically Clean Up Stale Code
+https://www.infoq.com/news/2020/06/uber-piranha/
+######################3
+DevOps, GIT: Part 3: Context from commits – alexwlchan
+https://alexwlchan.net/a-plumbers-guide-to-git/3-context-from-commits/ 
+
+###################
+
+###########################
 -->
 
 

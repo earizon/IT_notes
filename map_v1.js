@@ -65,6 +65,7 @@ const SF = {  /* search Form */
       SF.searchForm_labelsDOM = document.getElementById("searchFormLabels")
   },
   showSearchForm : function() {
+    IC.hidePreview()
     SF.searchFormDOM.style.display="block";
     document.getElementById("inputQuery").value = SF.regexQuery
     document.getElementById("searchAndMode").checked = SF.labelANDMode
@@ -121,6 +122,10 @@ const ZW = { /* ZOOM Window */
        + "<div id='zoomHTMLContent'/>"
     ZW.dom = dom1
     document.body.insertBefore(dom1,document.body.children[0])
+    const dom2 = document.createElement('div');
+          dom2.setAttribute("id", "previewHTMLContent")
+    
+    document.body.insertBefore(dom2,document.body.children[1])
     document.getElementById("divClose").addEventListener("click", ZW.doCloseZoom);
     document.getElementById("GoBack" ).addEventListener("click", NAV.goBack);
     document.getElementById("GoForw" ).addEventListener("click", NAV.goForward);
@@ -130,6 +135,12 @@ const ZW = { /* ZOOM Window */
     ZW.updateButtonSwitchLectureMode()
   },
   doOpenZoom : function(e) {
+    IC.hidePreview()
+    if (e.target != null ) e = e.target;
+    for (let c = 0 ; c < 4; c++) {
+      if (e.getAttribute("zoom") != null)  break
+      e = e.parentNode
+    }
     ZC.zoomStatus = 1
     if(NAV.visited.indexOf(e)>=0) { 
         NAV.visited_idx = NAV.visited.indexOf(e)
@@ -340,13 +351,50 @@ const IC = { // Input Control
     if (e.code === "Enter") { ZW.doCloseZoom() }
     if (e.code === "F1") doHelp() 
   },
+  showPreview : function(event) {
+    const e = event.target
+    const docWidth = document.body.getBoundingClientRect().width;
+    const margin = 10
+    const previewDom = document.getElementById("previewHTMLContent")
+          previewDom.style["top"]  = "" + e.offsetTop  + "px"
+    const freeToLeft  = ( e.getBoundingClientRect().left              ) - margin
+    const freeToRight = ( docWidth -  e.getBoundingClientRect().right ) - margin
+// console.log(freeToLeft + "," + freeToRight)
+    previewDom.style["display"] = "block"
+    if (freeToLeft > freeToRight) {
+          previewDom.style["left"] = ""
+          previewDom.style["right"] = "" + (docWidth - e.offsetLeft                      + margin)+"px"
+          previewDom.style["max-width"] = "" + freeToLeft + "px"
+    } else {
+          previewDom.style["right"] = ""
+          previewDom.style["left"] = "" + (e.offsetLeft + e.getBoundingClientRect().width + margin)+"px"
+          previewDom.style["max-width"] = "" + freeToRight + "px"
+    } 
+    previewDom.innerHTML =
+       "<span id='previewHints'> (double click cell to zoom)</span>" +
+       "<span id='closePreview'>X</span><br/>" +
+       e.outerHTML
+    document.getElementById("closePreview").
+            addEventListener('click', IC.hidePreview )
+  },
+
+  hidePreview : function(event) {
+    document.getElementById("closePreview").
+            removeEventListener('click', IC.hidePreview )
+    const previewDom = document.getElementById("previewHTMLContent")
+    previewDom.style["display"] = "none"
+    previewDom.innerHTML = ""
+  },
   initInputControl: function(){
     document.addEventListener('keyup'  , IC.onKeyUp)
     var nodeList = document.querySelectorAll('*[zoom]')
     for (let idx in nodeList) { 
-       if (!!! nodeList[idx].addEventListener) continue
-       IC.LPC.enableDblClick (nodeList[idx])
-       IC.LPC.enableLongTouch(nodeList[idx])
+       const node = nodeList[idx]
+       if (!!! node.addEventListener) continue
+       IC.LPC.enableDblClick (node)
+       IC.LPC.enableLongTouch(node)
+       node.addEventListener('mouseenter', IC.showPreview )
+    // node.addEventListener('mouseleave', IC.hidePreview )
     }
   },
   LPC : { /* (L)ong (P)ress (C)control */
@@ -380,16 +428,13 @@ const IC = { // Input Control
        }
      },
      enableDblClick : function (node) {
-       let self = node
-       node.addEventListener('dblclick', function() { 
-         ZW.doOpenZoom(self) 
-       } , true)
+       node.addEventListener('dblclick', ZW.doOpenZoom, true)
      },
      enableLongTouch : function (node) { 
-       node.addEventListener("mousedown" , IC.LPC.start);
+    // node.addEventListener("mousedown" , IC.LPC.start);
        node.addEventListener("touchstart", IC.LPC.start);
-       node.addEventListener("click"     , IC.LPC.click);
-       node.addEventListener("mouseout"  , IC.LPC.cancel);
+    // node.addEventListener("click"     , IC.LPC.click);
+       node.addEventListener("mouseleave", IC.LPC.cancel);
        node.addEventListener("touchend"  , IC.LPC.cancel);
        node.addEventListener("touchleave", IC.LPC.cancel);
        node.addEventListener("touchcancel",IC.LPC.cancel);

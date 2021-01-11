@@ -514,8 +514,7 @@ $ git clone --depth=1   --branch '1.3.2'   --single-branch ${URL_to_Git_repo}
 </pre>
 
 <pre zoom labels="git,TODO,performance">
-<span xsmall>Garbage</span>
-<span xsmall>Collector</span>
+<span xsmall>Garbage Collector</span>
 -  Git occasionally does garbage collection as part of its normal operation, 
 by invoking git gc --auto. The pre-auto-gc hook is invoked just before the 
 garbage collection takes place, and can be used to notify you that this is 
@@ -523,8 +522,7 @@ happening, or to abort the collection if now isn’t a good time.
 </pre>
 
 <pre zoom labels="git,TODO">
-<span xsmall>Scalable</span>
-<span xsmall>Git VFS</span>
+<span xsmall>Scalable Git VFS</span>
 @[https://github.com/Microsoft/VFSForGit]
 @[https://vfsforgit.org/]
 - Microsoft project to enable managing massive Git 
@@ -532,9 +530,103 @@ happening, or to abort the collection if now isn’t a good time.
 </pre>
 
 <pre zoom labels="git,secret,signature,TODO">
-<span xsmall>GPG signed</span>
-<span xsmall>commits</span>
-@[https://dev.to/sdmg15/gpg-signing-your-git-commits-3epc]
+<span xsmall>GPG signed commits</span> <!-- @ma -->
+@[https://git-scm.com/book/en/v2/Git-Tools-Signing-Your-Work]
+BºGPG PRESETUPº
+  gpg (GNU Privacy Guard) installed.
+  (This is the case for most OOSS OSes)
+
+  $ gpg --gen-key     ← Generate+install key (if not yet done)
+
+  $ gpg --list-keys
+  /Users/user01/.gnupg/pubring.gpg
+  ---------------------------------
+  pub   2048R/0A46826A 2014-06-04
+  uid                  1stName 2ndName (Git signing key) 
+  ˂user01@gmail.com˃
+  sub   2048R/874529A9 2014-06-04
+
+BºGIT PRESETUPº
+  $ git config --global \        
+        user.signingkey 0A46826A  ← Set default key for tags+commits sign.
+
+  $ git tag -s v1.5 -m 'my signed 1.5 tag'  ← BºSigning tagsº
+            └--v--┘
+            replaces -a
+  (follow gpg instructions to sign)
+
+  $ git show v1.5
+  tag v1.5
+  Tagger: ...
+  Date:   ...
+  
+  my signed 1.5 tag
+Oº-----BEGIN PGP SIGNATURE-----                                   º
+OºVersion: GnuPG v1                                               º
+Oº                                                                º
+OºiQEcBAABAgAGBQJTZbQlAAoJEF0+sviABDDrZbQH/09PfE51KPVPlanr6q1v4/Utº
+OºLQxfojUWiLQdg2ESJItkcuweYg+kc3HCyFejeDIBw9dpXt00rY26p05qrpnG+85bº
+OºhM1/PswpPLuBSr+oCIDj5GMC2r2iEKsfv2fJbNW8iWAXVLoWZRF8B0MfqX/YTMbmº
+Oºecorc4iXzQu7tupRihslbNkfvfciMnSDeSvzCpWAHl7h8Wj6hhqePmLm9lAYqnKpº
+Oº8S5B/1SSQuEAjRZgI4IexpZoeKGVDptPHxLLS38fozsyi0QyDyzEgJxcJQVMXxViº
+OºRUysgqjcpT8+iQM1PblGfHR4XAhuOqN5Fx06PSaFZhqvWFezJ28/CLyX5q+oIVk=º
+Oº=EFTF                                                           º
+Oº-----END PGP SIGNATURE-----                                     º
+  
+  commit ca82a6dff817ec66f44342007202690a93763949
+  ...
+
+  $ git tag -v v1.4.2.1  ← GºVerify tagº
+            └┘             Note: signer’s pub.key must be in local keyring
+  object 883653babd8ee7ea23e6a5c392bb739348b1eb61
+  type commit
+  ...
+Gºgpg: Signature made Wed Sep 13 02:08:25 2006 PDT using DSA key ID º
+GºF3119B9A                                                          º
+Gºgpg: Good signature from "Junio C Hamano <junkio@cox.net>"        º
+Gºgpg:                 aka "[jpeg image of size 1513]"              º
+GºPrimary key fingerprint: 3565 2A26 2040 E066 C9A7  4A7D C0C6 D9A4 º
+GºF311 9B9A                                                         º
+  └──────────────────────────┬────────────────────────────────────┘
+   Or error similar to next one will be displayed:
+     gpg: Can't check signature: public key not found
+   error: could not verify the tag 'v1.4.2.1'
+
+  $ git commit -a -S -m 'Signed commit'  ← BºSigning Commits (git 1.7.9+)º
+  $ git log --show-signature -1          ← GºVerify Signaturesº
+  commit 5c3386cf54bba0a33a32da706aa52bc0155503c2
+Gºgpg: Signature made Wed Jun  4 19:49:17 2014 PDT using RSA key IDº
+Gº0A46826A                                                         º
+Gºgpg: Good signature from "1stName 2ndName (Git signing key)      º
+Gº˂user01@gmail.com˃"                                              º
+  Author: ...
+  ...
+  $ git log --pretty="format:%h %G? %aN  %s"
+                                         ^^
+    TIP: configure git log to check and list any found signatures.
+         Ex. Output:
+    5c3386cGºGº1stName 2ndName  Signed commit
+    ca82a6d  N 1stName 2ndName  Change the version number
+    085bb3b  N 1stName 2ndName  Remove unnecessary test code
+    a11bef0  N 1stName 2ndName  Initial commit
+
+
+
+You can also use the -S option with the git merge command to sign the 
+resulting merge commit itself. The following example both verifies 
+that every commit in the branch to be merged is signed and 
+furthermore signs the resulting merge commit.
+
+                                                                 
+$ git merge \             ← Gº# Verify signature at merge timeº
+  --verify-signatures \     
+  -S signed-branch        ← Sign merge itselft.
+                           
+$ git pull  \             ← Gº# Verify signature at pull  timeº
+  --verify-signatures     
+                        Gº####################################º
+                        Gº# Accepting block in blockchain!!! #º
+                        Gº####################################º
 </pre>
 
 <span title>Git Hooks</span>

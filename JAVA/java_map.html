@@ -41,7 +41,7 @@ https://hg.openjdk.java.net/jdk/jdk
 -  Java Performance: The Definitive Guide, by Scott Oaks
    ISBN-10: 1449358454
    ISBN-13: 978-1449358457
-
+</pre>
 
 <pre zoom labels="resource,101,TODO">
 <span xsmall>TOP Mistakes/Classes/FAQs/...</span>
@@ -737,11 +737,12 @@ REF: @[https://dzone.com/articles/heap-memory-in-java-performance-testing?utm_so
 <div groupv>
 <pre zoom labels="strings,101,TODO">
 <span xsmall>Strings</span>
-final String formatedNumber = String.format("%4d",100);
-See also: [[Format String Checker?]]
-
-String[] args = ...
-Strings.join(List.of(args),"'")); // ← String array to CSV.
+  final String formatedNumber = String.format("%4d",100);
+  See also: [[Format String Checker?]]
+  
+  final String[] args = ...
+  final String s1 = String.join(List.of(args),"'" )); // ← alt 1: String array to CSV
+  final String s1 = String.join(","          ,args)); // ← alt 2: String array to CSV
 
 Bºjava.util.StringJoinerº (1.8+) Concatenate Strings
   https://docs.oracle.com/javase/8/docs/api/java/util/StringJoiner.html
@@ -2341,18 +2342,83 @@ AsynchronousFileChannel fileChannel =
   });
 </pre>
 
-<pre zoom labels="async/reactive,101,network,io,low_code,qa">
+<pre zoom labels="async/reactive,101,network,io,low_code,comparative,qa,TODO">
+<span xsmall>java.net.http.HTTPClient</span>
+API REF: @[https://docs.oracle.com/en/java/javase/11/docs/api/java.net.http/java/net/http/package-summary.html]
+JEP: @[https://openjdk.java.net/jeps/321]
+
+TODO: HTTPClient Quick intro:
+    @[https://openjdk.java.net/groups/net/httpclient/intro.html]
 <span xsmall>OkHTTP</span>
+- BºOkHTTP vs java.net.http.HTTPClientº
+From @[https://stackoverflow.com/questions/42392778/okhttp-or-httpclient-which-offers-better-functionality-and-more-efficiency]
+ BºOkHTTP PROs over        º          RºOkHTTP CONs over        º
+ Bºjava.net.http.HTTPClientº          Rºjava.net.http.HTTPClientº
+ - built-in response cache.           - timeout like configuration can not be
+ - web sockets.                         modified after singleton connection.
+ - Simpler API.                       - Requires (small) extra non-JDK dependencies
+ - Better defaults                      (okIO and okHTTP itself) in non-Android
+ - easier to use efficiently.           deployments
+ - Better URL model.
+ - Android support. (RºHTTPClientº
+ Rºsupported in Android?º)
+ - Better cookie model.
+ - Better headers model.
+ - Better call model.
+ - canceling calls is easy.
+ - Carefully managed TLS defaults
+   secure and widely compatible.
+ - Retrofit compatibility 
+   (Brilliant API for REST).
+ - eorks with okIO great library
+   for data streams.
+ - less code to learn
+ - 1+ billion Android devices 
+   using it interlally
+ - Standard in Android 5.0+ (API level 21+). 
+
 @[https://square.github.io/okhttp/]
 
-- Code recipes available at
-@[https://square.github.io/okhttp/recipes/]
-  - modern http client for Java 8+ and Android 5.0+ (API level 21+). 
+BºDAILY USSAGEº @[https://square.github.io/okhttp/recipes/]
+
+  import java.io.IOException;
+  import okhttp3.OkHttpClient;
+  import okhttp3.Request;
+  import okhttp3.Response;
+  import okhttp3.MediaType;                         // ← For POST
+  import okhttp3.RequestBody;                       // ← For POST
+  ...
+  OkHttpClient client = new OkHttpClient();
+  Request request = new Request.Builder()
+      .url("http://bla.ble.com/a/b?key=param")
+      .build();
+  try ( 
+    Response res =
+       client.newCall(request).execute()            // ← Exec. (GET) Request
+  ) {
+    System.out.println(res.body().string());
+  }
+
+
+  final String MediaType =  "application/json; charset=utf-8";
+  final String jsonBody = "{...}";
+  RequestBody body = RequestBody.create(jsonBody,   //  ← POST: prepare body rquest
+           MediaType.get(MediaType));
+  Request request = new Request.Builder()
+      .url("http://bla.ble.com/")
+      .post(body)                                   //  ← POST: prepare body rquest
+      .build();
+  try (
+    Response res =
+       client.newCall(request).execute()
+  ) {
+    return res.body().string();
+  }
 
 - "efficient by default".
 
 - HTTP/2 support allows all requests to the same host to share a socket.
-- Connection pooling reduces request latency (if HTTP/2 isn’t available).
+- Connection pooling reduces request latency (if HTTP/2 isn't available).
 - Transparent GZIP shrinks download sizes.
 - Response caching avoids the network completely for repeat requests.
 
@@ -2366,7 +2432,8 @@ BºThis is necessary for IPv4+IPv6 and for services hosted in redundant data cen
   can be configured to fall back for broad connectivity.
 
 - request/response API is designed with ºfluent builders and immutabilityº
--.support for synch and sync+callback API.
+-.synch/sync+callback API.
+
 
 
 - Ex: Balancing connections with OKHttp:
@@ -3379,7 +3446,26 @@ ListenableFuture listenable = service.submit(...);   │ CompletableFuture compl
      it something meaningful like ChainableFuture "
 </pre>
 
-<pre zoom labels="concurrency,performance,comparative,resource">
+<pre zoom labels="concurrency,performance,comparative,resource" bgorange>
+<span xsmall>DragonWell JDK with Coroutine Support</span>
+REF: @[https://www.infoq.com/news/2021/01/adoptopenjdk-welcomes-dragonwell/]
+- AdoptOpenJDK and Alibaba announced that the Dragonwell JDK will be 
+  built, tested, and distributed using AdoptOpenJDK's infrastructure.
+  ...  Another interesting feature is the Wisp2 coroutine support.
+     BºWips2  maps Java threads to coroutines instead of kernel-level threads:º.
+       Many coroutines can be scheduled on a small number of core lines,
+       reducing scheduling overhead.
+    
+     Wisp2 engine is similar in some respects to the aims of Project Loom
+     but (unlike Loom) Bºit works out of the box on existing code by enablingº
+   Bºit with these Java arguments:º
+     $ java -XX:+UnlockExperimentalVMOptions -XX:+UseWisp2
+    
+    I/O intensive applications where tasks are blocked on events and 
+  then scheduled can benefit from the coroutine support. On the other 
+  side, RºCPU intensive applications will probably not benefit from º
+Rºcoroutines.º
+
 <span TODO xsmall>Loom Project: Ligthweight threads</span>
 @[https://developers.redhat.com/blog/2019/06/19/project-loom-lightweight-java-threads/]
 @[https://openjdk.java.net/jeps/353]
@@ -7926,7 +8012,7 @@ example project contains three Java classes:
     $ mvn k8s:log          ← Retrieve app Logs
 </pre>
 
-<pre zoom labels="101,low_code,TODO" bgorange>
+<pre zoom labels="101,configuration,low_code,TODO" bgorange>
 <span xsmall>JBang: Simplified Java</span>
 @[https://www.youtube.com/watch?v=X4x2jM3Y0uE]
 </pre>
@@ -8056,5 +8142,13 @@ Python: Click, Typer
 Ruby: TTY
 Rust: clap, structopt
 PHP: console
-
+####################
+10 Java security best practices | Snykhttps://snyk.io/blog/10-java-security-best-practices/
+####################
+AmadeusITGroup/HttpSessionReplacer: Store JEE Servlet HttpSessions in Redis
+https://github.com/AmadeusITGroup/HttpSessionReplacer 
+####################
+Containerizing Java Applications with Jib
+https://www.infoq.com/news/2020/08/containerize-java-app-with-jib/ 
+###################
 -->

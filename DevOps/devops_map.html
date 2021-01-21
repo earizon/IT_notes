@@ -521,13 +521,22 @@ garbage collection takes place, and can be used to notify you that this is
 happening, or to abort the collection if now isn’t a good time.
 </pre>
 
-<pre zoom labels="git,TODO">
+<pre zoom labels="git,scalability,TODO">
 <span xsmall>Scalable Git VFS</span>
 @[https://github.com/Microsoft/VFSForGit]
 @[https://vfsforgit.org/]
 - Microsoft project to enable managing massive Git 
   repositories possible. (hundreds of Gigabytes).
 </pre>
+<pre zoom labels="git,scalability,TODO">
+<span xsmall>Sparse-Checkout</span>
+- sparse-checkout (Git v2.25+) allows to checkout just a subset 
+  of a given monorepo, speeding up commands like git pull and
+  git status.
+@[https://github.blog/2020-01-17-bring-your-monorepo-down-to-size-with-sparse-checkout/]
+
+</pre>
+
 
 <pre zoom labels="git,secret,signature,TODO">
 <span xsmall>GPG signed commits</span> <!-- @ma -->
@@ -1026,7 +1035,7 @@ https://github.com/awslabs/git-secrets#synopsis
   information to a git repository.
 </pre>
 
-<pre zoom labels="git,gpg,security,TODO">
+<pre zoom labels="git,gpg,security,scalability,TODO">
 <span xsmall>Signing Git commits</span>
 @[https://dev.to/sdmg15/gpg-signing-your-git-commits-3epc]
 </pre>
@@ -1053,7 +1062,7 @@ https://github.com/awslabs/git-secrets#synopsis
   500+ changes since 2.24. 
 
  º[performance]º 
-  Sparse checkouts are one of several approaches Git supports to improve   [performance]
+  Sparse checkouts are one of several approaches Git supports to improve   [scalability]
   performance when working with big(huge or monolithic) repositories.      [monolitic]
    They are useful to keep working directory clean by specifying which   
   directories to keep. This is useful, for example, with repositories 
@@ -1575,7 +1584,7 @@ BºHTTP Exampleº
   
 </pre>
 
-<pre zoom labels="shell_script,low_code,API">
+<pre zoom labels="shell_script,web_hook,low_code,git,prometheus,k8s,jira,ansible,git,github,weblogic,slack,">
 <span xsmall>Kapow!: Shell Script to HTTP API</span>
 @[https://github.com/BBVA/kapow]
 by BBVA-Labs Security team members.
@@ -1603,20 +1612,50 @@ by BBVA-Labs Security team members.
     We can share information without having to grant SSH access to anybody.
 
 
-- "Alternatives" include socat:
-  (Extracted from https://fossies.org/linux/socat/EXAMPLES:)
-  make a program available on the network chrooted, unprivileged; 
-  parent process stays in / running as root
-  EXEC="EXEC"
-  EXEC="${EXEC}:/bin/myscript"         ←  NOTE: path is already relative to chrooted enviromnet
-  EXEC="${EXEC},chroot=/home/sandbox"     "Real" path in non-chrooted env. would be:
-  EXEC="${EXEC},su=sandbox,pty,stderr"    /home/sandbox/bin/myscript
+BºRecipe: Run script as a given user:º
+  # Note that `kapow` must be available under $PATH relative to /some/path
+  kapow route add /chrooted\
+      -e 'sudo --preserve-env=KAPOW_HANDLER_ID,KAPOW_DATA_URL \
+          chroot --userspec=sandbox /some/path /bin/sh -c' \
+          -c 'ls / | kapow set /response/body'
 
-  $ sudo ./socat -lm -d -d TCP-LISTEN:5555,fork ${EXEC}
-    └───────────────────────┬─────────────────────────┘
-    to avoid terminal problems with telnet socat can also
-    be used to trigger execution like:
-    $ socat -,icanon=0,echo=0 tcp:target:5555; reset
+<hr/>
+<span xsmall>WebHook (TODO)</span>
+@[https://github.com/adnanh/webhook]
+  - lightweight incoming webhook server to run shell commands 
+    You can also pass data from the HTTP request (such as headers, 
+    payload or query variables) to your commands. webhook also allows you 
+    to specify rules which have to be satisfied in order for the hook to 
+    be triggered.
+  
+  - For example, if you're using Github or Bitbucket, you can use webhook 
+    to set up a hook that runs a redeploy script for your project on your 
+    staging server, whenever you push changes to the master branch of 
+    your project.
+  
+  - Guides featuring webhook:
+    - Webhook and JIRA by @perfecto25 [jira]
+    - Trigger Ansible AWX job runs on SCM (e.g. git) commit by @jpmens [ansible]
+    - Deploy using GitHub webhooks by @awea [git][github]
+    - Setting up Automatic Deployment and Builds Using Webhooks by Will 
+      Browning
+    - Auto deploy your Node.js app on push to GitHub in 3 simple steps by [git][github]
+      Karolis Rusenas
+    - Automate Static Site Deployments with Salt, Git, and Webhooks by [git]
+      Linode
+    - Using Prometheus to Automatically Scale WebLogic Clusters on  [prometheus][k8s] <!-- @ma -->
+      Kubernetes by Marina Kogan                                    [weblogic]
+    - Github Pages and Jekyll - A New Platform for LACNIC Labs by Carlos 
+      Martínez Cagnazzo
+    - How to Deploy React Apps Using Webhooks and Integrating Slack on [slack]
+      Ubuntu by Arslan Ud Din Shafiq
+    - Private webhooks by Thomas 
+    - Adventures in webhooks by Drake
+    - GitHub pro tips by Spencer Lyon [github]
+    - XiaoMi Vacuum + Amazon Button = Dash Cleaning by c0mmensal 
+    - Set up Automated Deployments From Github With Webhook by Maxim Orlov
+      VIDEO: Gitlab CI/CD configuration using Docker and adnanh/webhook 
+      to deploy on VPS - Tutorial #1 by Yes! Let's Learn Software 
 </pre>
 </div>
 </div><!-- shell -->
@@ -2620,7 +2659,26 @@ REF: @[https://github.com/AKSarav/haproxy-nodejs-redis/blob/master/haproxy/]
 <pre zoom labels="ansible">
 <span xsmall>How to navigate Ansible documentation</span>
 @[https://www.redhat.com/sysadmin/navigate-ansible-documentation]
+
+Bºansible-doc Summaryº
+ @[https://docs.ansible.com/ansible/latest/cli/ansible-doc.html]
+ @[https://github.com/tldr-pages/tldr/blob/master/pages/common/ansible-doc.md]
+
+- Display information on modules installed in Ansible libraries. 
+  Display a terse listing of plugins and their short descriptions.
+
+  $º$ ansible-doc --list \     º ← List available action plugins (modules):
+  $º      --type $pluginType   º   (optional) filter by type
+
+  $º$ ansible-doc $plugName \  º ← Show information for plugin
+  $º$  --type $pluginType      º   (optional) filter by type
+
+  $º$ ansible-doc \            º ← Show the playbook snippet for 
+  $º$ --snippet $plugName      º   action plugin (modules) 
+  $º$ --jsonº                     (optional) dump as JSON
+
 <hr/>
+
 <span xsmall>An.in practice[Video]</span>
 https://sysadmincasts.com/episodes/46-configuration-management-with-ansible-part-3-4
 <hr/>
@@ -2688,7 +2746,7 @@ ansible-vault  encryption/decryption utility for Ansible data files
 
 <pre zoom labels="ansible"  bgorange>
 <span xsmall>Summary</span>
-˂span xsmall˃layout best practices˂/span˃          ║ ºControllerº  1 ←→ N  ┌─→ ºModuleº
+ºlayout best practicesº                            ║ ºControllerº  1 ←→ N  ┌─→ ºModuleº
 (Recommended, non─mandatory)                       ║                       │
 best practice file layout approach:                ║ ºMachine   º          │  (community pre─packaged)
 ────────────────────────────────────────────────   ║  ^                    │ ─ abstracts recurrent system task
@@ -2737,7 +2795,7 @@ site.yml              #ºmaster playbookº           ║     | Oºserial:º   # 
 │- import_playbook: dbservers.yml                  ║     |  tasks: ...
                                                    ║     |#Bºstrategy: freeº ← Alt2:  Don't wait for other hosts
                                                    ║
-˂span title˃Role layout˂/span˃                     ║º|Playbook Play|º
+ºRole layoutº                                      ║º|Playbook Play|º
 roles/                                             ║  INPUT
 ├ webtierRole/     # ← same layout that common     ║ |Playbook| → Oºansible─playbookº  → Gather      ────→ exec tasks
 │ ...                                              ║                ^                    host facts          │
@@ -3316,7 +3374,7 @@ class FilterModule(object):
 
 <div groupv>
 <pre zoom labels="ansible">
-<span title>Handling secrets</span>
+<span xsmall>Handling secrets</span>
 @[https://docs.ansible.com/ansible/latest/user_guide/playbooks_vault.html]
 - Ansible vaults use symetric-chiper encryption 
 
@@ -3349,132 +3407,127 @@ class FilterModule(object):
 <pre zoom labels="ansible">
 <span xsmall>Ex (yum install)</span>
 <span xsmall>apache@localhost</span>
----
-# file: ansible.yml
-- hosts: localhost
-  connection: local
-  gather_facts: False
-
-  vars:
-    var_yum_prerequisites: [ 'httpd24'      , 'vim', 'tmux' ]
-    var_apt_prerequisites: [ 'apache-server', 'vim', 'tmux' ]
-
-  vars_files:
-    - /vars/vars_not_in_git.yml   ←  add to .gitignore
-                                     avoid sharing sensitive data
-                                     /vars/vars_not_in_git.yml will look like:
-                                     password: !vault |
-                                               $ANSIBLE_VAULT;1.1;AES256
-                                               ...
-
-
-
-
-  tasks:
-   - name: install yum pre-requisites
-     when: ansible_os_family == "RedHat"
-     become: true
-     yum:
-       name: {{ var_yum_prerequisites }}
-       state: present
-     notify:
-     - restart-apache2
-
-   - name: install apt pre-requisites
-     when: ansible_os_family == "Debian"
-     become: true
-     apt:
-       name: {{ var_apt_prerequisites }}
-       state: latest
-     notify:
-     - restart-apache2
-
-
-  handlers:
-  - name: restart-apache2
-    service: name=httpd state=restarted
+┌ ---
+│ # file: ansible.yml
+│ - hosts: localhost
+│   connection: local
+│   gather_facts: False
+│ 
+│   vars:
+│     var_yum_prerequisites: [ 'httpd24'      , 'vim', 'tmux' ]
+│     var_apt_prerequisites: [ 'apache-server', 'vim', 'tmux' ]
+│ 
+│   vars_files:
+│     - /vars/vars_not_in_git.yml   ←  add to .gitignore
+│                                      avoid sharing sensitive data
+│                                      /vars/vars_not_in_git.yml will look like:
+│                                      password: !vault |
+│                                                $ANSIBLE_VAULT;1.1;AES256
+│                                                ...
+│ 
+│   tasks:
+│    - name: install yum pre-requisites
+│      when: ansible_os_family == "RedHat"
+│      become: true
+│      yum:
+│        name: {{ var_yum_prerequisites }}
+│        state: present
+│      notify:
+│      - restart-apache2
+│ 
+│    - name: install apt pre-requisites
+│      when: ansible_os_family == "Debian"
+│      become: true
+│      apt:
+│        name: {{ var_apt_prerequisites }}
+│        state: latest
+│      notify:
+│      - restart-apache2
+│ 
+│ 
+│   handlers:
+│   - name: restart-apache2
+└     service: name=httpd state=restarted
 </pre>
 <pre zoom labels="ansible">
 <span xsmall>Ex: Installing nginx</span>
-web-tls.yml
-- name: wait in control host for ssh server to be running
-  local_action: wait_for port=22 host="{{ inventory_hostname }}"
-    search_regex=OpenSSH
-
-- name: Configure nginx
- ºhosts:º webservers
-  become: True
- ºvars:º
-    Oºkey_fileº: /etc/nginx/ssl/nginx.key
-    Gºcert_fileº: /etc/nginx/ssl/nginx.crt
-    Bºconf_fileº: /etc/nginx/sites-available/default
-    server_name: localhost
- ºtasks:º
-    - name: install nginx
-      ºaptº: ºnameº=nginx ºupdate_cacheº=yes
-
-    - name: create directories for ssl certificates
-      ºfileº: ºpathº=/etc/nginx/ssl ºstateº=directory
-
-    - name: copy TLS key
-      ºcopyº: ºsrcº=files/nginx.key ºdestº={{ Oºkey_fileº }} owner=root ºmodeº=0600
-      ºnotifyº: restart nginx
-
-    - name: copy TLS certificate
-      ºcopyº: ºsrcº=files/nginx.crt ºdestº={{ Gºcert_fileº }}
-      ºnotifyº: restart nginx
-
-    - name: copy config file
-      ºcopyº: ºsrcº=files/nginx.confº.j2º ºdestº={{ Bºconf_fileº }}
-
-    - name: enable configuration
-      # set attributes of file, symlink or directory
-      ºfileº: ºdestº=/etc/nginx/sites-enabled/default ºsrcº={{ Bºconf_fileº }} state=link
-    - name: copy index.html
-      # template → new file → remote host
-      ºtemplateº: ºsrcº=templates/index.html.j2 ºdestº=/usr/share/nginx/html/index.html
-        mode=0644
-
-    - name: show a debug message
-      debug: "msg='Example debug message: conf_file {{ Bºconf_fileº }} included!'"
-
-    - name: Example to register new ansible variable
-      command: whoami
-      register: login
-    # (first debug helps to know who to write the second debug)
-    - debug: var=login
-    - debug: msg="Logged in as user {{ login.stdout }}"
-
-    - name: Example to ºignore errorsº
-      command: /opt/myprog
-      register: result
-      ignore_errors: ºTrueº
-    - debug: var=result
-
- ºhandlers:º
-    - name: restart nginx
-      ºserviceº: ºnameº=nginx ºstateº=restarted
+┌ web-tls.yml
+│ - name: wait in control host for ssh server to be running
+│   local_action: wait_for port=22 host="{{ inventory_hostname }}"
+│     search_regex=OpenSSH
+│ 
+│ - name: Configure nginx
+│  ºhosts:º webservers
+│   become: True
+│  ºvars:º
+│     Oºkey_fileº: /etc/nginx/ssl/nginx.key
+│     Gºcert_fileº: /etc/nginx/ssl/nginx.crt
+│     Bºconf_fileº: /etc/nginx/sites-available/default
+│     server_name: localhost
+│  ºtasks:º
+│     - name: install nginx
+│       ºaptº: ºnameº=nginx ºupdate_cacheº=yes
+│ 
+│     - name: create directories for ssl certificates
+│       ºfileº: ºpathº=/etc/nginx/ssl ºstateº=directory
+│ 
+│     - name: copy TLS key
+│       ºcopyº: ºsrcº=files/nginx.key ºdestº={{ Oºkey_fileº }} owner=root ºmodeº=0600
+│       ºnotifyº: restart nginx
+│ 
+│     - name: copy TLS certificate
+│       ºcopyº: ºsrcº=files/nginx.crt ºdestº={{ Gºcert_fileº }}
+│       ºnotifyº: restart nginx
+│ 
+│     - name: copy config file
+│       ºcopyº: ºsrcº=files/nginx.confº.j2º ºdestº={{ Bºconf_fileº }}
+│ 
+│     - name: enable configuration
+│       # set attributes of file, symlink or directory
+│       ºfileº: ºdestº=/etc/nginx/sites-enabled/default ºsrcº={{ Bºconf_fileº }} state=link
+│     - name: copy index.html
+│       # template → new file → remote host
+│       ºtemplateº: ºsrcº=templates/index.html.j2 ºdestº=/usr/share/nginx/html/index.html
+│         mode=0644
+│ 
+│     - name: show a debug message
+│       debug: "msg='Example debug message: conf_file {{ Bºconf_fileº }} included!'"
+│ 
+│     - name: Example to register new ansible variable
+│       command: whoami
+│       register: login
+│     # (first debug helps to know who to write the second debug)
+│     - debug: var=login
+│     - debug: msg="Logged in as user {{ login.stdout }}"
+│ 
+│     - name: Example to ºignore errorsº
+│       command: /opt/myprog
+│       register: result
+│       ignore_errors: ºTrueº
+│     - debug: var=result
+│ 
+│  ºhandlers:º
+│     - name: restart nginx
+└       ºserviceº: ºnameº=nginx ºstateº=restarted
 </pre>
 
-<pre zoom labels="ansible">
+<pre zoom labels="ansible,resource"><!-- {{{ -->
 <span  xsmall>Insanely complet Ansible playbook</span>
 @[https://gist.github.com/marktheunissen/2979474]
----
-# ^^^ YAML documents must begin with the document separator "---"
-#
-#### Example docblock, I like to put a descriptive comment at the top of my
-#### playbooks.
+---                               ← YAML documents must begin with doc.separator "---"
+
+#### 
+#### descriptive comment at the top of my playbooks.
+#### 
 #
 # Overview: Playbook to bootstrap a new host for configuration management.
 # Applies to: production
 # Description:
 #   Ensures that a host is configured for management with Ansible.
-#
 ###########
 #
-#
 # Note:
-# YAML, like Python, cares about whitespace.  Indent consistently throughout.
+# RºYAML, like Python, cares about whitespaceº:BºIndent consistentlyº  .
 # Be aware! Unlike Python, YAML refuses to allow the tab character for
 # indentation, so always use spaces.
 #
@@ -3508,7 +3561,7 @@ web-tls.yml
   #   hosts: all -- applies to all hosts
   #   hosts: hostname -- apply ONLY to the host 'hostname'
   #   hosts: groupname -- apply to all hosts in groupname
-  #   hosts: group1,group2 -- apply to hosts in group1 & group2
+  #   hosts: group1,group2 -- apply to hosts in group1 ⅋ group2
   #   hosts: group1,host1 -- mix and match hosts
   #   hosts: *.mars.nasa.gov wildcard matches work as expected
   #
@@ -3554,7 +3607,7 @@ web-tls.yml
   # Default: none
   # Required: no
   # Description:
-  #  Set configuration variables passed to templates & included playbooks
+  #  Set configuration variables passed to templates ⅋ included playbooks
   #  and handlers.  See below for examples.
   vars:
     color: brown
@@ -3623,7 +3676,7 @@ web-tls.yml
   #   A 'vars' YAML file represents a list of variables. Don't use playbook
   #   YAML for a 'vars' file.
   #
-  #   Remove the indentation & comments of course, the '---' should be at
+  #   Remove the indentation ⅋ comments of course, the '---' should be at
   #   the left margin in the variables file.
   #
   vars_files:
@@ -3682,7 +3735,7 @@ web-tls.yml
   tasks:
     ##########
     # The simplest task
-    # Each task must have a name & action.
+    # Each task must have a name ⅋ action.
     - name: Check that the server's alive
       action: ping
 
@@ -3752,7 +3805,7 @@ web-tls.yml
     #   A 'tasks' YAML file represents a list of tasks. Don't use playbook
     #   YAML for a 'tasks' file.
     #
-    #   Remove the indentation & comments of course, the '---' should be at
+    #   Remove the indentation ⅋ comments of course, the '---' should be at
     #   the left margin in the variables file.
 
     # In this example $user will be 'sklar'
@@ -3892,9 +3945,9 @@ web-tls.yml
     # It's also possible to include handlers from another file.  Structure is
     # the same as a tasks file, see the tasks section above for an example.
 - include: handlers/site.yml
-</pre>
+</pre><!-- }}} -->
 
-<pre zoom labels="ansible,troubleshoot">
+<pre zoom labels="ansible,troubleshooting">
 <span xsmall>Troubleshooting</span>
   Problem ex:
   'django_manage' mondule always returns 'changed: False' for
@@ -4084,8 +4137,10 @@ not required to install any agent software.
 </div>
 </div>
 
+<div group>
+<span title>Infra as Code(IaC)</span> </br>
 <div groupv>
-    <span title>Vagrant</span><br/>
+<span title>Vagrant (VMs as code)</span><br/>
 <pre zoom labels="vagrant">
 <span xsmall>External Links</span>
 - <a href="https://www.vagrantup.com/docs/index.html">Vagrant Docs</a>
@@ -4245,10 +4300,9 @@ end
 </pre>
 </div> <!-- vagrant -->
 
-<div group>
-<span title>Infra as Code(IaC)</span> </br>
+
 <div groupv>
-<span title>Terraform</span>
+<span title>Terraform(VMs+Firewalls+...)</span>
 <pre zoom labels="terraform,IaC">
 <span xsmall>Terraform 101</span>
 BºExternal Linksº:
@@ -4267,114 +4321,114 @@ BºSTEP 1: Create tf fileº
   $ mkdir project01
   $ cd project01
   $ vim libvirt.tf like: <!-- ̣̣{{{ -->
-   | provider "libvirt" {              ← Alt 1: local kvm/libvirt provider 
-   |   uri = "qemu:///system"            (Check KVM setup for more info)
-   | }
-   | # provider "libvirt" {            ← Alt 2: Remote provider
-   | #   alias = "server2"
-   | #   uri   = "qemu+ssh://root@192.168.100.10/system"
-   | # }
-
-   | resource "libvirt_volume" "centos7-qcow2" {
-   |   name = "centos7.qcow2"
-   |   pool = "default"
-   |   source = "https://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud.qcow2"
-   |   #source = "./CentOS-7-x86_64-GenericCloud.qcow2"
-   |   format = "qcow2"
-   | }
-
-   | # Adding default user STEP 1 {{{
-   | data "template_file" "user_data" {                      ← Our qcow2 does NOT provide 
-   |   template = "${file("${path.module}/cloud_init.cfg")}"   default user/pass to log-in
-   | }                                                         See BºSTEP 1.2º
-   | # Use CloudInit to add the instance
-  º| resource "libvirt_cloudinit_disk"º"commoninit" {        ← Resource used to "bootstrap"
-   |   name = "commoninit.iso"                                 user data to the instance.
-   |   user_data = "${data.template_file.user_data.rendered}"
-   | }
-   | # }}}
-   | # Adding default user STEP 2 {{{
-   |      cloudinit = "${libvirt_cloudinit_disk.commoninit.id}"
-   | # }}}
-
-   | resource "libvirt_domain" "db1" {    ← For KVM: Define KVM domain to create
-   |   name   = "db1"
-   |   memory = "1024"
-   |   vcpu   = 1
-
-   |   network_interface {
-   |     network_name = "default"
-   |   }
-
-   |   disk {
-   |     volume_id = libvirt_volume.centos6-qcow2.id
-   |   }
-
-   |   console {
-   |     type = "pty"
-   |     target_type = "serial"
-   |     target_port = "0"
-   |   }
-
-   |   graphics {
-   |     type = "spice"
-   |     listen_type = "address"
-   |     autoport = true
-   |   }
-   | }
-
-   | output "ip" {                                            ← Output Server IP
-   |   value = "${libvirt_domain.db1.network_interface.0.addresses.0}"
-   | }
+  │ provider "libvirt" {              ← Alt 1: local kvm/libvirt provider 
+  │   uri = "qemu:///system"            (Check KVM setup for more info)
+  │ }
+  │ # provider "libvirt" {            ← Alt 2: Remote provider
+  │ #   alias = "server2"
+  │ #   uri   = "qemu+ssh://root@192.168.100.10/system"
+  │ # }
+   
+  │ resource "libvirt_volume" "centos7-qcow2" {
+  │   name = "centos7.qcow2"
+  │   pool = "default"
+  │   source = "https://cloud.centos.org/centos/7/images/CentOS-7-x86_64-GenericCloud.qcow2"
+  │   #source = "./CentOS-7-x86_64-GenericCloud.qcow2"
+  │   format = "qcow2"
+  │ }
+   
+  │ # Adding default user STEP 1 {{{
+  │ data "template_file" "user_data" {                      ← Our qcow2 does NOT provide 
+  │   template = "${file("${path.module}/cloud_init.cfg")}"   default user/pass to log-in
+  │ }                                                         See BºSTEP 1.2º
+  │ # Use CloudInit to add the instance
+  │ resource "libvirt_cloudinit_disk"º"commoninit" {        ← Resource used to "bootstrap"
+  │   name = "commoninit.iso"                                 user data to the instance.
+  │   user_data = "${data.template_file.user_data.rendered}"
+  │ }
+  │ # }}}
+  │ # Adding default user STEP 2 {{{
+  │      cloudinit = "${libvirt_cloudinit_disk.commoninit.id}"
+  │ # }}}
+  │
+  │ resource "libvirt_domain" "db1" {    ← For KVM: Define KVM domain to create
+  │   name   = "db1"
+  │   memory = "1024"
+  │   vcpu   = 1
+  │
+  │   network_interface {
+  │     network_name = "default"
+  │   }
+  │
+  │   disk {
+  │     volume_id = libvirt_volume.centos6-qcow2.id
+  │   }
+  │
+  │   console {
+  │     type = "pty"
+  │     target_type = "serial"
+  │     target_port = "0"
+  │   }
+  │
+  │   graphics {
+  │     type = "spice"
+  │     listen_type = "address"
+  │     autoport = true
+  │   }
+  │ }
+  │
+  │ output "ip" {                                            ← Output Server IP
+  │   value = "${libvirt_domain.db1.network_interface.0.addresses.0}"
+  │ }
   <!-- ̣̣}}} -->
 
 BºSTEP 1.2: Create cloud_init.cfg fileº
   (Needed when qcow2/... image doesn't provide initial user/pass to log in)
   $ vim cloud_init.cfg
-  | #cloud-config
-  | # vim: syntax=yaml                          
-  | #
-  | # ***********************
-  | #   ---- for more examples look at: ------
-  | # ---> https://cloudinit.readthedocs.io/en/latest/topics/examples.html
-  | # ******************************
-  | #
-  | # This is the configuration syntax that the write_files module
-  | # will know how to understand. encoding can be given b64 or gzip or (gz+b64).
-  | # The content will be decoded accordingly and then written to the path that is
-  | # provided.
-  | #
-  | # Note: Content strings here are truncated for example purposes.
-  | ssh_pwauth: True
-  | chpasswd:
-  |   list: |
-  |      root: StrongPassword
-  |   expire: False
-  |
-  | users:
-  |   - name: jmutai       # ← Change by real one
-  |     ssh_authorized_keys:
-  |       - ssh-rsa AAAAXX # ← Change by real one
-  |     sudo: ['ALL=(ALL) NOPASSWD:ALL']
-  |     shell: /bin/bash
-  |     groups: wheel
-
-  |     This will set root password to StrongPassword
-  |     Add user named jmutai with specified Public SSH keys
-  |     The user will be added to wheel group and be allowed to run sudo commands without password.
+  │ #cloud-config
+  │ # vim: syntax=yaml                          
+  │ #
+  │ # ***********************
+  │ #   ---- for more examples look at: ------
+  │ #   https://cloudinit.readthedocs.io/en/latest/topics/examples.html
+  │ # ******************************
+  │ #
+  │ # This is the configuration syntax that the write_files module
+  │ # will know how to understand. encoding can be given b64|gz|gz+b64.
+  │ # The content will be decoded accordingly and then written to the path 
+  │ # that is provided.
+  │ #
+  │ # Note: Content strings here are truncated for example purposes.
+  │ ssh_pwauth: True
+  │ chpasswd:
+  │   list: |
+  │      root: StrongPassword
+  │   expire: False
+  │
+  │ users:
+  │   - name: jmutai       # ← Change by real one
+  │     ssh_authorized_keys:
+  │       - ssh-rsa AAAAXX # ← Change by real one
+  │     sudo: ['ALL=(ALL) NOPASSWD:ALL']
+  │     shell: /bin/bash
+  │     groups: wheel
+  │
+  │     This will set root password to StrongPassword
+  │     Add user named jmutai with specified Public SSH keys
+  │     The user will be added to wheel group and be allowed to run sudo 
+  │     commands without password.
 
 BºSTEP 2: Initº
   $ terraformºinitº
   (Output like ...)
   → Initializing provider plugins…
   → Terraform has been successfully initialized!
-  → You may now begin working with Terraform. Try runningº"terraform plan"ºto see any changes
-  → that are required for your infrastructure. All Terraform commands should now work.
+  → ... Try runningº"terraform plan"ºto see any changes
+  → required for your infrastructure. All commands should now work.
   →
-  → If you everºset or change modulesºor backend configuration for Terraform,
-  → ºrerun this command to reinitializeºyour working directory. If you forget, other
-  → commands will detect it and remind you to do so if n
-
+  → If you everºset or change modulesºor backend configuration,
+  → ºrerun this command to reinitializeºyour working directory.
+  →  If you forget, other commands will detect it and remind you
 
 BºSTEP 3: Check needed changesº
   (Short of "dry-run")
@@ -4668,10 +4722,16 @@ https://www.infoq.com/news/2020/06/uber-piranha/
 ######################3
 DevOps, GIT: Part 3: Context from commits – alexwlchan
 https://alexwlchan.net/a-plumbers-guide-to-git/3-context-from-commits/ 
-
-###################
-
 ###########################
+https://github.com/tldr-pages/tldr/tree/master/pages/common @ma
+See git, ansible related ones
+###################
+https://github.blog/author/dstolee/
+###################
+ansible,qa,billion_dollar_mistake,
+4 lines of code to improve your Ansible play
+With a tiny bit of effort, you can help the next person by not just 
+mapping the safe path but leaving warnings about the dangers
 -->
 
 

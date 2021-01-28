@@ -6860,10 +6860,29 @@ BºPodman auto-update  (1.9+)º
    # An insecure registry is one that does not have a valid SSL certificate or only does HTTP.
    [registries.insecure]
  Bºregistries = ['localhost:5000']º
-
 </pre>
 
 </div>
+<div groupv>
+<span title>Security</span>
+<pre zoom labels="security,qa,TODO">
+<span xsmall>Protecting against Doki malware</span>
+https://containerjournal.com/topics/container-security/protecting-containers-against-doki-malware/
+</pre>
+
+<pre zoom labels="TODO">
+<span xsmall>2+Millions images with Critical Sec.Holes</span>
+https://www.infoq.com/news/2020/12/dockerhub-image-vulnerabilities/
+</pre>
+
+<pre zoom labels="security,image,TODO">
+<span xsmall>OpenSCAP: Scanning Vulnerabilities</span>
+- Scanning Containers for Vulnerabilities on RHEL 8.2 With OpenSCAP and Podman:
+@[https://www.youtube.com/watch?v=nQmIcK1vvYc]
+</pre>
+
+</div>
+
 <div group>
     <span title>Un-ordered</span><br/>
 <pre zoom labels="101,networking,calico,flannel,TODO">
@@ -6878,86 +6897,71 @@ By Julia Evans
 
 Bºwhat even is container networking?º
 
-  When you run a program in a container, you have two main options:
-  - run the program in the host network namespace. This is normal 
-    networking – if you run a program on port 8282, it will run on port 
-    8282 on the computer. No surprises.
+  When  a program in a container, you have two main options:
+  - run app in host network namespace. (normal networking)
+    "host_ip":"app_port"
   - run the program in its ownºnetwork namespaceº:
-    other programs on other computers need to be able 
-    to make network connections to that program and 
   RºIt turns out that this problem of how to connect º
   Rºtwo programs in containers together has a ton of º
   Rºdifferent solutions. º
 
-
 - "every container gets an IP".  (k8s requirement)
-  - any other program inside you cluster can talk to your container
-    just using that IP address.
-  RºSo this might mean that on one computer you might haveº
-  Rºcontainers with hundreds or thousands of IP addresses º
-  Rº(instead of just one IP address and many ports).      º
+    "172.16.0.1:8080" // Tomcat continer app 1
+    "172.16.0.2:5432" // PostgreSQL container app1
+    "172.17.0.1:8080" // Tomcat continer app 2
+    ...
+    └───────┬───────┘
+    any other program in the cluster will target those IP:port
+    Instead of single-IP:"many ports" we have "many IPs":"some ports"
 
-    Q: How to get many IPs in a single host? 
-    - Start: We have a  computer with a single IP address (172.9.9.9)
-    - We want a container with its new private IP address (10.4.4.4)
-    - We want to route from 10.4.4.4 to 172.9.9.9.
+   Q: How to get many IPs in a single host? 
+    - Host IP: 172.9.9.9
+    - Container private IP: 10.4.4.4
+    - To route from 10.4.4.4 to 172.9.9.9:
+    - Alt1: Configure Linux routing tables
+    $º$ sudo ip route add 10.4.4.0/24 via 172.23.1.1 dev eth0º 
+    - Alt2: Use AWS VPC Route tables
+    - Alt3: Use Azure ...
 
-   - REMEMBER:
-     - (Ethernet,...)  MAC : Layer 2
-       -  Ex MAC Address: 
-          $º$ ip link                         º
-          $º$ ...                             º
-          $º$ link/ether 3c:97:ae:44:b3:7f ...º
-       -  kenrel sends packets in same network
-          directly to the MAC address.
-     -  src/dst IP         : Layer 3
-        - Used when routing to different network.
-        - To add new routes:
-          $º$ sudo ip route add 10.4.4.0/24 via 172.23.1.1 dev eth0º
-     -  (UDP/TCP) port, ...: Layer 4
-     -  HTTP (text) content: Layer 7
+BºEncapsulating to other networks:º
 
-
-Encapsulating to ohter networks:
-
-LOCAL NETWORK     REMOTE NETWORK
-                  (encapsulation)
-IP: 10.4.4.4      IP: 172.9.9.9
-TCP stuff         (extra wrapper stuff)
-HTTP stuff        IP: 10.4.4.4
-                  TCP stuff
-                  HTTP stuff
-
-- 2 different ways of doing encapsulation: 
-  - "ip-in-ip": add extra IP-header on top "current" IP header.
-    MAC:  11:11:11:11:11:11
-    IP: 172.9.9.9
-    IP: 10.4.4.4
-    TCP stuff
-    HTTP stuff
-    Ex:
-    $º$ sudo ip tunnel add mytun mode ipip \       º ← Create tunnel "mytun"
-    $º   remote 172.9.9.9 local 10.4.4.4 ttl 255   º 
-    $º   sudo ifconfig mytun 10.42.1.1             º 
-    $º$ sudo route add -net 10.42.2.0/24 dev mytun º ← set up a route table
-    $º$ sudo route list 
-
-
-  - "vxlan": take whole packet
-     (including the MAC address) and wrap
-     it inside a UDP packet. Ex:
-     MAC address: 11:11:11:11:11:11
-     IP: 172.9.9.9
-     UDP port 8472 (the "vxlan port")
-     MAC address: ab:cd:ef:12:34:56
-     IP: 10.4.4.4
-     TCP port 80
-     HTTP stuff
+  LOCAL NETWORK     REMOTE NETWORK
+                    (encapsulation)
+  IP: 10.4.4.4      IP: 172.9.9.9
+  TCP stuff         (extra wrapper stuff)
+  HTTP stuff        IP: 10.4.4.4
+                    TCP stuff
+                    HTTP stuff
+  
+  - 2 different ways of doing encapsulation: 
+    - "ip-in-ip": add extra IP-header on top "current" IP header.
+      MAC:  11:11:11:11:11:11
+      IP: 172.9.9.9
+      IP: 10.4.4.4
+      TCP stuff
+      HTTP stuff
+      Ex:
+      $º$ sudo ip tunnel add mytun mode ipip \       º ← Create tunnel "mytun"
+      $º   remote 172.9.9.9 local 10.4.4.4 ttl 255   º 
+      $º   sudo ifconfig mytun 10.42.1.1             º 
+      $º$ sudo route add -net 10.42.2.0/24 dev mytun º ← set up a route table
+      $º$ sudo route list 
+  
+  
+    - "vxlan": take whole packet
+       (including the MAC address) and wrap
+       it inside a UDP packet. Ex:
+       MAC address: 11:11:11:11:11:11
+       IP: 172.9.9.9
+       UDP port 8472 (the "vxlan port")
+       MAC address: ab:cd:ef:12:34:56
+       IP: 10.4.4.4
+       TCP port 80
+       HTTP stuff
 
   -BºEvery container networking "thing" runs some kind of daemon program º
    Bºon every box which is in charge of adding routes to the route table.º
    Bºfor automatic route configuration.º
-
      - Alt1: routes are in etcd cluster, and program talks to the 
              etcd cluster to figure out which routes to set.
      - Alt2: use BGP protocol to gossip to each other about routes,
@@ -6966,7 +6970,6 @@ HTTP stuff        IP: 10.4.4.4
 
 BºQ: How does that packet actually end up getting to your container program?º
   A: bridge networking
-
   - Docker/... creates fake (virtual) network interfaces for every 
     single one of your containers with a given IP address.
   - The fake interfaces are bridges to a real one.
@@ -7018,11 +7021,6 @@ OCI compliant Container Runtime Engines:
   have stated that work is underway on both of these current limitations.
 </pre>
 
-<pre zoom labels="security,image,TODO">
-<span xsmall>OpenSCAP: Scanning Vulnerabilities</span>
-- Scanning Containers for Vulnerabilities on RHEL 8.2 With OpenSCAP and Podman:
-@[https://www.youtube.com/watch?v=nQmIcK1vvYc]
-</pre>
 
 <pre zoom labels="testing,qa,TODO">
 <span xsmall>Testcontainers</span>
@@ -7177,14 +7175,31 @@ core dump or java heap dump.
   to plug in and get started. 
 </pre>
 
-<pre zoom labels="security,qa,TODO">
-<span xsmall>Protecting against Doki malware</span>
-https://containerjournal.com/topics/container-security/protecting-containers-against-doki-malware/
+<pre zoom labels="docker">
+<span xsmall>avoid "sudo" docker</span>
+$º $ sudo usermod -a -G docker "myUser"º
+$ newgrp docker  (take new group without re-login)
 </pre>
 
-<pre zoom labels="TODO">
-<span xsmall>2+Millions images with Critical Sec.Holes</span>
-https://www.infoq.com/news/2020/12/dockerhub-image-vulnerabilities/
+<pre zoom labels="troubleshooting,qa,TODO">
+<span xsmall>test images in 0.5 secs</span>
+@[https://medium.com/@aelsabbahy/tutorial-how-to-test-your-docker-image-in-half-a-second-bbd13e06a4a9]
+
+...When you’re done with this tutorial you’ll have a small YAML 
+file that describes your docker image’s desired state. This will 
+allow you to test this:
+
+  $ docker run -p 8080:80 nginx
+
+  With this:
+
+  $ dgoss run -p 8080:80 nginx
+
+- Goss is a YAML based serverspec alternative tool for validating a 
+  server’s configuration. It eases the process of writing tests by 
+  allowing the user to generate tests from the current system state. 
+  Once the test suite is written they can be executed, waited-on, or 
+  served as a health endpoint.
 </pre>
 
 </div>

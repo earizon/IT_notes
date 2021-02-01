@@ -117,6 +117,7 @@ const ZW = { /* ZOOM Window */
        + ' <div id="butSwitchLectureMode" >?</div>'
        + ' <div id="textZoomIn" ><span style="font-size:0.7em">🔍︎+</span></div>'
        + ' <div id="textZoomOut"><span style="font-size:0.7em">🔍︎-</span></div>'
+       + ' <br/>'
        + " <div id='divElementLabels' class='noprint'></div>" 
        + "</div>"
        + "<div id='zoomHTMLContent'/>"
@@ -174,14 +175,15 @@ const ZW = { /* ZOOM Window */
         dom.addEventListener('click', function() { SE.highlightSearch(dom.innerHTML) })
       }
     )
-
     ZW.dom.style.display="block"
+    ZW.dom.style.opacity="0"
+    setTimeout(() => { ZW.dom.style.opacity="1" } , 300)
     ZW.dom.scrollTop = 0
     zoomHTML.scrollIntoView({ behavior: 'smooth', block: 'center' })
     return false;
   },
   lectureModePtr : 0,
-  lecturModeDescriptionList : ["Schema", "SchemaCompaq", "Lecture" ],
+  lecturModeDescriptionList : ["&nbsp;⍈&nbsp;", "&nbsp;⍇&nbsp;", "&nbsp;🕮&nbsp;" ],
   getNextLectureMode : function () {
      let result = (ZW.lectureModePtr+1) % ZW.lecturModeDescriptionList.length;
      return result;
@@ -199,6 +201,7 @@ const ZW = { /* ZOOM Window */
   },
   doCloseZoom : function() {
     ZW.dom.style.display="none";
+    ZW.dom.style.opacity="0";
     MB.onZoomClosed()
   }
 }
@@ -227,7 +230,7 @@ const ZC = { /* map zoom Control */
         }
     }
   },
-  onZoomOut : function(mode /* 0 = Zoom Map; 1 = Zoom Text*/){
+  onZoomOut : function(){
     if     (ZC.zoomableFontSize > 0.05) {
        ZC.zoomableFontSize = ZC.zoomableFontSize - ZC.zoomStepOut
     } else if (ZC.xsmallFontSize > 0.4 ){
@@ -311,11 +314,11 @@ const LM = { // Lavel management
     return Object.keys(LM.labelMapSelected).sort().join(",")
   },
   createLabelIndex : function () {
-    var labeled_dom_l = document.querySelectorAll('*[labels]');
+    const labeled_dom_l = document.querySelectorAll('*[labels]');
     for (let idx1 in labeled_dom_l) {
-      var node = labeled_dom_l[idx1]
+      const node = labeled_dom_l[idx1]
       if (!node.getAttribute    ) continue
-      let csvAttributes = node.getAttribute("labels")
+      const csvAttributes = node.getAttribute("labels")
       if (!csvAttributes || !csvAttributes.trim()) continue;
       var labelCount = 0
       csvAttributes.split(",").forEach( label => {
@@ -327,7 +330,7 @@ const LM = { // Lavel management
           labelCount++
       })
       if (labelCount>0) {
-        var countEl = document.createElement('div');
+        const countEl = document.createElement('div');
             countEl.setAttribute("tagCount", "")
             countEl.innerHTML = labelCount
         node.insertBefore(countEl,node.children[0])
@@ -351,50 +354,90 @@ const IC = { // Input Control
     if (e.code === "Enter") { ZW.doCloseZoom() }
     if (e.code === "F1") doHelp() 
   },
+  showPreviewTimeout : null,
+  showPreviewEvent : null,
+  showPreviewInZoom : function() { ZW.doOpenZoom(IC.showPreviewEvent) },
   showPreview : function(event) {
-    const e = event.target
-    const docWidth = document.body.getBoundingClientRect().width;
-    const margin = 10
-    const previewDom = document.getElementById("previewHTMLContent")
-          previewDom.style["top"]  = "" + e.offsetTop  + "px"
-    const freeToLeft  = ( e.getBoundingClientRect().left              ) - margin
-    const freeToRight = ( docWidth -  e.getBoundingClientRect().right ) - margin
-// console.log(freeToLeft + "," + freeToRight)
-    previewDom.style["display"] = "block"
-    if (freeToLeft > freeToRight) {
-          previewDom.style["left"] = ""
-          previewDom.style["right"] = "" + (docWidth - e.offsetLeft                      + margin)+"px"
-          previewDom.style["max-width"] = "" + freeToLeft + "px"
-    } else {
-          previewDom.style["right"] = ""
-          previewDom.style["left"] = "" + (e.offsetLeft + e.getBoundingClientRect().width + margin)+"px"
-          previewDom.style["max-width"] = "" + freeToRight + "px"
-    } 
-    previewDom.innerHTML =
-       "<span id='previewHints'> (double click cell to zoom)</span>" +
-       "<span id='closePreview'>X</span><br/>" +
-       e.outerHTML
-    document.getElementById("closePreview").
-            addEventListener('click', IC.hidePreview )
+    if (!!IC.showPreviewTimeout)  {
+        window.clearTimeout(IC.showPreviewTimeout) 
+    }
+    IC.showPreviewTimeout = setTimeout( () => {
+      const e = event.target
+   // const docWidth = document.body.getBoundingClientRect().width;
+      const docWidth = window.innerWidth
+      const margin = 10
+      const previewDom = document.getElementById("previewHTMLContent")
+      if (!!!IC.showPreviewEvent /* First execution */) { 
+        previewDom.addEventListener('dblclick', IC.showPreviewInZoom, true)
+        IC.showPreviewEvent = event;
+      } else {
+        IC.showPreviewEvent = event;
+      }
+            previewDom.style["top"]  = "" + (e.offsetTop + e.getBoundingClientRect().height ) + "px"
+      previewDom.style["left" ] = ""
+      previewDom.style["right" ] = ""
+      const freeToLeft  = ( e.getBoundingClientRect().left  )
+      const freeToRight = ( docWidth - e.getBoundingClientRect().right )
+
+      previewDom.style["display"] = "block"
+   // previewDom.style["max-width"] = "96%"
+      previewDom.innerHTML =
+         "<div id='previewTop'>" +
+         "<span id='previewHints'> (double click for details)</span>" +
+         "<span id='closePreview'>X</span><br/>" +
+         "</div>" +
+         e.outerHTML
+      // TODO:(qa) closePreview listener never released. Done automatically ?
+      document.getElementById("closePreview").
+              addEventListener('click', IC.hidePreview ) 
+      setTimeout( () => {
+        if (freeToLeft > freeToRight ) {
+console.log(1)
+             previewDom.style["left" ] = "" + e.getBoundingClientRect().right - previewDom.getBoundingClientRect().width + "px"
+        } else {
+console.log(2)
+           previewDom.style["left"  ] = "" + e.getBoundingClientRect().left                                             + "px"
+        }
+
+        // const previewWidthBy2 = previewDom.getBoundingClientRect().width / 2
+        let overflowRight = false
+        if (previewDom.getBoundingClientRect().right > docWidth ) {
+console.log(3)
+          previewDom.style["right" ] = "calc(100% - 98vw)"
+//        if (previewDom.getBoundingClientRect().width < docWidth ) {
+//          console.log(3.1)
+//          previewDom.style["left" ] = ""
+//        }
+        }
+        if (previewDom.getBoundingClientRect().left < 0 ) {
+console.log(4)
+          previewDom.style["left" ] = "calc(2vw)"
+//        if (previewDom.getBoundingClientRect().width < docWidth ) {
+//  console.log(4.1)
+//          previewDom.style["right" ] = ""
+//        }
+        }
+      }, 1 /* on next tick */)
+    }, 500)
   },
 
   hidePreview : function(event) {
-    document.getElementById("closePreview").
-            removeEventListener('click', IC.hidePreview )
+    const preview = document.getElementById("closePreview")
+    if (!!preview) { preview.removeEventListener('click', IC.hidePreview ) }
     const previewDom = document.getElementById("previewHTMLContent")
     previewDom.style["display"] = "none"
     previewDom.innerHTML = ""
   },
   initInputControl: function(){
     document.addEventListener('keyup'  , IC.onKeyUp)
-    var nodeList = document.querySelectorAll('*[zoom]')
+    const nodeList = document.querySelectorAll('*[zoom]')
     for (let idx in nodeList) { 
        const node = nodeList[idx]
        if (!!! node.addEventListener) continue
        IC.LPC.enableDblClick (node)
        IC.LPC.enableLongTouch(node)
        node.addEventListener('mouseenter', IC.showPreview )
-    // node.addEventListener('mouseleave', IC.hidePreview )
+       node.addEventListener('mouseleave', function() { window.clearTimeout(IC.showPreviewTimeout) } )
     }
   },
   LPC : { /* (L)ong (P)ress (C)control */
@@ -451,7 +494,7 @@ const TPP = {  // (T)ext (P)re (P)rocessor
        TPP.replaceMap[key] = [new RegExp("[$][{]"+key+"[}]",'g'), TPP.replaceMap[key]]
     )
 
-    var nodeList = document.querySelectorAll('*[zoom]')
+    const nodeList = document.querySelectorAll('*[zoom]')
     for (let idx in nodeList) { 
         if (!!! nodeList[idx].innerHTML) { continue }
 
@@ -508,13 +551,14 @@ const TPP = {  // (T)ext (P)re (P)rocessor
 
 const MB = { // Menu Bar
   renderMenuBar : function (){
-    var searchDiv = document.createElement('div');
+    const searchDiv = document.createElement('div');
         searchDiv.setAttribute("id", "upper_bar")
         searchDiv.innerHTML = ''
      + '<img id="idLabelsFilter" class="noprint" src="/labelIcon.svg"  '
      +   ' onerror="src = \'https://singlepagebookproject.github.io/SPB/labelIcon.svg\';" />'
      + '║<a href="../help.html" class="noprint" style="cursor:help" target="_blank" >HelpMan</a>'
      + '║<span blue id="printButton">Print</span>'
+     + '║<div id="hint01">☞move mouse over cell<br/> for preview</div>'
      + '<span id="buttonZoomIn"  blue>🔍︎ dive</span>'
      + '<span id="buttonZoomSep" >⇆</span>'
      + '<span id="buttonZoomOut" blue>📷 orbit</span>'
@@ -524,7 +568,39 @@ const MB = { // Menu Bar
     document.getElementById("idLabelsFilter").addEventListener("click", SF.showSearchForm)
     document.getElementById("buttonZoomIn"  ).addEventListener("click", ZC.onZoomIn  )
     document.getElementById("buttonZoomOut" ).addEventListener("click", ZC.onZoomOut )
-    document.getElementById("printButton"   ).addEventListener("click", MB.spbQuickPrint )
+    { 
+      // https://stackoverflow.com/questions/27116221/prevent-zoom-cross-browser
+      const meta = document.createElement('meta')
+            meta.setAttribute("name", "viewport")
+            meta.setAttribute("content", "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no")
+      document.head.insertBefore(meta,document.head.children[0])
+
+      function addGestureZoom() {
+        // https://stackoverflow.com/questions/11183174/simplest-way-to-detect-a-pinch/11183333#11183333 {
+        let last = 0;
+        let lock = false;
+        window.addEventListener('touchmove', 
+          function(event) {
+            if (lock == true) return
+         // if (event.targetTouches.length === 2) {
+            if (event.touches.length == 2) {
+                let hypo1 = Math.hypot((event.targetTouches[0].pageX - event.targetTouches[1].pageX),
+                    (event.targetTouches[0].pageY - event.targetTouches[1].pageY));
+                if (last == 0) { last = hypo1; return; }
+                if      (hypo1  == last) { return        }
+                lock = true
+                if      (hypo1 >  last)  { ZC.onZoomIn ()}
+                else if (hypo1 <  last)  { ZC.onZoomOut()}
+                last = 0;
+                setTimeout(function(){ lock = false; }, 1000)
+            } else {
+                lock = false
+            }
+          }, false);
+      }
+      addGestureZoom()
+    }
+    document.getElementById("printButton").addEventListener("click", MB.spbQuickPrint )
   },
   spbQuickPrint : function() {
     if (window.confirm('Use browser [print...] for print-previsualization.-')) {
@@ -536,10 +612,10 @@ const MB = { // Menu Bar
 
 function switchLinksToBlankTarget() {
   // Change default a.target to blank.
-  var nodeList = document.querySelectorAll('a')
-  var thisDoc=document.location.origin+document.location.pathname;
+  const nodeList = document.querySelectorAll('a')
+  const thisDoc=document.location.origin+document.location.pathname;
   for (let idx in nodeList) { 
-    var nodeHref = nodeList[idx].href
+    const nodeHref = nodeList[idx].href
     if (!nodeHref) { continue }
     if (! (nodeHref.startsWith("http")) ) continue
     if ( nodeHref.startsWith(thisDoc)) continue
@@ -548,6 +624,16 @@ function switchLinksToBlankTarget() {
 }
 
 function pageLoadedEnd() {
+  let id = getParameterByName("id") || ""
+  if (!!id) {
+    const targetDom = document.getElementById(id)
+    if (!!targetDom) {
+      ZW.doOpenZoom(targetDom);
+      return;
+    }
+  }
+
+
   // Parse query parameters
   let csvLabels = getParameterByName("topics") || ""
       csvLabels = csvLabels.toLowerCase()
@@ -598,15 +684,12 @@ window.addEventListener('load', onPageLoaded )
 function getParameterByName(name, url) {
     if (!url) url = window.location.href;
     name = name.replace(/[\[\]]/g, '\\$&');
-    var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
+    const regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)'),
         results = regex.exec(url);
     if (!results) return null;
     if (!results[2]) return '';
     return decodeURIComponent(results[2].replace(/\+/g, ' '));
 }
-
-var searchFound = false;
-
 
 Array.prototype.union = function(a) 
 {
@@ -624,10 +707,10 @@ Array.prototype.intersection = function(a)
 
 const SE = { // (S)earch (E)ngine
   searchAndMark : function (node, finalRegex) {
-    var htmlContent = (SF.singleLineMode)
+    const htmlContent = (SF.singleLineMode)
          ? node.innerHTML 
          : node.innerHTML.replace(/\n/gm, ' ')
-    var searchFound = finalRegex.test(htmlContent)
+    const searchFound = finalRegex.test(htmlContent)
     // reset after search:
     // REF: https://stackoverflow.com/questions/11477415/why-does-javascripts-regex-exec-not-always-return-the-same-value
     finalRegex.lastIndex = 0;
@@ -680,12 +763,12 @@ const SE = { // (S)earch (E)ngine
         }
     } else {
         // By default search inside all zoomable elements
-        var innerZoom_l = document.querySelectorAll('*[zoom]')
+        innerZoom_l = document.querySelectorAll('*[zoom]')
     }
     var regexFlags = "g";
     if (!SF.matchCaseMode) regexFlags += "i";
     if (!SF.singleLineMode) regexFlags += "m";
-    var finalRegex = (isEmptyQuery) 
+    const finalRegex = (isEmptyQuery) 
         ? new RegExp(".*")
         : new RegExp("[^=>;]?(" + finalQueryRegex + ")", regexFlags)
 
@@ -695,7 +778,7 @@ const SE = { // (S)earch (E)ngine
 
     var foundElement = false
     for (let idx2 in innerZoom_l) {
-        var node = innerZoom_l[idx2]
+        const node = innerZoom_l[idx2]
         if (false/* true => change node background in debug mode */) {
             node.setAttribute("textFound", "debug") 
         }
@@ -726,7 +809,7 @@ const SE = { // (S)earch (E)ngine
             node.removeAttribute("hidden")
         })
      })
-    var removeNodeList = document.querySelectorAll('*[textFound]');
+    const removeNodeList = document.querySelectorAll('*[textFound]');
     if (removeNodeList.length == 0) return; // Nothing to do.
     for (let idx in removeNodeList) {
         if (!removeNodeList[idx].setAttribute) continue; // <- Umm: works fine at page-load, fails in following searchs

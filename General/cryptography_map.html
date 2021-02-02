@@ -3323,156 +3323,172 @@ formed according to RFC 1779 and RFC 2247:
 </div>
 
 <div groupv>
-<span title>OpenPGP/PGP/GPG</span>
-<pre zoom labels="secret_mng,pgp,standard,keystore,symmetric,asymmetric,signature">
+<span title>OpenPGP(GPG/...)</span>
+<pre zoom id="pgp_summary" labels="secret_mng,pgp,git,standard,keystore,symmetric,asymmetric,signature,troubleshooting">
 <span title>Summary</span>
-PGP: Pretty Good Privacy: encryption program (1991 Phil Zimmermann)
-     Used for signing, encrypting, and decrypting texts, e-mails,
-     files, directories, disks, e-mails.
+  PGP: Pretty Good Privacy: encryption program (1991 Phil Zimmermann)
+       Used for signing, encrypting, and decrypting texts, e-mails,
+       files, directories, disks, e-mails.
+  
+  OpenPGP: Open Standard around PGP software (RFC 4880)
 
-OpenPGP: Open Standard around of PGP encryption software (RFC 4880)
-    for encrypting and decrypting data
-Gnu Privacy Guard
-<span xsmall bgorange>Sym file</span>
-<span xsmall bgorange>encrypt</span>
-ºEncrypt/Decrypt from/to fileº
-$ gpg --symmetric plainTextFile --output myEncFile.gpg  # ← Encrypt
-$ gpg --decrypt -o -                                    # ← Decrypt to STDOUT
-$ shred -n 2 -z -v plainTextFile                        # ← Safe delete
+  GPG: Gnu Privacy Guard implementation
 
-ºEncrypt/Decrypt from/to STDIN/STDOUTº
-$ echo "MySecret Text" | gpg -c --batch --passphrase 1234 | base64 -w 0                    # ← Encrypt from STDIN
-jA0EBw...u+8ykK
-$ echo "jA0EBw...u+8ykK" | base64 -d | gpg -d --batch --passphrase 1234 2˃/dev/null
-MySecret Text
-
-
-<span xsmall bgorange>- multi-level</span>
-example script:
-TMP_LEVEL1=/tmp/level1Ciphered.base64 ; DECODE_LEVEL1=decodedlevel1  ; PASS_LEVEL1=/tmp/myPassLevel1
-TMP_LEVEL2=/tmp/level2Ciphered.base64 ; DECODE_LEVEL2=decodedlevel2  ; PASS_LEVEL2=/tmp/myPassLevel2
-TMP_LEVEL3=/tmp/level3Ciphered.base64 ; DECODE_LEVEL3=decodedlevel3  ; PASS_LEVEL3=/tmp/myPassLevel3
-(
-cat ˂˂ EOF
- secrets level 1
-EOF
-) | gpg -c --batch  --passphrase ${PASS_LEVEL1} | base64 ˃ ${TMP_LEVEL1}
+Bº*****************************º
+Bº* Symmetric file encryption *º
+Bº*****************************º
+ - simpler and more secure than asym. one.
+ - Can NOT be used to publish with anonymous or untrusted users.
+   For example, it can NOT be used to cypher (or sign) content in
+   public software repositories since there is no way to distribute the
+   private key to future and unknown/untrusted recipients.
+ - In can be used to store secrets safely in private repositories like git.
+ - Ex Ussage:
+   -ºPRE-SETUPº:
+     "master key" : Private key that git team keeps secret (ideally "memorized")
+                    Different master keys can be used in different contexts.
 
 
-(
-cat ${TMP_LEVEL1}
+     $º$ ls secrets.txt*            º
+     Rºsecrets.txtº                    ← Secrets to access login, cloud resources, ddbbs,...
+                                       Rºadd to .gitignoreº to avoid distributing secrets
 
-cat ˂˂ EOF
- secrets level 2
-EOF
-) | gpg -c --batch  --passphrase ${PASS_LEVEL2} | base64 ˃ ${TMP_LEVEL2}
+     $º$ cat secrets.txt \                    º
+     $º  | gpg -c --batch --passphrase $pass\ º ← Generates binary encrypted output Qº*1º
+     $º  | base64 \                           º ← (optional): Allows to copy in mail/stdin/... 
+     $º  ˃ secrets.txt.gpg.base64             º
+           └───────┬────────────┘
+         BºCan be added to gitº: Each time "master key" is
+           rotated, this file must be regenerated (and old
+           master key used in the mean time to decrypt).
 
+     $º$ cat secrets.txt.gpg.base64 \         º
+     $º  | base64 -d \                        º
+     $º  | gpg -d --batch --passphrase $pass \º   Qº*1º
+     $º  ˃ secrets.txt                        º
 
-(
-cat ${TMP_LEVEL2}
+     Qº*1º: Remove --batch --passphrase options to ask for password interactively.
+            (probably safer, but can not be scripted easily)
 
-cat ˂˂ EOF
- secrets level 3
-EOF
-) | gpg -c --batch  --passphrase ${PASS_LEVEL3} | base64 ˃ ${TMP_LEVEL3}
-
-cat ${TMP_LEVEL3}  | base64 -d | gpg -d --batch --passphrase ${PASS_LEVEL3} ˃ $DECODE_LEVEL3
-cat $DECODE_LEVEL3 | base64 -d | gpg -d --batch --passphrase ${PASS_LEVEL2} ˃ $DECODE_LEVEL2
-cat $DECODE_LEVEL2 | base64 -d | gpg -d --batch --passphrase ${PASS_LEVEL1} ˃ $DECODE_LEVEL1
-
-echo "---- DECODED LEVEL 3 ------"
-cat $DECODE_LEVEL3
-echo "---- DECODED LEVEL 2 ------"
-cat $DECODE_LEVEL2
-echo "---- DECODED LEVEL 1 ------"
-cat $DECODE_LEVEL1
-
-<span xsmall>-Priv.key mng</span>
-<a href="http://central.sonatype.org/pages/working-with-pgp-signatures.html">REF:</a>
-ºNEW KEYPAIRº
-$ gpg --gen-key       # defs: RSA 2048bit, no-expire
-# (enter name+email when prompted)         ^^^^^^^^^
-                                           Recommended ˂=2 years
-                                           Once expired it can be extended
-                                           providing  key (and passphrase).
-
-$ gpg2 --list-keys   #           ← ºLIST PUBLIC KEYSº
-/home/juven/.gnupg/pubring.gpg
-------------------------------
-pub   1024D/C6EED57A 2010-01-13
-uid                  OldMcDonalds˂old.mcdonalds@farm.com˃
-sub   2048g/D704745C 2010-01-13
-      ^^^^  ^^^^^^^^
-     length   keyid
-
-$ gpg2 --list-secret-keys #      ← ºLIST  KEYSº
-/home/juven/.gnupg/secring.gpg
-------------------------------
-sec   1024D/C6EED57A 2010-01-13
-uid                  OldMcDonalds<old.mcdonalds@farm.com>
-ssb   2048g/D704745C 2010-01-13
+   -ºSAFE CLEAN-UPº:
+    $º$ shred -n 2 -z -v secrets.txtª  ← deleting the file leaves original bytes in the hard-disk
 
 
-$ gpg2 -ab temp.java #            ← ºSIGNING A FILEº
-           ^^^^^^^^^                -a create ASCII armored output
-           output to temp.java.asc  -b make detached signature
+<hr/>
+Bº***************************º
+Bº* managing pub/priv. keys *º
+Bº***************************º
+  - Before signing and encripting we need to learn how to create/import/export PGP keys.
+REF:@[http://central.sonatype.org/pages/working-with-pgp-signatures.html]
 
-$ gpg2 --verify temp.java.asc #   ← ºVerify new signatureº
+$º$ gpg --gen-key               º ← Create new key pair defs: RSA 2048bit, no-expire
+  #                                     (enter name,email                      ^^^^^^^^^
+                                          when prompted)           Recommended ˂=2 years
+                                                         Once expired it can be extended
+                                                         providing  key (and passphrase)
+  
+$º$ gpg2 --list-keys            º ← ºLIST ALL PUB. KEYS (ours and imported/pulled)º
+  /home/juven/.gnupg/pubring.gpg
+  ------------------------------
+  pub   1024D/C6EED57A 2010-01-13  ← Seed key
+  uid   ...˂old.mcdonalds@farm.com˃
+  sub   2048g/D704745C 2010-01-13  ← Sub.signing key
+        └─┬─┘ └──┬───┘
+       length Bºkey idº
+  
+$º$ gpg2 --list-secret-keys     º  ← ºLIST PUBLIC KEYS FROM OUR PRIVATE KEYSº
+  /home/juven/.gnupg/secring.gpg
+  ------------------------------
+  sec   1024D/C6EED57A 2010-01-13  ← Seed key
+  uid   ...˂old.mcdonalds@farm.com˃
+  ssb   2048g/D704745C 2010-01-13  ← Sub.signing key
+  
+OºKEYSERVER="hkp://pool.sks-keyservers.net"º
+  ┌─────────────────────────────────────┬─────────────────────────────────────┐
+  │        º"PUSH" PUB.KEY              │           "PULL" PUB.KEYº           │
+  ├─────────────────────────────────────┼─────────────────────────────────────┤
+  │$º$ gpg2 --keyserver ${KEYSERVER} \º │ $º$ gpg2 --keyserver ${KEYSERVER} \º│
+  │$º    --send-keys B C6EED57A       º │ $º    --recv-keys C6EED57A         º│ 
+  └─────────────────────────────────────┴─────────────────────────────────────┘
 
+$º$ gpg2 --edit-key A6BAB25C    º  ← ºMODIFY KEYº
+    ... Secret key is available.
+    pub  2048R/A6BAB25C  created: ...  expires: ...
+         trust: ultimate      validity: ultimate
+    sub  2048R/DD289F64  created: ...  expires: ...
+         Juven Xu (for testing) ˂test@juvenxu.com˃
+    ...
+    gpg˃ Oº1º  # ← Choose key
+    pub  2048R/A6BAB25C  created: ...  expires: ...  usage: SC
+         trust: ultimate      validity: ultimate
+    sub  2048R/DD289F64  created: ...  expires: ...  usage: E
+    (1)* Juven Xu (for testing) ˂test@juvenxu.com˃
+    
+    gpg˃ Oºexpireº                    ← ºEXPIRE A KEYº
+    → ...
+    → Please specify how long the key should be valid.
+            0 = key does not expire
+          ˂n˃ = key expires in n days
+         ...
+    gpg˃ Oºsaveº                      ← send key ("push") to sync changes remotely
+  
+BºTroubleshooting problems with Maven and others:
+  mvn and some other app will only recognise the primary key,
+  ignoring subkeys. A "patch" solution consists in deleting
+  the  singing subkey forcing GPG to use the primary key.
+$º$ gpg2 --edit-key A6BAB25C    º  ← ºMODIFY KEYº
+  ...
+  pub  2048R/A6BAB25C  created:... usage: SC   ← Seed Key. RºOnly key recognised by maven and othersº
+       trust: ultimate validity: ultimate
+  sub  2048R/DD289F64  created:... ºusage: E   ← Default (E)ncryption key
+  sub  2048R/8738EC86  created:... ºusage: S   ← Default (S)igning    key 
+                                                 (RºMust be removed to use maven pgp pluginº  )
+  gpg˃ Oºkey 2º (index start at 0)               (Not needed if using gpg from comand line)
+  ...                                               │
+  gpg˃ Rºdelkeyº  ← Alt 1: Key not yet published  ←─┘
+  gpg˃ Rºrevokeº  ← Alt 2: Key already published
+  gpg˃ Oºsaveº
+<hr/>
+Bº*****************º
+Bº* Signing files *º
+Bº*****************º
+$º$ gpg2 -ab temp.java          º ← ºSIGNING A FILEº
+                                    -a create ASCII armored output
+                                    -b make detached signature
+$º$ gpg2 --verify temp.java.asc º ← ºVerify new signatureº
 
-KEYSERVER="hkp://pool.sks-keyservers.net"
-$ gpg2 --keyserver ${KEYSERVER}   ← º"PUSH" PUB.KEYº
-  \ --send-keys C6EED57A
-$ gpg2 --keyserver ${KEYSERVER}   ← º"PULL" PUB.KEYº
-  \ --recv-keys C6EED57A
+<hr/>
+Bº****************************************º
+Bº* Advanced (Symmetric) file encryption *º
+Bº****************************************º
+ - multi-level password: (Bell–LaPadula)
+ @[https://en.wikipedia.org/wiki/Bell%E2%80%93LaPadula_model]
+   - Level 3 user have passwords to encrypt/decrypt level     3
+   - level 2 user have passwords to encrypt/decrypt level   2,3
+   - level 1 user have passwords to encrypt/decrypt level 1,2,3
 
-ºEXPIRE A KEYº
-$ gpg2 --edit-key A6BAB25C
-... Secret key is available.
-pub  2048R/A6BAB25C  created: ...  expires: ...
-     trust: ultimate      validity: ultimate
-sub  2048R/DD289F64  created: ...  expires: ...
-     Juven Xu (for testing) ˂test@juvenxu.com˃
-...
-gpg˃ Oº1º  # ← Choose key
-pub  2048R/A6BAB25C  created: ...  expires: ...  usage: SC
-     trust: ultimate      validity: ultimate
-sub  2048R/DD289F64  created: ...  expires: ...  usage: E
-(1)* Juven Xu (for testing) ˂test@juvenxu.com˃
+   LEVEL1=level1Ciphered.base64 ; DECODE_LEVEL1=decodedlevel1 ;
+   LEVEL2=level2Ciphered.base64 ; DECODE_LEVEL2=decodedlevel2 ;
+   LEVEL3=level3Ciphered.base64 ; DECODE_LEVEL3=decodedlevel3 ;
 
-gpg˃ Oºexpireº
-→ ...
-→ Please specify how long the key should be valid.
-        0 = key does not expire
-      ˂n˃ = key expires in n days
-     ...
-gpg&gt; Oºsaveº
-(push again to publick hkp serser)
+   GPG_C="gpg -c --batch --passphrase " # Encode
+   GPG_D="gpg -d --batch --passphrase " # Decode
 
-ºMaven problem with Signature SUBKEYsº
-- Some PGP tools generate a sub-signing priv.key
-  splited from the primary key (seed key).
-- Maven and other only recognise the primary key,
-  not subkeys. Deleting Singing subkey will force
-  GPG to use the primary key.
-$ gpg2 --edit-key A6BAB25C
-...
-pub  2048R/A6BAB25C  created:... usage: SC
-                   trust: ultimate      validity: ultimate
-sub  2048R/DD289F64  created:... ºusage: E  # E:Encryptionº
-sub  2048R/8738EC86  created:... ºusage: S  # S: Signing  º
+   # Encode
+   (                 echo "secrets level 1" ) | ${GPG_C} ${PASS_LEVEL1} | base64 ˃ ${LEVEL1}
+   ( cat ${LEVEL1} ; echo "secrets level 2" ) | ${GPG_C} ${PASS_LEVEL2} | base64 ˃ ${LEVEL2}
+   ( cat ${LEVEL2} ; echo "secrets level 3" ) | ${GPG_C} ${PASS_LEVEL3} | base64 ˃ ${LEVEL3}
 
-gpg&gt; Oºkey 2º (index start at 0)
-...
-gpg&gt; Oºdelkeyº  # (or ºrevokeº if already published)
-gpg&gt; Oºsaveº
+   # Decode
+   cat ${LEVEL3} | base64 -d | ${GPG_C} ${PASS_LEVEL1} ˃   ${LEVEL2}  ← 
+   cat ${LEVEL2} | base64 -d | ${GPG_C} ${PASS_LEVEL2} ˃   ${LEVEL1}  ← 
+   cat ${LEVEL1} | base64 -d | ${GPG_C} ${PASS_LEVEL3} ˃  PLAIN_TEXT  ← 
 </pre>
 
 <pre zoom labels="pgp,ssh,ca,tls,TODO">
 <span xsmall>Convert keys GPG|OpenSsh|OpenSSL</span>
 http://sysmic.org/dotclear/index.php?post/2010/03/24/Convert-keys-betweens-GnuPG%2C-OpenSsh-and-OpenSSL
 </pre>
-
 
 <pre zoom labels="pgp,standards,signature,linked_data_signature,TODO">
 <span xsmall>OpenPgpSignature2019</span>

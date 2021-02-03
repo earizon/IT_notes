@@ -841,82 +841,69 @@ TODO:
 - <a href="https://en.wikipedia.org/wiki/Secure_Shell">ssh protocol</a> is the
   standard way to access Linux remotely.
   A running "sshd" (ssh daemon) must be instaled and running
-  on the remote machine.
+  on the remote machine. Used also for tunneling TCP connections.
 
-ºQuickly connect to remote machine runnin sshdº
+BºQuickly connect to remote machine runnin sshdº
   (Remote machine must allow passwords login)
   $ ssh myUser@myRemoteMachine
  → myUser@mYRemoteMachine's password:
   (enter password to log-in to text terminal)
 
-ºAdvanced connection optionsº
-Using the ~/.ssh/config  is the recommended option for all
-by the simplest scenarios. the ~/.ssh/config file allows
-for complex tunning allowing for tcp tunneling, proxy-by-pass,
-...
-Example ~/.ssh/config
-01 Host remoteHostAlias1 remoteHostAlias2 ... remoteHostAliasN
-02    HostName 10.230.11.10
-03    ProxyCommand /usr/bin/corkscrew 10.10.10.10 8080 %h %p
-04    Port 12345
-05    User myRemoteUser
-06    LocalForward   5555 localhost:3333
-07    RemoteForward 13389 localhost:3389
-08    TCPKeepAlive true
-
-Line 01 defines different aliases that can be used to refer
-to the remote machine.
-Line 02 defines the real hostname or IP of the remote sshd server.
-Line 03 is an example of a command that can be used to
-        bypass local firewalls using our company HTTP proxy
-Line 04 allows to connect to a non default ssh-server port
-        (It's always recomended NOT to use the default port 22)
-Line 05 Indicates our remote user id (needed if it's different
-        to our local one).
-Line 06 forwards any local IP request to our local port 5555 to
-        the remote host and port (localhost:3333) accesible
-        in the remote machine     ^^^^^^^^^
-                                  localhost as seen by the
-                                  remote machine. That is
-                                  the remote machine itself
-
-        Ex: If the remote machine has a web server configured
-        to just listen connection to port 3333 locally, the
-        the previous option allows to also connect to the
-        server once the ssh authentication has worked properly.
-        The remote web server will see a local-connection from
-        its local sshd server on the remote machine.
-        The local ssh client and remote ssh server will forward
-        any local request to port 5555 to the port 3333 on the
-        remote machine.
-Line 07 Any program running on the remote machine doing requests
-        to 13389 will be forwarded to our localhost:3389 port
-        in our local machine.
-        In this example localhost:3389 is the address of the
-        local Windows Remote Desktop service. This allows to
-        connect remotely to our remote desktop by connecting
-        to port 13389 in the remote server
-        (once the ssh client has authenticated properly to the
-        sshd server).
-
-ºPasswordless authenticationº
-- Useful to execute remote task automatically.
-# STEP 01: generate local private secret (key) and associated public key.
-$ ssh-keygen
-(WARN: leave passphrase blank to allow for automated task)
+  ...
+  Example ~/.ssh/config
+  01 Host remoteHostAlias1 alias2 ...     ← allows to ssh alias2
+  02    HostName 10.230.11.10 
+  03 #  ProxyCommand /usr/bin/corkscrew 10.10.10.10 8080 %h %p  ← "bypass firewall through HTTP proxy
+  04    Port 12345                        ← 22 by default
+  05    User myRemoteUser                 ← defaults to current active local user
+  06    LocalForward   5555 removeIP:3333 ← Forward any local TCP conection to port 5555
+                                            to port 3333 at remoteIP (as seen by sshd server)
+                                            (ussually remoteIP == localhost)
+  07    RemoteForward 13389 localIP:3389  ← Forward any TCP conection to port 5555 in sshd server
+                                            to port 3389 in localIP (as seen by ssh client)
+                                            (ussually localIP == localhost)
+  08    TCPKeepAlive true                 ← "sort of ping" to avoid closing connection.
 
 
-# STEP 02: Copy associated public key to remote machine
-#          at  /home/myRemoteUser/.ssh/authorized-keys
-$ ssh-copy-id myRemoteUser@myRemoteMachine
 
-Now it must be possible to ssh into the remote machine with no password
-$ ssh myRemoteUser@myRemoteMachine
+BºPasswordless authenticationº
+  - Useful to execute remote task automatically.
+  # STEP 01: generate local private secret (key) and associated public key.
+  $ ssh-keygen
+  (WARN: leave passphrase blank to allow for automated task)
+  
+  
+  # STEP 02: Copy associated public key to remote machine
+  #          at  /home/myRemoteUser/.ssh/authorized-keys
+  $ ssh-copy-id myRemoteUser@myRemoteMachine
+  
+  Now it must be possible to ssh into the remote machine with no password
+  $ ssh myRemoteUser@myRemoteMachine
+  
+  Troubleshooting passwordless access:
+  local  $ chmod go-rw ~/.ssh/*  # Fix permission. ssh is paranoid about it.
+  remote $ chmod go-rw ~/.ssh/*  # Fix permission. ssh is paranoid about it.
 
-Troubleshooting passwordless access:
-local  $ chmod go-rw ~/.ssh/*  # Fix permission. ssh is paranoid about it.
-remote $ chmod go-rw ~/.ssh/*  # Fix permission. ssh is paranoid about it.
+BºControl sshº
+ CONTROL_SOCKET=${CONTROL_SOCKET_PREFIX}_$3
+ ssh ... -S ${CONTROL_SOCKET} ... host1  
+         └────────┬─────────┘
+         Later on we can just 
+         ┌────────┴─────────┐
+ ssh     -S ${CONTROL_SOCKET} -O $ctr_cmd 
+                                 ^^^^^^^^ 
+                                 check   : check master process is running.
+                                 forward : request forwardings without command execution.
+                                 cancel  : cancel forwardings
+                                 exit    : request master to exit
+                                 stop    : request the master to stop accepting further multiplexing requests.
 
+    if [[ $6 == "stop" ]] ; then
+       TUNNEL="${TUNNEL} -O exit "
+    fi
+    TUNNEL="${TUNNEL} $4@$2"
+    $TUNNEL 1>/dev/null
+}
 
 See <a href="https://linux.die.net/man/1/ssh">man 1 ssh</a> and
     <a href="https://linux.die.net/man/8/sshd">man 8 sshd</a>

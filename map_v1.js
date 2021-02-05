@@ -179,7 +179,7 @@ const ZW = { /* ZOOM Window */
     ZW.dom.style.opacity="0"
     setTimeout(() => { ZW.dom.style.opacity="1" } , 300)
     ZW.dom.scrollTop = 0
-    zoomHTML.scrollIntoView({ behavior: 'smooth', block: 'center' })
+ // zoomHTML.scrollIntoView({ behavior: 'smooth', block: 'center' })
     return false;
   },
   lectureModePtr : 0,
@@ -647,8 +647,8 @@ function pageLoadedEnd() {
     SE.highlightSearch()
   }
 
-  let doShowSearchMenu = getParameterByName("showSearchMenu") 
-  if (!!doShowSearchMenu || doShowSearchMenu == "") {
+  let doShowSearchMenu = getParameterByName("showSearchMenu")  || ""
+  if (["0","false"].indexOf(doShowSearchMenu.toLowerCase())<0) {
     SF.showSearchForm();
   }
   try {  

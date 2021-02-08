@@ -175,11 +175,21 @@ const ZW = { /* ZOOM Window */
         dom.addEventListener('click', function() { SE.highlightSearch(dom.innerHTML) })
       }
     )
+    zoomHTML.querySelectorAll('.innerLink').forEach(
+      dom => {
+        const target = document.getElementById(dom.getAttribute("value"))
+        dom.addEventListener('click', function() { ZW.doOpenZoom(target) } )
+      }
+    )
+
+
     ZW.dom.style.display="block"
     ZW.dom.style.opacity="0"
     setTimeout(() => { ZW.dom.style.opacity="1" } , 300)
     ZW.dom.scrollTop = 0
- // zoomHTML.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    setTimeout(function() {
+      zoomHTML.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 1)
     return false;
   },
   lectureModePtr : 0,
@@ -493,14 +503,16 @@ const TPP = {  // (T)ext (P)re (P)rocessor
     Object.keys(TPP.replaceMap).forEach( key => 
        TPP.replaceMap[key] = [new RegExp("[$][{]"+key+"[}]",'g'), TPP.replaceMap[key]]
     )
+    const  document_name=window.location.pathname.split("/").pop()
 
     const nodeList = document.querySelectorAll('*[zoom]')
-    for (let idx in nodeList) { 
+    for (let idx in nodeList) { // TODO:(0) Replace on demand, when cell opened.
         if (!!! nodeList[idx].innerHTML) { continue }
 
         Object.keys(TPP.replaceMap).forEach( key => 
           nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(TPP.replaceMap[key][0],TPP.replaceMap[key][1])
         )
+/////// nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(document_link_regex,"TODO(0)"+document_name+"#$1")
         // COMMENTED: Needs more testings 
         // nodeList[idx].innerHTML = nodeList[idx].innerHTML
         // .replace(/(http.?:\/\/[^\b]*)\b/,"<a target='_blank' href='$1'>$1</a>")
@@ -514,7 +526,8 @@ const TPP = {  // (T)ext (P)re (P)rocessor
           + " (⏏ )</a>"
         )
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/@\[(http[^\]]*)\]/g,"<a target='_new' href='$1'> [$1]</a>")   
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/@\[([^\]]*)\]/g,    "<a               href='$1'> [$1]</a>")   
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/@\[#([^\]]*)\]/g,   "<div class='innerLink' value='$1'> [$1]</div>")   
+/////// nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/@\[([^\]]*)\]/g,    "<a               href='$1'> [$1]</a>")   
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Gº([^º\n]*)º/g, "<b green >  $1 </b>")   
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Rº([^º\n]*)º/g, "<b red   >  $1 </b>")   
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Bº([^º\n]*)º/g, "<b blue  >  $1 </b>")   
@@ -525,9 +538,9 @@ const TPP = {  // (T)ext (P)re (P)rocessor
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/_º([^º\n]*)º/g, "<span sub>$1   </span>")
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/^º([^º\n]*)º/g, "<span super>$1   </span>")
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /º([^º\n]*)º/g, "<b        > $1 </b>")   
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[˂]/g, "&lt;")   
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[˃]/g, "&gt;")   
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[⅋]/g, "&amp;")   
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[˂]/g, "&lt;")
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[˃]/g, "&gt;")
+        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[⅋]/g, "&amp;")
         // Some utf-8 hand icons do not work properly while editing in vim/terminal
         // but looks much better in the final HTML. Replace icons:
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☜/g, "👈")   
@@ -541,11 +554,7 @@ const TPP = {  // (T)ext (P)re (P)rocessor
         // TODO: Add markdown table parser. REF: https://github.com/blattmann/mdtablesparser/blob/master/js/parser.js
 
     }
-    document.querySelectorAll('.innerSearch').forEach(
-      dom => {
-        dom.addEventListener('click', function() { SE.highlightSearch(dom.innerHTML) })
-      }
-    )
+
   },
 }
 

@@ -525,9 +525,9 @@ import logging
 logging.basicConfig(filename='myProgramLog.txt', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 </pre>
 
-<pre zoom labels="">
-<span title TODO>profiling</span>
-<span xspan>%timeit</span>
+<pre zoom labels="101,troubleshooting">
+<span xsmall TODO>profiling</span>
+Bº%timeitº
 Simple way to time small bits of Python code
 @[https://docs.python.org/3/library/timeit.html]
 $ python3 -m timeit '"-".join(str(n) for n in range(100))'
@@ -542,9 +542,6 @@ timeit functImplementation1()
 1000 loops, best of 3: 322 us per loop
 %timeit functImplementation2()
 1000 loops, best of 3:   1 us per loop
-
-
-
 </pre>
 
 
@@ -1321,619 +1318,196 @@ phone_regex = re.compile(r'''(
     )''', re.VERBOSE)
 </pre>
 
-<pre zoom labels="101,storage,persistence,TODO">
+<pre zoom labels="101,storage,persistence" id="file_dirs_summary">
 <span xsmall>File and dirs</span>
-<!-- @ma: TODO: "compact" content -->
-There are two main modules in Python that deals with path 
-manipulation. One is the os.path module and the other is the pathlib 
-module. The pathlib module was added in Python 3.4, offering an 
-object-oriented way to handle file system paths.
-Backslash on Windows and Forward Slash on OS X and Linux
-
-On Windows, paths are written using backslashes () as the separator 
-between folder names. On Unix based operating system such as macOS, 
-Linux, and BSDs, the forward slash (/) is used as the path separator. 
-Joining paths can be a headache if your code needs to work on 
-different platforms.
-
-Fortunately, Python provides easy ways to handle this. We will 
-showcase how to deal with this with both os.path.join and 
-pathlib.Path.joinpath
-
-Using os.path.join on Windows:
-
-˃˃˃ import os
-
-˃˃˃ os.path.join('usr', 'bin', 'spam')
-'usr\\bin\\spam'
-
-And using pathlib on *nix:
-
-˃˃˃ from pathlib import Path
-
-˃˃˃ print(Path('usr').joinpath('bin').joinpath('spam'))
-usr/bin/spam
-
-pathlib also provides a shortcut to joinpath using the / operator:
-
-˃˃˃ from pathlib import Path
-
-˃˃˃ print(Path('usr') / 'bin' / 'spam')
-usr/bin/spam
-
-Notice the path separator is different between Windows and Unix based 
-operating system, that's why you want to use one of the above methods 
-instead of adding strings together to join paths together.
-
-Joining paths is helpful if you need to create different file paths under the same directory.
-
-Using os.path.join on Windows:
-
-˃˃˃ my_files = ['accounts.txt', 'details.csv', 'invite.docx']
-
-˃˃˃ for filename in my_files:
-˃˃˃     print(os.path.join('C:\\Users\\asweigart', filename))
-C:\Users\asweigart\accounts.txt
-C:\Users\asweigart\details.csv
-C:\Users\asweigart\invite.docx
-
-Using pathlib on *nix:
-
-˃˃˃ my_files = ['accounts.txt', 'details.csv', 'invite.docx']
-˃˃˃ home = Path.home()
-˃˃˃ for filename in my_files:
-˃˃˃     print(home / filename)
-/home/asweigart/accounts.txt
-/home/asweigart/details.csv
-/home/asweigart/invite.docx
-
-The Current Working Directory
-
-Using os on Windows:
-
-˃˃˃ import os
-
-˃˃˃ os.getcwd()
-'C:\\Python34'
-˃˃˃ os.chdir('C:\\Windows\\System32')
-
-˃˃˃ os.getcwd()
-'C:\\Windows\\System32'
-
-Using pathlib on *nix:
-
-˃˃˃ from pathlib import Path
-˃˃˃ from os import chdir
-
-˃˃˃ print(Path.cwd())
-/home/asweigart
-
-˃˃˃ chdir('/usr/lib/python3.6')
-˃˃˃ print(Path.cwd())
-/usr/lib/python3.6
-
-Creating New Folders
-
-Using os on Windows:
-
-˃˃˃ import os
-˃˃˃ os.makedirs('C:\\delicious\\walnut\\waffles')
-
-Using pathlib on *nix:
-
-˃˃˃ from pathlib import Path
-˃˃˃ cwd = Path.cwd()
-˃˃˃ (cwd / 'delicious' / 'walnut' / 'waffles').mkdir()
-Traceback (most recent call last):
-  File "<stdin>", line 1, in <module>
-  File "/usr/lib/python3.6/pathlib.py", line 1226, in mkdir
-    self._accessor.mkdir(self, mode)
-  File "/usr/lib/python3.6/pathlib.py", line 387, in wrapped
-    return strfunc(str(pathobj), *args)
-FileNotFoundError: [Errno 2] No such file or directory: '/home/asweigart/delicious/walnut/waffles'
-
-Oh no, we got a nasty error! The reason is that the 'delicious' 
-directory does not exist, so we cannot make the 'walnut' and the 
-'waffles' directories under it. To fix this, do:
-
-˃˃˃ from pathlib import Path
-˃˃˃ cwd = Path.cwd()
-˃˃˃ (cwd / 'delicious' / 'walnut' / 'waffles').mkdir(parents=True)
-
-And all is good :)
-Absolute vs. Relative Paths
-
-There are two ways to specify a file path.
-
-    An absolute path, which always begins with the root folder
-    A relative path, which is relative to the program’s current working directory
-
-There are also the dot (.) and dot-dot (..) folders. These are not 
-real folders but special names that can be used in a path. A single 
-period (“dot”) for a folder name is shorthand for “this 
-directory.” Two periods (“dot-dot”) means “the parent 
-folder.”
-Handling Absolute and Relative Paths
-
-To see if a path is an absolute path:
-
-Using os.path on *nix:
-
-˃˃˃ import os
-˃˃˃ os.path.isabs('/')
-True
-˃˃˃ os.path.isabs('..')
-False
-
-Using pathlib on *nix:
-
-˃˃˃ from pathlib import Path
-˃˃˃ Path('/').is_absolute()
-True
-˃˃˃ Path('..').is_absolute()
-False
-
-You can extract an absolute path with both os.path and pathlib
-
-Using os.path on *nix:
-
-˃˃˃ import os
-˃˃˃ os.getcwd()
-'/home/asweigart'
-˃˃˃ os.path.abspath('..')
-'/home'
-
-Using pathlib on *nix:
-
-from pathlib import Path
-print(Path.cwd())
-/home/asweigart
-print(Path('..').resolve())
-/home
-
-You can get a relative path from a starting path to another path.
-
-Using os.path on *nix:
-
-˃˃˃ import os
-˃˃˃ os.path.relpath('/etc/passwd', '/')
-'etc/passwd'
-
-Using pathlib on *nix:
-
-˃˃˃ from pathlib import Path
-˃˃˃ print(Path('/etc/passwd').relative_to('/'))
-etc/passwd
-
-Checking Path Validity
-
-Checking if a file/directory exists:
-
-Using os.path on *nix:
-
+─────────────────────────────────────────────────────────────
+                                       Joining paths
 import os
-˃˃˃ os.path.exists('.')
-True
-˃˃˃ os.path.exists('setup.py')
-True
-˃˃˃ os.path.exists('/etc')
-True
-˃˃˃ os.path.exists('nonexistentfile')
-False
-
-Using pathlib on *nix:
-
-from pathlib import Path
-˃˃˃ Path('.').exists()
-True
-˃˃˃ Path('setup.py').exists()
-True
-˃˃˃ Path('/etc').exists()
-True
-˃˃˃ Path('nonexistentfile').exists()
-False
-
-Checking if a path is a file:
-
-Using os.path on *nix:
-
-˃˃˃ import os
-˃˃˃ os.path.isfile('setup.py')
-True
-˃˃˃ os.path.isfile('/home')
-False
-˃˃˃ os.path.isfile('nonexistentfile')
-False
-
-Using pathlib on *nix:
-
-˃˃˃ from pathlib import Path
-˃˃˃ Path('setup.py').is_file()
-True
-˃˃˃ Path('/home').is_file()
-False
-˃˃˃ Path('nonexistentfile').is_file()
-False
-
-Checking if a path is a directory:
-
-Using os.path on *nix:
-
-˃˃˃ import os
-˃˃˃ os.path.isdir('/')
-True
-˃˃˃ os.path.isdir('setup.py')
-False
-˃˃˃ os.path.isdir('/spam')
-False
-
-Using pathlib on *nix:
-
-˃˃˃ from pathlib import Path
-˃˃˃ Path('/').is_dir()
-True
-˃˃˃ Path('setup.py').is_dir()
-False
-˃˃˃ Path('/spam').is_dir()
-False
-
-Finding File Sizes and Folder Contents
-
-Getting a file's size in bytes:
-
-Using os.path on Windows:
-
-˃˃˃ import os
-˃˃˃ os.path.getsize('C:\\Windows\\System32\\calc.exe')
-776192
-
-Using pathlib on *nix:
-
-˃˃˃ from pathlib import Path
-˃˃˃ stat = Path('/bin/python3.6').stat()
-˃˃˃ print(stat) # stat contains some other information about the file as well
-os.stat_result(st_mode=33261, st_ino=141087, st_dev=2051, st_nlink=2, st_uid=0,
---snip--
-st_gid=0, st_size=10024, st_atime=1517725562, st_mtime=1515119809, st_ctime=1517261276)
-˃˃˃ print(stat.st_size) # size in bytes
-10024
-
-Listing directory contents using os.listdir on Windows:
-
-˃˃˃ import os
-˃˃˃ os.listdir('C:\\Windows\\System32')
-['0409', '12520437.cpx', '12520850.cpx', '5U877.ax', 'aaclient.dll',
---snip--
-'xwtpdui.dll', 'xwtpw32.dll', 'zh-CN', 'zh-HK', 'zh-TW', 'zipfldr.dll']
-
-Listing directory contents using pathlib on *nix:
-
-˃˃˃ from pathlib import Path
-˃˃˃ for f in Path('/usr/bin').iterdir():
-˃˃˃     print(f)
-...
-/usr/bin/tiff2rgba
-/usr/bin/iconv
-/usr/bin/ldd
-/usr/bin/cache_restore
-/usr/bin/udiskie
-/usr/bin/unix2dos
-/usr/bin/t1reencode
-/usr/bin/epstopdf
-/usr/bin/idle3
-...
-
-To find the total size of all the files in this directory:
-
-WARNING: Directories themselves also have a size! So you might want 
-to check for whether a path is a file or directory using the methods 
-in the methods discussed in the above section!
-
-Using os.path.getsize() and os.listdir() together on Windows:
-
-˃˃˃ import os
-˃˃˃ total_size = 0
-
-˃˃˃ for filename in os.listdir('C:\\Windows\\System32'):
-      total_size = total_size + os.path.getsize(os.path.join('C:\\Windows\\System32', filename))
-
-˃˃˃ print(total_size)
-1117846456
-
-Using pathlib on *nix:
-
-˃˃˃ from pathlib import Path
-˃˃˃ total_size = 0
-
-˃˃˃ for sub_path in Path('/usr/bin').iterdir():
-...     total_size += sub_path.stat().st_size
-˃˃˃
-˃˃˃ print(total_size)
-1903178911
-
-Copying Files and Folders
-
-The shutil module provides functions for copying files, as well as entire folders.
-
-˃˃˃ import shutil, os
-
-˃˃˃ os.chdir('C:\\')
-
-˃˃˃ shutil.copy('C:\\spam.txt', 'C:\\delicious')
-   'C:\\delicious\\spam.txt'
-
-˃˃˃ shutil.copy('eggs.txt', 'C:\\delicious\\eggs2.txt')
-   'C:\\delicious\\eggs2.txt'
-
-While shutil.copy() will copy a single file, shutil.copytree() will 
-copy an entire folder and every folder and file contained in it:
-
-˃˃˃ import shutil, os
-
-˃˃˃ os.chdir('C:\\')
-
-˃˃˃ shutil.copytree('C:\\bacon', 'C:\\bacon_backup')
-'C:\\bacon_backup'
-
-Moving and Renaming Files and Folders
-
-˃˃˃ import shutil
-˃˃˃ shutil.move('C:\\bacon.txt', 'C:\\eggs')
-'C:\\eggs\\bacon.txt'
-
-The destination path can also specify a filename. In the following 
-example, the source file is moved and renamed:
-
-˃˃˃ shutil.move('C:\\bacon.txt', 'C:\\eggs\\new_bacon.txt')
-'C:\\eggs\\new_bacon.txt'
-
-If there is no eggs folder, then move() will rename bacon.txt to a file named eggs.
-
-˃˃˃ shutil.move('C:\\bacon.txt', 'C:\\eggs')
-'C:\\eggs'
-
-Permanently Deleting Files and Folders
-
-    os.unlink(path) or Path.unlink() will delete the file at path.
-
-    os.rmdir(path) or Path.rmdir() will delete the folder at path. 
-                     This folder must be empty of any files or folders.
-
-    Calling shutil.rmtree(path) will remove the folder at path, and 
-                 all files and folders it contains will also be deleted.
-
-Safe Deletes with the send2trash Module
-
-You can install this module by running pip install send2trash from a Terminal window.
-
-˃˃˃ import send2trash
-
-˃˃˃ with open('bacon.txt', 'a') as bacon_file: # creates the file
-...     bacon_file.write('Bacon is not a vegetable.')
-25
-
-˃˃˃ send2trash.send2trash('bacon.txt')
-
-Walking a Directory Tree
-
-˃˃˃ import os
-˃˃˃
-˃˃˃ for folder_name, subfolders, filenames in os.walk('C:\\delicious'):
-˃˃˃     print('The current folder is {}'.format(folder_name))
-˃˃˃
-˃˃˃     for subfolder in subfolders:
-˃˃˃         print('SUBFOLDER OF {}: {}'.format(folder_name, subfolder))
-˃˃˃     for filename in filenames:
-˃˃˃         print('FILE INSIDE {}: {}'.format(folder_name, filename))
-˃˃˃
-˃˃˃     print('')
-The current folder is C:\delicious
-SUBFOLDER OF C:\delicious: cats
-SUBFOLDER OF C:\delicious: walnut
-FILE INSIDE C:\delicious: spam.txt
-
-The current folder is C:\delicious\cats
-FILE INSIDE C:\delicious\cats: catnames.txt
-FILE INSIDE C:\delicious\cats: zophie.jpg
-
-The current folder is C:\delicious\walnut
-SUBFOLDER OF C:\delicious\walnut: waffles
-
-The current folder is C:\delicious\walnut\waffles
-FILE INSIDE C:\delicious\walnut\waffles: butter.txt
-
-pathlib provides a lot more functionality than the ones listed above, 
-like getting file name, getting file extension, reading/writing a 
-file without manually opening it, etc. Check out the official 
-documentation if you want to know more!
-
-BºReading and Writing Filesº
-To read/write to a file in Python, you will want to use the with 
-statement, which will close the file for you after you are done.
-Opening and reading files with the open function
-
-˃˃˃ with open('C:\\Users\\your_home_folder\\hello.txt') as hello_file:
-...     hello_content = hello_file.read()
-˃˃˃ hello_content
-'Hello World!'
-
-˃˃˃ with open('sonnet29.txt') as sonnet_file:
-...     sonnet_file.ºreadlines()º  (Alterantive) return string list (one by line)
-[When, in disgrace with fortune and men's eyes,\n', ' I all alone beweep my
-outcast state,\n', And trouble deaf heaven with my bootless cries,\n', And
-look upon myself and curse my fate,']
-
-˃˃˃ # You can also iterate through the file line by line:
-˃˃˃ with open('sonnet29.txt') as sonnet_file:
-...     for line in sonnet_file: # note the new line character will be included in the line
-...         print(line, end='')
-
-When, in disgrace with fortune and men's eyes,
-I all alone beweep my outcast state,
-And trouble deaf heaven with my bootless cries,
-And look upon myself and curse my fate,
-
-Writing to Files
-
-˃˃˃ with open('bacon.txt', 'w') as bacon_file:
-...     bacon_file.write('Hello world!\n')
-13
-
-˃˃˃ with open('bacon.txt', 'a') as bacon_file:
-...     bacon_file.write('Bacon is not a vegetable.')
-25
-
-˃˃˃ with open('bacon.txt') as bacon_file:
-...     content = bacon_file.read()
-
-˃˃˃ print(content)
-Hello world!
-Bacon is not a vegetable.
-
-Saving Variables with the shelve Module
-
-To save variables:
-
-˃˃˃ import shelve
-
-˃˃˃ cats = ['Zophie', 'Pooka', 'Simon']
-˃˃˃ with shelve.open('mydata') as shelf_file:
-...     shelf_file['cats'] = cats
-
-To open and read variables:
-
-˃˃˃ with shelve.open('mydata') as shelf_file:
-...     print(type(shelf_file))
-...     print(shelf_file['cats'])
-˂class 'shelve.DbfilenameShelf'˃
-['Zophie', 'Pooka', 'Simon']
-
-Just like dictionaries, shelf values have keys() and values() methods 
-that will return list-like values of the keys and values in the 
-shelf. Since these methods return list-like values instead of true 
-lists, you should pass them to the list() function to get them in 
-list form.
-
-˃˃˃ with shelve.open('mydata') as shelf_file:
-...     print(list(shelf_file.keys()))
-...     print(list(shelf_file.values()))
-['cats']
-[['Zophie', 'Pooka', 'Simon']]
-
-ºSaving Variables with the help of pprint.pformatº
-import pprint
-
-cats = [{'name': 'Zophie', 'desc': 'chubby'}, {'name': 'Pooka', 'desc': 'fluffy'}]
-
-# NOTE: pprint.pformat(cats)
-# "[{'desc': 'chubby', 'name': 'Zophie'}, {'desc': 'fluffy', 'name': 'Pooka'}]"
-
-with open('myCats.py', 'w') as file_obj:
-    file_obj.write('cats = {}\n'.format(pprint.pformat(cats)))
-
-
-Reading ZIP Files
-
-˃˃˃ import zipfile, os
-
-˃˃˃ os.chdir('C:\\')    # move to the folder with example.zip
-˃˃˃ with zipfile.ZipFile('example.zip') as example_zip:
-...     print(example_zip.namelist())
-...     spam_info = example_zip.getinfo('spam.txt')
-...     print(spam_info.file_size)
-...     print(spam_info.compress_size)
-...     print('Compressed file is %sx smaller!' % (round(spam_info.file_size / spam_info.compress_size, 2)))
-
-['spam.txt', 'cats/', 'cats/catnames.txt', 'cats/zophie.jpg']
-13908
-3828
-'Compressed file is 3.63x smaller!'
-
-Extracting from ZIP Files
-
-The extractall() method for ZipFile objects extracts all the files 
-and folders from a ZIP file into the current working directory.
-
-˃˃˃ import zipfile, os
-
-˃˃˃ os.chdir('C:\\')    # move to the folder with example.zip
-
-˃˃˃ with zipfile.ZipFile('example.zip') as example_zip:
-...     example_zip.extractall()
-
-The extract() method for ZipFile objects will extract a single file 
-from the ZIP file. Continue the interactive shell example:
-
-˃˃˃ with zipfile.ZipFile('example.zip') as example_zip:
-...     print(example_zip.extract('spam.txt'))
-...     print(example_zip.extract('spam.txt', 'C:\\some\\new\\folders'))
-'C:\\spam.txt'
-'C:\\some\\new\\folders\\spam.txt'
-
-Creating and Adding to ZIP Files
-
-˃˃˃ import zipfile
-
-˃˃˃ with zipfile.ZipFile('new.zip', 'w') as new_zip:
-...     new_zip.write('spam.txt', compress_type=zipfile.ZIP_DEFLATED)
-
-This code will create a new ZIP file named new.zip that has the compressed contents of spam.txt.
-JSON, YAML and configuration files
-JSON
-
-Open a JSON file with:
-
-import json
+os.path.join('usr', 'bin', 'spam')   ← Alt 1 'usr\\bin\\spam'
+              ^
+              1st arg frequently used: 
+              - os.path.expanduser("~")
+              - os.getcwd()
+
+from pathlib import Path             ← Alt 2. (Python 3.4+) 
+print(Path('usr') / 'bin' / 'spam')
+      ^           ^                     RºWARNº: Don't use strings
+      |          "=="                   to avoid Windows/Unix issues 
+      |          .joinpath('bin')
+     1st arg frequently used: 
+     - Path.home() 
+     - Path.cwd()                            
+─────────────────────────────────────────────────────────────
+Manage dirs:
+                                        Create new directory:
+˃˃˃ os.makedirs(dir01)                ← Alt 1 
+
+˃˃˃ (... / 'dir01' / 'dir02')         ← Alt 2 (pathlib)
+    .mkdir(parents=True)                True to create any intermediate
+                                        file.
+
+os.chdir('/usr/lib/python3.6')        ← Change current dir.
+─────────────────────────────────────────────────────────────
+Absolute/relative paths:
+                                        Check path absolute/relative
+os.path.isabs('/')                    ← Alt 1
+Path('/').is_absolute()               ← Alt 2
+
+                                        Get Absolut path
+os.path.abspath('.')                  ← Alt 1
+Path('..').resolve()                  ← Alt 2
+/home
+                        
+                                        Calc. relative path
+os.path.relpath('/etc/passwd', '/')   ← Alt 1 ('etc/passwd')
+Path('/etc/passwd').relative_to('/')) ← Alt 2
+─────────────────────────────────────────────────────────────
+Testing files/dirs:
+                                        file/dir. exists?
+os.path.exists('setup.py')            ← Alt 1
+Path('setup').exists()                ← Alt 2
+
+                                        path is a file?
+os.path.isfile('setup.py')            ← Alt 1 (True)
+Path('setup.py').is_file()            ← Alt 2
+
+                                        path is a dir.?
+os.path.isdir('setup.py')             ← Alt 1 (False)
+Path('setup.py').is_dir()             ← Alt 2
+─────────────────────────────────────────────────────────────
+Fetch File Size/Folder Content
+
+                                        file's size in bytes?
+os.path.getsize('file1.txt')          ← Alt 1.
+Path('/bin/python3.6').stat()         ← Alt 2.  # stat object:
+                                        st_gid=0,
+                                       ºst_size=10024º
+                                        st_atime=1517725562
+                                        st_mtime=1515119809
+                                        st_ctime=1517261276
+
+                                        Dir. content?
+os.listdir('dir1')                    ← Alt1: ['f1.txt', 'f2.txt', ...]
+
+for f in Path('dir1').iterdir():      ← Alt2
+    ...
+─────────────────────────────────────────────────────────────
+Copy/move files/folders
+import shutil, os
+shutil.copy('file01', 'dir02')        ← Copy single file
+shutil.copytree('dir1', 'dir2')       ← Copy entire folder
+
+shutil.move('file01', 'dir02')        ← Move single file
+─────────────────────────────────────────────────────────────
+delete Files/Folders (Permanently) 
+                                        delete file permanently:
+os.unlink(path)                       ← alt 1
+Path.unlink()                         ← alt 2
+
+                                       delete dir permanently:
+os.rmdir(path)                       ← alt 1 (dir must be empty)
+Path.rmdir()                         ← alt 2 (dir must be empty)
+
+shutil.rmtree(path)                  ← alt 3. del folder recursively
+
+                                      
+Presetup $$º pip install send2trashº ← send to trash 
+import send2trash
+send2trash.send2trash('f1.txt')
+─────────────────────────────────────────────────────────────
+                                       Walking Directory Tree
+for dir01, subdirs, filenames in os.walk('path1'):
+    ...
+    for subfolder in subdirs:
+        ...
+    for filename in filenames:
+        ...
+
+    print('')
+─────────────────────────────────────────────────────────────
+BºReading Filesº
+('with' automatically close file after use)
+
+with open('file1.txt') as f1:         ← read file as string
+    f1 = f1.read()
+
+with open('file2.txt') as f2:         ← read file as string list
+    f2.readlines()
+
+with open('file2.txt') as f2:         ← read file, iterate 
+    for line in f2:                     on lines
+        ...
+
+BºWriting Filesº
+ with open('file1.txt', 'w') as f1:   ← w: (over)write
+     f1.write('Hello world!\n')         a: Append to the end
+─────────────────────────────────────────────────────────────
+import shelve                         ← Saving (Config) Vars
+var_list01 = ['val1', ... ]
+with shelve.open('mydata') as conf:
+    conf['var_list01'] = var_list01
+
+
+with shelve.open('mydata') as conf:   ← read variables
+    print(type(conf))                   (˂class 'shelve.DbfilenameShelf'˃)
+    print(list(shelf_file.keys()))
+    print(list(shelf_file.values()))
+    var_list01 = conf['var_list01'])
+
+
+vars2Save = [
+ {'key0': 'val0', 'key2': 'val2', },
+ {'key0': 'val3', 'key2': 'val4', },
+]
+import pprint                         ← Saving vars as python code
+with open('conf.py', 'w') as conf:   
+    conf.write('cats = {}\n'.format(pprint.pformat(cats)))
+─────────────────────────────────────────────────────────────
+Working with ZIP Files
+import zipfile                        ← Read ZIP File
+import ZipFile from zipfile
+with ZipFile('f1.zip') as F:
+    print(F.namelist())
+    spam_info = F.getinfo('spam.txt') ← spam_info:
+                                        spam_info.file_size
+                                        spam_info.compress_size
+    
+with ZipFile('f1.zip') as F:  
+    F.extractall()                    ← Extract all files
+                                        into current work.dir.
+    F.extract('spam.txt'))            ← Extract single file.
+
+
+with ipFile('f1.zip', 'w') as F:      ← Create+add to ZIP Files
+    F.write('spam.txt', 
+    compress_type=zipfile.ZIP_DEFLATED)
+─────────────────────────────────────────────────────────────
+JSON/YAML files
+
+import json                             Open a JSON file with:
 with open("filename.json", "r") as f:
     content = json.loads(f.read())
 
-Write a JSON file with:
+import json                           ← Write a JSON file 
+json = {"key1": "val1",...} 
+with open("f1.json", "w") as f:
+    f.write( json.dumps(content, indent=2))
 
-import json
+                                        Reading YAML files
+Pre-setup:
+ pip3 install Ruamel.yaml             ← Very good yaml support
+ pip3 install anyconfig               ← abstracts away  underlying conf.
+                                        file format. (JSON,YAML,TOML,...)
 
-content = {"name": "Joe", "age": 20}
-with open("filename.json", "w") as f:
-    f.write(json.dumps(content, indent=2))
-
-YAML
-Compared to JSON, YAML allows a much better humain maintainance and 
-gives ability to add comments. It is a convinient choice for 
-configuration files where human will have to edit.
-
-There are two main librairies allowing to access to YAML files:
-
-    PyYaml
-    Ruamel.yaml
-
-Install them using pip3 install in your virtual environment.
-
-The first one it easier to use but the second one, Ruamel, implements 
-much better the YAML specification, and allow for example to modify a 
-YAML content without altering comments.
-
-Open a YAML file with:
-
-from ruamel.yaml import YAML
-
-with open("filename.yaml") as f:
+                                      Open AML file:
+from ruamel.yaml import YAML          ← Alt 1: ruamel lib
+with open("file01.yaml") as f:
     yaml=YAML()
     yaml.load(f)
-
-Anyconfig
-
-Anyconfig is a very handy package allowing to abstract completly the 
-underlying configuration file format. It allows to load a Python 
-dictionary from JSON, YAML, TOML, and so on.
-
-Install it with:
-
-pip3 install anyconfig
-
 Usage:
 
-import anyconfig
-
-conf1 = anyconfig.load("/path/to/foo/conf.d/a.yml")
+import anyconfig                      ← Alt 2: anyconfig
+conf1 = anyconfig.load("file01.yml")
 </pre>
 </div>
 
@@ -2714,5 +2288,23 @@ pointers).
     
   atheris.Setup(sys.argv, TestOneInput)  
   atheris.Fuzz()
+_______________
+READ CSV:
+#!/usr/bin/env python3
+import csv   # ← Standard module in Python3
+
+if __name__ == '__main__':
+    with open('lotr.csv', newline='') as csvfile:
+        reader = csv.reader(csvfile)
+        for row in reader:
+            print(row)
+____________________________
+https://pythonspeed.com/docker/
+Production-ready Docker packaging for Python developers
+____________________________
+with open('file1', 'a') as f1:
+    f1.write('...')
+
+
 -->
 

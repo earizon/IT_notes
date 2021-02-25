@@ -211,9 +211,34 @@ TODO:
 
 <pre zoom labels="git,101,diagram,">
 <span xsmall>Git Plumbings</span>
-https://alexwlchan.net/a-plumbers-guide-to-git/ 
+  Summary extracted from:
+  @[https://alexwlchan.net/a-plumbers-guide-to-git/1-the-git-object-store/]
+  @[https://alexwlchan.net/a-plumbers-guide-to-git/2-blobs-and-trees/]
+  @[https://alexwlchan.net/a-plumbers-guide-to-git/3-context-from-commits/]
+ 
+ ┌── Graphical Summary ────────────────────────────────────────────────────┐
+ │                                                                         │
+ │Rº.git/refs/heads/masterº···→ Gºcommit id02º ···→  Bºtreeº               │
+ │                                └────┬────┘                              │
+ │                                     ·                                   │
+ │Oº.git/HEADº                         ·                                   │
+ │      |                              ·                                   │
+ │      v                              v                                   │
+ │Rº.git/refs/heads/devº   ···→ Gºcommit id01º ···→  Bºtreeº ····→  Blog   │
+ │                                                    └──┬─┘               │
+ │                             ·                         ·               · │
+ │                             ·                         ·               · │
+ │                             ·                         ·               · │
+ │                             ·                         v               · │
+ │                             ·                     Bºtreeº ····→  Blog · │
+ │                             ·                        └········→  Blog · │
+ │                             └───────────────────┬─────────────────────┘ │
+ │                              Object store is composed of blogs (files), │
+ │                              trees (directories) and commit (ordered    │
+ │                              history of "important" trees).             │
+ └─────────────────────────────────────────────────────────────────────────┘
+                                                                       
 BºObject Storeº
-  https://alexwlchan.net/a-plumbers-guide-to-git/1-the-git-object-store/
   
   $ git init  ← Creates .git/
                         objects/     ← Object store for objects, trees and commits
@@ -222,11 +247,11 @@ BºObject Storeº
                         description  ← used by GitWeb
                         info/exclude ← like .gitignore but non-checked in
                         config
-                        hooks
+                        hooks/
   
   $ echo "..." ˃ animals.txt
-  $ git hash-object -w animals.txt           ← (Plumbing) Hash file content, then 
-  a37f3f668f09c61b7c12e857328f587c311e5d1d     → Save content to Object store
+  $ git hash-object -w animals.txt           ← 1 Hash file content,
+  a37f3f668f09c61b7c12e857328f587c311e5d1d     2 Save content to Object store (plumbing)
   └────────────────┬─────────────────────┘
   saved to  .git/objects/a3/7f3f668f09c61b7c12e857328f587c311e5d1d
                          └───────────────────┬───────────────────┘
@@ -239,11 +264,10 @@ BºObject Storeº
                  pretty print
 
 BºBlobs and treesº
-  https://alexwlchan.net/a-plumbers-guide-to-git/2-blobs-and-trees/
-  
+Bº───────────────º
   Git index: staging area (temporary snapshot) of the repository.
              - files modified, but not yet saved to the permanent history.
-               (git add to add to index, then git commit to take a
+               ('git add' to add to index, then 'git commit' to take a
                 permanent snapshot using porcelain)
               
   $ git update-index --add animals.txt  ← Plumbing to save file to .git/index 
@@ -254,21 +278,23 @@ BºBlobs and treesº
   animals.txt
   
   $ git write-tree                      ← Take permanent snapshot of .git/index
-  dc6b8ea09fb7573a335c5fb953b49b85bb6ca985 to object of type "tree"
+  dc6b8ea09fb7573a335c5fb953b49b85bb6ca985 to object of typeºtreeº
   └────────────────┬─────────────────────┘
   saved to .git/objects/dc/6b8ea09fb7573a335c5fb953b49b85bb6ca985
   
   $ git cat-file -p dc6b8ea09fb7573a335c5fb953b49b85bb6ca985
-  100644 blob b133... animals.txt   ← tree is a list of pointers to other objects
-                                                (one object per row)
-  040000 tree 8972... subdirectory  ← Pointer to (sub)tree (sub-directory) 
-  
-  ^^^^^^ ^^^^ ^^^^^^^^^^^^^^^^^ ^^^^^^^^^^^   ← tree is a list of pointers to other objects
-  file   type cont.add. ID      Name of file
-  permis.
-  
-  $ git cat-file -t a37f... ← blob (file path/name ignored by blob)
-  $ git cat-file -t dc6b... ← tree. Maps blobs to file path/names
+  tree: list of pointers to other objects (one object per row)
+    100644 blob b133......  animals.txt   ← Pointer and "filename" to blob
+                                            
+    040000 tree 8972......  subdirectory  ← Pointer and "dirname"  to (sub)tree
+    
+    ^^^^^^ ^^^^ ^^^^^^^     ^^^^^^^^^^^^  
+    file   type content     Name of file
+    permis.     addressable
+                ID
+
+  $ git cat-file -t a37f.....             ← output: blob (file path/name ignored)
+  $ git cat-file -t dc6b.....             ← output: tree
                  ^^
                 show object type
   
@@ -277,10 +303,8 @@ BºBlobs and treesº
   BºAll that rest is mapping trees to some "context" in history.º
 
 BºContext from commitsº
-@[https://alexwlchan.net/a-plumbers-guide-to-git/3-context-from-commits/]
-  
   - We can have many trees to start rebuilding from but just a few
-  of them has historic importance.
+    of them has historic importance.
   
   $ echo "initial commit" | git commit-tree $tree_id ← create commit from a tree 
   65b080f1fe43e6e39b72dd79bda4953f7213658b           
@@ -292,35 +316,31 @@ BºContext from commitsº
   $ git cat-file -p 65b...
   $ git cat-file -p 65b080f1fe43e6e39b72dd79bda4953f7213658b
   tree 11e2f923d36175b185cfa9dcc34ea068dc2a363c   ← Pointer to tree of interest 
-  author Alex Chan ... 1520806168 +0000           ← Context with author/commiter/
+  author    Alex Chan ... 1520806168 +0000        ← Context with author/commiter/
   committer Alex Chan ... 1520806168 +0000          creation time/ ...
   ...
   
   BºBuilding a linear history (ordered list of commits)º:
-  $ git update-index --add ... 
-  $ git write-tree
+  $ git update-index --add ... ← add to index
+  $ git write-tree             ← Take permanent snapshot
   $ echo "commit message" | \
     git commit-tree $tree_id \
-  Bº-p $previous_commitº     ← ☞BºAdd commit orderº
-                                (next to previous one)
+  Bº-p $previous_commitº     ← ☞BºAdd commit order!!!º (next to previous one)
   fd9274...........  ← git cat-file -p will show a line
                        parent $previous_commit_id
 
 BºRefs and branchesº
 @[https://alexwlchan.net/a-plumbers-guide-to-git/4-refs-and-branches/]
-  
   $ ls .git/refs
   heads/ tags/
- 
   
   $ git update-ref refs/heads/master       ← Create named reference to commit
   fd9274dbef2276ba8dc501be85a48fbfe6fc3e31   $ cat  .git/refs/heads/master
                                              fd92...  (pointer to commit)
   
-  Now master is an alias for the fd92... commit ID.
+  Now 'master' is an alias for the fd92... commit ID.
   
-  git cat-file -p master == git cat-file -p fd92...
-  
+  git cat-file -p master "==" git cat-file -p fd92...
   
   $ git rev-parse master                   ← check value of ref
   fd92...
@@ -334,12 +354,11 @@ BºRefs and branchesº
                                       advanced to point at new commits in
                                       plumbing.
   $ git update-ref \                ← update heads/master to point to 
-    refs/heads/master $new_commit_id  latest commit.
+  refs/heads/master $new_commit_id    latest commit.
   b023d92829d5d076dc31de5cca92cf0bd5ae8f8e
   
  
   - BºWorking with multiple branchesº
-  
   $ git update-ref refs/heads/dev    ← Create a second head/ref (==branch)
   65b0...
   
@@ -353,25 +372,8 @@ BºRefs and branchesº
   $ git symbolic-ref HEAD \          ← HEAD now point to dev ref/branch
     refs/heads/dev 
   
-  HEAD reference can be used as a shortcut for "commit hashes". 
-  
-https://alexwlchan.net/a-plumbers-guide-to-git/conclusion/
+  'HEAD' reference can be used as a shortcut for "commit hashes". 
 
-     
-   Rºrefs/heads/masterº···→ Gºcommit id02º ···→  Bºtreeº 
-                              └────┬────┘
-                                   ·
-     Oº.git/HEADº                  ·
-             ·                     ·
-             v                     v
-   Rºrefs/heads/devº   ···→ Gºcommit id01º ···→  Bºtreeº ····→  Blog
-                                                  └──┬─┘
-                                                     ·
-                                                     ·
-                                                     ·
-                                                     v
-                                                 Bºtreeº ····→  Blog
-                                                    └········→  Blog
 </pre>
 <pre zoom labels="git,TODO">
 <a xsmall TODO href="https://opensource.com/article/18/11/gitbase">gitbase: Query Git with SQL</a>
@@ -832,11 +834,191 @@ Gerrit does NOT provide:
 - Style Checkers
 </pre>
 
+<span title>Client implementations</span>
 
-<pre zoom labels="git,">
-<span xsmall>GitPython</span>
-@[https://gitpython.readthedocs.io/en/stable/tutorial.html]
+<pre zoom labels="jgit,java,">
+<span xsmall>JGit</span>
+Repository = objects store + refs 
+
+  final FileRepositoryBuilder builder = new FileRepositoryBuilder();
+  final Repository repository = 
+      builder
+     .setGitDir(new File(configRepoPath01))  // ← Set root file path
+     .readEnvironment()                      // ← scan GIT_* env.vars 
+     .findGitDir()                           // ← scan up file system tree
+     .build();
+
+
+Bº┌────────────┐º
+Bº│Plumbing API│º
+Bº└────────────┘º
+ AnyObjectId/ObjectId: Represent the SHA-1 (256 in 2.29+) of tag/commit/trees/blobs
+
+ final ObjectId head = repository.resolve("HEAD");
+
+ final Ref HEAD =        // ← Ref: single object Id representing a tag/commit/tree/blob
+     repository.getRef("refs/heads/master");
+   
+ final RevWalk walk01 =                              // ← walks commit graph in order.
+     new RevWalk(repository);
+
+ final RevCommit commit =                            // get commit from Hash ID
+     walk01.parseCommit(objectIdOfCommit);
+
+ final RevTag tag =                                  // get commit for tag
+     walk01.parseTag(objectIdOfTag);
+
+ final RevTree tree =
+     walk01.parseTree(objectIdOfTree);
+
+Bº┌─────────────┐º
+Bº│Porcelain API│º (org.eclipse.jgit.api package)
+Bº└─────────────┘º
+
+  final Git git01 = new Git(db);
+  final AddCommand addCom = git01.add();  // command obj. used to add files to index.
+  addCom.addFilepattern("someDirectory").call();
+
+  final CommitCommand commitCom = git01.commit();    //  git commit
+  commitCom.setMessage("initial commit").call();
+           .setAuthor()....
+           .setCommitter()....
+           .setAll()...
+
+  RevTag tag = git01.tag().setName("tag").call();    //  git tag
+                          .setMessage()
+                          .setTagger()
+                          .setObjectId()
+                          .setForceUpdate()
+                          .setSigned()               ← Rºnot supported yet, throws exceptionº
+
+
+  final Iterable<RevCommit> log =                    // Walks commit graph (porcelain). Ops. available:
+        git01.log().call();                             add(AnyObjectId start), 
+                                                        addRange(AnyObjectId since, AnyObjectId until)
+
+  // TODO: MergeCommand (git-merge)
+
+
+- org.eclipse.jgit.ant ANT TASKS:
+  <taskdef resource="org/eclipse/jgit/ant/ant-tasks.properties">
+      <classpath>
+        <pathelement location="path/to/org.eclipse.jgit.ant-VERSION.jar"/>
+        <pathelement location="path/to/org.eclipse.jgit-VERSION.jar"/>
+        <pathelement location="path/to/jsch-0.1.44-1.jar"/>
+      </classpath>
+  </taskdef>
+
+  - <git-clone 
+         uri="http://egit.eclipse.org/jgit.git" 
+         dest="(opt) destination to clone "
+         bare="(defaults to false)"
+         branch="(defaults to HEAD), initial branch to check out" />
+
+  - <git-init
+         dest="(opt) path where git repo is initialized "
+         bare="(defaults to false)" />
+
+  - <git-checkout
+         src="path/to/repo"
+         branch="origin/experimental" 
+         createbranch="(def:false)" 
+         force="(def:false) true:start-point changed to new start-point if local branch exists" 
+     />
+
+ - Ex.  Finding children of a commit
+   PlotWalk revWalk = new PlotWalk(repo());
+   ObjectId rootId = (branch==null)
+                     ? repo().resolve(HEAD)
+                     : branch.getObjectId();
+   RevCommit root = revWalk.parseCommit(rootId);
+   revWalk.markStart(root);
+   PlotCommitList<PlotLane> plotCommitList = 
+                     new PlotCommitList<PlotLane>();
+   plotCommitList.source(revWalk);
+   plotCommitList.fillTo(Integer.MAX_VALUE);
+   return revWalk;
+
+
+BºReducing memory usage with RevWalkº
+  RevWalk and RevCommit are designed to be light-weight, but still consume lot of memory for big repos.
+  Some tips:
+  -ºRestrict walked revision graph to "only needed"º:
+    - Ex: looking for commits
+          in 'refs/heads/master'           ← markStart        () to refs/heads/master
+  not yet in 'refs/remotes/origin/master'  ← markUninteresting() to refs/remotes/origin/master
+                                             └────────┬────────┘
+                                            RevWalk traversal will only parse commits necessary 
+                                            avoiding to  look further back in history.
+
+      final ObjectId 
+              from = repository.resolve("refs/heads/master"         ),
+                to = repository.resolve("refs/remotes/origin/master");
+
+      walk01.markStart(walk.parseCommit(from));
+      walk01.markUninteresting(walk.parseCommit(to));
+
+  -ºDiscard body of a commitº:
+    walk01.setRetainBody(false);   ← Ignore author, committer, message, signature?, ...
+    Useful when computing just merge base between branches or 'git rev-list' like commands.
+
+    - consider also extract any needed data and call ºdispose()º on RevCommit instance.
+      otherwise JGit use a compact internal byte[] UTF-8 representation (vs String UTF-16)
+
+    Ex:
+    ...
+    Set<String> authorEmails = new HashSet<String>();
+    for (RevCommit commit : walk01) {
+        authorEmails.add(
+           commit.getAuthorIdent().getEmailAddress()
+        );
+        commit.dispose();
+    }
+
+BºSubclassing RevWalk/RevCommitº
+  - Subclassing allows to attach additional data to a commit.
+    - use RevWalk→createCommit() method to create new instance of RevCommit subclass. 
+    - Put additional data as fields in RevCommit subclass 
+      (and so avoiding the non-type safe HashMap to translate RevCommit|ObjectId ←→  additional data fields)
+    - Ej:
+      public class ReviewedRevision extends RevCommit {
+      
+          private final Date reviewDate; // ← New field
+          private ReviewedRevision(AnyObjectId id, Date reviewDate) {
+              super(id);
+              this.reviewDate = reviewDate;
+          }
+      
+          public List<String> getReviewedBy() { return getFooterLines("Reviewed-by"); }
+      
+          public Date getReviewDate() { return reviewDate; }
+      
+          public static class Walk extends RevWalk {
+      
+              public Walk(Repository repo) { super(repo); }
+      
+              @Override
+              protected RevCommit createCommit(AnyObjectId id) {
+                  return new ReviewedRevision(id, getReviewDate(id));
+              }
+      
+              private Date getReviewDate(AnyObjectId id) { ... }
+          }
+      }
+
+BºClean up revision walkº
+  - reusing an existing object map is much faster but can consume lot of memory.
+    Speed vs memory consumption must be balanced.
+  - To clean up:
+    for (RevCommit commit : walk01) { ... }
+  Oºwalk01.dispose();º
+
+<hr/>
+BºJGit CookBook Recipes:º TODO:(0)
+@[https://github.com/centic9/jgit-cookbook]
+
 </pre>
+
 </div>
 
 <div group>

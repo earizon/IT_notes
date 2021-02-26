@@ -497,21 +497,14 @@ console.log(4)
 }
 
 const TPP = {  // (T)ext (P)re (P)rocessor
-  replaceMap : { "wikipedia" : "https://en.wikipedia.org/wiki" },
   doTextPreProcessing : function () {
     // create re-usable regex outside loop.
-    Object.keys(TPP.replaceMap).forEach( key => 
-       TPP.replaceMap[key] = [new RegExp("[$][{]"+key+"[}]",'g'), TPP.replaceMap[key]]
-    )
     const  document_name=window.location.pathname.split("/").pop()
 
     const nodeList = document.querySelectorAll('*[zoom]')
-    for (let idx in nodeList) { // TODO:(0) Replace on demand, when cell opened.
+    for (let idx in nodeList) { // TODO:(?) Replace on demand, when cell opened.
         if (!!! nodeList[idx].innerHTML) { continue }
 
-        Object.keys(TPP.replaceMap).forEach( key => 
-          nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(TPP.replaceMap[key][0],TPP.replaceMap[key][1])
-        )
 /////// nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(document_link_regex,"TODO(0)"+document_name+"#$1")
         // COMMENTED: Needs more testings 
         // nodeList[idx].innerHTML = nodeList[idx].innerHTML
@@ -527,7 +520,6 @@ const TPP = {  // (T)ext (P)re (P)rocessor
         )
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/@\[(http[^\]]*)\]/g,"<a target='_new' href='$1'> [$1]</a>")   
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/@\[#([^\]]*)\]/g,   "<div class='innerLink' value='$1'> [$1]</div>")   
-/////// nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/@\[([^\]]*)\]/g,    "<a               href='$1'> [$1]</a>")   
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Gº([^º\n]*)º/g, "<b green >  $1 </b>")   
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Rº([^º\n]*)º/g, "<b red   >  $1 </b>")   
         nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Bº([^º\n]*)º/g, "<b blue  >  $1 </b>")   

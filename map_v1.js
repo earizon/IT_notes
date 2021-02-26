@@ -503,45 +503,43 @@ const TPP = {  // (T)ext (P)re (P)rocessor
 
     const nodeList = document.querySelectorAll('*[zoom]')
     for (let idx in nodeList) { // TODO:(?) Replace on demand, when cell opened.
-        if (!!! nodeList[idx].innerHTML) { continue }
+        let N = nodeList[idx]
+        let H = N.innerHTML
+        if (!!! H) { continue }
 
-/////// nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(document_link_regex,"TODO(0)"+document_name+"#$1")
-        // COMMENTED: Needs more testings 
-        // nodeList[idx].innerHTML = nodeList[idx].innerHTML
-        // .replace(/(http.?:\/\/[^\b]*)\b/,"<a target='_blank' href='$1'>$1</a>")
-        //
         // Open new window with pre-recoded search:[[Troubleshooting+restorecon?]]
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(
-            /\[\[([^\?]*)\?\]\]/g,
+        H = H.replace( /\[\[([^\?]*)\?\]\]/g,
             "<div class='innerSearch'>$1</div>"
           + "<a target='_blank' "
           + " href='"+window.location.href.split('?')[0]+"?query=$1&labels="+LM.labelMapSelectedToCSV()+"'>"
           + " (⏏ )</a>"
         )
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/@\[(http[^\]]*)\]/g,"<a target='_new' href='$1'> [$1]</a>")   
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/@\[#([^\]]*)\]/g,   "<div class='innerLink' value='$1'> [$1]</div>")   
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Gº([^º\n]*)º/g, "<b green >  $1 </b>")   
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Rº([^º\n]*)º/g, "<b red   >  $1 </b>")   
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Bº([^º\n]*)º/g, "<b blue  >  $1 </b>")   
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Oº([^º\n]*)º/g, "<b orange>  $1 </b>")   
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Qº([^º\n]*)º/g, "<b brown >  $1 </b>")   
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/Yº([^º\n]*)º/g, "<b yellow>  $1 </b>")   
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/[$]º([^º\n]*)º/g, "  <span console>$1</span>")   
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/_º([^º\n]*)º/g, "<span sub>$1   </span>")
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/^º([^º\n]*)º/g, "<span super>$1   </span>")
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /º([^º\n]*)º/g, "<b        > $1 </b>")   
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[˂]/g, "&lt;")
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[˃]/g, "&gt;")
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace( /[⅋]/g, "&amp;")
+        H = H.replace(/@\[(http[^\]]*)\]/g,"<a target='_new' href='$1'> [$1]</a>")   
+        // Add support for inner links: '@[#internalId]'
+        H = H.replace(/@\[#([^\]]*)\]/g,   "<div class='innerLink' value='$1'> [$1]</div>")   
+        H = H.replace(/Gº([^º\n]*)º/g, "<b green >  $1 </b>")   
+        H = H.replace(/Rº([^º\n]*)º/g, "<b red   >  $1 </b>")   
+        H = H.replace(/Bº([^º\n]*)º/g, "<b blue  >  $1 </b>")   
+        H = H.replace(/Oº([^º\n]*)º/g, "<b orange>  $1 </b>")   
+        H = H.replace(/Qº([^º\n]*)º/g, "<b brown >  $1 </b>")   
+        H = H.replace(/Yº([^º\n]*)º/g, "<b yellow>  $1 </b>")   
+        H = H.replace(/[$]º([^º\n]*)º/g, "  <span console>$1</span>")   
+        H = H.replace(/_º([^º\n]*)º/g, "<span sub>$1   </span>")
+        H = H.replace(/^º([^º\n]*)º/g, "<span super>$1   </span>")
+        H = H.replace( /º([^º\n]*)º/g, "<b        > $1 </b>")   
+        H = H.replace( /[˂]/g, "&lt;")
+        H = H.replace( /[˃]/g, "&gt;")
+        H = H.replace( /[⅋]/g, "&amp;")
         // Some utf-8 hand icons do not work properly while editing in vim/terminal
         // but looks much better in the final HTML. Replace icons:
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☜/g, "👈")   
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☝/g, "👆")
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☞/g, "👉")
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/☟/g, "👇")
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/[.]\n/g, ".<br/>")   
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/[:]\n/g, ":<br/>")   
-        nodeList[idx].innerHTML = nodeList[idx].innerHTML.replace(/\n\s*\n/g, "<br/><br/>")   
+        H = H.replace(/☜/g, "👈")   
+        H = H.replace(/☝/g, "👆")
+        H = H.replace(/☞/g, "👉")
+        H = H.replace(/☟/g, "👇")
+        H = H.replace(/[.]\n/g, ".<br/>")   
+        H = H.replace(/[:]\n/g, ":<br/>")   
+        H = H.replace(/\n\s*\n/g, "<br/><br/>")   
+        N.innerHTML = H
 
         // TODO: Add markdown table parser. REF: https://github.com/blattmann/mdtablesparser/blob/master/js/parser.js
 

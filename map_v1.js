@@ -623,7 +623,10 @@ function switchLinksToBlankTarget() {
 }
 
 function pageLoadedEnd() {
-  let id = getParameterByName("id") || ""
+  let id=window.location.hash.replace("#","")
+  if (id=="") {
+      id = getParameterByName("id") || ""
+  }
   if (!!id) {
     const targetDom = document.getElementById(id)
     if (!!targetDom) {

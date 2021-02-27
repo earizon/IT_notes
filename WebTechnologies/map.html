@@ -1703,7 +1703,7 @@ in your globals, so you won’t have to worry about pollution in the long-term.
 @[https://www.infoq.com/news/2019/01/vue-3-preview]
 </pre>
 
-<pre zoom labels="vue,react,angular,performance,TODO">
+<pre zoom labels="integration,vue,react,angular,TODO">
 <span xsmall bgorange>single-spa</span>
 https://single-spa.js.org
 - Framework freedom:
@@ -3714,9 +3714,256 @@ BºRX Observables:º (TODO:Explain)
 
 <div groupv>
 <span title>React</span>
-<pre zoom labels="react,comparative,qa">
-<span xsmall>External Links</span>
-@[https://reactjs.org/] A JS library for building user interfaces
+<pre zoom labels="react,comparative,qa" id="react_summary">
+ Summary extracted from @[https://reactjs.org/docs/]
+
+BºJSX summaryº
+- Optional but recommened: allows react to report better error/warnings.
+- Prevent Injection Attacks from external input (XSS cross-site-scripting,...). 
+   
+  By default, any values embedded are scaped before rendering
+
+const user = {name: "...", ...}
+const element =º(      º            ← JSX expression:
+  º˂h1 id="1"˃         º            ← Use quotes to insert string literals as attr.
+  º Hello, {user.name}!º            - Closer to JS than to HTML.
+  º˂/h1˃;              º              class    → className, tabindex → tabIndex,...
+º);                    º            - compiles to:
+                                      const element = React.createElement( 'h1', ...);
+                                                      ^^^^^^^^^^^^^^^^^^^
+                                          after few checks ends up creating and object like 
+                                          { type: 'h1', props: { ... } }
+
+ReactDOM.render(                    ← Add to ReactDOM
+  element,
+  document.getElementById('root')
+);
+
+BºSimplest React Appº:
+
+- index.html
+  ˂div id="root"˃˂/div˃           ← react "root" DOM
+ 
+
+  function Welcome(ºpropsº) {            ← BºComponentsº: loosely coupled reusable UI object
+    return ˂h1˃Hello, {props.name}˂/h1˃;     props (input) → Component → (output) element and components
+  }                   └─────┬────┘           (See section State management for alternative using classes)
+                            │                convention: Always start name with capital letter
+                            │                            lower case are treated as DOM tags
+                            │                            (Ex: ˂div /˃ means HTML div tag)
+                            │
+       DON'T FORGET: All components must act like pure
+                     functions with respect to their props.
+                     props must always be treated as read-only
+                     by components. Use state to represent 
+                     data updates from user/network/...
+
+  const element = (                        ← Element build from component
+     ˂Welcome name="Sara" /˃ );            ← name="Sara" translated to input props
+                                             - smallest "renderable" Bºimmutableº
+                                               building block for components
+                                             - Translates to plain JS (vs DOM)
+  
+  function App() {                         ← App component formed by Welcome comps.
+    return (                                 Use like:
+      ˂div˃                                  ReactDOM.render(
+        ˂Welcome name="Sara"  /˃               ˂App /˃,
+        ˂Welcome name="Cahal" /˃               document.getElementById('root')
+      ˂/div˃                                 );
+    );                                       name convention: component at root == "App"
+  
+  ReactDOM.render( ˂App/˃,
+    document.getElementById('root')
+  );                               
+
+-BºState Managementº                                 
+  class Clockºextends React.Componentº{   ← Alt.2: class declaration for component. 
+                                            Preferred when managing component internal state
+    constructor(props) {               
+      super(props);                       ← props: immutable internal data of component
+      this.state = { date: new Date()}; } ← state:   mutable internal data of component
+
+    render() {
+      return (
+        ˂div˃
+          {props.title} ˂br/˃
+          {this.state.getSeconds()}
+        ˂/div˃
+      );
+    }
+
+   ºcomponentDidMount()º{                  ← Lifecycle component hook.
+      this.timerID = setInterval(
+        () =˃ { this.ºsetStateº({          ← By calling setState reacts will know that 
+            date: new Date() } )             internal state changed.
+        } , 1000)                          RºWARNº: Never change this.state directly 
+    }                                               after initial setup in constructor
+                                           BºNOTEº: State is merged with old one (vs
+                                                    replaced with new one)
+
+   ºcomponentWillUnmount()º{               ← Lifecycle component hook.
+      clearInterval(this.timerID);
+    }
+  }
+
+BºNOTE:º[performance] React may batch multiple setState() calls into a single update
+
+RºWARNº: updating new state from props and state:
+  RºWrongº:                                BºCorrectº
+   (props/state change asynch)              (Use setState( (state,prop) ) )
+    this.setState({                          this.setState((state, props) =˃ ({
+      counter: this.state.counter              counter: state.counter
+             + this.props.increment,                  + props.increment
+    });                                      }));
+
+
+
+- TODO: Read also advanced guides:
+  https://reactjs.org/docs/jsx-in-depth.html#user-defined-components-must-be-capitalized
+
+BºHandling Eventsº
+
+  class Toggle extends React.Component {
+    constructor(props) {
+      super(props);
+      this.state = {isToggleOn: true};
+      this.handleClick =                ← Don't forget (not needed with funct.
+         this.handleClick.bind(this);     style syntax)
+    }                                     Alt. use () =˃ in JSX
+                                          onClick={() =˃ this.handleClick()}
+                                          (Not recommended, a new callback
+                                           created on each new render)
+    handleClick() {
+      this.setState(
+        state =˃ ({ isToggleOn: !state.isToggleOn })
+      );
+    }
+  
+    render() {
+      return (
+        ˂button onClick={this.handleClick} ˃  ← event always cammelCase(onClick) 
+          {this.state.isToggleOn ? 'ON' : 'OFF'}
+        ˂/button˃
+        ˂button 
+          onClick=
+             {this.deleteRow.bind(this, id)} ˃ ← Pass data to handler. Also
+            delete {this.id}                     {(e) =˃ this.deleteRow(id, e)}
+        ˂/button˃                                (lambda syntax)
+      );
+    }
+
+BºConditional Renderingº
+
+  function Greeting(props) {
+    ...
+    if (condition1) { return null;  }  ← Return null to skip rendering
+    return (condition1) 
+      ? ˂Component1 /˃  
+      : ˂Component2 /˃
+  }
+
+BºLists and Keysº
+  function NumberList(props) {
+    const number_l = props.number_l;
+    const listItems = number_l.map(       ← Use standard Ecmascript "map"
+          ( (n) =˃ ˂hi key={n.toString()} ← key: optional, helps React idenity added/changed/deleted items
+                      ˂li˃{n}˂/li˃ );       Use {index} (not recomended) as a last resort for key value 
+    return ( ˂ul˃{listItems}˂/ul˃ );        Ussage:
+  }                                            const number_l = [1, 2, ...];
+                                               ...
+                                               ˂NumberList number_l={number_l} /˃
+
+BºFormsº (Controlled Components)
+
+  class NameForm extends React.Component {
+    constructor(props) {
+      super(props);
+      this.state = {value1: '',value2: '',value3: ''};  ← make React component state be the 
+                                                           "single source of truth" for form inpunts
+                                                           value can also refresh some other UI elements.
+  
+      this.handleChange = this.handleChange.bind(this); ← Don't forget to bind
+      this.handleSubmit = this.handleSubmit.bind(this);
+    }
+  
+    handleChange(event) {                               ← similar to 2/3
+      const T = event.target;
+      const value = (T.type === 'checkbox')             ← Example logic.
+                    ? T.checked : T.value;
+      const name = target.name;                         ← use target.name to known which input was affected
+      this.setState({                                     (or a different funct. handler is logic is different).
+        [name]: value    });                              ← {[...]:...} ES6 computed prop.name syntax.Equivalent to ES5
+                                                            d = {}; d[name]=value; this.setState(d);
+      this.setState( {value1: event.target.value} );                                              
+    }
+                                                    
+    handleSubmit(event) {                              
+      ...
+      event.preventDefault();                          ← Don't forget. 
+    }
+  
+    render() {
+      return (
+        ˂form onSubmit={this.handleSubmit}˃
+        ˂label˃Name: 
+          ˂input type="text" value={this.state.value1} 
+            name="value1"
+            onChange={this.handleChange} /˃ 
+        ˂/label˃
+        ˂label˃Essay:
+          ˂textarea value={this.state.value2}         ← Notice: textarea content defined by value attribute 
+            name="value2"                               (vs inner text in standard HTML)
+            onChange={this.handleChange} /˃                                        
+        ˂/label˃
+  
+        ˂label˃ Pick one:
+          ˂select value={this.state.value3}           ← Notice: Selected value defined by value attribute
+            name="value3"                               (vs 'selected' attribute in option in standard HTML)
+            onChange={this.handleChange3}˃              For multiselect:
+            ˂option value="value1"˃text1˂/option˃       ˂select multiple={true} value={['B', 'C']}˃
+            ˂option value="value2"˃text2˂/option˃       
+            ˂option value="value3"˃text3˂/option˃
+          ˂/select˃
+        ˂/label˃
+        ˂label˃Upload file:
+        ˂input type="file" /˃                          ← read only, uncontrolled by react
+        ˂/label˃
+  
+  
+        ˂input type="submit" value="Submit" /˃
+        ˂/form˃
+      );
+    }
+  }
+
+BºBest patternsº
+
+- If two components need to reflect the same changing data
+  put such data as prop (immutable in both) and move the state
+  to a container "parent".
+
+BºComposition vs Inheritanceº
+
+- Component composition recommended vs inheritance in order to reuse components.
+  (pass them as props.children to other components).
+
+  Sometimes we think about components as being “special cases” of 
+  other components. For example, we might say that a WelcomeDialog is a 
+  special case of Dialog.
+
+  In React, this is also achieved by composition, where a more 
+  “specific” component renders a more “generic” one and 
+  configures it with props:
+  
+  BºAt Facebook, we use React in thousands of components, and we º
+  Bºhaven’t found any use cases where we would recommend creatingº 
+  Bºcomponent inheritance hierarchies.                           º
+  
+BºNon-UI functionalityº 
+  To reuse non-UI functionality between components, we 
+  suggest extracting it into a separate JavaScript module.
+  The components may import it and use that function, object, 
+  or a class, without extending it.
 
 <span title>Preact</span>
 https://github.com/preactjs/preact
@@ -3731,8 +3978,19 @@ That means less JavaScript to download, parse and execute - leaving
 more time for your code, so you can build an experience you define 
 without fighting to keep a framework under control. 
 </pre>
+<pre zoom labels="react,low_code,qa,TODO">
+<span xsmall>Formik Forms</span>
+@[https://formik.org/] <!-- @ma -->
+- orchestrate validation and submission: values/errors/visited fields
+- focus on business logic.
+- Intuitive: plain React state and props.
+-ºeasy to debug, test and reason about.º
+- No use of external state management libraries like Redux or MobX.
+- Keeps bundle size to a minimum.
+</pre>
 
-<pre zoom labels="">
+
+<pre zoom labels="react,TODO">
 <span xsmall>React Suspense (alt. to Redux)</span>
 @[https://www.infoq.com/news/2018/12/react-suspense-redux-alternative]
 
@@ -3741,7 +3999,13 @@ server-side data, then Suspense could replace your redux usage. I’d consider
 it because you’d have simpler code and the ability to tame all those spinners."
 </pre>
 
-<pre zoom labels="">
+
+
+<pre zoom labels="react,TODO">
+<span xsmall TODO>Hooks:Reusable+Composable Logic</span>
+</pre>
+
+<pre zoom labels="react,TODO">
 <span xsmall>Native React</span>
 @[https://www.infoq.com/articles/affordable-react-native-development]
 
@@ -3759,15 +4023,6 @@ The main benefits of React Native mobile app development are:
 - Common set of tools for web and mobile development
 - Almost identical code base for iOS and Android
 - Declarative way of developing React mobile UI
-</pre>
-
-<pre zoom labels="">
-<span xsmall>React+Flux Docker Dev Workflow</span>
-@[https://medium.com/@tribou/react-and-flux-a-docker-development-workflow-469957f3bbf0]
-</pre>
-
-<pre zoom labels="TODO">
-<span xsmall TODO>Hooks:Reusable+Composable Logic</span>
 </pre>
 </div>
 <hr/>
@@ -5096,6 +5351,41 @@ https://github.com/innoq/ROCA
 <span xsmall>Rich Structured Data for Search Engines</span>
 https://www.infoq.com/news/2021/02/seo-structured-data-rich-snippet/
 </pre>
+
+<pre zoom labels="js,ui,TODO">
+<span xsmall>Vanilla JS animations</span>
+https://www.linkedin.com/learning/vanilla-javascript-animations/welcome
+</pre>
+
+<pre zoom labels="redux,TODO">
+<span xsmall>Redux</span>
+@[https://medium.com/@dan_abramov/you-might-not-need-redux-be46360cf367]
+- Use case scenarios for Redux:
+  - Persist state to a local storage and then boot up from it, out of 
+the box.
+  - Pre-fill state on the server, send it to the client in HTML, and 
+boot up from it, out of the box.
+  - Serialize user actions and attach them, together with a state 
+snapshot, to automated bug reports, so that the product developers 
+can replay them to reproduce the errors.
+  - Pass action objects over the network to implement collaborative 
+environments without dramatic changes to how the code is written.
+  - Maintain an undo history or implement optimistic mutations 
+without dramatic changes to how the code is written.
+  - Travel between the state history in development, and re-evaluate 
+the current state from the action history when the code changes, a la 
+TDD.
+  - Provide full inspection and control capabilities to the 
+development tooling so that product developers can build custom tools 
+for their apps.
+    Provide alternative UIs while reusing most of the business logic.
+
+RºWARNº:... if you’re just learning React, don’t make Redux your first choice.
+
+<span xsmall>React+Flux Docker Dev Workflow</span>
+@[https://medium.com/@tribou/react-and-flux-a-docker-development-workflow-469957f3bbf0]
+</pre>
+
 
 -->
 

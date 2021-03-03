@@ -573,7 +573,6 @@ BºA block, once written to storage, is never modified.º
     the graph incrementally on change.
 </pre>
 </div>
-</div>
 
 <div groupv>
 <pre zoom labels="timeseries,comparative,db_engine,comparative">
@@ -1280,7 +1279,7 @@ https://cloud.google.com/spanner/
   - secondary indexes in (JSON) objects
 
 ºExamplesº
-- MongoDB
+- MongoDB @[#mongo_summary]
   www.infoq.com/articles/Starting-With-MongoDB
   14 Things I Wish I’d Known When Starting with
   MongoDB
@@ -1302,8 +1301,104 @@ Note from https://www.xplenty.com/blog/couchdb-vs-mongodb/
   - BºCAP theorem: CouchDB prioritizes availability, while MongoDB º
     Bºprioritizes consistency.º
   - Reviews: MongoDB seems to have somewhat better reviews than CouchDB.
-
 </pre>
+
+<pre zoom labels="mongo,document_store,db_engine,101" id="mongo_summary">
+<span xsmall>MongoDB Summary</span>
+$ mongo                                  ← Launch mongo shell
+
+# show dbs                               ← list all databases
+
+# use db_name                            ← create/ login to a database
+
+# db.createCollection('collection01')    ← create collection
+
+# db.collection01.insert( [              ← Insert N documents
+    { key1: "val11", key2:"val21", },      db.collection.insertOne()
+    { key1: "val12", key2:"val22", },      db.collection.insertMany()
+    { key1: "val13", key2:"val23", }
+  ]);
+
+
+# db.collection01.save(                  ← Upsert doc.
+    { key1: "newVal", ... },
+  );
+
+# db.collection01.update()               ← Update 1+ docs. in collection based on
+                                           matching document and based on multi option
+
+# db.collection01.update(                ← updateOne()|updateMany()
+     { key1: val11 },                    ← query to match
+     { $set: { key2 : val2} },           ← update with 
+     { multi: true}                      ← options
+  );
+
+# db.collection01                        ← Update single document.
+  .findOneAndUpdate(
+    filter, 
+    update,
+    options)                             ← Options:
+                                           upsert=true|false
+                                           returnNewDocument: true: return new doc
+                                           (vs original).
+                                           upsert==true && returnNewDocument==false:
+                                           → return null.
+
+# db.collecti01.findOne( { _id  : 123 });← Find by ID
+# db.collecti01.findOne( { key1 : val1});       by query 
+# db.collecti01.findOne(                 ← Find with projection 
+     { key1 : val1},                       (limiting the fields to return)
+     { key2: 1}      );                    ←  returns id , key2 fields only
+
+
+# db.collecti01.find( {...} )            ← Returns cursor with selected docs.
+
+# db.collecti01.deleteOne( filter, opts) ← or deleteMany(filter, opts)
+
+
+BºreadConcern levels:º  
+- Control consistency and isolation properties of data reads 
+  ( from replica sets & replica set shards ).
+
+  - local: returns data from instace without guaranteing that
+           its been written to majority of replica members
+           (Default for reads against primary)
+  - available: similar to local, gives lowest latancy for sharded collections.
+           (Default for reads against secondaries)
+  - majority: returns only if the data acknowledged by a majority of 
+           the replica set members.
+  -  linearizable: return data after all successful majority-acknowledged 
+           writes
+  - snapshot: Only available for transactions on multi documents.
+
+BºWrite Concern:º
+  - Control level of acknowledgment for a given write operation
+    sent to mongod and mongos (for sharded collections)
+
+  - fields spec:
+    - w       : (number),
+      0 : No ACK requested
+      1 : (default) wait ACK from standalone mongod|primary(replica set)
+      2+:           wait ACK from primary + given N-1 secondaries
+    - j : (bool)    
+      true => return ACK only after real writte onto on-disk journal
+    - wtimeout: millisecs before returning error.
+
+RºWARNº: On failure MongoDB does not rollback the data, 
+         data may eventually get stored
+
+BºIndexesº
+  _id Index (Default index, can NOT be dropped)
+  1. Single Field:
+  2. Multikey Field:
+  3. Geospatial Index:
+  4. Text Indexes:
+  9. Aggregations
+  1. Aggregation Pipeline
+  2. Map-Reduce
+  3. Single Purpose
+</pre>
+
 </div>
 
 <div groupv>
@@ -1676,7 +1771,6 @@ companies and 60% of Fortune 500 companies.[3]
 
 <div groupv>
 <span title>Messaging</span>
-<pre zoom label="101">
 <pre zoom label="messaging,enterprise_patterns,data_integration,event_stream,decoupled_systems,101," bgorange>
 <span xsmall>Summary</span>
 - Messaging represents a layer down ESB. Messaging architectures
@@ -1788,7 +1882,7 @@ Defined by
 ...
 - Java JMS
 </pre>
-<pre zoom>
+<pre zoom label="messaging,enterprise_patterns,data_integration,event_stream,decoupled_systems,101," bgorange>
 <span xsmall>Message Brokers</span>
 - Routing
 - (De-)Multiplexing of messages from/into multiple messages to different recipients
@@ -1800,10 +1894,49 @@ Defined by
   Message broker examples are, Qpid, Open AMQ or ActiveMQ.
 - Kafka can also be used as message broker but is not its main intention
 </pre>
-<pre zoom labels="queue">
-<span xsmall>OpenHFT</span>
-<span xsmall>microSec Messaging</span>
-<span xsmall>storing to disk</span>
+<pre zoom labels="messaging,enterprise_patterns,TODO" id="rabbitmq_summary">
+<span xsmall>RabbitMQ</span>
+@[https://www.rabbitmq.com/getstarted.html]
+- Multiprotocol (AMQP, ...)
+  P: Producer, C: consumer
+
+  P →  │││queue_name │││ ──→ C                                Work queues
+                         └─→ C                               ------------------
+
+            ┌→ │││queue1 │││ ──→ C
+  P →  │X│ ─┤                                                 Publish/Subscribe
+            └→ │││queue2 │││ ──→ C                            ------------------
+
+
+
+            ┌→ (error) │││queue1 │││ ──→ C
+  P →  │X│ ─┤                                                 Routing
+        ^   │       info                                      -------
+        |   └───────error──→ │││queue2 │││ ──→ C              
+                    warning 
+     type=direct
+
+
+            ┌→ *.orange.* → │││queue1 │││ ──→ C
+  P →  │X│ ─┤                                                 Topics
+        ^   │                                                 ------
+        |   └─ *.*.rabbit → │││queue2 │││ ──→ C 
+               lazy.*
+     type=topic
+
+
+
+  C ─→ Request:            ──→ │││ request  │││ ──→  Server   Async RPC
+  ^    reply_to=amqp.gen...                           │       ---------
+  │    correlation_id=abc                             │
+  │                                                   │
+  └─── Reply               ─── │││ response │││ ──────┘ 
+         correlation_id=abc
+
+</pre>
+
+<pre zoom labels="queue,TODO">
+<span xsmall>OpenHFT: microSec Messaging storing to disk</span>
 https://github.com/OpenHFT/
    - Chronicle-Queue: Micro second messaging that stores everything to disk
    - Chronicle-Accelerate: HFT meets Blockchain in Java platform

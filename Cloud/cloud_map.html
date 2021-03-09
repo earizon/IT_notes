@@ -10976,17 +10976,201 @@ existing event management and workflow systems.
 
 <div group>
 <span title>IaaS</span><br/>
+<span title>Storage</span><br/>
+<pre zoom labels="aws,storage,iaas,s3,101,price">
+<span xsmall>S3</span>
+- S3 Standard durability : 
+  - 99.999999999% object durability over a year
+  - 99.99% availability
+- Eventually consistent. Read data can be stale due to propagation time
+                         of S3 replicas within a AWS region. 
+  - Updates are atomic. Either new or old data is read. Never mixed.
+
+- Reduced Redundancy Storage (RRS) can be used for lower-cost non-critical  data [price]
+
+- Object storage (vs block and file storage)
+  - bucket01             ← independent of any server, no object limits
+    │                      automatically replicated.
+    │                    Bºtop level namespaceº
+    │                      http.//bucket01.s3.amazonaws.com/
+    │                      - up to 63 lowercase [a-z][0-9][\/-.]
+    │
+    ├─"object1"          ← Objects contain data and metadata Up to 5TB.
+    │  │                   http.//bucket01.s3.amazonaws.com/object1 º*1º
+    │  │
+    │  ├─ metadata       ← key:value dictionary/map
+    │  │  ├─ system: (last mod. time, size, md5 digest, Content-type,..)
+    │  │  └─ user  :                     
+    │  └─ (opaque to AWS)
+    │  │
+    ├─"dir1/dir2/object2"← dir1/dir2 is just an string 
+    │                    BºREST API support search-by-prefixº
+    ├─..
+      ^^^^^^^^^^^^^^^^^^
+    - Each object is represented by itsºkeyº(sort of "filename")
+      (Up to 1024 bytes UTF-9 chars)
+    - Access through HTTP verbs GET/PUT/POST/DELETE to:
+      - CREATE/DELETE buckets. LIST KEYS in bucket. 
+      - WRITE/READ/DELETE an object
+        MF Auth. can be activated to protect DELETE operations.
+      - Multipart Upload API allows to pause/retry/resume upload of
+        objects.  Recomended for 100MB+. Forced for 5GB+.
+        - Steps: (initialization, upload of part, completion) .
+        - Range GETs allows to download a range of the object. 
+    - Cross-region replica: aysnch src_bucket_reg1 → dst_bucket_reg2
+      (metadata and ACLs are also replicated).
+      Useful toºdecrease read latencyº, backups, ...
+      PRE-SETUP: Enable versioning in src/dst buckets and a IAM policy
+                 given AWS S3 permission to replicate on owner behalf.
+    - PUT/POST/COPY/Multipart-Completion/DELETE/ºEventsºcan be
+      activated atºbucket level,ºalsoºfiltering by keys and key-prefixesº
+      and sent through AWSºSimple Notification Service (SNS)ºor 
+     ºSimple Queue Service (SQS)ºorºLambdas (as input)º.
+
+    -BºVersioning can be enabled for buckets affecting all its objectsº
+     RºWARNº: once activated it can be suspended, but not removed.
+    - Access logs can be enabled for a bucket, indicating the destination
+      bucket for new logs. Best pracite: add a "logs/" prefix.
+
+  º*1ºOºpre-signed URLsºcan be created indicating the bucket name,
+       object key, HTTP methods and expiration date+time.
+
+BºS3 STORAGE CLASSESº:
+  -ºS3 standard:ºhigh durability+availability, low (fist-byte) latency
+                 (general purpose data). 
+  -ºS3 standard-infrequent access:º (long lived data)
+    As S3, but with lower GB/month storage cost
+    
+  -ºS3 Reduced Redundancy Storage (RRS):ºLower durability (4 nines)/
+    lower costs. (easy to reproduce data) [price]
+
+  -ºGlacier:º"cold data"
+    - Extremenly low cost [price]
+    - Can be used as S3 storage class or independent service
+    - Issue a "RESTORE" command and wait 3-5 hours to put data
+      back in S3 RRS.
+
+- Lifecycle policies (Mng Console or APIs)
+  - Help migrate to appropiate class with no code changes. Ex:
+    - "hot" storage (S3 Standard) 
+    - "warn" (S3 infrequent access) 30 days later
+    - "cold" (Glacier),             90 days later
+    - "delete".                      3 years later.
+
+- S3 AAA:
+  - By default only owner is allowed access. Access to third parties through:
+    - ACLs, legacy, READ/WRITE/FULL CONTROL coarse-grain Access  to object or buckets.
+    - bucket policies  fine-grain Access
+      Similar to Identity and Access Management IAM policies but:
+      - linked to buckets (vs IAMs principals).
+      - include an explicit ref. to the IAM principal. This principal 
+        can be associated to different AWS accounts.
+      - Allows to set:
+        - who can access
+        - from where (IP or Classless Inter-Domain Routing CIDR)
+        - time of day.
+
+- Data At rest encryption:
+  - Server-side encryption (SSE) is used to encrypt S3 objects
+    (256 AES). (Client side encrypt. can also be used).
+  - SSE-S3 AWS managed keys: Let AWS manage keys. Every object is encrypted
+    with a unique key first, then with a master key later.
+    - AWS rotates master keys (at least) montly.
+  - SSE-KMS keys: AWS handles key-management. User handles keys. 
+    It also provides auditing: "who used a given key to access which object".
+  - SSE-C (Custome-provided keys): Use encryption keys without implementing
+    client-side encryption libraries. AWS does encrypt/decrypt with keys
+    out of AWS control.
+  - Client-side encryption options:
+    - use AWS KMS-managed customer master key.
+    - use client-side master key.
+    
+  
+
+- S3 Common Use: Static Website Hosting.
+  → Create bucket → Upload static files → mek files public (world readable) 
+    → ºEnable static website hosting for bucketº:
+       → set index and error page objects.
+         Site will then be available as:
+         $bucket_name.s3-website-$region.amazonaws.com
+       → Create "riendly" DNS name using :
+         -     standard CNAME DNS registry
+         - non-standard alias DNS registry (Amazon Route 53 only)
+<hr/>
+<span xsmall>Glacier</span>
+ - Vault ← Up to 1000 vaults per AWS account
+   └ lock ← used to deploy/enforce compliance controls through policies.º*1º
+   └ archive1-UUID ← encrypted, immutable, Up to 40TB, 
+   └ archive2-UUID ← Unique (non-friendly) ID created by AWS at creation time
+   └ ...
+   º*1º ex: Write Once, read Many. Policies can be locked (for always).
+ - Up to 5% of data can be retrieved each month [price]
+   Up to ??? daily. Beyond that, fee is incurred.
+ - Glacierºcan be used as an S3 storage class to get most of the featuresº.
+</pre>
+
 <div groupv>
 <span title>EC2 VMs</span>
-<pre zoom labels="aws,TODO,IaaS">
+<pre zoom labels="aws,computing,iaas,ec2,101,price">
+<!-- @ma page 92: http://127.0.0.1:8000/Cloud/AWS-Certified-Solutions-Architect-Official-Study-Guide.pdf.pdf -->
+- VM classified in familes with similar ratio of vCPUs/RAM.
+  - For each family vCPU/RAM/price scales linearly. [price]
+  - Families:
+    c4 Compute optimized: 
+    r3 Memory optimized.
+    i2 Storage optimized.
+    g2 GPU-based instances.
+    "future ones"
+
+  - Optionalyºenhanced networkingº is available for many instances types
+    (c3,c4,d2,i2,m4,r3) with higher bandwidth, lower latency/jitter.
+   RºContrainº: Only if VM launched in an Amazon VPC.
+
+
 <span xsmall TODO>VM images types</span>
 @[https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/virtualization_types.html]
+
 Amazon VM images types:
 - AKI: Amazon Kernel Image
-- AMI: Amazon Machine Image
+- AMI: Amazon Machine Image: OS + soft + config.
+  - Published by AWS (Note: Initial user is "ec2-user" for Linux instances)
+  - AWS market place
+  - Generated from Existing Instances
+  - Uploaded+imported VM image (format: raw, VHD, VMDK, OVA).
 - ARI: Amazon Ramdisk Image
 
-<span xsmall>EC2 introduction</span>
+- Instance IP change on reboot.ºElastic IPº must be reserved independently
+  and then associated for a fixed IP. (Elas.IP lifetime independent of VM).
+
+BºSecurity Groupsº: Virtual firewalls. Capabilites depends:
+                           -------------------------------- 
+          Sec.Group Type \ Capabilites
+  --------------------------------------------------------- 
+   EC2-Classic Sec.Group   Control    out instance traffic  
+  --------------------------------------------------------- 
+   VPC         Sec.Group   Control in/out instance traffic  
+  --------------------------------------------------------- 
+
+-ºhttp://169.254.169.254/latest/meta-data/º allow running VM to collect data
+  about itself (associated security groups, instance ID/type, AMI). 
+-ºCloudWatchº can be used to monitor/alert about EC2 instances.
+-ºTermination protectionº can be enabled to avoid accidental VM termination.
+
+OºPricing optionsº
+  - On-Demand  No upfront cost
+  - Reserved   Up to 75% cheaper [price]
+  - Spot       Cheapest ones for non-critical or tolerant to interruption.
+               Instance deallocated when another customer pays more for it.
+
+BºTenancy Optionsº
+  - Shared tenancy     : (def). host 1←→ N Customers/M VMs
+  - Dedicated instances:        host 1←→ 1 Customer /M VMs
+  - Dedicated host     :        host 1←→ 1 Customer /1 host (useful to fix
+                                                            licence issues)
+
+<!-- @ma page 106: http://127.0.0.1:8000/Cloud/AWS-Certified-Solutions-Architect-Official-Study-Guide.pdf.pdf -->
+BºPlacement Groupº
+<span xsmall>Vagrant automation</span>
 @[https://vocon-it.com/2016/04/03/aws-automation-using-vagrant-part-1-getting-started-with-aws/]
 
 - Per default, AWS is assigning a dynamic private and a dynamic public IP address.
@@ -12490,7 +12674,6 @@ https://github.com/aws-samples/s3-select-phonebook-search
 
 - Demo app also leverages Amazon API Gateway and AWS Lambda.
 ##############
-@ma:
 https://github.com/tldr-pages/tldr/blob/master/pages/common/gcloud.md
 
 AWS:
@@ -12509,20 +12692,6 @@ https://seroter.com/2021/01/12/how-gitops-and-the-krm-make-multi-cloud-less-scar
  - Service Administrator
  - User Administrator
  - Password Administrator
-
-____________________
-- AWS Architect certification:
-  - Certificaciones AWS: https://aws.amazon.com/es/certification/certification-prep/
-  - Guía del examen AWS Certified Solutions Architect (associate):
-    https://d1.awsstatic.com/training-and-certification/docs-sa-assoc/AWS_Certified_Solutions_Architect_Associate-Exam_Guide_EN_1.8.pdf
-  - Preguntas de muestra:
-    https://d1.awsstatic.com/training-and-certification/docs/AWS_Certified_Solutions_Architect_Associate_Sample_Questions.pdf
-  - Official AWS digital tutorials:
-    https://www.aws.training/LearningLibrary
-  - AWS Whitepapers 
-    https://aws.amazon.com/es/whitepapers/
-  - Official Video: Course explaining exam guide:(2 hours):
-    https://aws.amazon.com/es/training/course-descriptions/exam-workshop-solutions-architect-associate/ 
-    https://www.aws.training/Details/Curriculum?id=20685
--->
+###################
+https://www.xataka.com/pro/microsoft-mima-a-azure-novedades-para-servicio-cloud-anunciadas-ignite-2021
 

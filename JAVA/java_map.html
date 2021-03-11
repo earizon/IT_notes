@@ -792,7 +792,10 @@ REF: @[https://dzone.com/articles/heap-memory-in-java-performance-testing?utm_so
 <div groupv>
 <pre zoom labels="strings,101,TODO">
 <span xsmall>Strings</span>
-  final String formatedNumber = String.format("%4d",100);
+
+  final String 
+     output1 = Stringº.formatº("%s = %d", "joe", 35), ← Format string
+     output2 = Stringº.formatº("%4d",100);            ←
   See also: [[Format String Checker?]]
   
   final String[] args = ...
@@ -1554,10 +1557,10 @@ final HashMap˂String,String˃ data =          ← Java 7+
           "k1","v1",                         ← must have an even number of elements
           "k2","v2");
 
-final Map˂String, String˃ test =             ← Java 9+
-      Map.of("k1", "k2", "v1", "v2");        ← must have an even number of elements
+final Map˂String, String˃ inumtableMap01 =   ← Java 9+
+      Map.of("k1", "v1", "k2", "v2");        ← must have an even number of elements
 
-final Map˂String, String˃ test2 =            ← Java 9+
+final Map˂String, String˃ inmutableMap02 =            ← Java 9+
       Map.ofEntries( entry("k1", "k2"),...);
 
 final Map˂String, String˃ test =             ← Guava ImmutableMap
@@ -2972,32 +2975,36 @@ TODO Concurrent
      http://winterbe.com/posts/2015/04/07/java8-concurrency-tutorial-thread-executor-examples/
 -->
 </pre>
-<pre zoom labels="concurrency,">
+<pre zoom labels="concurrency,barrier">
 <span xsmall>CountDownLatch</span>
-<span xsmall>java.util.concurrent</span>
+[java.util.concurrent]
+
 @[https://docs.oracle.com/javase/7/docs/api/java/util/concurrent/CountDownLatch.html]
+
 
 - Object allowing 1+ threads to wait until a 1+ operations are completed in other threads.
 
-- A CountDownLatch is a versatile synchronization tool and can be 
-  used for a number of purposes. A CountDownLatch initialized with a 
-  count of one serves as a simple on/off latch, or gate: all threads 
-  invoking await wait at the gate until it is opened by a thread 
-  invoking countDown(). A CountDownLatch initialized to N can be used 
-  to make one thread wait until N threads have completed some action, 
-  or some action has been completed N times.
+- CountDownLatch: versatile synchronization tool used for:
+  -ºon/off latch or gate:º
+    When initialized to "one", parallel processing threads will
+    invoke "await" and standby waiting for a "control" thread to
+    open the gate with countDown().
+  -ºparallel thread synchonization:º (barriers, ...)
+    When initialized to 2+, it can be used to make a thread
+    wait until "N" processing threads complete their task,
+    (or 1+ proccesing threads complet an action N times).
 
-- A useful property of a CountDownLatch is that it doesn't require 
-  that threads calling countDown wait for the count to reach zero 
-  before proceeding, it simply prevents any thread from proceeding past 
-  an await until all threads could pass.
+  BºNOTEº: 
+  - Threads calling countDown() can continue processing before count reach 0.
+    Only threads invoquing await will wait.
 
-- Sample usage: Here is a pair of classes in which a group of worker threads use two countdown latches:
-  The first is a start signal that prevents any worker from proceeding until the driver is ready for them to proceed;
-  The second is a completion signal that allows the driver to wait until all workers have completed.
+- The first is a start signal that 
+  prevents any worker from proceeding until the driver is ready for 
+  them to proceed; The second is a completion signal that allows the 
+  driver to wait until all workers have completed.
 
   -  Ex. 1:
-     class Driver { // ...
+     class DriverThread { // ...
 
        class Worker implements Runnable {
          private final CountDownLatch OºstartSignalº;
@@ -3008,9 +3015,9 @@ TODO Concurrent
          }
          public void run() {
             try {
-            OºstartSignalº.await();
+            OºstartSignalº.await();      // ← Wait for driver-thread to be ready.
               doWork();
-            BºdoneSignalº.countDown();   // ← Decrease count
+            BºdoneSignalº.countDown();   // ← Decrease count. 
             } catch (InterruptedException ex) {} // return;
          }
 
@@ -3018,11 +3025,17 @@ TODO Concurrent
        }
 
        void main() throws InterruptedException {
-         CountDownLatch OºstartSignalº= newºCountDownLatch(1);º// ← initialized with a given count
-         CountDownLatch BºdoneSignalº = newºCountDownLatch(N);º// ← "
-                                                             // ← Consider alsoºCyclicBarrierº(reset after count),
+         CountDownLatch OºstartSignalº=
+                          newºCountDownLatch(1);º// ← 1: Gate: Avoid workers to start before
+                                                 //       driver-thread is ready.
+
+         CountDownLatch BºdoneSignalº =          // ← N: Make driver thread wait until workers
+                          newºCountDownLatch(N);º//      have completed.
+                                                 //   Consider alsoºCyclicBarrierº
+                                                 //   (reset after count),
+
          for (int i = 0; i ˂ thread_number ; ++i) {
-           new Thread(
+           new Thread(                           // ← Setup workers in this (driver) thread.
                 new Worker(
                     OºstartSignalº,
                     BºdoneSignalº
@@ -3030,7 +3043,7 @@ TODO Concurrent
          }
          ...
        OºstartSignalº.countDown();      // ← Decrease count. count cannot be reset.
-         doSomethingElse();
+         doSomethingElse(); 
        BºdoneSignalº.await();           // ← block until current count reaches zero
                                             Thread is released. Any subsequent invocations
                                             return immediately.
@@ -3069,6 +3082,9 @@ TODO Concurrent
        OºdoneSignalº.await();           // wait for all to finish
        }
      }
+
+
+@[https://liakh-aliaksandr.medium.com/java-barrier-synchronizers-countdownlatch-cyclicbarrier-phaser-50eb69724d67]
 </pre>
 
 <pre zoom labels="concurrency,">
@@ -3668,8 +3684,6 @@ BºSPRING FRAMEWORK ANNOTATIONSº
    º@ComponentScanº|Trigger scanning of package for the         |x
                    |@Configuration clases.                      |
                    ------------------------------------------------------
-   º@Configurationº|ºused on classes that define beans.º        |x
-                   ------------------------------------------------------
    º@Bean         º|tag a method ºbean producerº which will be  |      x
                    |mananged by the Spring container.           |
                    ------------------------------------------------------
@@ -3696,11 +3710,6 @@ BºSPRING FRAMEWORK ANNOTATIONSº
                   |                                            | | |R|D|S
                   |                                            | | |U| |
                   |                                            | | |C| |
-                  ------------------------------------------------------
-   º@SpringBootApplicationº                                    |
-                  |tag for main class for S Boot project.      |
-                  |tagged class must be present in base path,  |
-                  | triggering the scan for sub-packages       |
                   ------------------------------------------------------
    º@EnableAutoConfigurationº                                  |
                   ------------------------------------------------------
@@ -3863,7 +3872,7 @@ BºMethod injectionº
 
 </pre>
 
-<pre zoom labels="spring,jpa,configuration,persistence,aaa,oauth,qa,error_control,devops,cryptography,TODO" id="spring_summary">
+<pre zoom labels="spring,jpa,configuration,persistence,aaa,oauth,qa,error_control,devops,cryptography,api_management,openapi" id="spring_summary">
 <span xsmall>Spring+JPA+JWT summary</span>
 BºSwagger (OpenAPI) º [config] {{
 - file: com/myComp/openApi/SwaggerConfig.java  {{
@@ -3882,11 +3891,11 @@ BºSwagger (OpenAPI) º [config] {{
     import springfox.documentation.spring.web.plugins.Docket;
     import springfox.documentation.swagger2.annotations.EnableSwagger2;
   
-  Bº@Configurationº                                                           ← spring core: mark class as having
-                                                                                @Bean def. methods so that Spring
-                                                                                container process it generating 
-                                                                                app. Beans.
-  Bº@EnableSwagger2º
+  Bº@Configurationº                              ← [configuration] spring core:
+                                                   mark class as defining Spring bean
+                                                   so that Spring container process
+                                                   it generating app.Beans.
+  Bº@EnableSwagger2º                             ← [openapi]
     public class SwaggerConfig {
       @Bean
       public Docket api() {
@@ -4373,11 +4382,13 @@ BºMAIN (entry point to Spring Boot app)º
   import org.springframework.context.annotation.ComponentScan;
   import org.springframework.context.annotation.Configuration;
   
-  @SpringBootApplication
-  @Configuration
-  @EnableAutoConfiguration
-  @ComponentScan({ "com.myComp"})                  // ←   Package to scan for Spring components
-  public class App {                               //
+  @SpringBootApplication                     //  ← main class for SpringB. project.
+                                             //    (must be present in base path)
+                                             //    triggering the scan for sub-packages  
+  @Configuration                             //    [configuration]
+  @EnableAutoConfiguration                   //    [configuration]
+  @ComponentScan({ "com.myComp"})            //  ← [configuration] Package to scan 
+  public class App {                         //    for Spring components
     public static void main(String[] args) {
       SpringApplication.run(App.class, args);
     }
@@ -4668,7 +4679,7 @@ BºMAIN (entry point to Spring Boot app)º
    | └  Configuration Server IoT Setup:
    | ·    @SpringBootApplication
    | ·    @EnableConfigServer       ← Make Configuration Service discoverable
-   | ·    @Enable       ← via EEurekaClienturoka client
+   | ·    @Enable                   ← via EEurekaClienturoka client
    | ·    public class ConfigApplication {
    | ·      ...
    | ·    }
@@ -6156,14 +6167,14 @@ REF:@[https://github.com/vert-x3/vertx-guide-for-java-devs/blob/3.8/step-1/src/m
     public void start(Promise<Void> promise) {
       Promise<String> promise01 = Promise.promise();
       vertx.deployVerticle(new WikiDatabaseVerticle(), promise01);
-      promise01.future().compose(id -> {
+      promise01.future().compose(id -˃ {
         Promise<String> promise02 = Promise.promise();
         vertx.deployVerticle(
           "io.vertx.guides.wiki.HttpServerVerticle",  // <4>
           new DeploymentOptions().setInstances(2),    // <5>
           promise02);
         return promise02.future();
-      }).setHandler(ar -> {
+      }).setHandler(ar -˃ {
         if (ar.succeeded()) {
           promise.complete();
         } else {
@@ -6174,7 +6185,7 @@ REF:@[https://github.com/vert-x3/vertx-guide-for-java-devs/blob/3.8/step-1/src/m
   }
 </pre>
 
-<pre zoom labels="vertx,low_code,qa,standards,openapi,documentation,TODO">
+<pre zoom labels="openapi,api_management,vertx,low_code,qa,standards,documentation,TODO">
 <span xsmall>OpenAPI: contract-driven Dev</span>
 @[https://developers.redhat.com/devnation/tech-talks/develop-openapi-vertx]
 - "Contract Driven Development" (or API Design First approach) is a methodology

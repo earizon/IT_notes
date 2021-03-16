@@ -10681,7 +10681,7 @@ potential causes and resolutions for addressing common query problems.
 
 <hr/>  <!-- azure end -->
 
-<span xbig>AWS (v0.1)</span><br/>
+<span xbig>AWS (v0.3)</span><br/>
 <div groupv>
 <span title>Introduction</span>
 <pre zoom labels="aws,TODO,101,">
@@ -10695,7 +10695,6 @@ potential causes and resolutions for addressing common query problems.
 REF: @[https://docs.aws.amazon.com/general/latest/gr/aws-security-credentials.html]
 
 BºAWS root vs IAM user credentialsº
-
   ┌────────────────────────────────────────────────────────┬────────────────────────────────────┐
   │BºUSER TYPES                                            │  SECURITY CREDENTIALS TYPESº       │
   │  (both are linked to security credential)              │                                    │
@@ -10722,18 +10721,32 @@ BºAWS root vs IAM user credentialsº
   │           for anything except for "closing account" ...│                                    │
   └────────────────────────────────────────────────────────┴────────────────────────────────────┘
 
-    ACCOUNT        1←············→ 1 root-user 1 ←········→ N IAM users N ←→ M permissions over resources
-    - account name                                                             Ex: 
-    - email-address          º*1º                                              - aws-portal:ViewBilling
-    - AWS-account-ID         º*1ºOº*2º
-    - root-user password     º*1º
-    - root-user access-keys  º*1º
-    ----------------------
-    - Billing
-    * NOTE: Account can be member of
-      an AWS Organization where the
-      organizational administrator used
-      a service control policy (SCP)
+   NOTE: In AWS a Principal can be the AWS account-root-user, a IAM-user or a IAM-role.
+
+    ┌→ ºIAM role:º Similar to IAM-user but
+    ·@[https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_terms-and-concepts.html]
+    ·  - IAM users can incarnate it 
+    ·  - NO long-term credentials allowed, just temporal ones for role session 
+    ·  -ºUse case: Delegate temporal resource-access to (maybe external) º
+    ·   º          users/apps/ec2 VMs/services (SAML 2.0, IOpenID Connect,...)º
+    ·  - Supossing IAM user1 has permissions over RoleA, and RoleA over RoleB then:
+    ·    IAM user1 can incarnate RoleA through "aws ami assume-role" for a max. of 12 hours,
+    ·    then it can assume (chained) RoleB (for a max. of 1 hour) 
+    ·  - Session tags will be used to keep trace of assigned roles.
+    └······················································┐
+                                                           v
+   ºACCOUNTº       1←·········→ 1ºroot-userº1 ←········→ NºIAM userº N ←······→ Mºpermissions over resourcesº
+    - account name                                         N               ^    Ex: 
+    - email-address          º*1º                          ^               ·    - aws-portal:ViewBilling
+    - AWS-account-ID         º*1ºOº*2º       ┌·············┘          - user → (permissions)  → resource ?
+    - root-user password     º*1º            v                          user → role  → policy → resource
+    - root-user access-keys  º*1º            M                          user → group → policy → resource
+    ----------------------                   IAM group                  user → r
+    - Billing                              - Can not be assigned a "Principal"
+    * NOTE: Account can be member of         in a resource-based policy.       
+      an AWS Organization where the        - Allows to attach policies to N
+      organizational administrator used      users in group simultaneously
+      a service control policy (SCP)            
       can limit permissions.
     
     º*1º: RºWARNº: If those credentials are lost you can NOT recover them.
@@ -10762,8 +10775,60 @@ BºAWS root vs IAM user credentialsº
     
           - (aws cli) :$º$ aws sts get-caller-identity --query Account --output textº
     
-    TODO: Identity federation:
-   @[https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction_identity-management.html#%23intro-identity-federation]
+BºROLES HOW-TO:º
+  $º$ aws iam create-role        ...      º
+  $º$ aws iam attach-role-policy ...      º ← Attach managed permissions policy
+  $º$ aws iam put-role-policy    ...      º ← create inlime  permissions policy
+  $º$ aws iam tag-role           ...      º ← (optional) add custom attr. attaching tags
+  $º$ aws iam put-role-permission-boundaryº ← (optional) Control max. permsissions a role 
+                                              can have.
+  Ex: (most common steps for creating a cross-account role)
+
+  - STEP 1). attachºtrust-policyºto role in "aws iam create-role" 
+    $º$ ROLE_FILE="Test-UserAccess-Role"                      º
+    $º$ POLICY_FILE="trust_policy_for_acct_123456789012.json" º
+    $º$ cat trust_policy_for_acct_123456789012.json º  ← save as customer-managed-policy in AWS
+    {                                                    with name "PolicyForRole".
+      "Version": "2012-10-17",
+      "Statement": [ {
+          "Effect"   : "Allow",
+          "Principal": {
+              "AWS": "arn:aws:iam::123456789012:root" ← allow all users in 
+          },                                            123456789012 account
+         º"Action"   : "sts:AssumeRole",º             ← to assume the role
+          "Condition": { "Bool":                          
+            { "aws:MultiFactorAuthPresent": "true" }  ← when user provide MFA authentication
+           }                                            (using SerialNumber and TokenCode params)
+        } ]
+    }
+    $º$ aws iam create-role \                      º
+    $º  --role-name ${ROLE_FILE} \                 º
+    $º  --assume-role-policy-document $POLICY_FILE º ← Create role attaching trust-policy
+
+  - STEP 2) attach an existingºpermission-managed policyºto the role.
+    {
+      "Version": "2012-10-17",
+      "Statement": [ {
+        "Effect": "Allow",             ← allows anyone who assumes the role 
+       º"Action": "s3:ListBucket",º      to perform only ListBucket action on 
+        "Resource": 
+          "arn:aws:s3:::example_bucket" ← S3 "example_bucket" 
+      } ]
+    }
+
+    POLICY_ARN="arn:aws:iam::123456789012:role/PolicyForRole"
+    $º$ aws iam attach-role-policy \               º ← Attach permissions policy 
+    $º  --role-name ${ROLE_FILE} \                 º   (managed-policy in example) 
+    $º  --policy-arn ${POLICY_ARN}                 º   to role to set its alowed permissions
+
+
+  - STEP 3) Ussage:
+    give individual users in trusted-account the permissions to switch to the role.
+    At this stage any users in the 123456789012 account can assume the role. 
+
+
+- TODO: Identity federation:
+@[https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction_identity-management.html#%23intro-identity-federation]
 
 </pre>
 
@@ -11537,8 +11602,8 @@ Firecracker currently supports Intel CPUs, with planned AMD and Arm support.
 Firecracker will also be integrated with popular container runtimes such as containerd.
 </pre>
 
-<pre zoom labels="aws,compute,container,">
-<span xsmall>ECS</span>
+<pre zoom labels="aws,ecs,compute,container,TODO" id="aws_ecs_summary">
+<span xsmall>ECS summary</span>
 @[https://aws.amazon.com/es/ecs/]
 - ECS: Elastic Container Service
 - """ Highly secure, reliable, and scalable way to run containers """
@@ -11547,11 +11612,71 @@ Firecracker will also be integrated with popular container runtimes such as cont
    Secrets Manager, AWS Identity and Access Management (IAM),
    and Amazon CloudWatch providing you a familiar experience to deploy
 
+BºCREATE TASKs:º
+
+$º$ POLICY_FILE="file://task-execution-assume-role.json"            º
+$º$ aws iam --region $REGION create-role \                          º
+$º    --role-name ecsTaskExecutionRole \                            º
+$º    --assume-role-policy-document ${POLICY_FILE}                  º
+                                                                     
+$º$ ARN="arn:aws:iam::aws:policy/service-role"                      º
+$º$ ARN="${ARN}/AmazonECSTaskExecutionRolePolicy"                   º
+$º$ aws iam --region $REGION attach-role-policy \                   º
+$º    --role-name ecsTaskExecutionRole \                            º
+$º    --policy-arn ${ARN}                                           º
+
+$º$ aws logs create-log-group \                                     º
+$º$   --log-group-name /ecs/project01 \                             º
+$º$   --tags system-name=zonpro,environment=POC                     º
+
+$º$ aws ecs create-cluster --cluster-name cluster01 \               º
+$º$   --tags key=system-name,value=zonpro key=environment,value=POC º
+
+$º$ AWS_VPC_CONFIG="{"                                              º
+$º$ AWS_VPC_CONFIG="${AWS_VPC_CONFIG}subnets=[subnet-0....]"        º
+$º$ AWS_VPC_CONFIG="${AWS_VPC_CONFIG},securityGroups=[sg-0..]"      º
+$º$ AWS_VPC_CONFIG="${AWS_VPC_CONFIG},assignPublicIp=ENABLED"       º
+$º$ AWS_VPC_CONFIG="}"                                              º
+$º$ aws ecs create-service --cluster cluster01 \                    º
+$º     --service-name zonpro-service01 \                            º
+$º     --task-definition project01:4 --desired-count 1 \            º
+$º     --launch-type "SERVICE01" \                                  º
+$º     --network-configuration ${AWS_VPC_CONFIG}                    º
+
+BºCHECKSº
+$º$ aws ecs register-task-definition \                              º
+$º     --cli-input-json file://./task.json                          º
+$º$ aws ecs list-task-definitions                                   º
+$º$                                                                 º
+$º$ aws ecs describe-services --cluster cluster01 \                 º
+$º     --services zonpro-service01                                  º
+$º$ aws ecs list-tasks --cluster cluster01                          º
+$º$ aws ecs describe-tasks --cluster cluster01 --tasks $taskId      º
+
+$º$ aws logs describe-log-streams \                                 º
+$º     --log-group-name /ecs/project01                              º
+
+$º$ aws logs get-log-events --log-group-name /ecs/project01         º
+$º     --log-stream-name ecs/middleware/034ec756-36d0-8384-...
+
+BºCREATE REPOº
+$ aws sts get-caller-identity
+$ aws ecr create-repository \
+      --repository-name $REPO_NS/$DOCKER_IMAGE_NAME \
+      --image-tag-mutability MUTABLE 
+
+BºCLEAR ECS:º
+$º$ aws ecs deregister-task-definition \                            º
+$º    --task-definition project01:1º                                º
+$º$ aws ecs delete-service --cluster cluster01 \                    º
+$º    --service zonpro-service01 --force                            º
+$º$ aws ecs delete-cluster --cluster cluster01                      º
+$º$ aws logs delete-log-group --log-group-name /ecs/project01       º
+
 <hr/>
 <span xsmall>ECR</span>
 - ECR: Elastic Container Registry (private "Dockerhub")
 @[https://aws.amazon.com/ecr/]
-
 
 <span xsmall>AWS CI flow</span>
 
@@ -12158,7 +12283,7 @@ the instances in a single place.
 </div>
 
 <hr/> <!-- aws end -->
-<span xbig>Scaleway (v0.1)</span><br/>
+<span xbig>Scaleway (v0.3)</span><br/>
 <div group>
 <span title>Scaleway</span><br/>
 <pre zoom labels="scaleway,101,storage,TODO">
@@ -12613,59 +12738,6 @@ AWS, Queue Services:
 </pre>
 </div>
 
-aws ecs summary:
-  BºCREATE TASKs:º
-    aws iam --region $REGION create-role \
-       --role-name ecsTaskExecutionRole \
-       --assume-role-policy-document file://task-execution-assume-role.json
-  
-    aws iam --region $REGION attach-role-policy \
-       --role-name ecsTaskExecutionRole \
-       --policy-arn arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
-  
-  # aws logs create-log-group \
-    --log-group-name /ecs/zonepoc-middleware \
-   --tags system-name=zonpro,environment=POC
-  
-    aws ecs create-cluster --cluster-name cluster01 \
-      --tags key=system-name,value=zonpro key=environment,value=POC
-  
-    AWS_VPC_CONFIG="{"
-    AWS_VPC_CONFIG="${AWS_VPC_CONFIG}subnets=[subnet-0....]"
-    AWS_VPC_CONFIG="${AWS_VPC_CONFIG},securityGroups=[sg-0..]"
-    AWS_VPC_CONFIG="${AWS_VPC_CONFIG},assignPublicIp=ENABLED"
-    AWS_VPC_CONFIG="}"
-    aws ecs create-service --cluster cluster01 \
-       --service-name zonpro-service01 \
-       --task-definition zonepoc-middleware:4 --desired-count 1 \
-       --launch-type "SERVICE01" \
-       --network-configuration ${AWS_VPC_CONFIG}
-  
-  BºCHECKSº
-    aws ecs register-task-definition --cli-input-json file://./task.json
-    aws ecs list-task-definitions
-  
-    aws ecs describe-services --cluster cluster01 --services zonpro-service01
-    aws ecs list-tasks --cluster cluster01
-    aws ecs describe-tasks --cluster cluster01 --tasks $taskId
-  
-  # aws logs describe-log-streams --log-group-name /ecs/zonepoc-middleware
-  
-  # aws logs get-log-events --log-group-name /ecs/zonepoc-middleware --log-stream-name ecs/middleware/7024ec65-2d60-4838-81d0-94db1d5c773d
-  
-  BºCREATE REPOº
-  $ aws sts get-caller-identity
-  $ aws ecr create-repository \
-        --repository-name $REPO_NS/$DOCKER_IMAGE_NAME \
-        --image-tag-mutability MUTABLE 
-  
-  
-  
-  BºCLEAR ECS:º
-    # aws ecs deregister-task-definition --task-definition zonepoc-middleware:1
-    aws ecs delete-service --cluster cluster01 --service zonpro-service01 --force
-    aws ecs delete-cluster --cluster cluster01
-  # aws logs delete-log-group --log-group-name /ecs/zonepoc-middleware
 
 ___________________
 GCP: Google Announces Eventarc in Preview
@@ -12823,4 +12895,5 @@ AWS Elastic Beanstalk:
   Ruby, Go, and Docker on familiar servers such as Apache, Nginx,
   Passenger, and IIS.
 ########################
-
+aws, aaa, auditing:
+https://docs.aws.amazon.com/IAM/latest/UserGuide/what-is-access-analyzer.html

@@ -201,7 +201,7 @@ $º$ az network      º ← Manage Network resources
 
 
 
-<pre zoom bgorange labels="azure,101,aaa,rbac,governance,devops,secrets,diagram,subscription,policy">
+<pre zoom bgorange labels="azure,101,aaa,rbac,governance,devops,secrets,diagram,subscription,policy" id="azure_governance">
 <span bgorange xsmall>Governance Hierachy</span>
 REFS:
 - @[https://www.credera.com/blog/credera-site/azure-governance-part-1-understanding-the-hierarchies/]
@@ -10690,6 +10690,84 @@ potential causes and resolutions for addressing common query problems.
 @[https://aws.amazon.com/getting-started/tutorials/]
 </pre>
 
+<pre zoom bgorange labels="aws,101,aaa,rbac,governance,devops,secrets,diagram,policy" id="aws_governance">
+<span xsmall>Governance Hierarchy</span>
+REF: @[https://docs.aws.amazon.com/general/latest/gr/aws-security-credentials.html]
+
+BºAWS root vs IAM user credentialsº
+
+  ┌────────────────────────────────────────────────────────┬────────────────────────────────────┐
+  │BºUSER TYPES                                            │  SECURITY CREDENTIALS TYPESº       │
+  │  (both are linked to security credential)              │                                    │
+  ├────────────────────────────────────────────────────────┼────────────────────────────────────┤
+  │  -ºroot user:ºaccount owner                            │  Cred. Type     │ Used For         │
+  │    - created at account creation.                      │ ────────────────┼──────────────────│
+  │    - full access to account resources:                 │ ºuser-name/passº│ - AWS Mng Console│
+  │      - no IAM policies can deny access.                │                 │                  │
+  │      - AWS Organizations service control policy (SCP)  │ ────────────────│──────────────────┤
+  │        can be used to limit the permissions.           │  ºAccess keysº  │ - API calls      │
+  │    - Admin tasks through AWS-Management-Console        │   ^             │ - AWS cli        │
+  │      (sign withºroot-user email/passwordº)             │   |                                │
+  │    ──────────────────────────────────────────────────  │ Injected in code like:             │ 
+  │                                                        │ ├ (alt 1) ENV. VARs:               │
+  │  -ºIAM  user:ºAWS Identity and Access Mng. (IAM) user. │ ·  - AWS_ACCESS_KEY_ID             │
+  │    - created by root user                              │ ·  - AWS_SECRET_ACCESS_KEY         │
+  │    - Permissions to resources can be added/revoked     │ ·                                  │
+  │    Ex: user1 → IAM user 01 → resource  01,05,10,...    │ ├ (alt 2) Credentials file         │
+  │        user2 → IAM user 02 → resource  03,07,23,...    │  ${HOME}/.aws/credentials          │
+  │       OºBest practiceº:                                │  | [default]                       │
+  │         - Delegate admin tasks root-user to            │  | aws_access_key_id = ...         │
+  │           (new) IAM-admin-user granting full access.   │  | aws_secret_access_key = ...     │
+  │         - lock away the access keys for the root user  │                                    │
+  │           for anything except for "closing account" ...│                                    │
+  └────────────────────────────────────────────────────────┴────────────────────────────────────┘
+
+    ACCOUNT        1←············→ 1 root-user 1 ←········→ N IAM users N ←→ M permissions over resources
+    - account name                                                             Ex: 
+    - email-address          º*1º                                              - aws-portal:ViewBilling
+    - AWS-account-ID         º*1ºOº*2º
+    - root-user password     º*1º
+    - root-user access-keys  º*1º
+    ----------------------
+    - Billing
+    * NOTE: Account can be member of
+      an AWS Organization where the
+      organizational administrator used
+      a service control policy (SCP)
+      can limit permissions.
+    
+    º*1º: RºWARNº: If those credentials are lost you can NOT recover them.
+                   For security reasons, AWS doesn't provide the means for you
+                   or anyone else to retrieve your credentials.
+    
+    
+   Oº*2º: AWS-account-ID: Globally Unique 12-digit number (Ex: 123456789012)
+          - Same for root and all IAM users.
+            IAM-users also use it to sign to AWS Mng. Console 
+            (Alternatively using account alias).
+          - Embedded also in many Amazon Resource Names (ARNs).
+          - Log-in into Console to retrieve it following :
+    
+          Canonical-user-ID: obfuscated form of AWS-account-ID.
+          (ex: 79a59df900b949e55d96a1e698fbacedfd6e09d98eacf8f8d5218e7cd47ef2be)
+          - Useful to "linkt" to real account when granting cross-account access to S3 buckets|objects.
+          - Log-in into Console to retrieve it as explained in :
+    
+          To retrieve th AWS-account-ID|Cannocical-user-ID: 
+          - (root user) → Console → "account name" → "My Security Credentials" → "Account identifiers" 
+          - (IAM  user) → Console →                → "My Security Credentials" → "Account details" 
+                                                      └──────────┬──────────┘
+                                                    Not available when signed as
+                                                    federated user (vs IAM user)
+    
+          - (aws cli) :$º$ aws sts get-caller-identity --query Account --output textº
+    
+    TODO: Identity federation:
+   @[https://docs.aws.amazon.com/IAM/latest/UserGuide/introduction_identity-management.html#%23intro-identity-federation]
+
+</pre>
+
+
 <pre zoom labels="aws,TODO," TODO>
 <span xsmall>Who is who</span>
 Forcibely incomplete but still pertinent list of "core" people:
@@ -12694,4 +12772,55 @@ https://seroter.com/2021/01/12/how-gitops-and-the-krm-make-multi-cloud-less-scar
  - Password Administrator
 ###################
 https://www.xataka.com/pro/microsoft-mima-a-azure-novedades-para-servicio-cloud-anunciadas-ignite-2021
+##################
+https://github.com/localstack/localstack
+- easy-to-use test/mocking framework for developing Cloud applications.
+- focus is primarily on supporting the AWS cloud stack.
+##################
+AWS EC2 nomenclature:
+- M5d.xlarge
+  │││ └─┬──┘
+  │││   └─ Instance size
+  ││└ additional capabilites 
+  │└ Intance generation
+  └ Intances family ("M": "Memory" optimized)
+##################
+[price]
+AWS EC2: 
+Expected load and instance type reservation
+
+r: Reserved   : manage normal loads
+o: on-demand  : manage load peaks
+b: batch tasks: short time recoverable task
+       o           b           o        
+      ooo          b          ooo      b
+     oooooo        b         oooooo    b 
+rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr  
+rrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr
+
+######################
+$ aws ec2 run-instances  : run == create and start new 
+$ aws ec2 start-instances
+$ aws ec2 reboot-instances 
+$ aws ec2 stop-instances
+$ aws ec2 terminate-instances
+
+$ aws ec2 attach-volume
+$ aws ec2 create-volume
+$ aws ec2 create-image
+$ aws ec2 copy-images
+$ aws ec2 describe-images
+$ aws ec2 describe-instances
+######################
+in aws:
+high_availability: Service is respondent maybe in degraded mode
+Fault-tolerant == high_availability + compliant SLA
+########################
+https://aws.amazon.com/elasticbeanstalk/
+AWS Elastic Beanstalk:
+- easy-to-use service for deploying and scaling web applications
+  and services developed with Java, .NET, PHP, Node.js, Python,
+  Ruby, Go, and Docker on familiar servers such as Apache, Nginx,
+  Passenger, and IIS.
+########################
 

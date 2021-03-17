@@ -2721,8 +2721,9 @@ function () payable {
 };
 </pre>
 
-<pre bgorange zoom   labels="101,solidity,transaction,evm,diagram,debugging,besu,events,testing,transaction,web3j,error_control">
-UUID: 080d788a-24ab-4469-aec2-05c111c60db9
+<pre bgorange zoom 
+   labels="101,solidity,transaction,evm,diagram,debugging,besu,events,testing,transaction,web3j,error_control" id="revert_reason">
+
 
 <span xsmall>ERROR CONTROL</span>
 @[https://solidity.readthedocs.io/en/v0.4.24/control-structures.html#error-handling-assert-require-revert-and-exceptions]
@@ -2888,10 +2889,26 @@ Bºrevert reasonº
        0x4e6f7420656e6f7567682045746865722070726f76696465642e000000000000 // String data
          ^ Decodes to: "Not enough Ether provided"
   
-  RºWARNº: Some client libraries (notably web3j) do NOT support extracting the 
-           revert reason from the transaction receipt. To extract the revert
-           reason client Dapp must interact directly with Besu using a custom
-           JSON → Object converter.
+     - Ex code extracting revert reason in Web3j:
+       ...
+       import org.web3j.protocol.core.methods.response.TransactionReceipt;
+       import org.web3j.protocol.exceptions.TransactionException;
+       import java.util.concurrent.CompletableFuture;
+       
+          try {
+            // ... some code waiting for TX mining results
+            CompletableFuture<SomeObjectDTO> futureResult = new CompletableFuture();
+                             myContractProxy.doSendLog2BlockchainAsync(some_input_data, futureResult);
+          } catch(Throwable e /* capture "everything */) {
+            if (e instanceof TransactionException) {
+              TransactionException te = (TransactionException) e;
+              Optional<TransactionReceipt> tr = te.getTransactionReceipt();
+              if (tr.isPresent()) {
+                // https://dhondt.tech/blog/2019/1/Web3j-retrieve-revert-reason.html
+                System.err.println"revert reason:"+tr.get().getRevertReason());
+              } else {
+                System.err.println("txReceipt not present");
+              }
 </pre>
 
 <pre zoom labels="aaa,signature,ecdsa_secp256k1,auditing,js,security,library,">
@@ -6022,7 +6039,7 @@ See Also:
 
 </pre>
 
-<pre zoom labels="java,web3j,headlong,comparative">
+<pre zoom labels="java,headlong,rlp,evm,abi,web3j,comparative">
 <span xsmall TODO>Headlong</span>
 @[https://github.com/esaulpaugh/headlong]
 - A Contract ABI and Recursive Length Prefix library in Java for use on the Ethereum network

@@ -456,10 +456,11 @@ New major features:
 - Recorded metrics are intended to be used to 
   observe/alert/react to current/recent operational state. 
 
-Bºout─of─the─box instrumentation provided by Micrometerº
+Bºout-of-the-box instrumentation provided by Micrometerº
   ─ JVM Metrics on classloaders, memory, garbage collection, 
     threads, etc.
-  ─ Spring Boot 2.0.0.M5+: Micrometer used as instrumentation library powering the delivery of application metrics from Spring. 
+  ─ Spring Boot 2.0.0.M5+: Micrometer used as instrumentation library powering
+    the delivery of application metrics from Spring. 
    https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#production-ready-metrics
    https://micrometer.io/docs/ref/spring/1.5 (legacy support)
 drop─down support for Spring Boot 1.5.x.
@@ -899,6 +900,23 @@ while (it.hasNext()) {
    } finally {
 LineIterator.closeQuietly(it);                ← Close resources
    }
+
+<hr/>
+<span xsmall>Unix4j</span>
+@[https://github.com/tools4j/unix4j]
+"""...Working in the finance industry in Melbourne, the authors of 
+  Unix4j spent a lot of time writing complex text processing 
+  applications in bash. Frustrated with the inherent limitations of the 
+  bash language; lack of language support, IDEs, test frameworks etc, 
+  the authors decided to try and bring the convenience of some of the 
+  Unix commands into the Java language.
+  You may notice that the implemented commands are more bent towards 
+  text processing rather than OS and file manipulation. This is 
+  intended as we see text processing to be the real benefit of Unix4j. 
+  Not to say that this will always be the case.
+"""
+  Allows for things like:
+  - Unix4j.cat("test.txt").grep("Tuesday").sed("s/kilogram/kg/g").sort();
 </pre>
 
 
@@ -9825,6 +9843,88 @@ BºLet developers concentrate on logic vs network plumbing and TCP errors.º
 </pre>
 
 
+<pre zoom labels="mail,notifications,smtp,">
+<span xsmall>SMTP: Sending mail</span>
+- Based on AWS guide @[https://docs.aws.amazon.com/ses/latest/DeveloperGuide/send-using-smtp-java.html]
+  but applies to any standard SMTP e-mail server.
+
+  - pom coordinates:
+    ˂dependency˃
+        ˂groupId˃com.sun.mail˂/groupId˃
+        ˂artifactId˃javax.mail˂/artifactId˃
+        ˂version˃1.6.2˂/version˃
+    ˂/dependency˃
+    
+  import java.util.Properties;
+  
+  import javax.mail.Message;
+  import javax.mail.Session;
+  import javax.mail.Transport;
+  import javax.mail.internet.InternetAddress;
+  import javax.mail.internet.MimeMessage;
+  
+  public class SendMailThroughSMTP {
+  
+      static final String 
+          FROM     = "...", // ← in AWS this address must be verified
+          FROMNAME = "...", // ← Human readable FROM
+          TO       = "...", // ← in AWS if sending account is still in the
+                            //   sandbox this address must be ºcase-sensitiveº verified.
+      
+          CONFIGSET = "ConfigSet", // ← Configuration Set name used for this message.
+                                   //  If commented out remove header below.  º*1º
+          BODY      = String.join( "\n",
+              "˂h1˃header˂/h1˃", "html line2", "html line3", "..." ),
+          SMTP_HOST = "email-smtp.us-west-2.amazonaws.com",
+          SMTP_USERNAME = "..." , // º*2º
+          SMTP_PASSWORD = "...";
+          // SMTP_HOST REF: https://docs.aws.amazon.com/ses/latest/DeveloperGuide/regions.html#region-endpoints
+      
+      static final int PORT = 587; // The port you will connect to on the Amazon SES SMTP endpoint. 
+      
+  
+      public static void main(String[] args) throws Exception {
+          final Properties props = System.getProperties();
+          props.put("mail.smtp.port"           , PORT  ); 
+          props.put("mail.transport.protocol"  , "smtp");
+          props.put("mail.smtp.starttls.enable", "true");
+          props.put("mail.smtp.auth"           , "true");
+          Session session = Session.getDefaultInstance(props); // ← represents mail session
+  
+          final MimeMessage 
+              msg = new MimeMessage(session);    // ← Build message 
+              msg.setFrom(new InternetAddress(FROM,FROMNAME));
+              msg.setRecipient(
+                     Message.RecipientType.TO,
+                     new InternetAddress(TO));
+              msg.setSubject(MAIL_SUBJECT);
+              msg.setContent(HTML_BODY,"text/html");
+              msg.setHeader(                     // Remove if not using a configuration set
+                     "X-SES-CONFIGURATION-SET",
+                     CONFIGSET);
+  
+          final Transport transport =            // ← Create transport
+              session.getTransport(); 
+                      
+          try { // Send the message.
+              transport.connect(SMTP_HOST, SMTP_USERNAME, SMTP_PASSWORD); // Connect to SMTP using username/pass
+              transport.sendMessage(msg, msg.getAllRecipients());    // Send email.
+          } catch (Exception ex) {
+              // process and rethrow 
+          }
+          finally { transport.close(); }
+      }
+  }
+  
+  º*1º: More info at 
+       https://docs.aws.amazon.com/ses/latest/DeveloperGuide/using-configuration-sets.html
+  
+  º*2º: AWS note, SMTP credentials are different to AWS credentials.
+        SMTP username credential is 20-chars (letters and numbers)
+</pre>
+
+
+
 </div>
 </body>
 </html>
@@ -9915,4 +10015,5 @@ Spring: Add notes on
     @Autowired
     ResourceLoader rl;
 ######################
+
 -->

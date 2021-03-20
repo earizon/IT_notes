@@ -117,6 +117,7 @@ const ZW = { /* ZOOM Window */
        + ' <div id="butSwitchLectureMode" >?</div>'
        + ' <div id="textZoomIn" ><span style="font-size:0.7em">🔍︎+</span></div>'
        + ' <div id="textZoomOut"><span style="font-size:0.7em">🔍︎-</span></div>'
+       + ' <div id="cellIDPanell"></div>'
        + ' <br/>'
        + " <div id='divElementLabels' class='noprint'></div>" 
        + "</div>"
@@ -170,6 +171,7 @@ const ZW = { /* ZOOM Window */
     document.getElementById("divElementLabels").innerHTML = sLabels;
     const zoomHTML = document.getElementById("zoomHTMLContent")
     zoomHTML.innerHTML = e.outerHTML; 
+    document.getElementById("cellIDPanell").innerHTML=e.id ? ("id:"+e.id ):"(no html id)";
     zoomHTML.querySelectorAll('.innerSearch').forEach(
       dom => {
         dom.addEventListener('click', function() { SE.highlightSearch(dom.innerHTML) })

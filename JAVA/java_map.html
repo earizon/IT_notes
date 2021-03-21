@@ -441,9 +441,8 @@ New major features:
 - Others: New Relic, Stackiy,      - Docker EE, Datadog, Sysdig,...
   AppDynamics, Dynatrace, ...
 
-<hr/>
-
 </pre>
+
 <pre zoom labels="jvm,micrometer,monitoring,troubleshooting,low_code,TODO" id="micrometer_summry">
 <span xsmall>Micrometer</span> <!-- @ma -->
 - simple facade to instrumentation clients for 
@@ -457,78 +456,49 @@ New major features:
   observe/alert/react to current/recent operational state. 
 
 Bºout-of-the-box instrumentation provided by Micrometerº
-  ─ JVM Metrics on classloaders, memory, garbage collection, 
+  - JVM Metrics on classloaders, memory, garbage collection, 
     threads, etc.
-  ─ Spring Boot 2.0.0.M5+: Micrometer used as instrumentation library powering
+  - Spring Boot 2.0.0.M5+: Micrometer used as instrumentation library powering
     the delivery of application metrics from Spring. 
-   https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#production-ready-metrics
-   https://micrometer.io/docs/ref/spring/1.5 (legacy support)
+  @[https://docs.spring.io/spring-boot/docs/current/reference/htmlsingle/#production-ready-metrics]
+    2 simple steps setup: [low_code]
+    - Declare maven dependency.
+    - Add config. to application.yml
+
+  @[https://micrometer.io/docs/ref/spring/1.5] (legacy support)
 drop─down support for Spring Boot 1.5.x.
-  ─ Cache instrumentation for most popular caching frameworks.
-  ─ OkHttpClient Instrumentation
+  - Cache instrumentation for most popular caching frameworks.
+  - OkHttpClient Instrumentation
 
 Guides: [TODO]
-- https://micrometer.io/docs/guide/consoleReporter
-- https://micrometer.io/docs/guide/httpSenderResilience4jRetry
-- https://micrometer.io/docs/guide/customMeterRegistry
+-@[https://micrometer.io/docs/guide/consoleReporter]
+-@[https://micrometer.io/docs/guide/httpSenderResilience4jRetry]
+-@[https://micrometer.io/docs/guide/customMeterRegistry]
 </pre>
 
 
 <pre zoom labels="jvm,TODO">
 <span TODO xsmall>Inside the JVM</span>
-@[https://www.artima.com/insidejvm/ed2/index.html]
+- @[https://www.artima.com/insidejvm/ed2/index.html]
 
 - JVM anatomy Park:
-  https://shipilev.net/jvm-anatomy-park/
-  https://shipilev.net/jvm-anatomy-park/22-safepoint-polls/
-</pre>
-<pre zoom labels="jvm,TODO">
-<span xsmall>JVM Implementations</span>
-@[https://blog.joda.org/2018/09/time-to-look-beyond-oracles-jdk.html]
+  @[https://shipilev.net/jvm-anatomy-park/]
+  @[https://shipilev.net/jvm-anatomy-park/22-safepoint-polls/]
 
-In practical terms, there is only one set of source code for the JDK. 
-The source code is hosted in Mercurial at OpenJDK.
-
-Anyone can take that source code, produce a build and publish it on a 
-URL. But there is a distinct certification process that should be 
-used to ensure the build is valid.
-
-Certification is run by the Java Community Process, which provides a 
-Technology Compatibility Kit (TCK, sometimes referred to as the JCK). 
-If an organization produces an OpenJDK build that passes the TCK then 
-that build can be described as "Java SE compatible".
-
-Note that the build cannot be referred to as "Java SE" without the 
-vendor getting a commercial license from Oracle. For example, builds 
-from AdoptOpenJDK that pass the TCK are not "Java SE", but "Java SE 
-compatible" or "compatible with the Java SE specification". Note also 
-that certification is currently on a trust-basis - the results are 
-not submitted to the JCP/Oracle for checking and cannot be made 
-public. 
-
-To summarise, the OpenJDK + Vendor process turns one sourcebase into 
-many different builds. 
-
-- Oracle Java
-- OpenJ9      (Eclipse "IBM")
-  └ https://en.wikipedia.org/wiki/OpenJ9
-  └ Pre-built binaries available at AdoptOpenJDK
-  └ Compared to Oracle's HotSpot VM, i touts higher
-    start-up performance and lower memory consumption 
-    at a similar overall throughput.
-  └ JIT with all optimization levels.
-- OpenJDK
-- GraalVM
-- Bellsoft Liberica:
-  - $free TCK verified OpenJDK distribution for x86, ARM32 and ARM64.
-- Azul Systems
-- Sap Machine
-  JDK for Java 10 and later under the GPL+CE license. 
-  They also have a commercial closed-source JVM
-- Amazon Corretto:
-  zero-cost build of OpenJDK with long-term support that passes the 
-  TCK. It is under the standard GPL+CE license of all OpenJDK builds. 
-  Amazon will be adding their own patches and running Corretto on AWS
+      ┌────────────────────┐
+      │ JVM StartUp thread │
+      └─────────┬──────────┘
+       ┌────────┼───────────┐
+       v        v           v
+       GC      Compiler   JAVA
+     Threads   Thread    Threads
+     ┌┐┌┐┌┐┌┐    ┌┐      ┌┐┌┐┌┐┌┐┌┐┌┐┌┐...
+     ││││││││    ││      ││││││││││││││ 
+     ││││││││    ││      ││││││││││││││ 
+     ││││││││    ││      ││││││││││││││ 
+     ││││││││    ││      ││││││││││││││ 
+     ││││││││    ││      ││││││││││││││ 
+     ········    ··      ·············· 
 
 BºJIT compiler optimization levels:º
   - cold
@@ -539,8 +509,48 @@ BºJIT compiler optimization levels:º
     ^^^^^^^^
   The hotter the optimization level, the better the 
   expected performance, but the higher the cost in terms of 
-  CPU and memory.
+  CPU and memory.  See also @[#jvm_app_checkpoint]
+</pre>
 
+<pre zoom labels="jvm,TODO">
+<span xsmall>JVM Implementations</span>
+@[https://blog.joda.org/2018/09/time-to-look-beyond-oracles-jdk.html]
+
+In practical terms, there is only one set of source code for the JDK. 
+
+- Anyone can take that source code,build and publish it.
+- The certification process ensures that the build is valid.
+- Certification run by the Java Community Process, which provides a 
+  Technology Compatibility Kit (TCK, sometimes referred to as the JCK). 
+  If build passes the TCK then it is described as "Java SE compatible".
+  Note: Built can NOT be referred to as "Java SE" without paying a commercial
+        license from Oracle.
+        Ex: AdoptOpenJDK passing TCK are "Java SE compatible" (vs "Java SE").
+  -RºWARNº: certification is currently on a trust-basis: results are 
+            not submitted to the JCP/Oracle for checking, neither can
+            be made public. 
+
+- Existing builds include:
+  - Oracle Java
+  - OpenJ9      (Eclipse "IBM")
+    └ https://en.wikipedia.org/wiki/OpenJ9
+    └ Pre-built binaries available at AdoptOpenJDK
+    └ Compared to Oracle's HotSpot VM, i touts higher
+      start-up performance and lower memory consumption 
+      at a similar overall throughput.
+    └ JIT with all optimization levels.
+  - OpenJDK
+  - GraalVM
+  - Bellsoft Liberica:
+    - $free TCK verified OpenJDK distribution for x86, ARM32 and ARM64.
+  - Azul Systems
+  - Sap Machine
+    JDK for Java 10 and later under the GPL+CE license. 
+    They also have a commercial closed-source JVM
+  - Amazon Corretto:
+    zero-cost build of OpenJDK with long-term support that passes the 
+    TCK. It is under the standard GPL+CE license of all OpenJDK builds. 
+    Amazon will be adding their own patches and running Corretto on AWS
 </pre>
 
 
@@ -5358,7 +5368,7 @@ microservices.
 - (See also <a href="http://www.eclipse.org/community/eclipse_newsletter/2018/may/reactivestreams-ee4j.php">What can Reactive Streams offer to EE4J</a>)
 </pre>
 
-<pre zoom labels="qa,async/reactive,performance,library" bgorange>
+<pre zoom labels="rxjava,async/reactive,qa,performance,101,library" bgorange id="rxjava_summary">
 <span xsmall>RxJava</span>
 @[https://github.com/ReactiveX/RxJava]
 
@@ -5388,17 +5398,16 @@ implement the reactive patterns.
  RºWARN:º There is no canonical naming standard in RXJava
 
 
- ºObservable˂T˃º → operator1 → ... → operatorN → ºObserverº
-Oºpushesºobjects                                  Subscribes to
- (events) from                                    the observable
- any source                                       events
- (ddbb, csv,...)                                  .onNext()
-                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^   .onCompleted()
-            Learning which operators to use       .onError()
-            for a situation and how to combine    .onSubscribe(Disposable d);
-            them is the key to master RxJava      ^
-            them is the key to mastering RxJava   │
-┌─────────────────────────────────────────────────┘
+ ºObservable˂T˃º → operator1 → ... → operatorN  → ºObserverº
+Oºpushesºobjects       ^        ^      ^           Subscribes to
+ (events) from         ·        ·      ·           the observable
+ any source            ·        ·      ·           events
+ (ddbb, csv,...)       ·        ·      ·           .onNext()
+                       ·        ·      ·           .onCompleted()
+        BºTIPº:Learning which operators to use     .onError()
+               for a situation and how to combine  .onSubscribe(Disposable d);
+               them is the key to master RxJava    ^
+┌──────────────────────────────────────────────────┘
 ├─onSubscribe(Disposible): Free any resources created by the rxJava pipeline.
 ├─onNext()     : passes each item, one at a time,   to the ºObserverº
 ├─onCompleted(): communicates a completion event    to the ºObserverº
@@ -5768,11 +5777,22 @@ Specialty Observables that have more precisely-controlled subscription dynamics
   - AsyncSubject
   - UnicastSubject
 
-
 <span TODO xsmall>Custom Ops</span>
 @[http://reactivex.io/documentation/implement-operator.html]
-
 </pre>
+
+<pre zoom labels="rxjava,async/reactive,qa,troubleshooting,TODO">
+<span xsmall>5 Not So Obvious Things About RxJava</span>
+@[https://medium.com/@jagsaund/5-not-so-obvious-things-about-rxjava-c388bd19efbc]
+
+- Error control [qa]
+@[https://github.com/ReactiveX/RxJava/wiki/Error-Handling-Operators]
+
+- Dealing with RxJava's never-ending Observables [troubleshooting]
+@[https://tech.xing.com/dealing-with-rxjavas-never-ending-observables-1ca8f18797ff]
+</pre>
+
+
 
 <pre zoom labels="qa,async/reactive,testing,TODO">
 <span TODO xsmall>Awaitility(Async→Sync) Tests</span>
@@ -6211,12 +6231,11 @@ REF:@[https://github.com/vert-x3/vertx-guide-for-java-devs/blob/3.8/step-1/src/m
   communicate, and evolve their HTTP APIs, while automating API implementation
   phases where possible.
 </pre>
-
 </div>
 
 <div groupv>
 <span title>VertX Cont</span>
-<pre zoom  labels="vertx,async/reactive,TODO">
+<pre zoom  labels="vertx,rxjava,async/reactive,TODO">
 <span xsmall>RxJava Integration</span>
 @[https://github.com/vert-x3/vertx-guide-for-java-devs/blob/3.8/step-7/README.adoc]
   <!-- Refactoring some code to use reactive programming with the
@@ -6227,7 +6246,6 @@ REF:@[https://github.com/vert-x3/vertx-guide-for-java-devs/blob/3.8/step-1/src/m
 <span xsmall>Vertx+Jooq</span>
 @[https://github.com/jklingsporn/vertx-jooq]
 </pre>
-
 
 <pre zoom labels="vertx,k8s,TODO">
 <span xsmall>Vertx+k8s</span>
@@ -7795,7 +7813,7 @@ mvn release:prepare # creates new tag in SVN, automatically checking in.
 mvn release:perform
 # release will be automatically inserted in a temp staging dir
 </pre>
-<pre zoom labels="maven,qa,tool,troubleshooting,TODO">
+<pre zoom labels="maven,qa,tool,troubleshooting,performance,TODO">
 <span TODO xsmall>Troubleshooting</span>
 @[https://www.apache.org/dev/publishing-maven-artifacts.html#troubleshooting]
 
@@ -7819,11 +7837,10 @@ BºDependency Check:º
   those that are used but unspecified (ie, transitive dependencies that
   should be direct).
 
-<hr/>
-<span xsmall TODO>MVND(aemon)</span>
-https://www.infoq.com/news/2020/12/mvnd-mavens-speed-daemon/
+BºMVND(aemon)º    [performance][TODO]
+@[https://www.infoq.com/news/2020/12/mvnd-mavens-speed-daemon/]
 - Study driven by Gradle shows Maven as being 
-Rºup to 100 times slower than gradle buildsº.
+Rºup to 100 times slower than gradle buildsº. 
 - JIT compiled classes are cached.
 - multi process if needed.
 
@@ -7837,12 +7854,10 @@ Rºup to 100 times slower than gradle buildsº.
 - Who-is-Who:
   - Guillaume Nodet (project creator)
   - Peter Palaga:main contributor
-
-
 </pre>
 
 <pre zoom bgorange labels="containers,maven,devops,k8s,diagram,TODO">
-  <span xsmall>Dockerfile "pipeline": mvn to Container</span>
+<span xsmall>Dockerfile "pipeline": mvn to Container</span>
 FROM maven:3.6-jdk-12-alpine as build
 WORKDIR /builder
 ADD pom.xml /builder/pom.xml
@@ -9304,7 +9319,7 @@ FROM https://github.com/google/guice/wiki/JSR330
 @[https://www.infoq.com/articles/single-file-execution-java11/]
 </pre>
 
-<pre zoom labels="secrets,TODO">
+<pre zoom labels="secret_mng,TODO">
 <span xsmall>PKCS#11 Ref.guide</span>
 @[https://docs.oracle.com/javase/7/docs/technotes/guides/security/p11guide.html]
 </pre>
@@ -9327,6 +9342,7 @@ is.close();
 
 <pre zoom labels="xml,TODO">
 <span xsmall>XML Stream parsing</span>
+[TODO]: Write summary of best XML libraries.
 @[https://github.com/FasterXML/aalto-xml]
 @[http://www.studytrails.com/java/xml/aalto/java-xml-aalto-stax-async-basic/]
 @[https://docs.oracle.com/javase/tutorial/jaxp/stax/why.html]
@@ -9350,7 +9366,7 @@ https://www.baeldung.com/spring-debugging
 
 <pre zoom labels="async/reactive,TODO">
 <span xsmall>Reactive Spring with Vert.x</span>
-https://developers.redhat.com/blog/2019/08/21/reactive-spring-boot-programming-with-vert-x/?sc_cid=701f2000000RtqCAAS
+@[https://developers.redhat.com/blog/2019/08/21/reactive-spring-boot-programming-with-vert-x/]
 Reactive Spring Boot programming with Vert.x
 The latest bundle of Red Hat supported Spring Boot starters was recently
 released. In addition to supporting the popular Red Hat products for our Spring
@@ -9358,17 +9374,6 @@ Boot customers, the Red Hat Spring Boot team was also busy creating new ones.
 The most recent technical preview added is a group of Eclipse Vert.x Spring
 Boot starters, which provide a Spring-native vocabulary for the popular JVM
 reactive toolkit.
-</pre>
-
-<pre zoom labels="async/reactive,rxjava,troubleshooting,TODO">
-<span xsmall>5 Not So Obvious Things About RxJava</span>
-- https://medium.com/@jagsaund/5-not-so-obvious-things-about-rxjava-c388bd19efbc
-
-- Error control
-  https://github.com/ReactiveX/RxJava/wiki/Error-Handling-Operators
-
-- Dealing with RxJava's never-ending Observables
-  https://tech.xing.com/dealing-with-rxjavas-never-ending-observables-1ca8f18797ff
 </pre>
 
 <pre zoom labels="jvm,performance,TODO">
@@ -9733,7 +9738,7 @@ Actually is not really an Exception and must be used just for long-lasting
 (I/O or CPU intensive) functions.
 </pre>
 
-<pre zoom labels="secret_mng,TODO">
+<pre zoom labels="secret_mng,aaa,security,TODO">
 <span xsmall>Conclave</span>
 https://medium.com/corda/conclave-beta-3-graalvm-mail-more-5038bd6d50da
 Today we’re announcing a new beta release of Conclave, a platform 
@@ -9747,31 +9752,31 @@ use enclaves to:
 - Upgrade privacy on distributed ledger platforms like Corda.
 </pre>
 
-<pre zoom labels="JVM,DevOps,performance,TODO" id="a445afac-182d-11eb-b060-d788237e0853">
-<span xsmall>Checkpointing from outside of Java</span>
-UUID: a445afac-182d-11eb-b060-d788237e0853
-https://developers.redhat.com/blog/2020/10/15/checkpointing-java-from-outside-of-java/
+<pre zoom labels="JVM,DevOps,performance,TODO" id="jvm_app_checkpoint">
+<span xsmall>Checkpointing outside the JVM</span>
+@[https://developers.redhat.com/blog/2020/10/15/checkpointing-java-from-outside-of-java/]
 When OpenJDK‘s Java virtual machine (JVM) runs a Java application, 
 it loads a dozen or so classes before it starts the main class. 
 
-- Standard JVM bootstrapt: It runs a method several hundred times 
-  before it invokes the optimizing compiler on that method.
-  This preparation is a critical component of Java’s 
-  "write once, run anywhere" power, but it comes at the 
-  cost of long startup times.
+BºSTANDARD JVM START "WARM-UP"º vs BºNEW APPROACH: WARM UP ONCEº 
+  ----------------------------       ---------------------------
+ - runs method several hundred       - 1st  run : WARM Up once and checkpoint
+   times before optimizing it.       - Next runs: restore checkpointed app.
+  cost of long startup times.        BºStart time seconds → millisecs!!!º
 
-- new approach: warm up JIT compiler, and then checkpoint 
-  application. Later on restore the checkpointed app.
+BºCheckpoint inside JVM HOW-TO:º [TODO]
+@[https://www.jfokus.se/jfokus19-preso/Checkpointing-Java.pdf]
 
-BºWith these changes, we have seen applications that tookº
-Bºseconds to start come up warm in milliseconds.º
+BºCheckpoint Outside JVM HOW-TO:º
+        - Under the hood it uses Linux Checkpoint/Restore in Userspace (CRIU).
+        @[https://www.criu.org/Main_Page]
 
-- HOW-TO from command line:
-  Java Native Interface (JNI) library allows to checkpoint/restore
-  a JVM app from inside of your Java code.
+  $ºCONSOLE 1                              CONSOLE 2º
+  $º$ setsid java -XX:-UsePerfData \º    $º$ sudo criu dump -t $pid \  º ← stops and checkpoint
+  $º    -XX:+UseSerialGC Scooby     º    $º   --shell-job -o dump.log  º   app
 
-  - JNI Checkpoint Restore library is based on Linux Checkpoint/Restore
-    in Userspace (CRIU).
+                                         $º$ sudo restore --shell-job \º ← Restore app
+                                         $º   -d -vvv -o restore.log   º
 </pre>
 
 <pre zoom labels="qa,testing,performance,TODO">

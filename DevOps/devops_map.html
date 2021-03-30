@@ -2814,7 +2814,7 @@ contain the cookies and caching information).
 
 <div groupv>
 <span title>Networking for DevOps</span>
-<pre zoom labels="ci/cd,101,low_code,high_availability,web_balancer,container,TODO">
+<pre zoom labels="ci/cd,101,networking,low_code,high_availability,web_balancer,container,TODO">
 <span xsmall>Load Balancer</span>
 BºHTTP balanced proxy Quick Setup with HAProxyº
 REF: @[https://github.com/AKSarav/haproxy-nodejs-redis/blob/master/haproxy/]
@@ -2868,6 +2868,198 @@ BºDNS Recordsº
  │ AAAA    A record for IPv6 addresses         │
  └─────────────────────────────────────────────┘
 </pre>
+
+<pre zoom labels="networking,nginx,web_balancer,TODO" id="nginx_conf_summary">
+<span xsmall>nginx.conf summary</span>
+@[https://raazkumar.com/tutorials/nginx/nginx-conf/]
+
+nginx ==   fast HTTP reverse proxy
+         + reliable load balancer
+         + high performance caching server
+         + full-fledged web platform
+
+Bºnginx.conf building blocksº
+  - worker process    : should be equal to number cores of the server (or auto)
+  - worker connection : 1024 (per thread. nginx doesn't block) 
+
+  - rate limiting     : prevent brute force attacks.
+  - proxy buffers     : (when used as proxy server)limits how much data to store as cache
+                         gzip /brotil or compression
+  - upload file size  : it should match php max upload size and nginx client max body size.
+  - timeouts          : php to nginx communication time.
+  - log rotation      : error log useful to know the errors and monitor resources
+  - fastcgi cache     : very important to boost the performance for static sties.
+  - SSL Configuration : there are default setting available with nginx itself 
+                        (also see ssl performance tuning).
+
+  GºExample nginx.conf:º
+
+    user www-data;                                   
+   ºload_moduleºmodules/my_favourite_module.so;      
+    pid /run/nginx.pid;
+                                                     | Alternative global config for 
+                                                     | [4 cores, 8 threads, 32GB RAM] 
+                                                     | handling  50000request/sec
+                                                     |
+    worker_processes auto;                           | worker_processes 8;
+                                                     | worker_priority -15;
+    include /etc/nginx/modules-enabled/*.conf;       | 
+    worker_rlimit_nofile 100000;                     | worker_rlimit_nofile 400000;                                  
+                                                     | timer_resolution 10000ms;
+                                                     |
+    events {                                         | events {
+      worker_connections 1024;                       |     worker_connections 20000;                       
+      multi_accept on;                               |     use epoll;
+    }                                                |     multi_accept on;
+                                                     | }
+
+  Bºhttp {               ←  global configº           
+      index index.php index.html index.htm;          
+     º# Basic Settingsº                              
+                                                     
+      sendfile on;                                   
+      tcp_nopush on;
+      tcp_nodelay on;
+      sendfile_max_chunk 512;
+      keepalive_timeout 300;
+      keepalive_requests 100000;
+      types_hash_max_size 2048;
+      server_tokens off;
+      
+      server_names_hash_bucket_size 128;
+      # server_name_in_redirect off;
+      
+      include /etc/nginx/mime.types;
+      default_type application/octet-stream;
+      ##
+      # SSL Settings
+      ##
+      
+      #ssl_protocols TLSv1 TLSv1.1 TLSv1.2; # Dropping SSLv3, ref: POODLE
+      #ssl_prefer_server_ciphers on;
+      #rate limit zone
+      
+      limit_req_zone $binary_remote_addr zone=one:10m rate=3r/m;
+      #buffers
+      
+      client_body_buffer_size 128k;
+      client_max_body_size 10m;
+      client_header_buffer_size 32k;
+      large_client_header_buffers 16 256k;
+      output_buffers 1 32k;
+      postpone_output 1460;
+      #Porxy buffers
+      proxy_buffer_size 256k;
+      proxy_buffers 8 128k;
+      proxy_busy_buffers_size 256k;
+      proxy_max_temp_file_size 2048m;
+      proxy_temp_file_write_size 2048m;
+      
+      ## fast cgi PHP
+      fastcgi_buffers 8 16k;
+      fastcgi_buffer_size 32k;
+      fastcgi_connect_timeout 300;
+      fastcgi_send_timeout 300;
+      fastcgi_read_timeout 300;
+      #static caching css/js/img
+      
+      open_file_cache max=10000 inactive=5m;
+      open_file_cache_valid 2m;
+      open_file_cache_min_uses 1;
+      open_file_cache_errors on;
+      #timeouts
+      
+      client_header_timeout 3m;
+      client_body_timeout 3m;
+      send_timeout 3m;
+      
+      # Logging Settings
+      
+      log_format main_ext ‘$remote_addr – $remote_user [$time_local] “$request” ‘
+      ‘$status $body_bytes_sent “$http_referer” ‘
+      ‘”$http_user_agent” “$http_x_forwarded_for” ‘
+      ‘”$host” sn=”$server_name” ‘
+      ‘rt=$request_time ‘
+      ‘ua=”$upstream_addr” us=”$upstream_status” ‘
+      ‘ut=”$upstream_response_time” ul=”$upstream_response_length” ‘
+      ‘cs=$upstream_cache_status’ ;
+      
+      #access_log /var/log/nginx/access.log main_ext;
+      error_log /var/log/nginx/error.log warn;   Read more on nginx error log⅋common errors
+      
+       
+      ##
+      # Gzip Settings #brotil
+      ##
+      
+      gzip on;
+      gzip_disable “msie6”;
+      
+      gzip_vary on;
+      gzip_proxied any;
+      gzip_comp_level 6;
+      gzip_buffers 16 8k;
+      gzip_http_version 1.1;
+      gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript application/x-font-ttf font/opentype image/svg+xml image/x-icon;
+      ##
+      # Virtual Host Configs
+      ##
+      
+      include /etc/nginx/conf.d/*.conf;
+      include /etc/nginx/sites-enabled/*;   
+    }
+    
+  Bºserver {             ← Domain levelº
+      listen 0.0.0.0:443 rcvbuf=64000 sndbuf=120000 backlog=20000 ssl http2;
+      server_name example.com www.example.com;
+      keepalive_timeout         60;
+      ssl                       on;
+      ssl_protocols             TLSv1.2 TLSv1.1 TLSv1;
+      ssl_ciphers               'ECDH+AESGCM:DH+AESGCM:ECDH+AES256:DH+AES256:ECDH+AES128:DH+AES:ECDH+3DES:DH+3DES:RSA+AESGCM:RSA+AES:RSA+3DES:!aNULL:!MD5:!DSS:!RC4';
+      ssl_prefer_server_ciphers on;
+      ssl_session_cache         shared:TLSSL:30m;
+      ssl_session_timeout       10m;
+      ssl_buffer_size           32k;
+      ssl_certificate           /etc/letsencrypt/live/example.com/fullchain.pem;
+      ssl_certificate_key       /etc/letsencrypt/live/example.com/privkey.pem;
+      ssl_dhparam           /etc/ssl/certs/dhparam.pem;
+      more_set_headers          "X-Secure-Connection: true";
+      add_header                Strict-Transport-Security max-age=315360000;
+      root       /var/www;
+
+  Bº  location {         ← Directory levelº
+         root /var/www;
+         index index.php index.html;
+      }
+
+  Bº  location ~ .php$ {º 
+        fastcgi_keep_conn on;
+        fastcgi_pass   unix:/run/php5.6-fpm.sock;
+        fastcgi_index  index.php;
+        fastcgi_param  SCRIPT_FILENAME /var/www$fastcgi_script_name;
+        include fastcgi_params;
+        fastcgi_intercept_errors off;
+        fastcgi_buffer_size 32k;
+        fastcgi_buffers 32 32k;
+        fastcgi_connect_timeout 5;
+      }
+     
+  Bº  location ~* ^.+.(jpg|jpeg|gif|png|svg|ico|css|less|xml|html?|swf|js|ttf)$ {º
+          root /var/www;
+          expires 10y;
+     }
+
+    }
+
+  - /etc/nginx/conf.d/*: user defined config files
+
+See also:
+https://github.com/trimstray/nginx-admins-handbook
+https://github.com/tldr-devops/nginx-common-configuration
+
+
+</pre>
+
 
 
 </div>
@@ -3505,84 +3697,83 @@ To copy local facts and make the usable in current play:
                                 - etcd     etcd key lookup
 </pre>
 
-<pre zoom labels="ansible">
+<pre zoom labels="ansible,nginx">
 <span xsmall>"Jinja2" template ex.</span>
-<span xsmall>nginx.conf.j2</span>
+Bºnginx.conf.j2º
+  server {
+          listen 80 default_server;
+          listen [::]:80 default_server ipv6only=on;
+  
+          listen 443 ssl;
+  
+          root /usr/share/nginx/html;
+          index index.html index.htm;
+  
+          server_name         º{{º server_name º}}º;
+          ssl_certificate     º{{º cert_file   º}}º;
+          ssl_certificate_key º{{º key_file    º}}º;
+  
+          location / {
+                  try_files $uri $uri/ =404;
+          }
+  }
+Bºtemplates/default.conf.tplº
+  templates/000_default.conf.tpl
+  |˂VirtualHost *:80˃
+  |    ServerAdmin webmaster@localhost
+  |    DocumentRoot {{ doc_root }}
+  |
+  |    ˂Directory {{ doc_root }}˃
+  |        AllowOverride All
+  |        Require all granted
+  |    ˂/Directory˃
+  |˂/VirtualHost˃
+  
+  Task:
+  |  - name: Setup default virt.host
+  |    template: src=templates/default.conf.tpl dest=/etc/apache2/sites-available/000-default.conf
 
-server {
-        listen 80 default_server;
-        listen [::]:80 default_server ipv6only=on;
-
-        listen 443 ssl;
-
-        root /usr/share/nginx/html;
-        index index.html index.htm;
-
-        server_name         º{{º server_name º}}º;
-        ssl_certificate     º{{º cert_file   º}}º;
-        ssl_certificate_key º{{º key_file    º}}º;
-
-        location / {
-                try_files $uri $uri/ =404;
-        }
-}
-<span xsmall>templates/default.conf.tpl</span>
-templates/000_default.conf.tpl
-|˂VirtualHost *:80˃
-|    ServerAdmin webmaster@localhost
-|    DocumentRoot {{ doc_root }}
-|
-|    ˂Directory {{ doc_root }}˃
-|        AllowOverride All
-|        Require all granted
-|    ˂/Directory˃
-|˂/VirtualHost˃
-
-Task:
-|  - name: Setup default virt.host
-|    template: src=templates/default.conf.tpl dest=/etc/apache2/sites-available/000-default.conf
-
-<span xsmall>(j2) filters</span>
+Bº(j2) filtersº
 Oº|º must be interpreted as the "pipe" (input) to filter, not the "or" symbol.
-# default if undefined:
-- ...
-  "HOST": "{{ database_host Oº| default('localhost')º }}"
-
-# fail after some debuging
-- ...
-  register: result
-Oºignore_errors: Trueº
+  # default if undefined:
+  - ...
+    "HOST": "{{ database_host Oº| default('localhost')º }}"
+  
+  # fail after some debuging
+  - ...
+    register: result
+  Oºignore_errors: Trueº
+    ...
+    failed_when: resultOº| failedº
   ...
-  failed_when: resultOº| failedº
-...
-Oºfailed º True if registered value is a failed    task
-Oºchangedº True if registered value is a changed   task
-Oºsuccessº True if registered value is a succeeded task
-Oºskippedº True if registered value is a skipped   task
+  Oºfailed º True if registered value is a failed    task
+  Oºchangedº True if registered value is a changed   task
+  Oºsuccessº True if registered value is a succeeded task
+  Oºskippedº True if registered value is a skipped   task
 
-<span xsmall>path filters</span>
-Oºbasename  º
-Oºdirname   º
-Oºexpanduserº  '~' replaced by home dir.
-Oºrealpath  º  resolves sym.links
-Ej:
-  vars:
-    homepage: /usr/share/nginx/html/index.html
-  tasks:
-  - name: copy home page
-    copy: ˂
-      src={{ homepage Oº| basenameº }}
-      dest={{ homepage }}
+Bºpath filtersº
+  Oºbasename  º
+  Oºdirname   º
+  Oºexpanduserº  '~' replaced by home dir.
+  Oºrealpath  º  resolves sym.links
+  Ej:
+    vars:
+      homepage: /usr/share/nginx/html/index.html
+    tasks:
+    - name: copy home page
+      copy: ˂
+        src={{ homepage Oº| basenameº }}
+        dest={{ homepage }}
 
-<span xsmall>Custom filters</span>
-filter_plugins/surround_by_quotes.py
-# From http://stackoverflow.com/a/15515929/742
-def surround_by_quote(a_list):
-    return ['"%s"' % an_element for an_element in a_list]
-
-class FilterModule(object):
-    def filters(self):
-        return {'surround_by_quote': surround_by_quote}
+BºCustom filtersº
+  filter_plugins/surround_by_quotes.py
+  # From http://stackoverflow.com/a/15515929/742
+  def surround_by_quote(a_list):
+      return ['"%s"' % an_element for an_element in a_list]
+  
+  class FilterModule(object):
+      def filters(self):
+          return {'surround_by_quote': surround_by_quote}
 </pre>
 
 <pre zoom labels="ansible,comparative">
@@ -5253,7 +5444,7 @@ BºChat channelsº
 - It's used by software engineers and DevOps teams to simplify and
   speed up software deployments.
 
-Available on LINUX, WINDOWS, & OSX
+Available on LINUX, WINDOWS ⅋ OSX
 $ docker container run -d \
   -p 9000:9000 \
   -v /var/run/docker.sock:/var/run/docker.sock portainer/portainer
@@ -7400,7 +7591,8 @@ running container (or an individual application) and checkpoint its
 state to disk. The data saved can be used to restore the application 
 
 Used for example to bootstrap JVMs in millisecs (vs secs)
-@[/JAVA/java_map.html?query=a445afac-182d-11eb-b060-d788237e0853]
+@[/JAVA/java_map.html#?jvm_app_checkpoint]
+
 and run it exactly as it was during the time of the freeze. Using 
 this functionality, application or container live migration, 
 snapshots, remote debugging, and many other things are now possible. 

@@ -743,6 +743,19 @@ REF: @[https://dzone.com/articles/heap-memory-in-java-performance-testing?utm_so
 
 - Eclipse Memory Analyzer Manual:
 @[https://help.eclipse.org/2019-06/index.jsp?topic=%2Forg.eclipse.mat.ui.help%2Fwelcome.html&cp=62]
+
+<hr/>
+BºCommom Memory Leaks pitfallsº:
+@[http://java.jiderhamn.se/2012/02/26/classloader-leaks-v-common-mistakes-and-known-offenders/]
+- Logging frameworks (Apache Commons Logging/log4j/java.util.logging/...)
+  trigger classloader leaks if Rºlogging framework is supplied outside ofº
+Rºthe web application, such as within the Application Server.º
+  -BºAdd next cleanup code to ServletContextListenerº: 
+    org.apache.commons.logging.LogFactory.                    // Alt.1
+      release(Thread.currentThread().getContextClassLoader());
+
+    org.apache.commons.logging.LogFactory.release(            // Alt.2
+        this.getClass().getClassLoader()  );
 </pre>
 
 <pre zoom  labels="jvm,memory_leaks,qa,troubleshooting,">
@@ -3545,8 +3558,8 @@ ListenableFuture listenable = service.submit(...);   │ CompletableFuture compl
      it something meaningful like ChainableFuture "
 </pre>
 
-<pre zoom labels="concurrency,performance,comparative,resource" bgorange>
-<span xsmall>DragonWell JDK with Coroutine Support</span>
+<pre zoom labels="concurrency,performance,comparative,resource">
+<span xsmall  bgorange>DragonWell JDK with Coroutine Support</span>
 REF: @[https://www.infoq.com/news/2021/01/adoptopenjdk-welcomes-dragonwell/]
 - AdoptOpenJDK and Alibaba announced that the Dragonwell JDK will be 
   built, tested, and distributed using AdoptOpenJDK's infrastructure.
@@ -5383,17 +5396,15 @@ implement the reactive patterns.
                                     unsubscribe  : - Observable can opt to stop
                                                    event-emission if no more clients
                                                    are subcribed
- Loop-of-Observable-emitted-events:                - unsubscription will cascade back
-    Observable → ˂˂IObserver˃˃: onNext(event)      through the chain of operators
-    observer → observer  : handle event            applying to associated Observable.
-    ^^^^^^^^
-    also called
-    "subscriber"
-    "watcher"
-    "reactor"  ("reactor pattern")
- end-loop
- Observable → ˂˂handlerInstance˃˃: onCOmpleted()
- observer → observer  : handle event
+rLoop-of-Observable-emitted-events:º               - unsubscription will cascade back
+ ·  Observable → ˂˂IObserver˃˃: onNext(event)      through the chain of operators
+ ·                                                 applying to associated Observable.
+ ·  observer   →   observer*1 : handle event    *1 also called "subscriber", "watcher"
+ ·                                                 or "reactor" ("reactor pattern")
+ºend-loopº
+ Observable    → ˂˂handler˃˃  : onCompleted()
+                  (instance)
+ observer      →  observer    : handle event
 
  RºWARN:º There is no canonical naming standard in RXJava
 
@@ -5422,43 +5433,43 @@ By default, Observables execute work on the immediate thread,
 which is the thread that declared the Observer and subscribed it.
 Not all Observables will fire on the immediate thread, (Observable.interval(),...)
 
-ºcreating a source Observable:º
-  Observable˂String˃ source00 = Observableº.justº("value1",...,"valueN");
-  Observable˂String˃ source00 = Observableº.fromCallableº(() -˃ 1/0);
+ºCreating a source Observable:º
+  Observable˂String˃ source01 = Observableº.justº("value1",...,"valueN");
+  Observable˂String˃ source02 = Observableº.fromCallableº(() -˃ 1/0);
                                             ^^^^^^^^^^^^        ^^^
                                             Similar to .just() but errors
                                             are captured by the rxJava "pipeline"
 
-  Observable˂String˃ source01 = Observableº.createº( emitter -˃
+  Observable˂String˃ source02 = Observableº.createº( emitter -˃
   {
         try {
     emitterº.onNextº(myList.get(0));
-    emitter .onNext (myList.get(1));
+    emitterº.onNextº(myList.get(1));
     ...
     emitterº.onComplete()º; // ← Optional
         } catch(Throwable e) {
     emitterº.onError(e)º;
         }
   } );
-  Observable˂String˃  source02 = Observableº.fromIterableº(myIterableList);
-  Observable˂Integer˃ source03 = Observableº.rangeº(1,10);
-  Observable˂String˃  source04 = Observableº.intervalº(1, TimeUnit.SECONDS);
+  Observable˂String˃  source03 = Observableº.fromIterableº(myIterableList);
+  Observable˂Integer˃ source04 = Observableº.rangeº(1,10);
+  Observable˂String˃  source05 = Observableº.intervalº(1, TimeUnit.SECONDS);
                                              ^^^^^^^^
                                              Since it operates on a timer →
                                              needs to run on separate thread
                                              and will run on the computation
                                              Scheduler by default
 
-  Observable˂String˃  source05 = Observableº.fromFutureº(myFutureValue);
-  Observable˂String˃  source06 = Observableº.emptyº();
+  Observable˂String˃  source06 = Observableº.fromFutureº(myFutureValue);
+  Observable˂String˃  source07 = Observableº.emptyº();
                                              ^^^^^
                                              calls onComplete() and ends
 
-  Observable˂String˃  source07 = Observableº.deferº( () -˃ Observable.range(start,count));
+  Observable˂String˃  source08 = Observableº.deferº( () -˃ Observable.range(start,count));
                                              ^^^^^
                                       Advanced factory pattern.
                                       allows a separate state for each observer
-  Observable˂String˃  source08 = Observableº.fromCallableº( () -˃ Observable.range(start,count));
+  Observable˂String˃  source09 = Observableº.fromCallableº( () -˃ Observable.range(start,count));
 
 ºcreating Single/Maybe/Completable "Utility" Observables:º
  ┌─────────────────────────────┬────────────────────────────────┬─────────────────────────────────┐
@@ -5839,7 +5850,7 @@ Tim Fox     :  Initiated VertX in 2012
 Julien Viet :  Project lead (as of 2020), RedHat, Marseille
              @[https://github.com/vietj]
              @[http://blog.julienviet.com/]
-               He is also core develoepr of Crash @[http://www.crashub.org/]
+               He is also core developer of Crash @[http://www.crashub.org/]
 
 Julien Ponge:@[https://julien.ponge.org/]
                Author of VertX in Action
@@ -5925,7 +5936,7 @@ Oºverticleº1 ←────→ event─loop 1 ←──────→   1 Th
              ·   │                                          │   }
              ·   │                                          │ }
 
--Oº.config()º← - accessors to some deployment configuration to allow passing G*external configuration*
+-Oº.config()º← - accessors to some deployment configuration to allow passing Gºexternal configurationº
                  Ex:
                  │ public static final String CONFIG_WIKIDB_QUEUE = "wikidb.queue";
                  │ ...
@@ -5946,7 +5957,7 @@ public class MainVerticle extends AbstractVerticle {
 }
 
 <span xsmall>Event Bus</span>
-- main tool for communication between verticles using *messages*
+- main tool for communication between verticles using ºmessagesº
   and one of:
   - point-to-point messaging
   - request-response messaging
@@ -6223,14 +6234,6 @@ REF:@[https://github.com/vert-x3/vertx-guide-for-java-devs/blob/3.8/step-1/src/m
   }
 </pre>
 
-<pre zoom labels="openapi,api_management,vertx,low_code,qa,standards,documentation,TODO">
-<span xsmall>OpenAPI: contract-driven Dev</span>
-@[https://developers.redhat.com/devnation/tech-talks/develop-openapi-vertx]
-- "Contract Driven Development" (or API Design First approach) is a methodology
-  that uses declarative API Contracts to enable developers to efficiently design,
-  communicate, and evolve their HTTP APIs, while automating API implementation
-  phases where possible.
-</pre>
 </div>
 
 <div groupv>
@@ -6242,12 +6245,12 @@ REF:@[https://github.com/vert-x3/vertx-guide-for-java-devs/blob/3.8/step-1/src/m
         popular RxJava library and its Vert.x integration -->
 </pre>
 
-<pre zoom labels="vertx,sql,persistence,TODO">
+<pre zoom labels="vertx,sql,persistence,async/reactive,TODO">
 <span xsmall>Vertx+Jooq</span>
 @[https://github.com/jklingsporn/vertx-jooq]
 </pre>
 
-<pre zoom labels="vertx,k8s,TODO">
+<pre zoom labels="vertx,k8s,async/reactive,TODO">
 <span xsmall>Vertx+k8s</span>
 @[http://escoffier.me/vertx-kubernetes/]
 </pre>
@@ -7191,6 +7194,15 @@ analyzer that detects locking and threading issues, performance and
 scalability problems, and checks complex contracts such as Java
 serialization by performing type, data flow, and lock graph analysis.
 </pre>
+<pre zoom labels="openapi,api_management,vertx,low_code,qa,standards,documentation,TODO">
+<span xsmall>OpenAPI: contract-driven Dev</span>
+@[https://developers.redhat.com/devnation/tech-talks/develop-openapi-vertx]
+- "Contract Driven Development" (or API Design First approach) is a methodology
+  that uses declarative API Contracts to enable developers to efficiently design,
+  communicate, and evolve their HTTP APIs, while automating API implementation
+  phases where possible.
+</pre>
+
 
 </div>
 </div><!-- qa -->
@@ -8641,6 +8653,7 @@ Ex Ussage:
 <span xsmall>Framework</span>
 @[https://quarkus.io/guides/]
 @[https://quarkus.io/guides/kogito-guide]
+@[https://marketplace.visualstudio.com/items?itemName=kie-group.vscode-extension-kogito-bundle]
 @[https://quarkus.io/guides/using-vertx.html]
 ..
 @[https://www.infoq.com/news/2019/03/redhat-release-quarkus]
@@ -8764,39 +8777,12 @@ Apache MINA comes with many subprojects :
 <span title>Non-Classiffied</span><br/>
 
 <pre zoom labels="qa,data_structures,concurrency,library,testing,TODO">
-<pre zoom labels="TODO">
 <span xsmall>Google Guava</span>
 <hr/>
 <span xsmall>VisibleForTesting[qa]</span>
 REF: @[https://stackoverflow.com/questions/6913325/annotation-to-make-a-private-method-public-only-for-test-classes]
 @[https://guava.dev/releases/19.0/api/docs/com/google/common/annotations/VisibleForTesting.html]
 Documentation
-</pre>
-
-</pre>
-
-<pre zoom labels="tool,js,TODO">
-<span xsmall>JS transpilers</span>
-- JSweet.org: Java to Javascript transpiler:
-
-@[http://teavm.org/]
-  TeaVM is an ahead-of-time compiler for Java bytecode that emits JavaScript
-  and WebAssembly that runs in a browser. Its close relative is the well-known
-  GWT. The main difference is that TeaVM does not require source code, only
-  compiled class files. Moreover, the source code is not required to be Java,
-  so TeaVM successfully compiles Kotlin and Scala.
-
-- @[https://www.infoq.com/news/2019/05/j2cl-java-javascript-transpiler/]
-"https://en.wikipedia.org/wiki/Java_virtual_machine#Compilation_to_JavaScript
-""Main JVM bytecode to JavaScript compilers are TeaVM,[20] the compiler
-contained in Dragome Web SDK,[21] Bck2Brwsr,[22] and j2js-compiler.[23]"""
-</pre>
-
-
-<pre zoom labels="security,TODO">
-<span xsmall TODO>Crypto.API(JCA)</span>
-- See also:
-  <a href="./BCFipsIn100.pdf">Bounce Castle FIPS JCA provider</a>
 </pre>
 
 <pre zoom labels="network,TODO">
@@ -9252,28 +9238,6 @@ http://blog.jessitron.com/2012/03/strong-typing-in-java-religious.html
 https://dzone.com/articles/stringvalueofobject-versus-objectstostringobject
 </pre>
 
-<pre zoom labels="101,qa,TODO">
-<span xsmall>Commom Memory Leaks pitfalls</span>
-- Ref: http://java.jiderhamn.se/2012/02/26/classloader-leaks-v-common-mistakes-and-known-offenders/
-  Logging frameworks such as Apache Commons Logging (ACL) – 
-  formerly Jakarta Commons Logging (JCL) – log4j and 
-  java.util.logging (JUL) will cause classloader leaks under some 
-  circumstances.
-
-  Apache Commons Logging will cause trouble if the logging framework 
-  is supplied outside of the web application, such as within the 
-  Application Server. In such a case, you need to add a bit of cleanup 
-  code to the ServletContextListener we’ve talked about:
-
-  org.apache.commons.logging.LogFactory.release(Thread.currentThread().getContextClassLoader());
-
-  or
-
-  org.apache.commons.logging.LogFactory.release(this.getClass().getClassLoader());
-
-  There is an article about this on the Apache Commons Wiki. It is also mentioned in the guide and FAQ.
-</pre>
-
 <pre zoom labels="101,async/reactive,persistence,io,TODO">
 <span xsmall>3 NIO ways to read files </span>
 @[https://howtodoinjava.com/java7/nio/3-ways-to-read-files-using-java-nio/]
@@ -9319,9 +9283,18 @@ FROM https://github.com/google/guice/wiki/JSR330
 @[https://www.infoq.com/articles/single-file-execution-java11/]
 </pre>
 
-<pre zoom labels="secret_mng,TODO">
-<span xsmall>PKCS#11 Ref.guide</span>
+<pre zoom labels="security,aaa,secret_mng,TODO">
+<span xsmall TODO>Crypto.API(JCA)</span> [TODO]
+- See also:
+  - Cryptography map:
+  @[http:./../General/cryptography_map.html]
+
+  - Bounce Castle FIPS JCA provider
+  @[https://www.bouncycastle.org/fips-java/BCFipsIn100.pdf]
+
+BºPKCS#11 Ref.guideº: [TODO]
 @[https://docs.oracle.com/javase/7/docs/technotes/guides/security/p11guide.html]
+About PCKS#11: @[http:./../General/cryptography_map.html?topics=pkcs]
 </pre>
 
 <pre zoom labels="configuration,low_code,TODO">

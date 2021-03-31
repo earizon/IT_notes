@@ -165,95 +165,79 @@ Kubernetes Cluster Components:
                         │                                      │ ─ Manages availability,         ─ Service Controller
                         │                                      │   performance and capacity      ─ Volume ControllerCluster
                         │                                      │
-                ºfederation-apiserveRº                   ºfederation-controller-managerº
+                ºfederation-apiserverº                   ºfederation-controller-managerº
                 - API server for federated               - embeds the core control loops shipped
                   clusters                                 with Kubernetes federation.
+                                                                  
 
+ (RºWARNº: An "Application" will contain also Controllers like replica-sets, batch ... not shown in next diagram)
 
+│  K8S  │         
+│CLUSTER│ 1 ←··→ N│Namespace│ 1 ←───→ NBº│Application│º
+└┬──────┘          =========             ============ 
+ ├ etcd         "Virtual cluster"        "Application" is an informal term in k8s.
+ ├ Master      º*1º                      In practice it could be something similar to:
+ └ Node Pool                             1 DDBB     Deployment → (0+ PVCs, Service, ConfigMaps, Secrets, ...)        
+   └┬──────┘                           + 1 ESB      Deployment → (0+ PVCs, Service, ConfigMaps, Secrets, 0-1 Ingress,...)   
+    ├ node 1                           + 1 Middlewa.Deployment → (0+ PVCs, Service, ConfigMaps, Secrets, 1 Ingress,...)  
+    ├ node 2                           + ...        └────┬───┘
+    └ ...  N                                         A deployment defines:
+      └┬───┘                                         - (OCI) image/s to deploy in pods.
+       ├ kubelet agent  º*1º                         - Desired states for pods (Containers, Num. or replicas, live-probes, ...)
+       ├ Container Runtime (Docker/rkt/...)          - Rolling policies
+       └ kube-proxy                                  - ...
+         ----------                                  - ...
+       ^ - Gº"SDN enabler"º      
+       · - simple or round-robin TCP/UDP                                  
+       ·   stream forwarding across set
+       ·   of back-ends.
+       · - Listen for new Service/Service.EndPoint
+       ·   events from ºMasterº to update
+       ·   Service Virtual IPs to
+       ·   real EndPoint IPs with the help of
+       ·   proxy-ports, iptables,....
+       · 
+      Node VM/computer serving as a worker machine where pods.
+      To get External IPs of all nodes:
+    $º$ kubectl get nodes -o jsonpath=\                                º
+    $º  '{.items[*].status.addresses[?(@.type=="ExternalIP")].address}'º
 
+      º*1º kubelet agents takes a set of PodSpecs and ensures thate described containers are running and healthy.
 
-   │ºnodeº (Pool):
-   │- (VM) computer serving as
-   │  a worker machine where pods
-   │  are scheduled for execution.   takes a set of PodSpecs and ensures
-   │- Contains k8s services:         thate described containers are
-   │  - Kubelet agent        ←------ running and healthy.
-   │  - Container runtime Iface
-   │    (Docker or rkt)
-   │- Get External IPs of all nodes:
-   │$º$ kubectl get nodes -o jsonpath=\                                º
-   │$º  '{.items[*].status.addresses[?(@.type=="ExternalIP")].address}'º
-   │
-   └────────┬─────────────────┘
-            │
-   ┌────────┴──────────────────┬─────────────────────────────┐
-ºkubelet agentº      ºContainer Runtimeº            ºkube-proxyº
-                                                     - Gº"SDN enabler"º
-                                                     - simple or round-robin TCP/UDP
-                                                       stream forwarding across set
-                                                       of back-ends.
-                                                     - Listen for new Service/Service.EndPoint
-                                                       events from ºMasterº to update
-                                                       Service Virtual IPs to
-                                                       real EndPoint IPs with the help of
-                                                       proxy-ports, iptables,....
-
-K8S
-CLUSTER  1 ←············→ N Namespace  1 ←─┬─→  N Deployment       1 ←··┐º*º* Namespace:
-───────                     =========             ==========                  - scope for names
-· etcd                   "Virtual cluster" │      "Application"         ·     - Can be assigned max Memory/CPU Quotas
-· Master                º*1º               │                            ·     - Useful in "many-users/teams/projects"
-· Node Pool                                │      · Load balancing      ·       (not needed otherwise).
-                                           │        with(out) session   ·     - use labels, not namespaces, to distinguish
-                                           │        affinity            ·       resources within the same namespace
-                                           │      · Persistence storage ·     - Services are created with DNS entry
-                                           │      · Scheduling of pods  ·       "service-name"."namespace".svc.cluster.local
-                                           │        into node pool      ·
-                                           │      · Rolling deployments ·     $º$ kubectl get namespaces            º
-                                           │      · Ex:                 ·       NAME          STATUS    AGE
-                                           │        1 DDBB pod          ·       default       Active    1d
-                                           │      + 2 Front End pods    ·       kube-system   Active    1d
-                                           │      + 1 ESB Pod           ·
-                                           │                            ·     $º$ kubectl create namespace namespc01 º
-                                           └── N "Other" Controllers    ·                                                                                                                  ·
-                                                (ReplicaSet, ...)       ·     $º$ kubectl --namespace=namespc01 run \º ← Run on given N.S.
-                                                                        ·     $º          nginx --image=nginx        º
- ┌······································································┘
- │                                                                            $º$ kubectl config set-context \       º ← permanently save NS
- └→ N Pods    1 ←················→ 1+ Container                               $º  $(kubectl config current-context) \º ← $(...) bash syntax
-      ====                            =========                               $º  --namespace=MyFavouriteNS          º
-   · Minimum Unit of Exec/Sched.      · executable ("Docker") image
-   · At creation time resource        .ºLifecycle Hooksº                      $º$ kubectl config view | \            º
-     limits for CPU/memory are          - PostStart Hook                      $º  grep namespace: # Validate         º
-     defined (min and max-opt)          - PreStop   Hook
-   · Ussually Pod 1←→1 Container
-     (rarely 2 when such              type Container struct {
-      containers are closely             Name string
-      related to make Pod work)          Image string
-   ·RºPods are ephemeral.º               Command []string
-      Deploy Controller+                 Args []string
-      Pods is high available.            WorkingDir string
-                                         Ports []ContainerPort
-   · Define shared resources            EnvFrom []EnvFromSource
-     for its container/s:                Env []EnvVar
-     o Volumes: (Shared Storage)         Resources ResourceRequirements
-     o Networking: (Sharedºuniqueº       VolumeMounts []VolumeMount
-          ºcluster IPº)                  VolumeDevices []VolumeDevice
-     o Metadata: (Container image        LivenessProbe *Probe   ←······· kubelet exec the probes
-         version, ports to use,...)      ReadinessProbe *Probe           - ExecAction
-                                         Lifecycle *Lifecycle            - TCPSocketAction
-   · Represent a "logical host"          TerminationMessagePath string   - HTTPGetAction
-                                         TerminationMessagePolicy TerminationMessagePolicy
-   · A Pod is tied to the Node where     ImagePullPolicy PullPolicy
-     it has been scheduler to run,       SecurityContext *SecurityContext
-     and remains there until             Stdin bool
-     termination.                     }
+      Pod     1 ←················→ 1+ Container 
+      ====                            =========                          
+   · Minimum Unit of Exec/Sched.      - executable OCI ("Docker") image
+   · At creation time resource        -ºLifecycle Hooksº                 
+     limits for CPU/memory are          - PostStart
+     defined (min and max-opt)          - PreStop  
+   · Ussually Pod 1←→1 Container      - containers in a Pod are co-located/co-scheduled on the same cluster node.
+     (rarely 2 when such              - type Container struct {
+      containers are closely               Name string
+      related to make Pod work)            Image string
+   ·RºPods are ephemeral.º                 Command []string
+      Deploy Controller+                   Args [] string
+      Pods is high available.              WorkingDir string
+                                           Ports []ContainerPort
+   · Define shared resources               EnvFrom []EnvFromSource
+     for its container/s:                  Env []EnvVar
+     o Volumes: (Shared Storage)           Resources ResourceRequirements
+     o Networking: (Sharedºuniqueº         VolumeMounts []VolumeMount
+          ºcluster IPº)                    VolumeDevices []VolumeDevice
+     o Metadata: (Container image          LivenessProbe *Probe   ←······· kubelet exec the probes
+         version, ports to use,...)        ReadinessProbe *Probe           - ExecAction
+                                           Lifecycle *Lifecycle            - TCPSocketAction
+   · Represent a "logical host"            TerminationMessagePath string   - HTTPGetAction
+                                           TerminationMessagePolicy TerminationMessagePolicy
+   · A Pod is tied to the Node where       ImagePullPolicy PullPolicy
+     it has been scheduler to run,         SecurityContext *SecurityContext
+     and remains there until               Stdin bool
+     termination.                       }
    · In case of failure, controllers
-     can be scheduled to run on other · containers in a Pod are
-     available Nodes in the cluster.    co-located and co-scheduled
-                                        on the same cluster node.
-   · Controllers takes charge of
-     scalling /"healing" pods.
+     can be scheduled to run on other 
+     available Nodes in the cluster.    
+
+   ·ºControllers takes charge ofº
+    ºscalling /"healing" pods.  º
 
 
 REF: @[https://kubernetes.io/docs/Architecture/architecture_map.html?query=service+registration+discovery]
@@ -453,6 +437,9 @@ REF: @[https://learnk8s.io/]
 
 - @[https://kubernetes.io/docs/tasks/debug-application-cluster/debug-application/]
 
+On a separate (tmux)window monitor kubectl resources ike:
+ $º$  watch -n 4 "kubectl get pods,services,... -n $namespace" º
+
 $º$ kubectl get pods º
     └─────┬────────┘
 QºQ: Is there any pending Pod?º
@@ -510,8 +497,9 @@ QºQ: Is there any pending Pod?º
   │        │      │  │ │ └ YES →BºThe issue is likely to be withº
   │        │      │  │ │        Bºmounting volumesº
   │        │      │  │ │
-  │        │      │  │ └ YES →QºQ: Did you inspect the logs and fixedº
-  │        │      │  │        Qº   the crashes?º
+  │        │      │  │ └ YES →QºQ: Did you inspect the logs and fixed the crashes?º
+  │        │      │  │          $º$ kubectl logs --previous $POD_NAMEº
+  │        │      │  │          (--previous: See logs of chrased pod)
   │        │      │  │          └─────────┬─────────────────────────┘
   │        │      │  │    ┌───────────────┘
   │        │      │  │    ├ NO  →BºFix the app crahsesº
@@ -566,10 +554,33 @@ QºQ: Is there any pending Pod?º
   │           └ NO  →RºUnknown Stateº
   │
   └ YES → $º$ kubectl port-forward      \ º ←QºQ: Can you access the app?º
-          $º    $pod_name  8080:$pod_port º    └──────────┬─────────────┘
+          $º    $pod_name  8080:$pod_port º    Test with a command similar to $º$ wget localhost:8080/... º.
+                                               if error Rº"... error forwarding port 8080 to pod 1234..."º
+                                               is displayed check that pod 1234... is the intended one by
+                                               executing $º kubectl describe pods º and checking pod number
+                                               is correct. If it isn't, delete and recreate the service.
+                                               try again until to see if $ºwget ...º works. Continue next
+                                               checks otherwise.
+                                               └──────────┬─────────────┘
+                                                          │
   ┌───────────────────────────────────────────────────────┘
+  └ QºQ: Do you have 2+ different deployments with colliding selector names?
+         (this can be the case in "complex" Apps composed of N deployments)
+         └──────────────────────┬─────────────────────────────────────────┘
+  ┌─────────────────────────────┘
+  ├ YES: Fix one or more deployments to avoid colliding selectors
+  │      For example if two deployments have a selector labels like
+  │      'app: myApp' split into 'app: myApp-ddbb' and 'app: myApp-frontend' or
+  │      selector 1:     selector 2:
+  │      'app: myapp'    'app: myapp'
+  │      'layer: ddbb'   'layer: frontend'
+  │      update both on Deployment and related services
+  │ 
   ├ NO  →QºQ: Is the port exposed by container correctº
   │      Qº   and listening on 0.0.0.0?º
+  │           You can check it like: (-c flag optional for 1 container pods)
+  │      $º$ kubectl exec -ti $pod -c $container -- /bin/sh º
+  │      $º# netstat -ntlp                                  º
   │        └────────────────────┬────────────────────┘
   │       ┌─────────────────────┘
   │       ├ NO  →BºFix the app. It should listen onº
@@ -585,16 +596,13 @@ Bº*POD ARE RUNNING CORRECTLY*º
 Bº***************************º
    └──────────┬────────────┘
               ↓
-$º$ kubectl describe   \  º ←QºQ: Can you see a listº
-$º  service $SERVICE_NAME º  Qº    of endpoints?º
-                               └──────┬────────────┘
-  ┌───────────────────────────────────┘
-  ├ NO  →QºQ: Is the Selector matching the rightº
-  │      Qº   Pod label?º
-  │        └──┬────────────────────────────────┘
+$º$ kubectl describe   \  º ←QºQ: Can you see a list of endpoints?º
+$º  service $SERVICE_NAME º    └────────────┬────────────────────┘
+  ┌─────────────────────────────────────────┘
+  ├ NO  →QºQ: Is the Selector matching the right Pod label?º
+  │        └──┬───────────────────────────────────────────┘
   │     ┌─────┘
-  │     ├ NO  → Fix the Service selector. It has
-  │     │       to match the Pod labels
+  │     ├ NO  → Fix the Service selector to match targeted-Pod labels
   │     │
   │     └ YES →QºQ: Does the Pod have an IP address assigned?º
   │              └──┬───────────────────────────────────────┘
@@ -4773,4 +4781,44 @@ to define your Canary deployment and chain it with a classic rolling
 update in case of success.
 </pre>
 
--->
+<pre zoom labels="TODO">
+<span xsmall>Getting up to speed with k8s and helm:  !!!</span>
+@[https://www.youtube.com/watch?v=3GPpm2nZb2s]
+</pre>
+
+
+<pre zoom labels="TODO">
+<span xsmall>All components of a typical k8s app!!</span>
+@[https://medium.com/geekculture/how-to-deploy-spring-boot-and-mongodb-to-kubernetes-minikube-71c92c273d5e]
+</pre>
+
+<pre zoom labels="TODO">
+<span xsmall>Namespace How-to summary</span>
+- scope for names
+- Can be assigned max Memory/CPU Quotas
+- Useful in "many-users/teams/projects"
+  (not needed otherwise).
+- use labels, not namespaces, to distinguish
+  resources within the same namespace
+- Services are created with DNS entry
+  "service-name"."namespace".svc.cluster.local
+
+$º$ kubectl get namespaces            º
+  NAME          STATUS    AGE
+  default       Active    1d
+  kube-system   Active    1d
+
+$º$ kubectl create namespace namespc01 º
+                                                                                                             ·
+$º$ kubectl --namespace=namespc01 run \º ← Run on given N.S.
+$º          nginx --image=nginx        º
+
+$º$ kubectl config set-context \       º ← permanently save NS
+$º  $(kubectl config current-context) \º ← $(...) bash syntax
+$º  --namespace=MyFavouriteNS          º
+                                                                                                               
+$º$ kubectl config view | \            º
+$º  grep namespace: # Validate         º
+</pre>
+
+

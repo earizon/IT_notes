@@ -662,6 +662,154 @@ elapsed := time.Now()Oº.Subº(start)
     <a href="https://golang.org/pkg/time/#Weekday.String">func (d Weekday) String() string</a>
 
 </pre>
+
+<pre zoom labels="string," id="text_templates_summary">
+<span xsmall>Go Templates</span>
+@[https://pkg.go.dev/text/template?utm_source=godoc]
+
+Overview
+- Text and spaces
+- Actions
+- Arguments
+- Pipelines
+- Variables
+- Examples
+- Functions
+- Associated templates
+- Nested template definitions 
+
+INPUT            →   PROCESSING   →    OUTPUT
+- UTF-8 template     teplate           text
+- data structure     execution
+
+
+Example:
+
+  type Inventory struct {
+      Material string
+      Count    uint
+  }
+              
+  tmpl, err := template.New("test")                   // ← Each template must be named
+        .Parse(                                       // ← parse("compile") template
+        "{{.Count}} items are made of {{.Material}}"  // ← UTF-8 Template 
+  )
+  // A tpl s associated with 0+ tpls by using a tpl invocation to instantiate them
+  if err != nil { panic(err) }
+  err = tmpl.Execute(                                 // ← Execute template
+         os.Stdout,
+         Inventory{"wool", 17}                        // ←
+  )              
+  if err != nil { panic(err) }
+
+- TIPs: 
+  {{- ...  : ← trim trailing white spaces.
+  ... -}}  : ← trim leading white-spaced.
+
+  Note: "{{- 3 }}"             → trim white spaces
+        "{{-3  }}"             → -3 number
+        "{{23 -}} ˂ {{- 45}}"  → "23˂45"
+  {{`"output"`}} ← raw string constant
+
+
+BºActionsº:
+  {{/* a comment */}}
+  {{- /* a comment with white space trimmed from preceding and following text */ -}}
+  - Comments:
+    - dropped from output.
+    - May contain newlines,
+    - do not nest, must start and end at the delimiters.
+
+  {{if pipeline}} T1 {{end}}
+    If pipeline value is empty, no output is generated; otherwise, T1 executed.
+  {{if pipeline}} T1 {{else}} T0 {{end}}
+    If pipeline value is empty, T0 executed, otherwise, T1 executed.
+  {{if pipeline}} T1 {{else if pipeline}} T0 {{end}}
+
+  {{range pipeline}} T1 {{end}}
+          ^
+          array/slice/map/channel.
+          cursor in T1 ("." dot) set to the successive elements 
+  {{range pipeline}} T1 {{else}} T0 {{end}}
+
+  {{template "name"}}  (sort of "include")
+  template "name" executed with nil data.
+  {{template "name" pipeline}}
+  template "name" executed with dot set to the value of the pipeline.
+
+  {{block "name" pipeline}} T1 {{end}}
+  shorthand for defining and executing a template in place
+
+  {{with pipeline}} T1 {{end}}
+  If pipeline empty, no output , otherwisedot set to the value and T1 executed.
+  {{with pipeline}} T1 {{else}} T0 {{end}}
+
+BºArgumentsº
+  (See official doc for other args)
+  - $piOver2 → expands to value of variable.
+    $        → expands to data passed as argument to execute (start value of ".")
+  - .Field   → expands to value of (struct) field.
+  - $x.Field1→ expands to value of (struct) field of variable.
+  - .Key     → expands to value of (map   ) field of variable.
+  - $x.Field1.Key1.Field2.Key2
+  - .Method  → expands to (one/two) return value/s (with cursor as receiver)
+      (If optional second args is non-nil, execution terminates
+       and error returned to caller as value)
+  - function  → same as .Method but for functions (vs methods).
+    The name of a niladic function, such as
+  - parenthesized instance of one the above, for grouping. 
+    - result may be accessed by a field or map key. Ex:
+      - print (.F1 arg1) (.F2 arg2)
+      - (.StructValuedMethod "arg").Field
+
+BºPipelinesº
+  A pipeline may be "chained" with '|'. 
+
+BºVariablesº
+  $variable := pipeline  ← Captures pipeline output for later reuse.
+
+  range $index, $element := pipeline  ← when pipeline output is an array/slice index
+                                        or map key/value
+
+  Variable's scope is that of frame control structure ("if"/"with"/"range")  or 
+  from declaration to end-of-template otherwise.
+
+  {{printf "%q" "output"}}   ← fun call.
+  {{"output" | printf "%q"}} ← fun call whose final arg comes from previous command.
+  {{printf "%q" (print "out" "put")}} ← A parenthesized argument.
+  {{"put" | printf "%s%s" "out" | printf "%q"}}
+  {{"output" | printf "%s" | printf "%q"}}
+  {{with "output"}}{{printf "%q" .}}{{end}}
+  {{with $x := "output" | printf "%q"}}{{$x}}{{end}}
+
+  {{with $x := "output"}}{{printf "%q" $x}}{{end}}    ← alt 1
+  {{with $x := "output"}}{{$x | printf "%q"}}{{end}}  ← alt 2 (pipelined)
+ 
+
+BºPredefined global functionsº
+  - and x y : Returns boolean AND of its arguments 
+  - call funA x y ..: return result of funA(x, y , ...) 
+  - html            : Returns escaped HTML 
+  - index x 1 2 3   : x[1][2][3], x is a map/slice/array.
+  - slice x 1 2     : is, in Go syntax, x[1:2],
+  - js              : Returns escaped JavaScript 
+  - len x           : integer length of x
+  - not
+  - or
+  - print/f/ln      : alias for fmt.Sprint/f/ln
+  - urlquery x      : Returns escaped value of x
+  - comparision ops:
+    - eq|ne|lt|le|gt|ge arg1 arg2
+
+BºNested template definitionsº
+{{define "T1"}}ONE{{end}}   ← Template definitions must appear at the top of tpl
+{{define "T2"}}TWO{{end}}
+{{define "T3"}}
+   {{template "T1"}}        ← Using template, Output: ONE
+   {{template "T2"}}                                  TWO
+{{end}}
+{{template "T3"}}`
+</pre>
 </div>
 
 </body>
@@ -776,5 +924,11 @@ Delve also offers powerful features that let you debug your Go
 programs as quickly as possible.
 
 </pre>
+##################
+Used by helm charts:
+https://pkg.go.dev/text/template?utm_source=godoc
+o.dev/text/template?utm_source=godoc
+
+
 -->
 

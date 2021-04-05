@@ -553,18 +553,19 @@ QºQ: Is there any pending Pod?º
   │           │
   │           └ NO  →RºUnknown Stateº
   │
-  └ YES → $º$ kubectl port-forward      \ º ←QºQ: Can you access the app?º
-          $º    $pod_name  8080:$pod_port º    Test with a command similar to $º$ wget localhost:8080/... º.
-                                               if error Rº"... error forwarding port 8080 to pod 1234..."º
-                                               is displayed check that pod 1234... is the intended one by
-                                               executing $º kubectl describe pods º and checking pod number
-                                               is correct. If it isn't, delete and recreate the service.
-                                               try again until to see if $ºwget ...º works. Continue next
-                                               checks otherwise.
-                                               └──────────┬─────────────┘
-                                                          │
-  ┌───────────────────────────────────────────────────────┘
-  └ QºQ: Do you have 2+ different deployments with colliding selector names?
+  └ YES → $º$ kubectl port-forward      \ º ←QºQ: Can you access the app?º º*1º
+          $º    $pod_name  8080:$pod_port º    └────────────┬───────────┘ 
+                                                            │
+     º*1ºTIP: Test with a command similar to $º$ wget localhost:8080/... º
+         if error Rº"... error forwarding port 8080 to pod 1234..."º
+         is displayed check that pod 1234... is the intended one by
+         executing $º kubectl describe pods º and checking pod number
+         is correct. If it isn't, delete and recreate the service.
+         try again until to see if $ºwget ...º works. Continue next
+         checks otherwise.)                                 │
+                                                            │
+  ┌─────────────────────────────────────────────────────────┘
+  └ QºQ: Do you have 2+ different deployments with colliding selector names?º
          (this can be the case in "complex" Apps composed of N deployments)
          └──────────────────────┬─────────────────────────────────────────┘
   ┌─────────────────────────────┘
@@ -701,77 +702,98 @@ $º$ kubectl get pods --field-selector  metadata.namespace!=default,status.phase
 <span title>Building Blocks</span><br/>
 
 <div groupv>
-<pre zoom labels="101,secrets,aaa,review">
+<pre zoom labels="101,secrets,aaa,review" id="k8s_secrets_summary">
 <span xsmall>Secrets</span>
-@[https://kubernetes.io/docs/concepts/configuration/secret/]
+(Handling passwords, OAuth tokens, ssh keys, ... in k8s)
+REFs: @[https://kubernetes.io/docs/concepts/configuration/secret/]
+      @[https://github.com/kubernetes/community/blob/master/contributors/design-proposals/auth/secrets.md]
+      @[https://kubernetes.io/docs/tasks/inject-data-application/distribute-credentials-secure/]
 
-@[https://github.com/kubernetes/community/blob/master/contributors/design-proposals/auth/secrets.md]
-See also:
- @[https://kubernetes.io/docs/tasks/inject-data-application/distribute-credentials-secure/]
-
-- (Handling passwords, OAuth tokens, ssh keys, ... in k8s)
-
-- Users (and system) create secrets
-- At runtime Pods reference the secrets in three ways:
-  - as files in a mounted volume
+- At runtime Pods reference the secrets in 2 ways:
+  - as files in a mounted volume.
   - as ENVIRONMENT variables.
 - Also used by kubelet when pulling images for the pod
 
-ºBuilt-in Secretsº
-- Service Accounts automatically create and attach secrets with API Credentials
-- Kubernetes automatically creates secrets which contain credentials for
-  accessing the API and it automatically modifies your pods to use this type
-  of secret.
+-ºk8s Built-in Secretsº
+  - Service Accounts automatically create and attach secrets with API Credentials
+  - k8s automatically creates secrets with credentials granting API acces
+  BºNOTEº: Pods are automatically modified to use them.º
 
+BºU
 ºCreating User Secretsº
-│       ALTERNATIVE 1                           │ ALTERNATIVE 2                                    │ALTERNATIVE 3
-│ ºSTEP 1º: Create un-encrypted secrets locally:│ºSTEP 1:ºCreate Secret with data                  │ºSTEP 1º: Create Secret with stringData
-│   $ echo -n 'admin'        ˃ ./username.txt   │   cat ˂˂ EOF ˃ secret.yaml                       │apiVersion: v1
-│   $ echo -n '1f2d1e2e67df' ˃ ./password.txt   │   apiVersion: v1                                 │kind:ºSecretº
-│              ^^^^^^^^^^^^                     │   kind:ºSecretº                                  │metadata:
-│              special chars. must be           │   metadata:                                      │  name: mysecret
-│              '\' escaped.                     │     name: mysecret                               │type: Opaque
-│                                               │   type: Opaque                                   │stringData:
-│                                               │   data:                                          │  config.yaml: |-
-│                                               │     username: $(echo -n 'admin'        | base64) │    apiUrl: "https://my.api.com/api/v1"
-│                                               │     password: $(echo -n '1f2d1e2e67df' | base64) │    username: admin
-│                                               │   EOF                                            │    password: 1f2d1e2e67df
-│                                               │                                                  │
-│ ºSTEP 2:º Package into a Secret k8s object    │ºSTEP 2:º Apply                                   │ºSTEP 2:ºApply
-│   $ kubectlºcreate secretº\                   │  $ kubectl apply -f ./secret.yaml                │  $ kubectl apply -f ./secret.yaml
-│     genericGºdb-user-passº \                  │                                                  │
-│     --from-file=./username.txt \              │                                                  │
-│     --from-file=./password.txt                │                                                  │
+                                            ºSTEP 1: declare secretsº
+┌───────────────────────────────────────┬──────────────────────────────────────────┬────────────────────────────────────────
+│ ALTERNATIVE 1                         │ ALTERNATIVE 2                            │ ALTERNATIVE 3
+│ Create un-encrypted secrets locally   │ Create Secret with data                  │ Create Secret with stringData
+│                                       │                                          │           
+│ $ echo -n 'admin'    ˃ ./username.txt │   cat ˂˂ EOF ˃ secret.yaml               │ apiVersion: v1
+│ $ echo -n '1f2d....' ˃ ./password.txt │   apiVersion: v1                         │ kind:ºSecretº
+│            ^^^^^^^^^^^^               │   kind:ºSecretº                          │ metadata:
+│            special chars. must be     │   metadata:                              │   name: mysecret
+│            '\' escaped.               │     name: mysecret                       │ type: Opaque
+│                                       │   type: Opaque                           │ stringData:
+│                                       │   data:                                  │   config.yaml: |-
+│                                       │     username: $(echo -n 'admin' | base64)│     apiUrl: "https://my.api.com/api/v1"
+│                                       │     password: $(echo -n '1f2..' | base64)│     username: admin
+│                                       │   EOF                                    │     password: 1f2...
 
-│ºSTEP 3:º Check that Secret object has been ┌────────────────────────────────────────────
-│  properly created.                         │ ºUsing the Secrets in a Podº
-│  $ kubectl get secrets                     │                                   Control secret path with items:         Consume as ENV.VARS
-│  → NAME           TYPE    DATA  AGE        │ apiVersion: v1                  │ apiVersion: v1                        | apiVersion: v1
-│  → db-user-pass   Opaque  2     51s        │ kind:ºPodº                      │ kind:ºPodº                            | kind: Pod
-│                                            │ metadata:                       │ metadata:                             | metadata:
-│  $ kubectl describe secrets/db-user-pass   │   name: mypod                   │   name: mypod                         |   name: secret-env-pod
-│  → Name:          Gºdb-user-passº          │ spec:                           │ spec:                                 | spec:
-│  → Namespace:       default                │   containers:                   │   containers:                         |  containers:
-│  → Labels:          ˂none˃                 │   ─ name: mypod                 │   - name: mypod                       |  - name: mycontainer
-│  → Annotations:     ˂none˃                 │     image: redis                │     image: redis                      |   image: redis
-│  →                                         │     volumeMounts:               │     volumeMounts:                     |   env:
-│  → Type:            Opaque                 │     ─ name:ºfoOº                │     - name:ºfooº                      |    - name: SECRET_USERNAME
-│  →                                         │       mountPath: "/etc/foo"     │       mountPath: "/etc/foo"           |     valueFrom:
-│  → Data                                    │       readOnly:ºtrueº           │       readOnly: true                  |      secretKeyRef:
-│  → ====                                    │   volumes:                      │   volumes:                            |       name: Gºdb─user─passº
-│  →ºpassword.txt:º   12 bytes               │   ─ name:ºfoOº                  │   - name:ºfooº                        |       key: username
-│  →ºusername.txt:º   5 bytes                │     secret:                     │     secret:                           |    - name: SECRET_PASSWORD
-                                             │       secretName:Gºdb─user─passº│       secretName:Gºdb─user─passº      |     valueFrom:
-                                             │       defaultMode: 256          │       items:                          |      secretKeyRef:
-                                             │                     ^           │       - key: username                 |       name: Gºdb─user─passº
-                                             │                     |           │         path: my-group/my-username    |       key: password
-                                                                   |                           ^^^^^^^^^^^^^^^^^^^^
-                                                            JSON does NOT support     · username will be seen in container as:
-                                                            octal notation.             /etc/foo/my-group/my-username
-                                                                     256 = 0400       · password secret is not projected
+                                         ºSTEP 2: "Inject" to k8s cluster º
+┌───────────────────────────────────────┬──────────────────────────────────────────┬────────────────────────────────────────
+│ Package into a Secret k8s object      │$º$ kubectl apply -f ./secret.yamlº       │$º$ kubectl apply -f ./secret.yamlº
+│$º$ kubectlºcreate secretº\       º    │                                          │
+│$º  genericGºdb-user-passº \      º    │                                          │
+│$º  --from-file=./username.txt \  º    │                                          │
+│$º  --from-file=./password.txt    º    │                                          │
+
+                                        ºSTEP 3: check created secretº
+                                        ┌──────────────────────────────────────────┐
+                                        │$º$ kubectl get secrets                  º│
+                                        │  → NAME           TYPE    DATA  AGE      │
+                                        │Gº→ db-user-pass   Opaque  2     51s     º│
+                                        │                                          │
+                                        │$º$ kubectl describe secrets/db-user-passº│
+                                        │  → Name:          Gºdb-user-passº        │
+                                        │  → Namespace:       default              │
+                                        │  → ...                                   │
+                                        │  → Type:            Opaque               │
+                                        │  →                                       │
+                                        │  → Data                                  │
+                                        │  → ====                                  │
+                                        │  →ºpassword.txt:º   12 bytes             │
+                                        │  →ºusername.txt:º   5 bytes              │
+                                             
+                                             
+                                        º"Injecting" secrets into Podsº
+│ Alt 1.a: Mount file as volume   │ Alt 1.b: Mount items file as volume   │ Alt 2: Consume as ENV.VAR
+│           (App will read the file to fetch the secrets)                 │ (App will read env.vars to fetch
+│                                 │                                       │  the secrets)         
+│                                 │                                       │                       
+│ apiVersion: v1                  │ apiVersion: v1                        │ apiVersion: v1
+│ kind:ºPodº                      │ kind:ºPodº                            │ kind: Pod
+│ metadata:                       │ metadata:                             │ metadata:
+│   name: mypod                   │   name: mypod                         │   name: secret-env-pod
+│ spec:                           │ spec:                                 │ spec:
+│   containers:                   │   containers:                         │  containers:
+│   ─ name: mypod                 │   - name: mypod                       │  - name: mycontainer
+│     image: redis                │     image: redis                      │   image: redis
+│     volumeMounts:               │     volumeMounts:                     │  ºenv:º
+│     ─ name:ºfoOº                │     - name:ºfooº                      │    - name: SECRET_USERNAME
+│       mountPath: "/etc/foo"     │       mountPath: "/etc/foo"           │      valueFrom: 
+│       readOnly:ºtrueº           │       readOnly: true                  │       ºsecretKeyRef:º
+│   volumes:                      │   volumes:                            │         name:Gºdb─user─passº
+│   ─ name:ºfoOº                  │   - name:ºfooº                        │        ºkey: usernameº
+│     secret:                     │     secret:                           │    - name: SECRET_PASSWORD
+│       secretName:Gºdb─user─passº│       secretName:Gºdb─user─passº      │      valueFrom:
+│       defaultMode: 256          │       items:                          │       ºsecretKeyRef:º
+│                     ^           │       - key: username                 │         name:Gºdb─user─passº
+│                     ·           │         path: my-group/my-username    │         key: password
+                      ·                           ^^^^^^^^^^^^^^^^^^^^
+           JSON does NOT support     · username will be seen in container as:
+           octal notation.             /etc/foo/my-group/my-username
+           256 = 0400                · password secret is not projected
 
 
-Ex 2:
+BºExample 2:º
 SECRET CREATION                                      | SECRET USSAGE
 $ kubectl create secret generic \                    | apiVersion: v1
 Gºssh-key-secretº \                                  | kind: Pod
@@ -1825,6 +1847,9 @@ app.kubernetes.io/component   component within the arch        database         
 app.kubernetes.io/part-of     name of higher level app         wordpress           string
 app.kubernetes.io/managed-by  tool used to manage the          helm                string
                               operation of an application
+
+See also recommended labels for Helm charts:
+@[https://helm.sh/docs/chart_best_practices/labels/]
 
 Ex.1 use in an StatefulSet object:
 
@@ -3076,9 +3101,9 @@ pi-aiw0a
 
 <div groupv>
 <span title>K8s Extension Tools</span>
-<pre zoom labels="helm,application,TODO">
+<pre zoom labels="helm,101,application," id="helm_charts_summary">
 <span xsmall>HELM Charts</span>
-@[https://helm.sh/docs/intro/quickstart/]
+Summary: HELM Charts is Package manager for k8s apps with versioning, upgrades and rollbacks.
 
 ºPRE-SETUPº
  └ "kubectl" installed locally.
@@ -3087,12 +3112,88 @@ pi-aiw0a
  └ Download from @[https://github.com/helm/helm/releases], use homebrew (MacOSX),...
    and add "helm" command to path.
 
+Oº#######################º
+Oº# Creating new Charts #º
+Oº#######################º
+@[https://www.youtube.com/watch?v=3GPpm2nZb2s]
+@[https://helm.sh/docs/developing_charts/]
+
+  $º$ helm create myapp º  ← alt 1: Create from helm template
+    myapp/             ← template layout
+    ├─ charts/         ← A complex app can consists of many "parallel" charts. One for the
+    │                    front-end service/s, other one for the backend/s, middleware, cache, ...
+    │                    other chart-dependencies come here.
+    │                    Alternatively use requirements.yaml like:
+    │                    $º$ cat requirements.yaml
+    │                    | dependencies:
+    │                    |   - name: apache
+    │                    |     version: 1.2.3
+    │                    |     repository: http://repo1.com/charts  ← Pre-Setup:
+    │                    |   - name: mysql                          $º$ helm repo add ...º
+    │                    |     version: 4.5.6
+    │                    |     repository: http://repo2.com/charts
+    │                  $º$ helm dependency update º  ← Dowload deps. to charts/
+    │
+    ├─ Chart.yaml      ← Sort of chart metadata
+    │                  | apiversion: v1  
+    │                  | name: my-nginx  
+    │                  | version: 0.1.0   ← Change to 0.2.0 then :
+    │                  |                  $º$ helm upgrade  my-nginx . º ← Upgrade  0.1.0 → 0.2.0
+    │                  |                  $º$ helm rollback my-nginx 1 º ← Rollback to rev 1 (0.1.0)
+    │                  |                  $º$ helm rollback my-nginx 2 º ← Rollback to rev 2 (0.2.0)
+    │                  | appVersion: 1.0-SNAPSHOT (For example we can have different type of 
+    │                  |                           helm deployments -version:- with different types of
+    │                  |                           replica instances for the same web application
+    │                  |                           - same appVersion: ...                         )
+    │                  |
+    │                  | description: (description of chart -vs app-)
+    │                  | ... (kubeVersion, maintainers, template engine, deprecated, ...)
+    │
+    ├─ values.yaml     ← Default values for parameters in yaml templates
+    │                    (ports, replica counts, max/min, ...) to be replaced as
+    │                    {{ .Values.configKey.subConfigKey.param }}.
+    │                    They can be overloaded at install/upgrade like:
+    │                  $º$ helm install|upgrade ... --set configKey.subConfigKey.param=... º
+    │
+    └─ templates                    
+       ├─ deployment.yaml  ← Can be created manually like:
+       │                    $º$ kubectl create deploy nginx --image nginx \º
+       │                    $º  --dry-run -o yaml ˃ deployment.yaml        º
+       │ 
+       ├─ service.yaml     ← Can be created manually like:
+       │                    $º$ kubectl expose deploy mn-nginx -port 80   \º
+       │                    $º  --dry-run -o yaml ˃ service.yaml           º
+       │ 
+       ├─ _helpers.tpl     ← files prefixed with '_' do not create k8s output
+       │                     Used for reusable pieces of template
+       ├─ hpa.yaml
+       ├─ ingress.yaml
+       ├─ NOTES.txt
+       ├─ serviceaccount.yaml
+       └─ tests
+          └── test-connection.yaml
+
+  -BºInstalling the chart:º
+  
+  $º$ helm install --name my-nginx . º ← Intall from current dir. (vs URL / Repo)
+                                   ^     TIP: Monitor deployment in real time in another 
+                                         console like:
+                                       $º$ watch -n 2 "kubectl get all" º
+   
+  $º$ helm delete --purge my-nginx   º ← Clean-up install
+  
+Oº#################################º
+Oº# Consumming third party charts #º
+Oº#################################º
+@[https://helm.sh/docs/intro/quickstart/]
+
  └ Initialize aºHelm Chart Repositoryº
  $º$ helm repo add stable \                           º
  $º  https://kubernetes-charts.storage.googleapis.com/º ← Official repo.
 
-ºDAILY USEº
-
+Oº################º
+Oº# DAILY USSAGE #º
+Oº################º
   $º$ helm get -h                              º
   $º$ helm search repo stable                  º ← list charts available for installation.
   $ºNAME                          CHART VERSION   APP VERSION DESCRIPTION                                       º
@@ -3131,6 +3232,89 @@ TODO: @[https://helm.sh/docs/intro/using_helm/]
 
 NOTE:@[https://www.infoworld.com/article/3541608/kubernetes-helm-gets-full-cncf-approval.html]
 
+<hr/>
+<span xsmall>Helm Operator</span>
+@[https://docs.fluxcd.io/projects/helm-operator/en/1.0.0-rc9/references/helmrelease-custom-resource.html]
+
+- operator watching for (Custom Resource) HelmRelease change events (from K8s). 
+  It reacts by installing or upgrading the named Helm release.
+  (See oficial dock for setup/config params)
+
+
+    apiVersion: helm.fluxcd.io/v1
+  Bºkind: HelmReleaseº             ← Custom resource
+    metadata:
+      name: rabbit
+      namespace: default
+    spec:
+    · releaseName: rabbitmq        ← Automatically generated if not provided
+    · targetNamespace: mq          ← same as HelmRelease project if not provided.
+    · timeout: 500                 ← Defaults to 300secs.
+    · resetValues: false           ← Reset values on helm upgrade
+    · wait: false                  ← true: operator waits for Helm upgrade completion
+    · forceUpgrade: false          ← true: force Helm upgrade through delete/recreate
+    · chart:                       ←ºalt 1:ºchart from helm repository
+    ·   repository: https://charts....     ← HTTP/s and also S3 / GCP Storage through extensions
+    ·   name: rabbitmq
+    ·   version: 3.3.6
+    · # chart:                       ←ºalt 2:ºchart from git repository: Repo will be cloned
+    · #                                       - git pooled every 5 minutes (See oficial doc. to
+    · #                                         skip waiting) º*1º
+    · #                               
+    · #   git: git@github.com:fluxcd/flux-get-started                
+    · #   ref: master
+    · #   path: charts/ghost
+    · values:                      ← values to override on source chart
+    ·   replicas: 1
+    · valuesFrom:                  ← Secrets, config Maps, external sources, ...
+    · - configMapKeyRef:
+    ·     name: default-values     ← mandatory
+    ·     namespace: my-ns         ← (of config. map) defaults to HelmRelease one
+    ·     key: values.yaml         ← Key in config map to get values from
+    ·                                (defaults to values.yaml)
+    ·     optional: false          ← defaults to false (fail-fast),
+    ·                                true=˃ continue if values not found
+    · - secretKeyRef:
+    ·     name: default-values         ← mandatory
+    ·     namespace: my-ns             ← (Of secrets) defautl to HelRelease one
+    ·     key: values.yaml             ← Key in the secret to get the values from
+    ·                                    (defaults to values.yaml)
+    ·     optional: false          ← defaults to false (fail-fast),
+    ·                                true=˃ continue if values not found
+    ·  - externalSourceRef:
+    ·      url: https://example.com/static/raw/values.yaml 
+    ·     optional: false          ← defaults to false (fail-fast),
+    ·                                true=˃ continue if values not found
+    · 
+    · rollback:                    ← What to do if new release fails
+        enable: false              ← true : perform rollbacks for releas.
+        force: false               ← Rollback through delete/recreate if needed.
+        disableHooks: false        ← Prevent hooks from running during rollback.
+        timeout: 300               ← Timeout to consider failure install
+        wait: false                ← true =˃ wait for min.number of Pods, PVCs, Services
+                                             to be ready state before marking release as
+                                             successful.
+
+
+ $º$ kubectl delete hr/my-release º  ← force reinstall Helm release
+                                       (upgrade fails, ... )
+                                       Helm Operator will receive delete-event and force
+                                       purge of Helm release. On next Flux sync, a new Helm Release
+                                       object will be created and Helm Operator will install it.
+
+
+  º*1º: Git Authentication how-to:
+        - Setup the SSH key with read-only access ("deploy key" in GitHub)
+          (one for each accessed repo)
+          
+        - Inject each read-only ssh key into Helm Release operator
+          by mounting "/etc/fluxd/ssh/ssh_config" into the container
+          operator and mounting also (as secrets) each referenced 
+          priv.key in "/etc/fluxd/ssh/ssh_config" 
+
+</pre>
+
+<pre zoom labels="helm,101,TODO">
 <span xsmall>Kubeapps</span>
 - Application Dashboard for Kubernetes
 @[https://kubeapps.com/]
@@ -4820,5 +5004,14 @@ $º  --namespace=MyFavouriteNS          º
 $º$ kubectl config view | \            º
 $º  grep namespace: # Validate         º
 </pre>
+
+###########################
+About helm-charts pod templates:
+https://helm.sh/docs/chart_best_practices/pods/
+"...A container image should use a fixed tag or the SHA of the image. It 
+  should not use the tags latest, head, canary, or other tags that are 
+  designed to be "floating"..."
+
+
 
 

@@ -12636,5 +12636,69 @@ What's new ConsenSys Quorum 21.1.0:
    node to connect to the network ⅋ thereby reduce costs
  - Learn more about the new features in this release on our blog 
 #############################
+Etherum Offline TX signature in with JS in Azure:
 
+Snippet example from Kaleido examples:
+
+REFs:
+
+    https://github.com/kaleido-io/kaleido-js/blob/master/deploy-transact/lib/azure-signing.js
+    https://tomislav.tech/2018-01-31-ethereum-keyvault-generating-keys/
+    https://tomislav.tech/2018-02-05-ethereum-keyvault-signing-transactions 
+
+WARN: According to this link  the secp256k1 curve spec (used by Bitcoin and Ethereum signatures) is only available in Azure Key Vault under Premium SKU, not Standard.
+
+  1   async signTx(signedTx) { 
+  2     // signature on the tx is over the hash of the tx 
+  3     let hash = signedTx.hash(false); 
+  4     // now ask Azure to sign the hash 
+  5     let res; 
+  6  
+  7     // reference: blog by Tomislav Markovski 
+  8     // https://tomislav.tech/2018-02-05-ethereum-keyvault-signing-transactions/ 
+  9     try { 
+ 10       // The output of this will be a 64 byte array. The first 32 are the value for R and the rest is S.  
+ 11       res = await 
+                this.client.sign(`https://${serviceName}.vault.azure.net`,   // <-- sign firma directamente indicando la clave de la llave
+                keyName, keyVersion, 'ECDSA256', Buffer.from(hash)); 
+ 12     } catch(err) { 
+ 13       throw new Error('Failed to get signature from the signing service', err); 
+ 14     } 
+ 15  
+ 16     // standard ethereum signature object has "r", "s" and "v" 
+ 17     let sig = { 
+ 18       r: res.result.slice(0, 32), 
+ 19       s: res.result.slice(32) 
+ 20     } 
+ 21  
+ 22     // find the recovery ID by trying the possible values (0, 1, 2, 3) with "recover" 
+ 23     let account = await this.getAccount(); 
+ 24     console.log(`\tRetrieved account from Azure key vault: ${account.address}`); 
+ 25     let recoverId; 
+ 26     for (let i of [0, 1, 2, 3]) { 
+ 27       let recovered = this.web3.eth.accounts.recover({ 
+ 28         messageHash: '0x' + hash.toString('hex'), 
+ 29         v: '0x' + (i + 27).toString(16), 
+ 30         r: '0x' + sig.r.toString('hex'), 
+ 31         s: '0x' + sig.s.toString('hex') 
+ 32       }); 
+ 33  
+ 34       if (recovered.toLowerCase() === account.address.toLowerCase()) { 
+ 35         recoverId = i; 
+ 36         break; 
+ 37       } 
+ 38     } 
+ 39  
+ 40     sig.v = recoverId + 27; 
+ 41  
+ 42     if (signedTx._chainId > 0) { 
+ 43       sig.v += signedTx._chainId * 2 + 8; 
+ 44     } 
+ 45     Object.assign(signedTx, sig); 
+ 46  
+ 47     return signedTx; 
+ 48   }
+###################
+IPFS at TLDR:
+https://github.com/tldr-pages/tldr/blob/master/pages/common/ipfs.md
 -->

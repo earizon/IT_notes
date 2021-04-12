@@ -430,7 +430,7 @@ console.log(4)
 //        }
         }
       }, 1 /* on next tick */)
-    }, 500)
+    }, 2000)
   },
 
   hidePreview : function(event) {
@@ -577,13 +577,13 @@ const MB = { // Menu Bar
       document.head.insertBefore(meta,document.head.children[0])
 
       function addGestureZoom() {
-        // https://stackoverflow.com/questions/11183174/simplest-way-to-detect-a-pinch/11183333#11183333 {
+        // https://stackoverflow.com/questions/11183174/simplest-way-to-detect-a-pinch/11183333#11183333
         let last = 0;
         let lock = false;
         window.addEventListener('touchmove', 
           function(event) {
             if (lock == true) return
-         // if (event.targetTouches.length === 2) {
+         // if (event.targetTouches.length === 2) 
             if (event.touches.length == 2) {
                 let hypo1 = Math.hypot((event.targetTouches[0].pageX - event.targetTouches[1].pageX),
                     (event.targetTouches[0].pageY - event.targetTouches[1].pageY));

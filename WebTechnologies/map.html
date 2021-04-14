@@ -4129,6 +4129,264 @@ See also:
   More information: https://infinite.red/ignite.
 
 </pre>
+
+<pre zoom labels="redux,react," id="redux_summary">
+<span xsmall>Redux summary</span>
+BºOfficial redux templateº:
+@[https://github.com/reduxjs/cra-template-redux]
+  - already configured with a standard Redux application structure, 
+    using Redux Toolkit to create the Redux store and logic, and
+    React-Redux to connect together the Redux store and the React components.
+  
+  - Quick install:
+  $º$ npx create-react-app redux-essentials-example --template redux º
+
+
+RºWARNº:... if you’re just learning React, don’t make Redux your 
+        first choice.
+
+@[https://redux.js.org/tutorials/essentials/part-1-overview-concepts]
+
+- Redux: pattern + library for managing and updating application state, 
+  using events called "actions".
+- centralized store for (global) state that needs to be used across your entire 
+  application, with rules ensuring that the state can only be updated
+  in a predictable fashion.
+
+- Redux Toolkit: recommended approach for writing Redux logic.
+- Redux DevTools Extension: allows for things like "time-travel debugging".
+
+BºCONCEPTSº
+  -ºExtracting state Management from components:º
+    function Counter() {                        // ← initial React component.  
+      const [counter, setCounter] = useState(0) // ← non-redux state management. 
+                                                     redux-way: extract (shared/global) state 
+                                                     from the components to "Store".
+      ...
+      return ( ˂div˃...  ˂/div˃)
+    }
+    BºBEST PATTERNº: Keep local (non-global/shared) component
+                     state inside component (vs Redux state)
+
+  - Redux expects that all state updates are done immutably.
+
+  -ºActionsº: plain JS object representing an application event.
+    {
+       "type"    : "domain/eventName", ← only required field in action
+       "payload" : ...                 ← Optional. payload key name is a convention.
+    }
+
+  -ºReducer functionsº, sort of event listener
+    (the name comes from its similarity with Array.reduce() )
+    - input : (current state, action object)
+    - logic : decides how to update the state based ONLY on input state and action
+              (or ignore given an input action of no interest)
+              - next rules must be respected:
+                - not allowed to modify the existing state only clone-and-edit new version.
+                - side efffects (asynchronous logic, random values,...) NOT allowed.
+    - output: returns new state
+    
+    const initialState = { value: 0 }
+    
+    function counterReducer(state = initialState, action) {
+      if (action.type !== 'counter/increment') { return state; }
+      return { value: state.value + 1 }
+    }
+    
+
+  -ºStoreº: Global app state (state "moved" from component states)
+    import { configureStore } from '@reduxjs/toolkit'
+
+    const getIncrementAction = () =˃ {            ← Utilityºaction creatorº. 
+      return { type: 'counter/increment' }          (avoid typing/mistakes)
+    }
+
+    const store = configureStore(                 ← Store builder
+                      { reducer: counterReducer } ← 1+ reducer/s linked to new store 
+                  )                                 key names will define keys in final state value.
+                                                    This code means that we want to have a state.reducder
+                                                    section in the Redux state object, and that we want the
+                                                    counterReducer function to be in charge of deciding if 
+                                                    and how to update the state.counter
+
+                                                    A real app using state slides could look like:
+                                                    import reducer1 from '../features/users/usersSlice'
+                                                    ...
+                                                    export default configureStore({
+                                                      reducer: {
+                                                        users   : reducer1,
+                                                        posts   : reducer2,
+                                                        comments: reducer3 
+                                                      }
+                                                    })
+                                                  
+    ...
+    store.getState()                              ← get initial state ({value: 0})
+    store.dispatch( getIncrementAction() )        ← -º.dispatch()º method is the only way allowed 
+                                                      to update the state
+
+    store.getState()                              ← get new state  ({value: 1})
+
+
+  -ºSelectors functionsº:
+    - "utility" functions to extract specific information from a store state. Ex:
+    const selectCounterValue = state =˃ state.obj1.obj2.value
+
+  -ºSlicesº:
+    - collection of reducer logic and actions for a single app feature 
+      (typically defined in a single file).
+    - name comes from splitting up root-state into multiple "slices".
+    - Example from @[https://github.com/reduxjs/cra-template-redux]
+      (features/counter/counterSlice.js)
+      import { createSlice } from '@reduxjs/toolkit'
+      
+      export const counterSlice = createSlice({
+        name: 'counter',
+        initialState: { value: 0 },
+        reducers: { ←·················· UI will dispatch matching action types:
+          increment: state =˃ {          {type: "counter/increment"}, {type: "counter/increment"}, ...
+            state.value += 1 ←········· RºWARNº: There is some magic here. Code looks to be "mutating" input state.
+          },                                     "immer" library detects changes and produces new immutable state
+          decrement: state =˃ {                   (middleware automatically added in configureStore)
+            state.value -= 1 ←··················  - Writing immutable update logic by hand is hard, and 
+          incrementByAmount: (state, action) =˃ { Rºaccidentally mutating state in reducers is the single º
+            state.value += action.payload         Rºmost common mistake Redux users make.º
+          }
+        }
+      })
+      export const { increment, decrement, incrementByAmount } = counterSlice.actions
+
+- Example app: counter allowing to add or subtract from a number as we click buttons.
+@[https://redux.js.org/tutorials/essentials/part-2-app-structure]
+
+ ºFile layout:º
+  /src
+    index.js             ← the starting point for the app
+    App.js               ← the top-level React component
+    /app
+      store.js           ← creates the Redux store instance
+                           - store setup can be customized with different 
+                             kinds of plugins ("middleware" and "enhancers").
+    /features
+      /counter
+        Counter.js       ← a React component that shows the UI for the counter feature
+        counterSlice.js  ← exports reducer function with the the Redux logic for "counter" feature
+
+  -BºOur application might be made up of many different features, and eachº
+   Bºof those features might have its own reducer function.º
+
+  - createSlice takes care of non-logic centric stuff like
+    generation of action type strings/creator functions/objects)
+    by just defining an slice name, writing an object with reducer functions.
+    (initial state is also needed to init properly).
+     
+    - slice_name +"." reducer_key_name → {type: "slice_name/reducer_key_name"}
+      Ex: "counter" + "increment"          → {type: "counter/increment"}
+    - reducer_function_name →  action_creator_name 
+      Ex: 
+      createSlice({             
+        reducers: { 
+          increment: state =˃ ... →  counterSlice.actions.increment()
+        }
+        ...
+      })
+
+-ºThunksº
+ - specific kind of Redux function tuple that can contain asynchronous logic. 
+   - PRE-SETUP: add redux-thunk middleware (a type of Redux plugin) at store creation time.
+                (automatically added by configureStore).
+   - inside    thunk function: takes dispatch and getState as arguments
+   - outside creator function: creates and returns the thunk function
+   Ex 1: (features/counter/counterSlice.js)
+  
+   export const incrementAsync            // thunk can be dispatched like regular action: 
+      = amount =˃ dispatch =˃ {           `dispatch(incrementAsync(10))`.
+     //           └───────────┴················ inside  function
+     // └───────┴······························ outside function
+     setTimeout(() =˃ {                    
+       dispatch(
+         incrementByAmount(amount)         ← Utility action creator 
+       )                                     returning { type: 'XXX/YYY', payload :... }
+     }, 1000 /* millisecs */)
+   }
+
+   Ex 2: AJAX call: (features/counter/counterSlice.js)
+   const fetchUserById = (userId) =˃ {       // ← outside "thunk creator" function
+     return async (dispatch, getState) =˃ {  // ←  inside "thunk function"
+       try {
+         const user = await userAPI.fetchById(userId)     // ← make an async call in the thunk
+         dispatch(userLoaded(user))                       // ← dispatch an action when we get the response back
+       } catch (err) {
+         ...
+       }
+     }
+   }
+  
+  The React Counter Component#
+  
+  features/counter/Counter.js
+  import React, { useState } from 'react'
+  import { useSelector, useDispatch } from 'react-redux'
+  import { decrement, increment, ... } from './counterSlice'
+  import styles from './Counter.module.css'
+  
+  export function Counter() {
+    const count = useSelector(selectCount) ←   RºWARN:  components are NOT allowed to import/access the store,º
+                              └────┬────┘               use the useSelector(...) injected Redux hook. º*1º
+    const dispatch = usedispatch()    └─················selectCount is defined in features/counter/counterSlice.js:
+    const [incrementAmount, setIncrementAmount]         const selectCount = (state) =˃ { state.counter.value }   
+       = useState('2')                                  (It could also be defined inline)                            
+    return ( ... {count}                              BºAt every dispatched action (store updated),    º
+                                                      Bºthe useSelector hook  will re-run the selector º
+      ˂button                                         Bºand if value has changed, trigger re-rendering.º
+        onClick={() =˃ dispatch(increment())} ˃...    ← useDispatch (const dispatch = useDispatch()) is just 
+      ˂button                                           another Redux hook (º*1º) allowing to dispatch to the
+        onClick={() =˃ dispatch(decrement())} ˃...    ← actual (otherwise hidden to component) Redux store      
+    )                                                 BºNOTE:º components don't care whether we're dispatching a
+  }                                                     sync or async (Thunk) methods.
+                                                        They only react to input events by dispatching events.  
+
+
+º*1º: Q: how do hooks know what Redux store instance to talk to?
+      A: At ºindex.js:º
+         ...
+         import App from './App'
+         import store from './app/store'
+         import { Provider } from 'react-redux'
+         
+         ReactDOM.render(
+           ˂Providerºstore={store}º˃      ←RºDON'T FORGET:º It allows to pass down/link/inject
+             ˂App /˃                         the Redux store to redux hooks in components.
+           ˂/Provider˃,                       
+           document.getElementById('root')
+         )
+
+BºAdvanced Redux use-cases:º
+@[https://medium.com/@dan_abramov/you-might-not-need-redux-be46360cf367]
+  - Persist state to a local storage and then boot up from it, out of the box.
+  - Pre-fill state on the server, send it to the client in HTML, and 
+    boot up from it, out of the box.
+  - Serialize user actions and attach them, together with a state 
+    snapshot, to automated bug reports, so that the product developers 
+    can replay them to reproduce the errors.
+  - Pass action objects over the network to implement collaborative 
+    environments without dramatic changes to how the code is written.
+  - Maintain an undo history or implement optimistic mutations 
+    without dramatic changes to how the code is written.
+  - Travel between the state history in development, and re-evaluate 
+    the current state from the action history when the code changes, a la 
+    TDD.
+  - Provide full inspection and control capabilities to the 
+    development tooling so that product developers can build custom tools 
+    for their apps.
+    Provide alternative UIs while reusing most of the business logic.
+</pre>
+
+<pre zoom labels="redux,react,devops,TODO">
+<span xsmall>React+Flux Docker Dev Workflow</span>
+@[https://medium.com/@tribou/react-and-flux-a-docker-development-workflow-469957f3bbf0]
+</pre>
+
 </div>
 <hr/>
 <div group>
@@ -5462,34 +5720,7 @@ https://www.infoq.com/news/2021/02/seo-structured-data-rich-snippet/
 https://www.linkedin.com/learning/vanilla-javascript-animations/welcome
 </pre>
 
-<pre zoom labels="redux,TODO">
-<span xsmall>Redux</span>
-@[https://medium.com/@dan_abramov/you-might-not-need-redux-be46360cf367]
-- Use case scenarios for Redux:
-  - Persist state to a local storage and then boot up from it, out of 
-the box.
-  - Pre-fill state on the server, send it to the client in HTML, and 
-boot up from it, out of the box.
-  - Serialize user actions and attach them, together with a state 
-snapshot, to automated bug reports, so that the product developers 
-can replay them to reproduce the errors.
-  - Pass action objects over the network to implement collaborative 
-environments without dramatic changes to how the code is written.
-  - Maintain an undo history or implement optimistic mutations 
-without dramatic changes to how the code is written.
-  - Travel between the state history in development, and re-evaluate 
-the current state from the action history when the code changes, a la 
-TDD.
-  - Provide full inspection and control capabilities to the 
-development tooling so that product developers can build custom tools 
-for their apps.
-    Provide alternative UIs while reusing most of the business logic.
 
-RºWARNº:... if you’re just learning React, don’t make Redux your first choice.
-
-<span xsmall>React+Flux Docker Dev Workflow</span>
-@[https://medium.com/@tribou/react-and-flux-a-docker-development-workflow-469957f3bbf0]
-</pre>
 
 <pre zoom labels="TODO">
 <span xsmall></span>
@@ -5563,10 +5794,8 @@ SSL/TLS-capable intercepting proxy for HTTP/1, HTTP/2, and WebSockets.
 Compile a Node.js application into a single file. Supports 
 TypeScript, binary addons and dynamic requires. More information: 
 https://github.com/vercel/ncc.
-
-
 </pre>
-
-
+############################
+https://github.com/getify/You-Dont-Know-JS
 -->
 

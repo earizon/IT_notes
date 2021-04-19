@@ -11353,38 +11353,70 @@ BºS3 STORAGE CLASSESº:
 </div>
 <div groupv>
 <span title>Compute: EC2 VMs</span>
-<pre zoom labels="aws,computing,iaas,ec2,101,price">
+<pre zoom labels="aws,computing,ec2,iaas,network,101,troubleshooting,price,security,performance,monitoring,automation,TODO" id="ec2_summary">
+<span xsmall>EC2</span>
 <!-- @ma page 92: http://127.0.0.1:8000/Cloud/AWS-Certified-Solutions-Architect-Official-Study-Guide.pdf.pdf -->
-- VM classified in familes with similar ratio of vCPUs/RAM.
-  - For each family vCPU/RAM/price scales linearly. [price]
-  - Families:
-    c4 Compute optimized:
-    r3 Memory optimized.
-    i2 Storage optimized.
-    g2 GPU-based instances.
-    "future ones"
 
-  - Optionalyºenhanced networkingº is available for many instances types
-    (c3,c4,d2,i2,m4,r3) with higher bandwidth, lower latency/jitter.
+- VM classified in familes with similar ratio of vCPUs/RAM.
+  - For each family vCPU/RAM/price scales linearly. 
+  - 't2.micro' is free tier.                                        [price]
+      ^2 indicates generation. It changes over time.
+     RºWARNº: T2 / T3 unlimited provides *unlimited burst* but extra pays
+              if going over credit balance.
+  -RºWARNº: $0.01/GB for transfer among availability zones          [price]
+
+  - compute main families types:
+  | Type | Mnemonic   | Category           | Description                                   | Use-cases |
+  | ---- | --------   | --------           | -----------                                   | --------- |
+  | M    | (M)ain/    | General purpose    | Balance of compute, memory, network resources | General, mid-size databases,
+           (M)edium                                                                        | web apps |
+  | ---- | --------   | --------           | -----------                                   | --------- |
+  | C    | (C)ompute  |  Compute optimized | Advanced CPUs                                 | Modeling, analytics, databases |
+  | ---- | --------   | --------           | -----------                                   | --------- |
+  | H    | (H)DD      | Storage optimized  | Local HDD storage                             | Map reduce |
+  | ---- | --------   | --------           | -----------                                   | --------- |
+  | R    | (R)am      | Memory Optimized   | More ram per $                                | In-memory caching |
+  | ---- | --------   | --------           | -----------                                   | --------- |
+  | X    | (X)treme   | Memory Optimized   | Terabytes of RAM and SSD                      | In-memory databases |
+  | ---- | --------   | --------           | -----------                                   | --------- |
+  | I    | (I)ops     | IO optimized       | Local SSD storage, High IOPS                  | NoSQL databases |
+  | ---- | --------   | --------           | -----------                                   | --------- |
+  | G    | (G)PU      | GPU Graphics       | GPUs with video encoders                      | 3D rendering |
+  | ---- | --------   | --------           | -----------                                   | --------- |
+  | P    | (P)ictures | GPU Compute        | GPUs with tensor cores                        | Machine learning |
+  | ---- | --------   | --------           | -----------                                   | --------- |
+  | F    | (F)ield    | Accelerated        | Field Programmable Gate Array,                | Genomics, financial analytics |
+                      | Computing          |  custom hardware accelerations                |
+  | ---- | --------   | --------           | -----------                                   | --------- |
+  | T    | (T)iny     | Burstable, Shared  | Web servers                                   |               [price]
+           (T)urbo    | CPUs, lowest cost  |                                               |
+
    RºContrainº: Only if VM launched in an Amazon VPC.
 
-
-<span xsmall TODO>VM images types</span>
+- BºVM images typesº: [TODO]
 @[https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/virtualization_types.html]
 
-Amazon VM images types:
-- AKI: Amazon Kernel Image
-- AMI: Amazon Machine Image: OS + soft + config.
+BºAmazon Machine Image type (AMI)º:
+- AMI: OS + soft + config. include:
   - Published by AWS (Note: Initial user is "ec2-user" for Linux instances)
   - AWS market place
   - Generated from Existing Instances
   - Uploaded+imported VM image (format: raw, VHD, VMDK, OVA).
-- ARI: Amazon Ramdisk Image
+[TODO] Amazon Kernel Image (AKI) and ARI Amazon Ramdisk Image (ARI)
 
-- Instance IP change on reboot.ºElastic IPº must be reserved independently
-  and then associated for a fixed IP. (Elas.IP lifetime independent of VM).
+- Instance IP and DNS name Rºchange on rebootº. 
+  ºElastic IPº (lifetime independent of VM) must be reserved  [network][troubleshooting]
+               and assigned to the instance.
+  ºElastic IPº is free of charge.                             [price][network]
+   .
 
-BºSecurity Groupsº: Virtual firewalls. Capabilites depends:
+- TerminateRºdeletes the instance and its root storageº. Use stop to be able to reboot.
+- EBS backed instances can be stopped (vs terminated) and restarted without data loss.
+- Stopped instances are not charged, but associated EBS volumes are [price]
+
+
+
+BºSecurity Groupsº: Virtual firewalls. Capabilites depends:            [security]
                            --------------------------------
           Sec.Group Type \ Capabilites
   ---------------------------------------------------------
@@ -11394,13 +11426,14 @@ BºSecurity Groupsº: Virtual firewalls. Capabilites depends:
   ---------------------------------------------------------
 
 -ºhttp://169.254.169.254/latest/meta-data/º allow running VM to collect data
-  about itself (associated security groups, instance ID/type, AMI).
--ºCloudWatchº can be used to monitor/alert about EC2 instances.
--ºTermination protectionº can be enabled to avoid accidental VM termination.
+  about itself (associated security groups, instance ID/type, AMI). Ex:
+  Get IAM credentials: `http://169.254.169.254/latest/meta-data/iam/security-credentials/$iam_role_name
+-ºCloudWatchº can be used to monitor/alert about EC2 instances.        [monitoring]
+-ºTermination protectionº: enable to avoid accidental VM termination.  [troubleshooting]
 
 OºPricing optionsº
-  - On-Demand  No upfront cost
-  - Reserved   Up to 75% cheaper [price]
+  - On-Demand  No upfront cost, 
+  - Reserved   Up to 75% cheaper if used frequently for long time      [price]
   - Spot       Cheapest ones for non-critical or tolerant to interruption.
                Instance deallocated when another customer pays more for it.
 
@@ -11412,45 +11445,92 @@ BºTenancy Optionsº
 
 <!-- @ma page 106: http://127.0.0.1:8000/Cloud/AWS-Certified-Solutions-Architect-Official-Study-Guide.pdf.pdf -->
 BºPlacement Groupº
-<span xsmall>Vagrant automation</span>
-@[https://vocon-it.com/2016/04/03/aws-automation-using-vagrant-part-1-getting-started-with-aws/]
-
-- Per default, AWS is assigning a dynamic private and a dynamic public IP address.
- ºpublic IP address and DNS name will change every time you restart the instanceº
-- Deleting an instance is done by "Terminating" it.
-  (it will still be visible in the instance dashboard as "Terminated" for a "long time")
+  - Place instance on same placement group (same hardware) for High bandwidth I/O [networking][performance]
+  - When creating a placement group, we must switch among two strategies:
+    - Cluster: place instances into low-latency group in a single Availability Zone
+               - Same rack → RºIf the rack fails, all instances fails at the same time.º
+    - Spread : place instances across underlying hardware (max 7 instances per group per AZ)
+               - Ensures all instances are located in different hardware.
+               - Can span across multi AZ.
+               - Minimizes failure risks.
+    - Partition: Spreads instances across many different partitions 
+                 (which rely on different sets of racks) within an AZ.
+                 - Use cases: HDFS, HBase, Cassandra, Kafka
+  - Use alsoºEnhanced networkingºto provide high-performance in a single root     [networking][performance]
+             I/O virtualization (SR-IOV) and lower latency/jitter in supported
+             instances (C4,C3,D2,I2,I3,H1,C5,M4,X1,M5,R3,...) 
+             enhanced networking is free of charge                                [price]
+             -RºLimitationsº:
+               - Instances must be launched in a VPC
+               - Instances must be launched from a HVM AMI
+             - Elastic Network Adapter: High performance
+             - Elastic Fabric Adapter: High Performance Computing (Linux only)
 
 
 Ex: Install Ubuntu from EC2 image repository
   - Enter EC2 Console then "Launch Instance".
-    - Choose "Ubuntu HVM version" (looks to have better performance)
-    Rºonly t1.micro is available for "Free tier"º
-  - Review setup and "Launch"
+  · - Choose "Ubuntu HVM version" (looks to have better performance)
+  · Rºonly t1.micro is available for "Free tier"º
+  · - Review setup and "Launch"
+  └ → Adapt Security Settings
+      · - click on "Edit security groups"
+      ·   - From the drop down list of the Source, select "My IP",
+      ·     then press "Review and Launch".
+      · - review instance data again and "Launch"
+      └→ Create and download ºSSH Key Pairº
+         · - call the key "AWS_SSH_key" and download the generated PEM file
+         └ → Check Instance Status
+             - go to instnce and check that "Status Checks" are being performed.
+             - Public IP and DNS name (FQDN) will be displayed too.
 
-  - Adapt Security Settings
-    - click on "Edit security groups"
-      - From the drop down list of the Source, select "My IP",
-        then press "Review and Launch".
-    - review instance data again and "Launch"
+- virtualization types:
+  - Hardware Virtual Machine (HVM), prefered, take advantage of HW extensions.   [performance]
+  - Paravirtual (PV)
 
-  - Create and download ºSSH Key Pairº
-    - call the key "AWS_SSH_key" and download the generated PEM file
+BºMonitoring Instancesº                                                          [monitoring]
+  - Use CloudWatch: collect logs, monitor logs, set alarms.                      [troubleshooting]
+  - basic monitoring by default free of cost, capturing data every 5 minutes     [price]
+    Up to 2 weeks of history recorded.
+  - detailed monitoring, every minute. Has non free cost
+  - alarms: receive notifications or automated actions when crossing a threshold.[automatition]
+            alarms can be simulated with AWS cli.
 
-  - Check Instance Status
-    - After clicking on the Instance Link, we will see that
-      the instance is running and the "Status Checks" are being performed.
-    - Public IP and DNS name (FQDN) will be displayed too.
-      (remember that they change every time the image is started,
-       a so-called Elastic IP -free of charge- needs to be rented
-       from AWS to avoid this)
+BºBackup and Recoveryº
+  - Regularly: create an AMI from EC2 running instance as template to quickly restory custom config.
+  - Regularly: back up EBS volumesºusing snapshots in Amazon S3.º
+  - deploy critical components across multiple Availability Zones (AZs).
+  - Attach manually an Elastic IP address or network interface to an alternate EC2 instance for recovery purposes
+  - Regularly: test the process of recovering your instances from volume fail.
+  - incremental backups is done through "Snapshots".
 
-ºSTOP the Instance on AWSº
-- Select the instance, choose Actions→Instance State→Stop.
+BºElastic Network Interface (ENI)º
+  - 1 default ENI per instance with:
+    - one primary private IPv4 (optionally 2+)
+    - one ºElastic IPº (static IP) per private IPv4 (optional)
+    - one public IPv4
+    - one or more IPv6
+    - one or more security group
+    - a mac address
+    - source destination check flag
+    - description of ENI
 
-ºDESTROY the Instance on AWSº
-- Select the instance, choose Actions→Instance State→Terminate.
+- An instance may immediately terminate if:                      [troubleshooting]
+  - EBS volume limit reached or snapshot is corrupt
+  - Missing permissions to access the KMS key for EBS volume decryption
+
+- TODO: Hibernating
+  
+BºEC2 User Dataº                                                 [automation][vagrant]
+- Simple alternative to Vagrant.
+- Enables to bootstrap instances using EC2 data script.
+  - ºbootstrappingº means launching commands when a machine starts
+  → Create EC2 → Configure Instance → Advanced Details → User data 
+    → Paste commands:
+      #!/bin/bash
+      ...
 </pre>
-<pre zoom labels="aws,TODO,IaaS,devops">
+
+<pre zoom labels="aws,IaaS,devops,TODO">
 <span xsmall>Vagrant</span>
 @[https://vocon-it.com/2016/04/01/aws-automation-using-vagrant-a-hello-world-example/]
 

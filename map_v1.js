@@ -188,9 +188,9 @@ const ZW = { /* ZOOM Window */
     ZW.dom.style.display="block"
     ZW.dom.style.opacity="0"
     setTimeout(() => { ZW.dom.style.opacity="1" } , 300)
-    ZW.dom.scrollTop = 0
     setTimeout(function() {
       zoomHTML.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      document.getElementById("zoomDiv").scrollTop = 0
     }, 1)
     return false;
   },

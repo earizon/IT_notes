@@ -389,8 +389,8 @@ const IC = { // Input Control
    // previewDom.style["max-width"] = "96%"
       previewDom.innerHTML =
          "<div id='previewTop'>" +
-         "<span id='previewHints'> (double click for details)</span>" +
-         "<span id='closePreview'>X</span><br/>" +
+         "<span id='previewHints'> (✅ double click for details)</span>" +
+         "<span id='closePreview'>❌</span><br/>" +
          "</div>" +
          e.outerHTML
       // TODO:(qa) closePreview listener never released. Done automatically ?

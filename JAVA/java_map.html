@@ -4,15 +4,18 @@
    <meta name="keywords" content="101,cheatsheet,qa,mindmap,async,reactive,cloud,bdd,cache,cluster,comparative,concurrency,containers,data structures,debugging,devops,diagram,dynamic instrumentation,error control,json,junit,jvm,k8s,low code,maven,monitoring,network,performance,persistence,profiling,react rx,repl,security,sql,troubleshooting,TLS/X.509,vertx">
    <title>JAVA map(v1.0)</title>
 <head>
-<script type=module>import('/IT_notes/map_v1.js')</script>
+<script type=module src=/IT_notes/map_v1.js></script>
 <link rel='stylesheet' type='text/css' href='/IT_notes/map_v1.css' />
 </head>
 
 <body>
     <br/>
     <div style="text-align:center; text-size: 1.5em; padding:0.5rem;">
-    ⏿ You can also be interested in the <a target="_new" href="../WebTechnologies/map.html">Web Technologies</a> and 
-    <a target="_new" href="../General/cryptography_map.html">Cryptography</a> maps.☜<br/>
+    ⏿ You can also be interested in the <a target="_new" href="../WebTechnologies/map.html">Web Technologies</a>, 
+    <a target="_new" href="../General/cryptography_map.html">Cryptography</a> and
+    <a target="_new" href="../Architecture/architecture_map.html?topics=enterprise_patterns">Enterprise Patterns</a> maps.☜
+    <br/>
+    
     </div>
 <div groupv>
 <pre zoom labels="resource,TODO">
@@ -446,6 +449,82 @@ New major features:
   AppDynamics, Dynatrace, ...
 
 </pre>
+
+<pre zoom labels="JVM,profiling,real-time," id="JVM_safepoints">
+<span xsmall>JVM Safepoints</span>
+- @[http://psy-lob-saw.blogspot.com/2015/12/safepoints.html]    [TODO]
+   - Definition: Mutator threads: threads which manipulate the JVM heap.
+     all Java Threads are mutators, Non-Java (native?) threads may also be
+     regarded as mutators when they call into JVM APIs which interact with the heap.
+   - Safepoint:
+     - range of execution where the state of the executing thread
+       is well described since thread is NOT interacting with the heap:
+     - used to put mutator threads on hold while the JVM 'fixes stuff up'
+     - particularly useful to let JVM examine|change the heap (GC, ...)
+       (no objects still alive and referenced from the stack)
+   - thread is at safepoints when: 
+     - thread de-scheduling events: thread blocked on lock/synch.lock, waiting on a monitor, parked,
+       or blocked on blocking-IO. 
+     - thread is executing JNI code.
+   - thread is NOT at safepoints when: 
+     - executing bytecode (maybe, but not for sure).
+     - thread interrupted (by the OS) while not at a safepoint.
+   - JVM cannot force any thread into a safepoint state but ...
+     JVM can stop threads from leaving a safepoint state.
+     Q: How then bring ALL threads into a safepoint:
+     A: Java threads poll a 'safepoint flag' (global or thread level) at 'reasonable' intervals
+        and transition into a safepoint state (thread is blocked at a safepoint) when active. 
+        Q: how to avoid waste time checking if C1/C2 (client/server) JIT compilers need to stop?
+           how to keep safepoint polls to a minimum. 
+        A: considerations combined lead to the following locations for safepoint polls:
+           - Between any 2 bytecodes while running in the interpreter (effectively)
+           - On 'non-counted' loop back edge in C1/C2 compiled code
+           - Method entry (Zing,...) or exit (OpenJDK,...) in C1/C2 compiled code.
+    Ex:
+    public class WhenWillItExit {
+      public static void main(String[] argc)
+        throws InterruptedException {
+        const UP = Integer.MAX_VALUE;
+        final Thread t = new Thread(() -˃ {
+          long l = 0;
+          for (int i = 0; i ˂ UP ; i++) {     ┐ ºResult:º
+            for (int j = 0; j ˂ UP ; j++) {   │ 
+              if ((j ⅋ 1) == 1) l++;          ├ long-type loops: 'uncounted' code.   ºsafepoints injected at each loop.º
+            }                                 │  int-type loops:   'counted' code.ºNo safepoints injected.º                                       
+          }                                   ┘                  - Gº(Much) Better performanceº  BUT ...
+          System.out.println("How Odd:" + l);                      Rºother threads forced to suspend at theirº
+        });                                                        Rºnext safepoint operation.º
+        t.setDaemon(true);                    ┐
+        t.start();                            ├ ºExpected:ºexit in ~5 seconds. 
+        Thread.sleep(5000);                   ┘ ºResult  :ºno safepoints means threads, JMX connections, ... 
+      }                                                    will have to expect to daemon thread to exits to 
+    }                                                      be able to reach a global safepoint. Use -Xint to 
+                                                           disable C1/C2 compilation or replace int → long 
+                                                           in loop index to respect the 5 second behaviour.
+   
+    (See original source for many interesing details on safepoint tunning) 
+
+  BºSUMMARY:º
+     - Safepoint polls are dispersed at fairly arbitrary points and depending
+       on execution mode, mostly at uncounted loop back edge or method return/entry.
+     - Bringing the JVM to aºGLOBAL safepointºis high cost
+   ☞ - For real-time applications,Bºit's critical to know about safepointsº
+       avoiding 'counted' code.
+     -XX:+PrintApplicationStoppedTime will log contained safepoint pauses.
+
+BºProblems with (most) Sampling Profilersº:
+- @[http://psy-lob-saw.blogspot.com/2016/02/why-most-sampling-java-profilers-are.html]
+  - A large number of samples needed to get statistically significant results.
+  - profiler should sample all points in a program run with equal probability
+  - Generic profilers rely on the JVMTI spec:
+    - JVMTI offers Rºonly safepoint sampling stack trace collection optionsº:
+      - Rºonly the safepoint polls in the running code are visibleº skipping optimizedº
+        Rº(counted-code) for-loops!!!º
+      - Rºsamples are biased towards the next available safepoint poll locationº
+      - A sample profiler can blame a "cheap method" 9 levels down the stack when the
+        real culprit is the topmost method loop.
+</pre>
+ 
 
 <pre zoom labels="jvm,micrometer,monitoring,troubleshooting,low_code,TODO" id="micrometer_summry">
 <span xsmall>Micrometer</span> <!-- @ma -->
@@ -2555,7 +2634,7 @@ BºThis is necessary for IPv4+IPv6 and for services hosted in redundant data cen
 
 <div groupv>
 <span title>Debug&amp;Profile</span>
-<pre zoom labels="performance,troubleshooting,tool,TODO">
+<pre zoom labels="JVM,performance,troubleshooting,tool,TODO">
 <span xsmall>jcmd</span>
 man 1 jcmd
 
@@ -2627,85 +2706,78 @@ launch the JVM.
 
 </pre>
 
-<pre zoom labels="performance,troubleshooting,tool,TODO">
-<span TODO xsmall>JVisualVM (standard on the JDK)</span>
-@[https://visualvm.github.io/]
-- displays memory usage and other useful things:
-- Visual tool integrating commandline JDK tools and
-  lightweight profiling capabilities.
-- RºWARN: Deprecated by Flight Recorder?º
-  @[https://stackoverflow.com/questions/40272599/do-java-mission-control-and-flight-recorder-deliver-same-functionality-as-visual]
-  Flight Recorder works both for development and production
-  while JVisualVM has performance hits
 
-<span TODO xsmall>Deadlock analysis</span>
-@[https://avaldes.com/java-thread-deadlock-example-and-thread-dump-analysis-using-visualvm/]
-</pre>
-
-</pre>
-<pre zoom labels="tool,performance,troubleshooting,comparative,TODO">
+<pre zoom labels="101,profiling,troubleshooting,performance,comparative">
 <span xsmall bgorange>Flight Recorder</span>
-https://www.youtube.com/watch?v=azshjd5Vsv0
-
+@[https://www.youtube.com/watch?v=azshjd5Vsv0]
+- Free of use starting with Java 11+ and backported to OpenJDK 8u272+
+  @[https://www.infoq.com/news/2019/11/jfr-openjdk-8/]
+- (JEP 328)
 - created originally in 1998 by students from the Royal 
   Institute of Technology in Stockhoml as part of the JRockit JVM 
   distribution by Appeal Virtual Machines.
 - built directly into the JDK, it Bºcan monitor performance accuratelyº. 
   with about only Bº2% overhead(production friendly)º. 
-  ┌─────────────────────┐
-  │ JRE      ┌────────┐ │                      Mission Control (Visual Console) 
-  │          │ JFR    ----→ myRecording.jfr  → |JMC| (it can also connect
-  │          │ engine │ │   - compact log of          directly to running JVM)
-  │          └────────┘ │   OºJVM eventsº
-  └─^───────────────────┘
+- accurate metrics to avoid mislead readers via safe points or sampling.      
+  avoiding common problems (@[#JVM_safepoints]) with sampling profilers.      [comparative]
+  ┌────────────────┐
+  │ JRE ┌────────┐ │                       
+  │     │ JFR    ←--- Output profiling to 'myRecording.jfr'
+  │     │ engine │ │  - compact log of OºJVM eventsº: ~100.000 events with many stack traces: ~2-4MB
+  │     └────────┘ │  - UseºJava Mission Control (JMC)º to read events.
+  └─^──────────────┘
   ┌─┴───────────────────────────────────────
-  $ java ... Oº-XX:StartFlightRecordingº ...
+  $ java ... Oº-XX:StartFlightRecordingº ... ← Alternatively launch JFR from JMC Visual IDE
 
+  - JFR default metrics focus in JVM's  raw operations:
+    (vs high-level metrics like request/response times)
+    -ºadvanced garbage collection analysisº:
+      Include garbage collection statistics, etails on what garbage
+      was collected and who threw it away.
+      allows developers to improve performance by:                   [performance]
+       - identifying what to improve
+       - realize when tunning GC is the wrong solution.
 
-  - As a result the metrics provided by default in JFR are aimed more 
-    towards the JVM's raw operations, vs high-level metrics like 
-    request/response times like:
-    - advanced garbage collection analysis:
-       Unlike common tools report garbage collection statistics,
-       JFR details on what garbage was collected and who threw it away.
-       allowing developers to improve performance by:
-       - identifying what to improve,
-       - realize when tunning garbage collection is the wrong solution.
+BºJava Mission Control (JMC):º
+- @[http://www.oracle.com/technetwork/java/javaseproducts/mission-control/java-mission-control-1998576.html]
+- UI to analyze data collected by Flight Recorder and head dumps ºbuilt on top of Eclipse IDE.º 
+- overview of all locally running Java processes, statistics,
+  heap dumps, flame view (ºshow the aggregate of stack traces for the selected eventsº), 
+  
+BºWHAT'S NEWº
+- JMC 8+ RoadMap:
+  - New allocation event (introduced in JDK 16).
+  - Improve Flame Graph and Graph Views for memory ussage (vs CPU ussage).
 
-http://www.oracle.com/technetwork/java/javaseproducts/mission-control/java-mission-control-1998576.html
-https://www.infoq.com/news/2018/06/open-source-jmc
-- Flight Recorder is an automated black box recorder that is already
-  present inside the JVM and acts to record information.
-  - Mission Control is the visual console, run on a different system
-  that enables operators to control the black box by evaluating metrics
-  or creating performance snapshots.
-- Unlike external performance monitoring systems, JFR is built directly
-  into the JDK and can monitor performance in an accurate manner that
-  does not mislead readers via safe points or sampling. The result of
-  JFR is accurate performance diagnostics where the act of measuring
-  incurs only about a 2% overhead. These diagnostics provide developers
-  and operators with the ability to gather actual performance data
-  instead of making guesses or pointing fingers.
-  - @[http://psy-lob-saw.blogspot.com/2015/12/safepoints.html]
-  - @[http://psy-lob-saw.blogspot.com/2016/02/why-most-sampling-java-profilers-are.html]
-- While many profilers focus on high-level metrics, such as
-  request/response load times, the concept of a "web request" does
-  not exist down at the JDK’s layer. As a result the metrics provided
-  by default in JFR are aimed more towards the JVM's raw operations.
-  One feature in particular is advanced garbage collection analysis.
-  Unlike common tools that simply report garbage collection statistics,
-  the analysis capabilities within JFR provide details on what garbage
-  was collected and who threw it away. This feature drives two conclusions
-  that improve performance:
-  - developers can identify specifically what to improve,
-  - realize other when tuning garbage collection is the wrong solution.
-
-- Free of use starting with Java 11+
-- Backported to OpenJDK 8
-  @[https://www.infoq.com/news/2019/11/jfr-openjdk-8/]
-- (JEP 328)
-
-
+- JMC 8: (2021-04)
+@[https://www.infoq.com/news/2021/04/jdk-mission-control-8-released/]
+  - new graphs and heap dump analysis by default.
+  - Can also be used as a library for parsing/processing .jfr files.
+  -
+  - JMX Console can be used to continuously monitor an environment,
+    interact with MBeans, invoke jcmd diagnostics commands remotely,...
+  
+  - Flight Recording used to create a recording
+  - Dump Heap        used to create a heap dump
+  
+  - low overhead in production environments:
+  -ºJOverflow:ºplugin with advanced analysis of heap dumps, included by default.
+               converted to the Standard Widget Toolkit (SWT). 
+               It also offers insights and optimizing hints to developers.
+               like Hierarchical Treemaps, may be used to improve the heap usage of the application.
+               - Ussage:
+                 create and open a heap dump in the JMC application.
+  
+  - New Graph View:ºdirected graphºwhere each node contains an individual method.
+    NOTE: WebKit required ($º# apt install libwebkit2gtk-4.0-devº), doesn't work (yet) on Windows. 
+  
+  - first release of ºJMC Agentº: 
+    - Allows JFR events to be added declaratively to any codebase.
+    - Events can be used to capture (fields, parameter,...) values.
+  
+  - Rules API 2.0: Allow to use intermediate results from other rules.
+  
+  - JFR Writer is introduced as a new core module.
 </pre>
 
 <pre zoom labels="monitoring,debugging,troubleshooting,tool,low_code,TODO">
@@ -8913,7 +8985,7 @@ module:
 
 - Rules:
   - Each module must explicitly state its dependencies.
-  - provides explicit mechanism to  declare dependencies between
+  - provides explicit mechanism to declare dependencies between
     modules in a manner that’s recognized both at Bºcompile timeº
     and Bºexecution timeº.
 
@@ -8921,9 +8993,8 @@ module:
 $º$ java --list-modulesº ←  List modules in SE, JDK, Oracle, ...
   ( custom runtimes can be created )
 
-
 BºModule Declarationsº
-  cat module-info.java:
+$º$ cat module-info.java º
   module java.desktop { ← body can be empty 
      requires modulename; ← 'static' flag: required just at compile time.
      requires transitive java.xml; ← if a java.desktop method returns a type
@@ -8948,7 +9019,6 @@ BºModule Declarationsº
      transitive
   }
 </pre>
-
 
 <pre zoom labels="jvm,TODO,">
 <span xsmall>Java Erasure</span>
@@ -9338,7 +9408,7 @@ FROM https://github.com/google/guice/wiki/JSR330
 <span xsmall TODO>Crypto.API(JCA)</span> [TODO]
 - See also:
   - Cryptography map:
-  @[http:./../General/cryptography_map.html]
+  @[../General/cryptography_map.html]
 
   - Bounce Castle FIPS JCA provider
   @[https://www.bouncycastle.org/fips-java/BCFipsIn100.pdf]
@@ -10047,6 +10117,84 @@ https://developers.redhat.com/blog/2021/03/17/using-dekorate-to-generate-kuberne
 @[https://openjpa.apache.org/]
 #################
 https://github.com/tldr-pages/tldr/blob/master/pages/common/jarsigner.md
+###################
+JVisualVM @[https://visualvm.github.io/]
+- RºWARN: Deprecated by Flight Recorder?º
+  Flight Recorder works both for development and production
+  while JVisualVM has performance hits
+- Deadlock analysis with JVisualVM:
+@[https://avaldes.com/java-thread-deadlock-example-and-thread-dump-analysis-using-visualvm/]
+</pre>
 
-  
+#####################
+TODO: document java.util.concurrent.*. See example vertx stack trace: 
+at jdk.internal.misc.Unsafe.park(Native Method) 
+at java.util.concurrent.locks.LockSupport.park(LockSupport.java:194) 
+at java.util.concurrent.LinkedTransferQueue.awaitMatch(LinkedTransferQueue.java:743) 
+at java.util.concurrent.LinkedTransferQueue.xfer(LinkedTransferQueue.java:684) 
+at java.util.concurrent.LinkedTransferQueue.take(LinkedTransferQueue.java:1366)
+at java.util.concurrent.ThreadPoolExecutor.getTask(ThreadPoolExecutor.java:1054)
+at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1114)
+at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:628)
+#########################
+https://www.reddit.com/r/java/comments/ld2ame/video_loom_modern_scalable_concurrency_for_the/gm7rq7i/?context=3
+Loom vs DragonWell JVM
+#########################
+Java's cloud-native journey (by BellSoft)
+JDK 9 : Compact Strings
+        HTTP/2 client
+JDK 10: Docker awareness
+JDK 11: ZGC
+JDK 12: Return unused memory
+        Shenandoah GC
+JDK 13: Uncommit unused memory for ZGC
+JDK 14: JFR Event Streaming
+JDK 15: Reimplement Datagram Socker API
+        Hidden Classes
+
+JDK 16: Elastic metaspace
+       ºAlpine Linux portº
+##################
+https://micronaut.io/
+###################
+What are monad:
+https://dzone.com/articles/what-is-a-monad-basic-theory-for-a-java-developer?edition=672394
+two of the most commonly known Java 8 features are monad implementations, namely Stream and Optional
+
+Monad is a concept:  we can view it as a wrapper which puts our value in some context and allows us to perform operations on the value. In this context, the output of an operation at any step is the input to the operation at the next step.
+################
+Simplifying Async/CompletableFuture code with BascomTask @ma
+https://dzone.com/articles/lightweight-parallel-tasks-in-java-microservices
+BascomTask is a lightweight task orchestration library that provides 
+thread-level parallelization in a way that is as frictionless as 
+possible. This means that, by design, using BascomTask is very close 
+to pure Java code in both usage and performance, including use of 
+CompletableFutures where they can be used effectively, but without 
+having to rely solely on them for task-level organization of a 
+codebase. BascomTask aims to compliment rather than replace 
+CompletableFutures and freely integrates with them.
+################
+https://dzone.com/articles/guidelines-for-java-code-reviews?edition=598293
+#####################
+https://www.javacodegeeks.com/spring-interview-questions-and-answers.html
+https://www.javacodegeeks.com/java-interview-questions.html
+https://www.javacodegeeks.com/2014/11/multithreading-concurrency-interview-questions-answers.html
+- Amdahl's law provides a formula to compute the theoretical maximum 
+  speed up by providing multiple processors to an application. The 
+  theoretical speedup is computed by S(n) = 1 / (B + (1-B)/n) where n 
+  denotes the number of processors and B the fraction of the program 
+  that cannot be executed in parallel. When n converges against 
+  infinity, the term (1-B)/n converges against zero. Hence the formula 
+  can be reduced in this special case to 1/B. As we can see, the 
+  theoretical maximum speedup behaves reciprocal to the fraction that 
+  has to be executed serially. This means the lower this fraction is, 
+  the more theoretical speedup can be achieved.
+https://www.javacodegeeks.com/2013/02/40-java-collections-interview-questions-and-answers.html
+############################
+https://www.javacodegeeks.com/2015/02/jpa-tutorial.html
+#########################
+https://www.javacodegeeks.com/spring-batch-tutorial.html
+#########################
+DONT's:
+- Don't use huge interface, but small decoupled ones.
 -->

@@ -4,7 +4,7 @@
     <meta name="keywords" content="ethereum,cryptography,solidity,mind map,tutorial,101,aaa,aragon,architecture,auditing,baseline,beus,casper,cloud,code snippet,comparative,consensus,debug,development,devops,diagram,DID,ecdsa scep256k1,eip,erc,error control,etl,events,evm,formal proofs,fungible asset,geth,governance,graphql,ibft,identity,infrastructure,integration,iot,ipfs,java,javascript,library,low code,mainnet,metamask,monitoring,offchain,oracle,parity,pkcs,plasma,privacy,profiling,python,quality assurance,qa,remix,rlp,scalability,security,signature,solidity,standars,storage,testing,token,tool,transaction,troubleshooting,truffle,wallet">
    <title>Ethereum map</title>
 <head>
-<script type=module>import('/IT_notes/map_v1.js')</script>
+<script type=module src=/IT_notes/map_v1.js></script>
 <link rel='stylesheet' type='text/css' href='/IT_notes/map_v1.css' />
 </head>
 
@@ -592,9 +592,8 @@ Bº- Cannot recieve Etherº
    - There may be at most 3 indexed parameters.
    - If the type of an indexed parameter is larger than 32 bytes,
      only the KECCAK256 digest of the data is stored.
- -  EVM Log Primitives
-   - log0, log1, ..., log4 EVM instructions.
- - The EVM logging facility uses different terminologies than Solidity:
+ -  EVM Log Primitives log0, log1, ..., log4 EVM instructions.
+    - The EVM logging facility uses different terminologies than Solidity:
    "topics": There may be up to 4 topics exactly 32 bytes each
             Solidity consumes one topic for the event's signature so only 3 are available
    "data"  : Payload of the event. It may be arbitrary number of bytes
@@ -1667,10 +1666,119 @@ variety of benefits, a few of which are listed below:
 <span title>Solidity</span><br/>
 <div groupv>
 
-<pre zoom labels="solidity,">
+<pre zoom labels="solidity,resource">
 <span xsmall>What's New</span>
+BºSolidity 0.8 Breaking changesº
+  https://github.com/ethereum/solidity/blob/develop/docs/080-breaking-changes.rst
+  
+  - Silent Changes of the Semantics
+    - Arithmetic operations revert on underflow and overflow. 
+      You can use ºunchecked { ... }º to go back to previous wrapping behaviour.
+      (better readability of code withslight increase of gas costs)
+  
+  Bº- ABI coder v2 is activated by default.º: Use ºpragma abicoder v1;º for backward compatibility.
+      - supports for more types 
+      - sanity checks on inputs.
+      -Rºsome fun. calls are more expensiveº
+      -"pragma experimental ABIEncoderV2" not-needed/redundant.
+    
+    - internal checks (failing assertions,div-by-zero, overflow,...) translate to revert (vs invalid) opcode. 
+      Bºsaving gas on errorsº while  allowing static analysis tools to distinguish
+      them from  invalid-input-reverts (failing "require").
+  
+    - If a byte array in storage is accessed whose length is encoded incorrectly, a panic is caused.
+      A contract cannot get into this situation unless inline assembly is used to modify the raw representation of storage byte arrays.
+  
+    - constants 'variables' values used in array length expressions as intermediate expressions properly rounded.
+      (previously, arbitrary precision used in all branches of the evaluation tree). 
+      
+    - "byte" removed in favor of "bytes1".
+  
+  - New Restrictions
+    - removed ambiguous syntax "here and there".
+    - Address literals have the type "address" (vs "address payable"). Use explicit conversion. Ex:
+      payable(0xdCad3a6d3569DF655070DEd06cb7A1b2Ccd1D3AF).
+  
+    - explicit type conversions only allowed forºat mostºone change in sign, width or type-category.
+     ºmultiple changes will require multiple conversionsº. Ex: uint16(int8) →  uint16(uint8(int8))
+                                                                               ^lenght^sign
+  
+    - call options can only be given once: c.f{gas: 10000}{value: 1}() →  c.f{gas: 10000, value: 1}()
+  
+    - ºenumº max length 256 members. (allows to assume uint8)
+  
+    - global vars 'tx.origin' and 'msg.sender' have type "address"` (vs payable address)
+      Ex: msg.sender.transfer(x) → payable(msg.sender).transfer(x)
+  
+  - See source to check How update old code
+
+Bº0.7.0º
+  https://github.com/ethereum/solidity/blob/develop/docs/070-breaking-changes.rst
+  - Silent Changes of the Semantics
+    - Exponentiation and shifts of literals by non-literals (e.g. 1 ˂˂ x or 2 ** x)
+      will always use either the type uint256 or int256 
+
+    - Ether and gas is now specified using a new syntax:
+      x.f{gas: 10000, value: 2 ether}(arg1, arg2) vs x.f.gas(10000).value(2 ether)(arg1, arg2)
+    
+    -Rºglobal variable ºnowº is deprecatedº
+     Bºblock.timestamp should be used insteadº.
+    
+    - NatSpec comments on variables only allowed for public state variables 
+
+  Bº- Unicode string literals supported now.  unicode"Hello 😃"º
+
+    - state mutability of functions can now be restricted during inheritance                        [qa]
+      with "pure" and "view".
+
+    - structs and arrays containing mapping can only be used in storage.
+      (Previously, mapping members Rºsilently skipped in memoryº)
+
+    - Assignments to structs or arrays in storage does not work if they contain mappings.
+      (Previously, mapping members Rºsilently skipped during the copy operationº)
+
+    - Visibility (public/external) not needed in constructors anymore.
+    Bº To prevent a contract from being created, mark it as ºabstractº.
+    
+    - using A for B must be repeated in all derived contracts of B. 
 BºSolidity 0.6 Breaking changesº
-@[https://vomtom.at/solidity-0-6-0-breaking-changes-hands-on-walkthrough/]
+  https://github.com/ethereum/solidity/blob/develop/docs/060-breaking-changes.rst
+  
+  - Breaking changes:
+    - Explicitness Requirements:
+      - only functions marked as virtual can be overridden.
+      - "override" must be used in implementing children.
+
+    - Member-access to ".length" in arrays is always read-only (including storage ones). 
+      No possible to resize storage arrays by assigning a new value to their length.
+      Use "push()/pop()" or "push(value)" instead.
+      push(value) for dynamic storage arrays returns nothing (new length previously)
+      This prevents storage collisions of gigantic storage arrays.
+
+    - "abstract" keyword can be used to mark contracts as abstract.
+      - This avoids creating such contracts with "new" operator.
+      - not possible to generate bytecode for them during compilation.
+    
+    - Libraries have to implement all their functions, not only the internal ones.
+    
+    - unnamed "fallback function" split up into:
+      - fallback function marked with "fallback" keyword.
+        - called when no other function matches 
+        - can be payable or not.
+      - receive  function marked with "receive " keyword. implicitly "payable".
+        - called whenever the call data is empty (with/without ether received). 
+  
+  - New Features
+  Bº- try/catch statement allows to react on failed external calls.º              [qa][error-handling]
+    - "struct" and "enum" types can be declared at file level.
+    - Array slices can be used for calldata arrays. 
+      e.g.: low-level way to decode function call payload
+            abi.decode(msg.dataº[4:]º, (uint, uint))" [TODO]
+    - Natspec supports multiple return parameters in developer documentation.
+    - "address" → "address payable" conversion thanks to: payable(myaddress)
+    - compiler now appends the `IPFS ˂https://ipfs.io/˃`_ hash of the metadata file to the
+      end of the bytecode by default (previously swarn hash by default)
+  
 @[https://blog.ethereum.org/2020/01/29/solidity-0.6-try-catch/]
 </pre>
 
@@ -5112,7 +5220,7 @@ function onGUIButtonCliced (miniToken) {
 
 </pre>
 
-<pre zoom labels="wallet,metamask,UX,TODO" bgorange>
+<pre zoom labels="wallet,metamask,security,UX,usability,qa,Uniswap,TODO" bgorange>
 <span xsmall>EIP712 (Typed human-friendly signing)</span>
 @[https://medium.com/metamask/eip712-is-coming-what-to-expect-and-how-to-use-it-bb92fd1a7a26]
 EIP712 is coming: What to expect and how to use it
@@ -5121,9 +5229,27 @@ Koh Wei Jie
   Ethereum wallets like MetaMask will soon introduce the EIP712 
   standard for typed message signing Bºallowing wallets to º
 Bºdisplay data in signing prompts in a structured and readable format.º
-BºEIP712 is a great step forward for security and usability because º
-Bºusers will no longer need to sign off on inscrutable hexadecimal  º
+BºEIP712 is a great step forward for security and usability because º  [qa][usability]
+Bºusers will no longer need to sign off on inscrutable hexadecimal  º  [security]
 Bºstrings, which is a practice that can be confusing and insecure.  º
+
+
+- Related:
+  - Lattice 1 GridPlus Hardware Wallet:
+  @[https://blog.gridplus.io/latice1-firmware-v0-10-6-da18ec10f5b]
+
+  - 1st with Native EIP-712 Support for Use with
+    Uniswap V3, Polygon, and More!
+   
+ ... When Uniswap V3 launched, liquidity providers were unable to 
+  migrate their positions because Uniswap uses a new message type 
+  (EIP712) which is not yet supported on legacy hardware wallets using 
+  MetaMask and their assets were stuck. Not an issue for Lattice1 
+  owners... Competitors have publicly shared that even when they do 
+  support the feature, they will not be using their device's secure 
+  enclave and will instead create hashes in your computer's web 
+  browser. Never use your hardware wallet to blindly sign unknown 
+  hashes.
 </pre>
 
 <pre zoom labels="radar,UX,metamask,TODO">
@@ -9889,7 +10015,7 @@ https://medium.com/baselineprotocol/dappsuite-extends-the-salesforce-platform-to
 @[https://github.com/hyperledger/besu/graphs/contributors?from=2019-01-07&to=2019-05-30&type=c]
 </pre>
 
-<pre zoom labels="eea,besu,architecture,devops,network,diagram">
+<pre zoom labels="eea,besu,architecture,devops,network,diagram" id="besu_architecture_summary">
 (Pegasys Pantheon was renamed to Besu after joining the Hyperledger Fundation)
 <span xsmall>Introduction</span>
 - Java based, using VertX as core framework.
@@ -12701,4 +12827,115 @@ WARN: According to this link  the secp256k1 curve spec (used by Bitcoin and Ethe
 ###################
 IPFS at TLDR:
 https://github.com/tldr-pages/tldr/blob/master/pages/common/ipfs.md
--->
+################
+- SMTChecker and Formal Verification
+https://github.com/ethereum/solidity/blob/develop/docs/smtchecker.rst
+- Activated by default in Solidity 0.8.4+
+  - Use ºpragma experimental SMTChecker;º in previous versions.
+Using formal verification it is possible to perform an automated mathematical
+proof that your source code fulfills a certain formal specification.
+The specification is still formal (just as the source code), but usually much
+simpler.
+The other verification targets that the SMTChecker checks at compile time are:
+
+- Arithmetic underflow and overflow.
+- Division by zero.
+- Trivial conditions and unreachable code.
+- Popping an empty array.
+- Out of bounds index access.
+- Insufficient funds for a transfer.
+
+    // SPDX-License-Identifier: GPL-3.0
+    pragma solidity ˃=0.8.0;
+
+    contract Overflow {
+        uint immutable x;
+        uint immutable y;
+
+        function add(uint _x, uint _y) 
+       ºinternalºpure returns (uint) {
+            return _x + _y;                              ←┐ If require(...) is commented  SMTChecker will return: 
+        }                                                 │ Warning: CHC: Overflow (resulting value larger than 2**256 - 1) happens here.
+                                                          │ Counterexample:
+        constructor(uint _x, uint _y) {                   │ x = 1, y = 11579208923731619...639935
+            (x, y) = (_x, _y);                            │  = 0
+        }                                                 │                                                                                           
+                                                          │ Transaction trace:
+        function stateAdd()ºpublicºview returns (uint) {  │ ...
+            require(x ˂ type(uint128).max);              ←┤ Overflow.stateAdd()
+            require(y ˂ type(uint128).max);              ←┘    
+            return add(x, y);                                    return _x + _y;
+        }                                                               ^^^^^^^
+    }
+
+###################
+https://www.komputing.org/  qa, monitoring, auditing,
+Decentralized Metadata and Source Code Repository
+Sourcify is a decentralized automated contract verification service, 
+which makes publishing and verifying source code easy.
+ -  Choose network from dropdown menu
+ -  Input contract address
+ -  Upload all metadata and contract files that you want to verify via the dropzone
+
+Together with the compilation metadata, everyone can re-compile the 
+smart contract and be sure that the source code is exactly the same 
+as at deploy time, including every comment.
+#######################
+escalability,cross-chain,ILP:
+Peter Robinson of ConsenSys will discuss the General Purpose Atomic 
+Crosschain Transaction (GPACT), a protocol that allows composable 
+programming across multiple Ethereum blockchains. It allows for 
+inter-contract and inter-blockchain function calls that are both 
+synchronous and atomic -- if one part fails, the whole call graph of 
+function calls is rolled back. The protocol operates on existing 
+Ethereum blockchains without modification. It works for both public 
+permissioned and consortium blockchains. Additionally, the protocol 
+is expected to work across heterogeneous blockchains other than 
+Ethereum.
+######################
+EEA DeFi Interest Group:
+- Bringing Definition to an Emerging Innovation
+    workshop on DeFi will focus on current issues that need to be 
+  addressed for DeFi to really flourish. 
+    explore what the ideal world looks like for DeFi years from now. 
+  - Attendees will: 
+    - Help define near-term goals and objectives for the DeFi Interest Group
+    - Work in collaborative breakout sessions with other finance-minded members
+    - Help bring definition to the array of challenges facing the community
+    - Play a part in outlining what the future of DeFi can look like
+#############################
+formal verification, ethereum2 
+https://cs.paperswithcode.com/paper/verification-of-the-incremental-merkle-tree
+Verification of the Incremental Merkle Tree Algorithm with Dafny
+by Franck Cassez
+- Who-is-Who:
+  https://franck44.github.io/
+  https://www.youtube.com/watch?v=pxe4qGwGBGg
+ The Deposit Smart Contract (DSC) is an instrumental component of the 
+Ethereum 2.0 Phase 0 infrastructure. We have developed the first 
+machine-checkable version of the incremental Merkle tree algorithm 
+used in the DSC. We present our new and original correctness proof of 
+the algorithm along with the Dafny machine-checkable version. The 
+main results are: 1) a new proof of total correctness; 2) a software 
+artefact with the proof in the form of the complete Dafny code base 
+and 3) new provably correct optimisations of the algorithm.
+########################
+https://github.com/fergarrui/ethereum-security
+Repository with some Ethereum security bugs. The bugs and fixes are demonstrated using Mocha tests.
+
+Bugs added so far:
+    Overflow
+    Underflow
+    Reentrancy (DAO hack)
+    Delegatecall (Parity hack style)
+    DOS (e.g. stay as an Auction leader forever)
+    DOS (unbounded array loop)
+    Force ether (relying on the invariant this.balance == 0)
+    Tx.origin
+    Unchecked send() output
+    Storage override (commonly used in honeypots - or genuine bugs)
+    Array storage override (length underflow - storage override)
+    extcodesize bypassed when used to check if the caller is a contract
+########################
+Ethereum 2: knowledge base
+https://consensys.net/knowledge-base/ethereum-2/

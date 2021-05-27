@@ -220,7 +220,6 @@ const ZW = { /* ZOOM Window */
 
 const ZC = { /* map zoom Control */
   idxZoomRule:-1,
-  idxXSmallRule:-1,
   idxXTitleRule:-1,
   zoomStatus: 0, // 0 = inactive, 1 = zoomedContent
   zoomableFontSize:0.05,
@@ -233,9 +232,6 @@ const ZC = { /* map zoom Control */
     for (let idx=0; idx<ZC.cssRules.length; idx++){
         if( ZC.cssRules[idx].selectorText == "[zoom]") {
             ZC.idxZoomRule=idx
-        }
-        if( ZC.cssRules[idx].selectorText == "[xsmall]") {
-            ZC.idxXSmallRule=idx
         }
         if( ZC.cssRules[idx].selectorText == "[title]") {
             ZC.idxXTitleRule=idx
@@ -254,7 +250,6 @@ const ZC = { /* map zoom Control */
        ZC.xsmallFontSize   = 0.4
     }
     ZC.cssRules[ZC.idxZoomRule  ].style['font-size']=ZC.zoomableFontSize+'rem'
-    ZC.cssRules[ZC.idxXSmallRule].style['font-size']=ZC.xsmallFontSize  +'rem'
     ZC.cssRules[ZC.idxXTitleRule].style['font-size']=ZC.xsmallFontSize  +'rem'
   },
   onZoomIn : function(mode /* 0 = Zoom Map; 1 = Zoom Text*/) {
@@ -264,7 +259,6 @@ const ZC = { /* map zoom Control */
       ZC.zoomableFontSize = ZC.zoomableFontSize + ZC.zoomStepIn
     }
     ZC.cssRules[ZC.idxZoomRule  ].style['font-size']=ZC.zoomableFontSize+'rem'
-    ZC.cssRules[ZC.idxXSmallRule].style['font-size']=ZC.xsmallFontSize  +'rem'
     ZC.cssRules[ZC.idxXTitleRule].style['font-size']=ZC.xsmallFontSize  +'rem'
   },
 }
@@ -509,16 +503,22 @@ const TPP = {  // (T)ext (P)re (P)rocessor
         let H = N.innerHTML
         if (!!! H) { continue }
 
-        // Open new window with pre-recoded search:[[Troubleshooting+restorecon?]]
+        // Open new window with pre-recoded search:
+        // [[Troubleshooting+restorecon?]]
         H = H.replace( /\[\[([^\?]*)\?\]\]/g,
             "<div class='innerSearch'>$1</div>"
           + "<a target='_blank' "
           + " href='"+window.location.href.split('?')[0]+"?query=$1&labels="+LM.labelMapSelectedToCSV()+"'>"
           + " (⏏ )</a>"
         )
-        H = H.replace(/@\[(http[^\]]*)\]/g,"<a target='_new' href='$1'> [$1]</a>")   
+        // 1st) replace External link
+        H = H.replace(/@\[(http.?[^\]]*)\]/g,"<a target='_new' href='$1'> [$1]</a>")   
+        // 2nd) replace relative (to page) link
+        H = H.replace(/@\[([^\]]*)\]/g,"<a target='_new' href='$1'> [$1]</a>")   
+
         // Add support for inner links: '@[#internalId]'
         H = H.replace(/@\[#([^\]]*)\]/g,   "<div class='innerLink' value='$1'> [$1]</div>")   
+
         H = H.replace(/Gº([^º\n]*)º/g, "<b green >  $1 </b>")   
         H = H.replace(/Rº([^º\n]*)º/g, "<b red   >  $1 </b>")   
         H = H.replace(/Bº([^º\n]*)º/g, "<b blue  >  $1 </b>")   

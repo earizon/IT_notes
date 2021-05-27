@@ -3,7 +3,7 @@
    <meta charset="UTF-8">
    <title>Web Technologies Map (WiP)</title>
 <head>
-<script type=module>import('/IT_notes/map_v1.js')</script>
+<script type="module" src="/IT_notes/map_v1.js"></script>
 <link rel='stylesheet' type='text/css' href='/IT_notes/map_v1.css' />
 </head>
 
@@ -17,6 +17,8 @@
 <span title>External Links</span>
 - The size of the World Wide Web (The Internet)
 @[https://www.worldwidewebsize.com/]
+- HTML Spec:
+@[https://html.spec.whatwg.org/]
 - State Of JS:
 @[https://stateofjs.com/]
   Check out our results to find out which libraries developers want to learn
@@ -210,7 +212,6 @@ BºStringsº
 
 <pre zoom labels="js,devops,webpack" id="bundlers_summary">
 <span title>JS Package bundlers</span>
-
 BºRollup vs Webpack vs Parcelº
  • Package bundler "==" assets bundle +  runtime module "loader" 
 
@@ -292,19 +293,27 @@ BºROLLUP SUMMARYº
     }                                                }
 
 BºWEBPACK SUMMARYº
-  • PRE-SETUP: Add next dependencis to package.json:
-    "webpack": "=4.6.0",            [TODO]: Update (2019) version. webpack 5 out with many speed improvements.
-    "webpack-cli": "=2.0.15"
+  • PRE-SETUP: 
+    GLOBAL INSTALL             LOCAL INSTALL
+    $ npm install -g webpack   $ npm init                       
+                               $ npm install --save webpack
+                                 ^^^^^^^^^^
+                                 alt: manually add dependencies to package.json:
+                                      "webpack": "=4.6.0"
+                                      "webpack-cli": "=2.0.15" 
 
-  • PROJECT CONFIG:
+  • PROJECT CONFIG: edit ºwebpack.config.jsº lik :
     'use strict'
-    
+
+    const debug = process.env.NODE_ENV !== "production"   
     const path = require('path'),
        webpack = require('webpack')
     
     module.exports = {
       mode: 'production',
-      entry: './reactAppSrc/index.js',
+      context: __dirname,
+      devtool: debug ? 'inline-sourcemap' : null,
+      entry: './reactAppSrc/index.js',  // or './js/scripts.js', ..
       output: {
         path: path.resolve(__dirname, '../public/built/'),
         filename: '[name].min.js',
@@ -326,48 +335,22 @@ BºWEBPACK SUMMARYº
           }
         ]
       },
-      plugins: []
-    }
-
-  • Ussage:
-  $º$ webpack --config webpack/webpack.dev.config.js  --progress --profile --colors º
-  $º$ webpack --config webpack/webpack.prod.config.js --progress --profile --colors º
-
-
-• Ussage:
-  • Installing:
-    GLOBAL INSTALL             LOCAL INSTALL
-    $ npm install -g webpack   $ npm init                       
-                               $ npm install --save webpack
-    
-  • Configuring webpack project:
-    · edit ºwebpack.config.jsº:
-      var debug = process.env.NODE_ENV !== "production"
-      var webpack = require('webpack')
-      
-      module.exports = {
-        context: __dirname,
-        devtool: debug ? 'inline-sourcemap' : null,
-        entry: './js/scripts.js',
-        output: {
-          path: __dirname + '/js',
-          filename: 'scripts.min.js'
-        },
-        plugins: debug ? [] : [
+      plugins: debug ? [] : [
           new webpack.optimize.DedupePlugin(),
           new webpack.optimize.OccurenceOrderPlugin(),
           new webpack.optimize.UglifyJsPlugin({
               mangle: false, sourcemap: false
           })
         ],
-      }
-  • Running:
-    $ NODE_ENV=development webpack  ← generates scripts.min.js
-    $ NODE_ENV=production  webpack  ← generates scripts.min.js
-    Run webpack: 
+    }
+
+  • Run/package: generate scripts.min.js
+  $º$ export NODE_ENV=development #  production     º
+  $º$ webpack --config webpack/webpack.config.js  \ º
+  $º          --progress --profile --colors         º
 
 <hr/>
-<span title>What's new</span>
+<span title>WebPack What's new</span>
 @[https://www.infoq.com/news/2020/10/webpack-5/]
 • Webpack 5.0:
   rethinks some core architectural decisions focusing on:
@@ -407,129 +390,101 @@ Next, let's add the build script to package.json:
 You can now build the front-end of your app by running npm run build.
 </pre>
 
-<pre zoom labels="js,devops">
-<span title>Compressing JS</span>
-We use uglify for this purpose like shown in the next script snipet:
-
-rm -rf packaging/html # Avoid packaging old stuff by mistake
-
-if [ -d compiledJS ];  then
-    rm -rf compiledJS
-    if [ $? != 0 ]; then
-        echo "couldn't remove compiledJS"
-        exit 1
-    fi
-fi
-mkdir compiledJS
-cp -R html compiledJS/
-rm -rf compiledJS/html/html_tests
-
-echo "debug: $BASEDIR/compiledJS/html/services"
-cd $BASEDIR/compiledJS/html/services || exit 1
-
-find ./ -name "*js" -type f | grep -v "media" | while read f ; do
-    uglifyjs --max-line-len 80 -o tmp.js ${f} 1˃/dev/null
-    mv tmp.js ${f} 1˃/dev/null
-</pre>
-
 <span title>Async Programming</span>
-<pre zoom labels="js,async,TODO">
-<span title>Convert callback → Promise</span>
-When a function returns a promise, modern browsers let us use the new await
-keyword. This new keyword (which will be familiar for C# developer) let you
-create asynchronous code like it would be synchronous:
-
-function setPromiseTimeout() {
-    return new Promise(function(callbackOK, callbackError) {
-        setTimeout(callbackOK, 500)
-    });
-}
-
-async function start() {
-   for (idx=0; idx˂3; idx++) {  // ← loops will be very-difficult/imposible with Callbacks
-      await setPromiseTimeout()
-      console.log(idx)
+<pre zoom labels="js,async">
+<span title>callback to Promise</span>
+   function setPromiseTimeout() {       ← Returns promise:
+       return new Promise(                modern JS can invoke it with await
+         function(callbackOK,             invoking async code with sync syntax
+                  callbackError) {
+           setTimeout(callbackOK, 500)
+         });
    }
-}
-start();
 
-RºWARN!!!º:
-  Promise can not throw since that would
-  client code using the promise to both " }cath{" and ".catch(...)"
+   async function start() {
+      for (idx=0; idx˂3; idx++) {  
+         await setPromiseTimeout()     ← call sequentially async funct. inside loop
+         console.log(idx)                 very-difficult/impossible with Callbacks
+      }
+   }
+   start();
 
+  RºWARN!!!º: Promise can not throw since that would force
+              client code calling the promise to use both 
+              try-catch and ".catch(...). 
 </pre>
 
 <span title>Concurrency</span>
-<pre zoom>
-<a xsmall TODO href="XXXX">WebWorkers</a>
-- http://www.whatwg.org/specs/web-apps/current-work/multipage/common-dom-interfaces.html#concept-transferable-neutered
-   In order to enable repeated transfer of large amounts of data between Web
-  Workers [WEBWORKERS], ArrayBuffer implements the Transferable interface [HTML
-  ]. This section defines the behavior of ArrayBuffers and views under the
-  structured cloning [HTML] and transfer algorithms.
+<pre zoom labels="js,concurrency,performance,qa,low_code,TODO">
+<span title>WebWorkers</span>
+- External resources:
+  •  https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API          [TODO]
+  •  https://developers.google.com/web/fundamentals/primers/service-workers/
+  •@[https://serviceworke.rs/]
+    Service Worker Cookbook:collection of working, practical examples             [qa]
+    of using service workers  in modern web apps.
+    - Network or cache: try fetch from network, fallback to cache.
+    - Cache only:
+    - Cache and update: fetch from cache, update cache then.
+    - Cache, update and refresh UI.
+    - server embedded content on missing resources.
+    - Push notification, Retrieve Payload on received notification
+    - Push notification with Payload (string, ArrayBuffer, Blob, JSON).
+    - Push Rich, defining notification language, vibration pattern, image
+    - Push Simple: (even when page is not open).
+    - Push Tag: (replace old notifications).
+    - Push Quota (experiment with browser limits)
+    - Push control-Clients: focus re-open tab
+    - Push Subscription: 
+    - Immediate Claim: take control of page without waiting for avigation event
+    - Cache from ZIP recipe: cache contents from zipfile
+    - Message Relay, Fetch Remote Resources, Live Flowchart,
+      Offline Fallback, Offline Status, JSON Cache, Local Download,
+      Virtual Server, API Analytics, Load balancer, Dependency Injection,
+      Request Deferrer, Cache then Network, Render Store
+  • @[https://www.infoq.com/news/2019/08/postMessage-performance-study/]
+      Surma, Web Advocate at Google, recently published a study on the 
+    performance of postMessage, the method used by web workers to 
+    communicate. Surma concludes that while postMessage comes with some 
+    overhead, provided the payload is below a given budget, moving non-UI 
+    tasks off the main thread may result in increased overall 
+    user-perceived performance.
 
-- https://serviceworke.rs/
-  The Service Worker Cookbook is a collection of working, practical examples
-  of using service workers  in modern web apps.
+BºSUMMARYº                                                                       [TODO]
+  • probably the most powerful API added to the web platform recently.
+  • allows to do anything with each request/response received by a browser. 
+    (cancel requests, re-route, modify/cache responses, ...)
+
+BºWorkbox libraryº                                                                [low_code]
+@[https://developers.google.com/web/tools/workbox/]
+  • rapidly integrate common Service Worker functionality like 
+    precaching, runtime caching, request routing, background sync, and more.
+  • Fully async, compatible with XHR and localStorage.
 </pre>
-
-<pre zoom>
-<a xsmall href="https://developer.mozilla.org/en-US/docs/Web/API/Service_Worker_API">Service workers</a>
-(<a href="https://developers.google.com/web/fundamentals/primers/service-workers/">See also</a>)
-- key functionality for Progressive Web Apps, allowing them to be ‘installed’,
-  send relevant push notifications, and load quickly even on flaky networks.
-- Other commonly touted benefits include reducing bandwidth.
-- (<a href="https://dexecure.com/blog/beyond-offline-other-interesting-use-cases-for-service-workers-2/">REF: engineering blog post</a>)
-
- º"""Service workers is probably the single most powerful       º
- ºAPI added to the web platform recently. It gives you access toº
- ºa programmable proxy in JavaScript land. You can do anything  º
- ºyou want with each request made and the response received by  º
- ºthe browser - cancel the request, re-route it, modify the     º
- ºresponse(in some cases), cache it, etc."""                    º
-
-- Some of the applications highlighted included client side load balancing,
-  image optimization per device and bandwidth conditions, and even advanced image decoding
-- <a href="https://developers.google.com/web/tools/workbox/">Workbox library</a> allows to
-  rapidly integrate a number of common Service Worker functionality such as precaching, runtime
-  caching, request routing, background sync, and more.</li>
-- It is designed to be fully async; as a consequence, APIs such as synchronous
-  XHR and localStorage can't be used inside a service worker.
-</pre>
-
-<pre zoom labels="performance,TODO">
-<span title TODO>Improving Performance via Workers</span>
-@[https://www.infoq.com/news/2019/08/postMessage-performance-study/]
-</pre>
-
 
 </div>
 <div groupv>
 <span title>Debugging</span>
-<pre zoom >
-<span title>Basic_Debugging</span>
-ºPlay with ajax requests (Firefox only?)º
-    Go to inspector → network tab → RightClick on request
+<pre zoom labels="js,101,debugging,troubleshooting,async">
+<span title>Basic Debugging</span>
+• Play with ajax requests (Firefox only?)º
+  → Go to inspector → network tab → RightClick on request
     → choose Edit and Resend: Now you can change anything
-    you want: header, params, ... and resend.
+      you want: header, params, ... and resend.
 
-- "debugger" keyword: pause in code just when console is open
+• "debugger" keyword: pause in code just when console is open
 
-- dump object to string:ºJSON.stringify(window.document)º
-
+• dump object to string: ºJSON.stringify(myJS_object)º
   To avoid cicular dependencies problems redefine stringify like:
   REF: @[https://stackoverflow.com/questions/11616630/how-can-i-print-a-circular-structure-in-a-json-like-format]
-  // Demo: Circular reference
   JSON.stringifySec = function (circ) {
     cache = []
     result = JSON.stringify(circ, function(key, value) {
         if (typeof value === 'object' ⅋⅋ value !== null) {
             if (cache.indexOf(value) !== -1) {
-                // Duplicate reference found, discard key
-                return
+                return         // Duplicate reference found, discard key
             }
-            // Store value in our collection
-            cache.push(value)
+            cache.push(value)  // Store value in our collection
         }
         return value
     })
@@ -538,24 +493,20 @@ RºWARN!!!º:
   }
   var circ = {};
   circ.circ = circ;
-  JSON.stringifySec (circ)
+  JSON.stringifySec (circ)    // ← Ussage
 
-
-
-
-
-
-- Print the calling function in the called function:
+• Print the calling function in the called function:
   var f1 = function(...){
-     console.warn("Called from:"+ arguments.callee.caller.toString());
-     ...
-
-- Quickly access elements in the console:
-   $(‘css-selector’) will return the first match of CSS selector.
-  $$(‘css-selector’) will return all of them.
+     console.warn( "Called from:" +
+      ºarguments.callee.caller.toString()º);
+      ...
   }
+• Quickly access elements in the console:
+   $('css-selector’) ← return first match of CSS selector
+  $$(‘css-selector’) ← return all   matches
 <hr/>
-BºNodeJS Dump async function chain ("async stack-trace")º
+<span title>Async code</span>
+BºNodeJS Dump async function chain ("async stack-trace")º         [async]
 @[https://stackoverflow.com/questions/40300996/nodejs-is-is-possible-to-show-the-stack-trace-of-a-calling-async-function]
 @[https://gist.github.com/lll000111/3d6a53da4d53beb909189793c7631ba6]
 
@@ -596,7 +547,7 @@ BºNodeJS Dump async function chain ("async stack-trace")º
            }
        )
 
-BºDumping "async" stack-trace fn0 → fn1 (async call) → fn2:
+BºDumping "async" stack-trace fn0 → fn1 (async call) → fn2:    [async]
   constºfn1º= async () =˃ {       ← STACK "LEVEL 1"
       try {
           return awaitºfn2º()     ← RºWARNº:if something more complex than just 
@@ -621,186 +572,364 @@ BºDumping "async" stack-trace fn0 → fn1 (async call) → fn2:
   };
   
   fn0().catch(console.error)      ←ºDump stack here !!!º     
-
 <hr/>
-
-BºAdvanced debug tricks in Web consoleº
-  - REF 1: (TODO)
-    @[https://raygun.io/blog/2015/06/useful-javascript-debugging-tips-you-didnt-know/]
-    console.table(animals);      ← Display object as tables in the console: (Chrome only?)
+<span title>advanced tricks</span>
+• REF:@[https://raygun.io/blog/2015/06/useful-javascript-debugging-tips-you-didnt-know/]
+  console.table(animals);      ← Display object as tables in the console: (Chrome only?)
   
-    this.funcZ = function(){     
-      console.trace('trace car') ← Dump stack trace for function funcZ
+  this.funcZ = function(){     
+    console.trace('trace car') ← Dump stack trace for function funcZ
+  }
+  
+  debug(car.functY)            ← Quick find a function to debug:  (Chrome only?)
+                                 (not the same that console.debug)
+  
+  monitor(funct1)              ← Every time the function is called values pased in will be logged 
+
+  debug(car.functY)            ← Quick find a function to debug.
+                                 (not to be confused with console.debug)
+
+• Ignore (black list) Script while debugging
+  CHROME:                                                      FIREFOX:
+  · Alt 1. inspector → source → Right click                    Inspector → Debugger → Mark scriptto black list →
+    the file to black list and choose black box script.        Click on the eye in the very bottom left corner.
+  · Alt 2. Open up settings view → Click                       https://hacks.mozilla.org/2013/08/
+    "manage framework black boxing" → write a regexp in          new-features-of-firefox-developer-tools-episode-25/
+    popup to blackbox, for example, the entire vendor folder.
+    https://developer.chrome.com/devtools/docs/blackboxing
+
+• SOURCE MAPPING
+  REF: @[http://blog.getsentry.com/2015/10/29/debuggable-javascript-with-source-maps.html]
+  • source maps : JS's version of debug symbols: 
+  • Include with:
+    //# sourceMappingURL=/path/to/app.min.js.map
+  • Generated by modern JS transpilers
+  • Ex source map:
+    source map example:
+    {
+      version : 3,  // version of source map spec (should be 3)
+      file: "app.min.js", // generated filename associated to
+      sourceRoot : "",    // all sources are relative to it (opt)
+      sources: ["foo.js", "bar.js"], // URLs to original  files
+      names: ["src", "maps", "are"], // variable/method names found in your code
+      mappings: "AAgBC,SAAQ,CAAEA"   // base64Enc VLQ values source code mappings
     }
-  
-    debug(car.functY)            ← Quick find a function to debug:  (Chrome only?)
-                                   (not the same that console.debug)
-  
-    monitor(funct1)              ← Every time the function is called values pased in will be logged 
-
-  
-  Quick find your DOM elements:
-    Mark a dom element in the elements panel and
-   use it in your console. Chrome inspector keeps the last 5 elements in its
-   history, so the last marked element will be displayed with $0, second to last
-   marked element $1 and so on.
-  
-  Quick find a function to debug:  debug(car.functY)  -Note: is not the same that console.debug-
-</pre>
-
-<pre zoom>
-<span title>FlowType: Find</span> <!-- @ma -->
-<span title>type-infer.bugs</span>
-<a xsmall TODO href="https://flowtype.org"></a>
-Flow uses type inference to find bugs even without type annotations. It
-precisely tracks the types of variables as they flow through your program.
-
-Flow is designed for JavaScript programmers. It understands common JavaScript
-idioms and very dynamic code.
-
-Flow incrementally rechecks your changes as you work, preserving the fast
-feedback cycle of developing plain JavaScript.
-</pre>
-<pre zoom>
-<span title>Black Block Script</span>
-<span title>while debugging</span>
-CHROME:                                                      FIREFOX:
-– Alt 1. inspector → source → Right click                    Inspector → Debugger → Mark scriptto black list →
-  the file to black list and choose black box script.        Click on the eye in the very bottom left corner.
-– Alt 2. Open up settings view → Click                       https://hacks.mozilla.org/2013/08/
-  "manage framework black boxing" → write a regexp in          new-features-of-firefox-developer-tools-episode-25/
-  popup to blackbox, for example, the entire vendor folder.
-  https://developer.chrome.com/devtools/docs/blackboxing
-</pre>
-<pre zoom>
-<span title>DOM-INSPECTING</span>
-Quickly access elements in the console:
-  $(‘css-selector’)  returns first match of CSS selector
-  $$(‘css-selector’) returns all matches
-</pre>
-
-<pre zoom>
-<span title>SOURCE MAPPING</span>
-http://blog.getsentry.com/2015/10/29/debuggable-javascript-with-source-maps.html
-source maps are JavaScript’s version of debug symbols: Include with:
-
-//# sourceMappingURL=/path/to/app.min.js.map
-
-modern JavaScript transpilers (TypeScript,...) has a command-line option for generating the associated source map.
-
-source map example:
-{
-  version : 3,  // version of source map spec (should be 3)
-  file: "app.min.js", // generated filename associated to
-  sourceRoot : "",    // all sources are relative to it (opt)
-  sources: ["foo.js", "bar.js"], // URLs to original  files
-  names: ["src", "maps", "are"], // variable/method names found in your code
-  mappings: "AAgBC,SAAQ,CAAEA"   // base64Enc VLQ values source code mappings
-}
-</pre>
-
-<pre zoom>
-<a xsmall TODO href="www.telerik.com/fiddler">Fiddler Debug Proxy</a>
-Fiddler. HTTP proxy debugger:
-- Allows to replace remote html/css/... with local one.
+<hr/>
+<span title>Fiddler HTTP Proxy</span>
+@[www.telerik.com/fiddler]
+• Allows to replace remote html/css/AJAX responses with local/mocked ones.
   Very useful when deploying to remote server can be "slow" due
   to CI constrains.
-- Allows to see the "total page weight"  HTTP caching and compression at a glance
-
-  Video Tutorial: http://www.youtube.com/watch?v=TP_5JYatlNQ
+• Allows to see the "total page weight" HTTP caching and compression
+  at a glance
+• Tutorial: http://www.youtube.com/watch?v=TP_5JYatlNQ [Video]
 </pre>
 </div>
+
 <div groupv>
 <span title>Functional Testing</span>
-<pre zoom labels="qa,testing,TODO" >
+<pre zoom labels="qa,testing,comparative" >
 <span title>Mocha</span>
 @[https://mochajs.org/]
-Mocha is a feature-rich JavaScript test framework running on Node.js
-and in the browser, making asynchronous testing simple and fun.
-Mocha tests run serially, allowing for flexible and accurate
-reporting, while mapping uncaught exceptions to the correct test
-cases. Hosted on GitHub.
+• Easy testing of async services / REST APIs / ...
+  better than Jasmine                                  [comparative]
+• JS based, runs in browser and NodeJS.
+• tests run async service serially, allowing for
+  accurate reporting, mapping uncaught exceptions
+  to the correct test
+• install:
+  $ npm install -g mocha
+• Commonly used withº"Chai" library as assertion libraryº
+  (assert, expect, should), installed per project like:
+  $ npm install --save-dev chai
+• Commonly used withº"Supertest" SuperAgent extension library asº
+ ºHTTP AJAX test library.º, installed per project like:
+  $ npm install --save-dev supertest
+• Ussage summary:
+  $ mocha ← execute tests with default conf. (defaults + mocha.opts)
+  $ mocha directory_with_tests ← Run tests at location
+  $ mocha --grep {{^regex$}}   ← Run tests matching pattern
+  $ mocha --watch              ← Run tests once, the on JS file change
+  $ mocha --reporter $reporter ← Run tests with specific reporter
+• Test how-to summary:
+  · mkdir test 
+  · vim test/test01.js
+    iconst request = require('supertest');
+    const app = require('../server/app.js');
+    
+    describe('GET /users', function() {
+      it('return list of users', function() {
+        return request(app)
+          .get('/users')
+          .expect(200)
+          .expect('Content-Type',/json/)
+          .expect('[{"name":"ej","age":26},{"name":"jh","age":28}]')
+      })
+    })
+• See official doc for info about hooks (before, after, afterEach)
+  Retry Tests, Timeouts, Diffs, ...
+• Official examples at:
+@[https://github.com/mochajs/mocha-examples/tree/master/packages]
+  selenium, rxjs, react-webpack,programmatic-usage
 </pre>
 
+<pre zoom labels="qa,testing,low_code,aaa,code_snippet" >
+<span title TODO>Selenium (Web test Automation)</span>
+• External Resources:
+  ·@[http://docs.seleniumhq.org/]
+  ·@[http://docs.seleniumhq.org/projects/ide/]
+  ·@[http://code.tutsplus.com/tutorials/headless-functional-testing-with-selenium-and-phantomjs--net-30545]
+  ·@[http://stackoverflow.com/search?q=selenium]
 
-<pre zoom labels="qa,testing,low_code,TODO" >
-<span title TODO>Selenium (test Automation)</span>
-@[http://docs.seleniumhq.org/]
+• Automate browser execution applying test on expected elements,
+  URL, events ....
+• Oldest and most widely adopted End-to-End automation framework.
+• Can orchestrate tests in any major browser.
+• Example test: 
+  const {Builder, By, Key, until} = require('selenium-webdriver');       [code_snippet]
+  
+  (async function example() {
+      let driver = await new
+          Builder().forBrowser('firefox').build();
+          try {
+      await driver.get('https://www.google.com'); // ← Navigate to Url
+  
+      await driver
+            .findElement(By.name('q')             // *1 
+          ).sendKeys('cheese', Key.ENTER);   // ← Enter "cheese", then "Enter"
+  
+      let firstResult = await driver.wait(
+                until.elementLocated(
+                   By.css('h3')),                 // *1
+                10000);
+  
+      console.log(await firstResult.getAttribute('textContent'));
+          } finally{
+      driver.quit();
+          }
+  })();
 
-- http://code.tutsplus.com/tutorials/headless-functional-testing-with-selenium-and-phantomjs--net-30545
+  *1 The crux of Selenium is the element locator.
+     ✓ id                  ✓ tag name
+     ✓ name                ✓ class name
+     ✓ link text           ✓ css
+     ✓ partial link text   ✓ xpath
+    
+• Selenium IDE: Firefox/Chrome extension to automatically record/save/replay tests
+  @[https://examples.javacodegeeks.com/enterprise-java/selenium/selenium-ide-commands-example/]
+  @[https://www.youtube.com/watch?v=ZG3VFDMaAlk]
 
-- http://docs.seleniumhq.org/
-- http://docs.seleniumhq.org/projects/ide/
-- http://stackoverflow.com/search?q=selenium
+•ºAlternatives to Seleniumºinclude:
+  ✓ºCypressº:  JS centric framework, probably more friendly to web developers. [TODO]
+    · No need for "wait" commands in test scripts.
+      Cypress waits automatically for commands and assertions.
+    · Tests can make use of Spies, Stubs, and Clocks to verify
+      and control the behavior of responses, functions and timers.
+    · Automatic scrolling ensures that elements are visible 
+      before performing (testing) any action.
 
-  - Selenium automates browser execution applying test on expected elements,
-    URL, events ....
-
-<hr/>
-<span title TODO>Selenium IDE</span>
-@[https://examples.javacodegeeks.com/enterprise-java/selenium/selenium-ide-commands-example/]
-@[https://www.youtube.com/watch?v=ZG3VFDMaAlk]
-<hr/>
-</pre>
-<pre zoom labels="cypress,qa,low_code,testing,TODO">
-<span title>Cypress</span>
-https://docs.cypress.io/guides/getting-started/writing-your-first-test.html#Add-a-test-file
-
-See comparative of test frameworks
-https://blog.checklyhq.com/cypress-vs-selenium-vs-playwright-vs-puppeteer-speed-comparison/
-</pre>
-
-<pre zoom labels="qa,testing,TODO" >
-<span title>Python scripted</span>
-<span title>webkit engine</span>
-@[https://github.com/jeanphix/Ghost.py]
-</pre>
-
-<pre zoom labels="js,qa,testing,TODO" >
-<span title>Behavior-Driven</span>
-<span title>JS testing</span>
-@[https://jasmine.github.io/]
+  ✓ºPlaywrightº: JS centric
+    · Focused on web-scraping (headless browser)
+    · Ex: 
+      const playwright = require('playwright');                           [code_snippet]
+      async function main() {
+         const browser = await 
+            playwright.chromium.launch({                   ← Use choromium
+             headless: false                               ← Disable headless mode (enable view)
+         });
+         const page = await browser.newPage();
+         await page.goto('https://.../testPage');
+         const scraped_data_list = await page.
+                  $eval('#someID', headerElm =˃ {
+           const data_list = [];
+           const li_list = headerElm.getElementsByTagName('li');
+           li_list.forEach(domObject =˃ {
+               data_list.push(domObject.innerText.split('\n'));
+           });
+           return data_list;
+         });
+         console.log('scraped_data_list:', scraped_data_list);
+         await page.waitForTimeout(5000);                  ← wait for 5 seconds
+         await browser.close();
+     } 
+    
+    main();   
 </pre>
 
 <span title>Profiling</span>
-<pre zoom bgred labels="qa,profiling,js,TODO" >
-<span title>es5 vs es6 degradation</span>
-<span title>Up to 2500x decrease!!!</span>
-@[http://incaseofstairs.com/six-speed/]
-</pre>
-
-<pre zoom>
-<pre zoom labels="qa,profiling,js,TODO" >
-<span title>YSlow</span>
-YSlow analyzes web pages and why they're slow
-based on Yahoo!'s rules for high performance web sites
-
-Feature highlights
-- Grades web page based on one of three predefined ruleset
-  or a user-defined ruleset;
-- It offers suggestions for improving the page's performance;
-- Summarizes the page's components;
-- Displays statistics about the page;
-- Provides tools for performance analysis, including Smush.it™
-  and JSLint.
-</pre>
-<pre zoom labels="qa,profiling,TODO" >
-<a xsmall TODO href="https://developer.mozilla.org/en-US/docs/Tools/Performance">Mozilla Perf.Tool</a>
-The Performance tool gives you insight into your site's general responsiveness
-, JavaScript and layout performance. With the Performance tool you create a
-recording, or profile, of your site over a period of time. The tool then
-shows you an overview of the things the browser was doing to render your site
-over the profile, and a graph of the frame rate over the profile.
+<pre zoom labels="js,101,performance,profiling,qa,troubleshooting" >
+<span title>YSlow Profiler</span>
+• home page: @[http://yslow.org]
+• YSlow analyzes web pages and why they're slow
+  based on Yahoo!'s rules for high performance web sites
+• Feature highlights:
+  ✓ Grades web page based on one of three predefined ruleset
+    or a user-defined ruleset
+  ✓ It offers suggestions for improving the page's performance
+  ✓ Summarizes the page's components
+  ✓ Displays statistics about the page;
+  ✓ Provides tools for performance analysis, including Smush.it™
+    and JSLint.
+• Check for nextºbest-patterns/rulesº:
+  ✓ Minimize HTTP Requests
+  ✓ Use a Content Delivery Network
+  ✓ Avoid empty src or href
+  ✓ Add an Expires or a Cache-Control Header
+  ✓ Gzip Components
+  ✓ Put StyleSheets at the Top
+  ✓ Put Scripts at the Bottom
+  ✓ Avoid CSS Expressions
+  ✓ Make JavaScript and CSS External
+  ✓ Reduce DNS Lookups
+  ✓ Minify JavaScript and CSS
+  ✓ Avoid Redirects
+  ✓ Remove Duplicate Scripts
+  ✓ Configure ETags
+  ✓ Make AJAX Cacheable
+  ✓ Use GET for AJAX Requests
+  ✓ Reduce the Number of DOM Elements
+  ✓ No 404s
+  ✓ Reduce Cookie Size
+  ✓ Use Cookie-Free Domains for Components
+  ✓ Avoid Filters
+  ✓ Do Not Scale Images in HTML
+  ✓ Make favicon.ico Small and Cacheable
+<hr/>
+<span title>Mozilla Perf.Tool</span>
+• REF: @[https://developer.mozilla.org/en-US/docs/Tools/Performance]
+• Performance tool gives insights into a site's general responsiveness,
+  JS and layout performance. 
+• It allows to create a recording(profile), of a site over a period of time.
+  The tool then shows you an overview of the things the browser was doing
+  to render the page/s and a graph of the frame rate over the profile.
 </pre>
 </div>
 
 <div groupv>
-<span title>Javascript Alternatives</span>
+<span title>JS Alternatives</span>
+<pre zoom labels="typescript,js,qa," bgorange>
+<span title>Typescript</span>
+• JS with types.  @[https://www.typescriptlang.org/]
+
+BºSyntax summaryº
+REF: @[https://learnxinyminutes.com/docs/typescript/]
+let isDone: boolean = false   ← 3 basic types
+let lines : number  = 42 
+let name  : string = "Anders" 
+let   var1 = false            ← Type inference if type ommited
+
+let name  : any = jsObject    ← any: Compatibility with non-typed JS
+const CON1 = false            ← Make constant/immutable (prefered) [qa][billion_dolar_mistake]
 
 
-<pre zoom labels="elm,js,comparative,TODO" bgorange>
+let   typedArray01: number[]      = [1, 2, 3]
+let genericArray02: Array˂number˃ = [1, 2, 3]
+
+enum Color { Red, Green, Blue }
+let c: Color = Color.Green
+
+BºFunctionsº
+  let f1 = function (i: number): number {
+    return i * i;                └─┬──┘
+  }                              Return type (or void)
+                                 (It can also be inferred)
+
+  let f2 = (i: number): number =˃  ← Arrow syntax (used also in anonoymous
+     { return i * i; }               lamdas)
+
+  let f5 = (i: number) =˃ i * i;   ← braceless means void/none return
+
+BºInterfacesº
+  interface Person {                 ← Interface declaration
+    name: string;
+    age?: number;                      ← Optional type               [qa][billion_dolar_mistake]
+    move(): void;
+  }
+  let p: Person = {                  ← Interface implementation
+   name: "Bobby",
+   move: () =˃ { } 
+  };
+  
+  interface SearchFn {               ← Interface describing a function type
+    (source: string,                   Only param's types are important, names are not
+     subString: string): boolean;
+  }
+  let fnSearch: SearchFn = function  ← Function implementing the interface
+      (src: string, sub: string) {
+        return src.search(sub) != -1
+      }
+
+BºClassesº
+class Point {                      ← class definition
+  x: number;                       ← Properties public by default
+  static origin = new Point(0, 0); ← Static member
+  readonly name: string;           ← read-only, only allowed to be                [qa]
+                                     writen in constructor.(Typescript 3.1+)
+  constructor(
+    _x: number, 
+    private y: number = 0          ← syntax shortcut 'y' defined as class property as 'x'
+    _name : string ) {
+    this.x = _x;                     
+    this.name ) 
+  }
+  
+  fn01(): number {  ... }
+
+}
+
+class PointPerson 
+  implements IPerson { ... }       ← Class implementing interface
+
+class Child
+  extends ParentClass { ... }      ← Class inheriting from parent class .
+                                     RºWARN:º Discouraged. Better use composition
+
+BºModulesº
+  module Geometry {                  ← Modules, "." can be used as separator for sub modules
+    export class Square { ... }
+  }
+  import G = Geometry;                 ← Local alias for referencing a module
+  let s1 = new Geometry.Square(5);       ← Or just new G.Square(5);
+
+BºGenericsº
+  class Tuple<T1, T2> {            | interface Pair<T> { | function <T>(p: Pair<T>) {
+    constructor(                   |   item1: T;         |   return 
+        public item1: T1,          |   item2: T;         |     new
+        public item2: T2) { ... }  | }                   |      Tuple(p.item1, p.item2);
+    ...                            |                     | };
+  }                                |                     |
+
+BºTemplate Stringsº
+let greeting  = `Hi ${name}, how are you?`
+let multiline = `This is an example
+of a multiline string`;
+
+BºInmutable Collectionsº
+  const         number_array: Array˂number˃ = [0, 1, 2, 3, 4];    ←          number_array can not be reasigned to other
+                                                                    array (const), but current array can be modified
+  const inmutable_number_array: ReadonlyArray˂number˃ = numbers;  ← inmutable_number_array can not be reasigned to other
+                                                                    array (const), and no modifications allowed either.
+
+BºTagged Union Typesº (model state-machine states easely)        [qa]
+  DECLARATION                                USSAGE
+  type State =                               declare const state: State;
+    | { type: "loading" }                           if (state.type === "success") {
+    | { type: "success", value: number }      ... state.value  ...
+    | { type: "error", message: string };    } else if (state.type === "error") {  
+                                              ... state.message ...
+                                             }
+
+BºIterators and Generatorsº
+  let arrayOfAnyType = [...];                ← Array or list
+  for (const val of arrayOfAnyType) { .... } ← Iterate overºvalues in listº
+  let object = { ... }
+  for (const key in list) { ... }              Iterate overºkeys in objectº
+</pre>
+
+
+<pre zoom labels="elm,js,qa,comparative,TODO" bgorange>
 <span title>Elm</span>
- └BºNo Runtime Exceptionsº
+•BºNo Runtime Exceptionsº
     Elm uses type inference to detect corner cases and give friendly
     hints.
      NoRedInk switched to Elm about two years ago, and 250k+ lines
@@ -817,198 +946,100 @@ over the profile, and a graph of the frame rate over the profile.
                  Int
       Hint: Use Maybe.BºwithDefaultº to handle possible errors.
 
- └BºGreat Performanceº
+•BºGreat Performanceº
 
- └BºEnforced Semantic Versioningº
-    automatically detecting changes thanks to its type system.
-    We use that information to guarantee that every single Elm package
-    follows semantic versioning precisely. BºNo surprises in PATCH releasesº
+•BºEnforced Semantic Versioningº
+   ✓ Breaking APIs force new major version automatically.
+     thanks to its "ML" type system:
+   BºNo surprises in PATCH releasesº
 
-    $ Bºelm diffº Microsoft/elm-json-tree-view 1.0.0 2.0.0
-    This is a MAJOR change.
-    ---- JsonTree - MAJOR ----
-        Changed:
-          - parseString : String → Result String Node
-          + parseString : String → Result Error Node
+   $ Bºelm diffº Microsoft/elm-json-tree-view 1.0.0 2.0.0
+   This is a MAJOR change.
+   ---- JsonTree - MAJOR ----
+       Changed:
+         - parseString : String → Result String Node
+         + parseString : String → Result Error Node
 
-          - parseValue : Value → Result String Node
-          + parseValue : Value → Result Error Node
+         - parseValue : Value → Result String Node
+         + parseValue : Value → Result Error Node
 
- └BºSmall Assetsº
-    (faster page loads)
-    Just compile with the --optimize flag, let compiler do the rest.
-    No complicated set up.
+•BºSmall Assetsº (faster page loads)
+   Use --optimize flag, compiler do the rest. (no config needed)
 
- └BºJavaScript Interopº
-
-<span title>Reason(Facebook)</span>
+•BºJavaScript Interoperabilityº
+<hr/>
+<span title>Reason</span>
 @[https://reasonml.github.io/]
-Reason lets you write simple, fast and quality type safe code while
-leveraging both the JavaScript & OCaml ecosystems.
-
-- See (excellent) comparative Elm vs Reason
+• By Facebook
+• " Reason lets you write simple, fast and quality type safe code 
+    while leveraging both the JavaScript and OCaml ecosystems."
+• See (excellent) comparative Elm vs Reason
 @[https://stackoverflow.com/questions/51015850/reasonml-vs-elm]
-</pre>
 
-<pre zoom labels="TODO">
-<span title>TypeScript</span>
-@[https://www.typescriptlang.org/]
+• See also: ReasonReact
 </pre>
-
 
 </div>
-
-
 </div>
 
 <div groupv>
 <span title>AAA</span>
-<pre zoom labels="resources,TODO">
+<pre zoom labels="AAA,resource">
 <span title>External Links</span>
-- See also:
-@[/Architecture/architecture_map.html?topics=oauth]
-@[/Architecture/architecture_map.html?topics=aaa]
+• @[/Architecture/architecture_map.html?topics=oauth]
+• @[/Architecture/architecture_map.html?topics=aaa]
 </pre>
 
-<pre zoom labels="AAA,OpenSocial,TODO">
-<span TODO xsmall>W3C OpenSocial</span>
-@[http://www.w3.org/blog/2014/12/opensocial-foundation-moves-standards-work-to-w3c-social-web-activity/]
-</pre>
-
-<pre zoom labels="AAA,TODO">
-<span title>Firefox Web Auth API</span>
+<pre zoom labels="AAA,security,identity,TODO">
+<span title>Web Authentication API</span>
+• This API enables users toºavoid text-based passwords for websitesº
+  and insteadºuses a local device with a biometric check or private PINº
+  to generate a secure cryptographic identifier. 
+• Firefox adopted in in 2018
 @[https://www.infoq.com/news/2018/05/firefox-web-authentication-api]
 </pre>
 
-<pre zoom labels="AAA,TODO">
-<span title>Facebook login</span>
-<span title>jQuery plugin</span>
-@[http://garyrafferty.com/2013/08/20/Stupidly-Simple-Facebook-Login-JQuery-Plugin.html]
-˂html˃
-˂head˃
-˂script type='text/javascript' src='jquery.js'˃˂/script˃
-˂script type='text/javascript' src='flogin.js'˃˂/script˃
-˂script type='text/javascript'˃
-$(function() {
-  $('#login').facebook_login({
-    appId: 'YOUR-FACEBOOK-APP-ID',
-    endpoint: '/sessions/new',   # where to POST the response to
-    onSuccess: function(data) {},# ← usually redirect
-    onError: function(data) {}   #
-    permissions: 'read_stream'   # ← OAuth permissions
-                                 #   (default to email)
-  });
-});
-˂/script˃
-˂/head˃
-  ˂a href='#' id='login'˃Login with Facebook˂/a˃
-˂/body˃
-˂/html˃
-</pre>
-
-<pre zoom labels="aaa,DID,SSI,TODO,blockchain">
+<pre zoom labels="aaa,DID,SSI,blockchain">
 <span title>W3C Identity (DID and Verifiable Credentials)</span>
-REFs:
-https://www.w3.org/TR/did-core/
-https://sovrin.org/wp-content/uploads/2018/03/Sovrin-Protocol-and-Token-White-Paper.pdf
-
-- The W3C models identity as a graph, where nodes are globally unique IDs
-  and directed edges are claims that neighbors nodes make towards it:
-<img src="./W3C_Identity.svg" style="min-width:2rem; max-width:90%" />
-
-BºDID Method Registryº:
+• SPEC: @[https://www.w3.org/TR/did-core/]
+• DID stands for Decentralized IDentifier representing any type of subject
+  (person, organization, thing, data model, abstract entity, etc.) 
+  decoupled from any centralized registries (Active Directory, ..),
+  identity providers (Facebook, Google, ...) or certificate authorities.
+  Eg: did:ether:4f22fA5C2Da550C334B85181B7B194F8311acd76
+• DIDs are URIs linking the DID subject to a DID document. The DID
+  document in practice will be:
+   ✓ cryptographic material        (public keys)
+   ✓ verification methods/services (signature schemas, ...)
+   ? other public credentials as
+     desired by the owner/controller
+  Actually a single DID document could be related to N DIDs in 1-to-N
+  relationship, allowing the same "identity" be represented by different
+  implementations/methods (e.g., one DID on top Ethereum , and another
+  one on top of github+gpg).
+• DID controller refers to the subject that can prove "ownership" or 
+  "control" of the DID (in practice through private/pub crypto signature)
+  whithout the intervention of permissions of third parties.
+  More formaly, it represents the entity/ies authorized to make changes
+  to the associated DID Document.
+• Designed to provide Global unique identifier world-wide.
+• DID registries are in charge of storing or recording the DID documents.
+  Such registries can be and many times are virtual ones: 
+  - from the DID the DID Document can be generated using an algorithm.
+    E.g.: a DID based on a public key contains all the information needed
+          to recreate the DID Document.
+          On the other side, a DID can require some sort of existing 
+          database to recreate the DID Document. In such case this database
+          will be the DID registry.
+• Technology neutral but most implementations works on top of public/
+  permissioned blockchains.
+• Part of a bigger echosystem. W3C models identity as a graph, where nodes
+  are globally unique IDs and directed edges are claims that neighbors nodes
+  make towards it:
+  <img src="./W3C_Identity.svg" style="min-width:2rem; max-width:90%" />
+• DID BºMethod Registryº:
+  more than 80 implementations (methods) currently available
   @[https://w3c-ccg.github.io/did-method-registry/]
-  A registry for Decentralized Identifier Methods. At the time of writting:
-     1 did:abt:      PROVISIONAL  ABT Network     ArcBlock    ABT DID Method
-     2 did:btcr:     PROVISIONAL  Bitcoin     Christopher Allen, Ryan Grant, Kim Hamilton Duffy   BTCR DID Method
-     3 did:stack:    PROVISIONAL  Bitcoin     Jude Nelson     Blockstack DID Method
-     4 did:erc725:   PROVISIONAL  Ethereum    Markus Sabadello, Fabian Vogelsteller, Peter Kolarov    erc725 DID Method
-     5 did:example:  PROVISIONAL  DID Specification   W3C Credentials Community Group     DID Specification
-     6 did:ipid:     PROVISIONAL  IPFS    TranSendX   IPID DID method
-     7 did:life:     PROVISIONAL  RChain  lifeID Foundation   lifeID DID Method
-     8 did:sov:      PROVISIONAL  Sovrin  Mike Lodder     Sovrin DID Method
-     9 did:uport:    DEPRECATED   Ethereum    uPort
-    10 did:ethr:     PROVISIONAL  Ethereum    uPort   ETHR DID Method
-    11 did:v1:       PROVISIONAL  Veres One   Digital Bazaar  Veres One DID Method
-    12 did:com:      PROVISIONAL  commercio.network   Commercio Consortium    Commercio.network DID Method
-    13 did:dom:      PROVISIONAL  Ethereum    Dominode
-    14 did:ont:      PROVISIONAL  Ontology    Ontology Foundation     Ontology DID Method
-    15 did:vvo:      PROVISIONAL  Vivvo   Vivvo Application Studios   Vivvo DID Method
-    16 did:aergo:    PROVISIONAL  Aergo   Blocko  Aergo DID Method
-    17 did:icon:     PROVISIONAL  ICON    ICONLOOP    ICON DID Method
-    18 did:iwt:      PROVISIONAL  InfoWallet  Raonsecure  InfoWallet DID Method
-    19 did:ockam:    PROVISIONAL  Ockam   Ockam   Ockam DID Method
-    20 did:ala:      PROVISIONAL  Alastria    Alastria National Blockchain Ecosystem  Alastria DID Method
-    21 did:op:       PROVISIONAL  Ocean Protocol  Ocean Protocol  Ocean Protocol DID Method
-    22 did:jlinc:    PROVISIONAL  JLINC Protocol  Victor Grey     JLINC Protocol DID Method
-    23 did:ion:      PROVISIONAL  Bitcoin     Various DIF contributors    ION DID Method
-    24 did:jolo:     PROVISIONAL  Ethereum    Jolocom     Jolocom DID Method
-    25 did:bryk:     PROVISIONAL  bryk    Marcos Allende, Sandra Murcia, Flavia Munhoso, Ruben Cessa  bryk DID Method
-    26 did:peer:     PROVISIONAL  peer    Daniel Hardman  peer DID Method
-    27 did:selfkey:  PROVISIONAL  Ethereum    SelfKey     SelfKey DID Method
-    28 did:meta:     PROVISIONAL  Metadium    Metadium Foundation     Metadium DID Method
-    29 did:tys:      PROVISIONAL  DID Specification   Chainyard   TYS DID Method
-    30 did:git:      PROVISIONAL  DID Specification   Internet Identity Workshop  Git DID Method
-    31 did:tangle:   PROVISIONAL  IOTA Tangle     BiiLabs Co., Ltd.   TangleID DID Method
-    32 did:emtrust:  PROVISIONAL  Hyperledger Fabric  Halialabs Pte Ltd.  Emtrust DID Method
-    33 did:ttm:      PROVISIONAL  TMChain     Token.TM    TM DID Method
-    34 did:wlk:      PROVISIONAL  Weelink Network     Weelink     Weelink DID Method
-    35 did:pistis:   PROVISIONAL  Ethereum    Andrea Taglia, Matteo Sinico    Pistis DID Method
-    36 did:holo:     PROVISIONAL  Holochain   Holo.Host   Holochain DID Method
-    37 did:web:      PROVISIONAL  Web     Oliver Terbu, Mike Xu, Dmitri Zagidulin, Amy Guy    Web DID Method
-    38 did:io:       PROVISIONAL  IoTeX   IoTeX Foundation    IoTeX DID Method
-    39 did:vaultie:  PROVISIONAL  Ethereum    Vaultie Inc.    Vaultie DID Method
-    40 did:moac:     PROVISIONAL  MOAC    MOAC Blockchain Tech, Inc.  MOAC DID Method
-    41 did:omn:      PROVISIONAL  OmniOne     OmniOne     OmniOne DID Method
-    42 did:work:     PROVISIONAL  Hyperledger Fabric  Workday, Inc.   Workday DID Method
-    43 did:vid:      PROVISIONAL  VP  VP Inc.     VP DID Method
-    44 did:ccp:      PROVISIONAL  Quorum  Baidu, Inc.     Cloud DID Method
-    45 did:jnctn:    PROVISIONAL  Jnctn Network   Jnctn Limited   JNCTN DID Method
-    46 did:evan:     PROVISIONAL  evan.network    evan GmbH   evan.network DID Method
-    47 did:elastos:  PROVISIONAL  Elastos ID Sidechain    Elastos Foundation  Elastos DID Method
-    48 did:kilt:     PROVISIONAL  KILT Blockchain     BOTLabs GmbH    KILT DID Method
-    49 did:elem:     PROVISIONAL  Element DID     Transmute   ELEM DID Method
-    50 did:github:   PROVISIONAL  Github  Transmute   GitHub DID Method
-    51 did:bid:      PROVISIONAL  bif     teleinfo caict  BIF DID Method
-    52 did:ptn:      PROVISIONAL  PalletOne   PalletOne   PalletOne DID Method
-    53 did:echo:     PROVISIONAL  Echo    Echo Technological Solutions LLC    Echo DID Method
-    54 did:trustbloc:PROVISIONAL  Hyperledger Fabric  SecureKey   TrustBloc DID Method
-    55 did:san:      PROVISIONAL  SAN Cloudchain  YLZ Inc.    SAN DID Method
-    56 did:gatc:     PROVISIONAL  Ethereum, Hyperledger Fabric, Hyperledger Besu, Alastria    Gataca  Gataca DID Method
-    57 did:factom:   PROVISIONAL  Factom  Sphereon, Factomatic,Factom Inc
-
-    58 did:signor:   PROVISIONAL  Ethereum, Hedera Hashgraph,  Cryptonics  Signor DID Method
-                                  Quorum, Hyperledger Besu
-    59 did:hedera:   PROVISIONAL  Hedera Hashgraph            Hedera Hashgraph, Swisscom Blockchain AG
-                                                              Hedera Hashgraph DID Method
-    60 did:sirius:   PROVISIONAL  ProximaX Sirius Chain       ProximaX Enterprise, Proximax Inc.
-                                                              ProximaX SiriusID DID Method
-    61 did:dock:     PROVISIONAL  Dock                        Dock.io     Dock DID Method
-    62 did:twit:     PROVISIONAL  Twit                        DID Twit GitHub     Twit DID Method
-    63 did:near:     PROVISIONAL  NEAR                        Ontology Foundation     NEAR DID Method
-    64 did:vaa:      PROVISIONAL  bif                         China Academy of Information and Communications
-                                                              Technology (CAICT)  VAA Method
-    65 did:bba:      PROVISIONAL  Ardor                       Attila Aldemir  BBA DID Method
-    66 did:morpheus: PROVISIONAL  Hydra                       Internet of People  Morpheus DID Method
-    67 did:etho:     PROVISIONAL  Ethereum                    Ontology Foundation     ETHO DID Method
-    68 did:bnb:      PROVISIONAL  Binance Smart Chain         Ontology Foundation     Binance DID Method
-    69 did:celo:     PROVISIONAL  Celo                        Ontology Foundation     Celo DID Method
-    70 did:klay:     PROVISIONAL  Klaytn                      Ontology Foundation     Klaytn DID Method
-    71 did:trx:      PROVISIONAL  TRON                        Ontology Foundation     TRON DID Method
-    72 did:schema:   PROVISIONAL  Multiple storage networks   51nodes GmbH    Schema Registry DID Method
-                                  currently public IPFS and
-                                  evan.network IPFS
-
-- Linked Data Proofs 1.0
-  @[https://w3c-ccg.github.io/ld-proofs/]
-
-- A DID is stored (probably on a blockchain) along with a DID document
-  containing the public key for the DID, any other public credentials
-  the identity owner wishes to disclose, and the network addresses for
-  interaction. The identity owner controls the DID document by
-  controlling the associated private key.
-
-
 
 <span TODO>Verifiable Credentials</span>
 @[https://w3c.github.io/vc-data-model/]
@@ -1333,10 +1364,6 @@ DID_document.authentication: (Optional)
   }
 </pre>
 
-<pre zoom labels="angular,aaa,security,TODO">
-<span title>Angular AAA with keycloak</span><!-- @ma -->
-@[https://medium.com/keycloak/secure-angular-app-with-keycloak-63ec934e5093]
-</pre>
 
 </div>
 
@@ -3800,6 +3827,93 @@ Bº<!--  ^^^^^
 @[https://www.tecmint.com/create-and-run-angular-apps-using-angular-cli-and-pm2/#]
 </pre>
 
+<pre zoom labels="angular,aaa,security" id="keycloak_angular_openid">
+<span title>Angular AAA with keycloak</span>
+@[https://medium.com/keycloak/secure-angular-app-with-keycloak-63ec934e5093]
+  
+ • Core principle behind OpenID-Connect:
+   Delegation of  Authentication/Authorization
+                                              
+     ┌─────┐          ┌───────┐          ┌────────┐    
+     │Alice│          │NG-App │          │Keycloak│    
+     └──┬──┘          └───┬───┘          └───┬────┘    
+        │  Can I see      │                  │         
+        │   this page?    │  Can Alice see   │         
+        │────────────────˃│   that page?     │         
+        │                 │─────────────────˃│         
+        │ Please, enter (login) credentials? │         
+        │˂───────────────────────────────────│         
+        │ crendentials (password, token, ...)│         
+        │───────────────────────────────────˃│         
+        │                 │   OK, Alice      │         
+        │                 │    can see it    │         
+        │   page content  │˂─────────────────│         
+        │˂────────────────│                  │         
+     ┌──┴──┐          ┌───┴───┐          ┌───┴────┐    
+     │Alice│          │NG-App │          │Keycloak│    
+     └─────┘          └───────┘          └────────┘    
+
+•BºPRESETUPº
+  → Keycloak 
+    → Client Config
+      → Add Client :
+         Client ID      : angular-test-app
+         Client protocol: openid-connect
+         Root URL       : https://myapp.mydomain.com ← or dev URL 
+                                                       (http://localhost:4200)
+  → Create new angular app if needed:
+    $º$ ng new angular-keycloak  º 
+  → Adding official keycloak js adapter
+    $º$ npm i keycloak-js --save º
+
+• Modify Angular app and next code to main.ts
+  let initOptions = { //keycloak init options
+    url    : 'https://0.0.0.0:8445/auth',
+    realm  : 'keycloak-demo',
+    clientId: 'angular-test-app'
+  }
+  
+  let keycloak = Keycloak(initOptions);
+  
+ ºkeycloakº
+    .init({ onLoad: "login-required" })        //← page load will redirect to
+    .success((auth) =˃ {                       //  keycloak Auth. page
+      if (!auth) {
+        window.location.reload();
+        return
+      }
+      console.log("successful authentication. Bootstrapping now");
+      
+      platformBrowserDynamic()
+        .bootstrapModule(AppModule)            // ← boostrap module
+        .catch(err =˃ console.error(err));
+  
+      localStorage.setItem
+        ( "ang-token"        , ºkeycloakº.token);       // Access token
+      localStorage.setItem                          
+        ( "ang-refresh-token", ºkeycloakº.refreshToken) // Refresh token
+  
+      setTimeout( refreshToken, 60000 /* 1 min*/ )      // May just each hour/day
+    })
+    .error(() =˃ { console.error("Authenticated Failed"); });
+   
+    function refreshToken = () =˃ {
+     ºkeycloakº.updateToken(70)
+      .success( (bRefreshed) =˃ {
+          if (bRefreshed) { /* OK */ return ; }
+          console.warn('Token not refreshed, valid for '
+              + Math.round(
+                 ºkeycloakº.tokenParsed.exp
+                +ºkeycloakº.timeSkew
+                - new Date().getTime() / 1000) + ' seconds');
+        })
+     .error(() =˃ { console.error('Failed token refresh'); });
+    }
+
+
+</pre>
+
+
 <span title>NativeScript (Native Apps Angular)</span>
 <pre zoom labels="angular,vue,android,ios,TODO">
 <span title>NativeScript</span>
@@ -5060,13 +5174,13 @@ eBay Increases Draft Completion Rate by 30% by Porting Scanner Code
 to the Web with WebAssembly
 </pre>
 
-<pre zoom labels="wasm,debug,TODO">
+<pre zoom labels="wasm,debugging,TODO">
 <span title>Wasm Debuging</span>
 https://www.infoq.com/news/2019/09/webassembly-source-level-debug/
 WebAssembly Source Code Can Now Be Debugged Outside the Browser With GDB and LLDB
 </pre>
 
-<pre zoom labels="typescript,debug,TODO">
+<pre zoom labels="typescript,debugging,TODO">
 <span title>Debugging TS in FF DevTools</span>
 https://hacks.mozilla.org/2019/09/debugging-typescript-in-firefox-devtools/
 </pre>
@@ -5969,5 +6083,40 @@ Verifiable presentations:
   - Diploma + used to apply for a grant
     └──┬──┘   └──────────┬────────────┘
       VA             Purpose
+#####################
+In order to enable repeated transfer of large amounts of data between Web
+Workers [WEBWORKERS], ArrayBuffer implements the Transferable interface [HTML
+]. This section defines the behavior of ArrayBuffers and views under the
+structured cloning [HTML] and transfer algorithms.
+#####################
+FlowType: Find type-inference bugs:
+- https://flowtype.org
+  Flow uses type inference to find bugs even without type annotations. It
+  precisely tracks the types of variables as they flow through your program.
+  
+  Flow is designed for JavaScript programmers. It understands common JavaScript
+  idioms and very dynamic code.
+  
+  Flow incrementally rechecks your changes as you work, preserving the fast
+  feedback cycle of developing plain JavaScript.
+#############
+strings:
+https://github.com/kpdecker/jsdiff
+JS native text diff generator
+##################
+RºWARN,WARN,WARN!!!: 
+es5, babel, es6 performance:
+- Some JS constructions can be 2 order of magnitude faster/slower
+  according to:
+@[http://incaseofstairs.com/six-speed/]
+  In case of trouble check the link above.
+####################
+• Linked Data Proofs 1.0
+  @[https://w3c-ccg.github.io/ld-proofs/]
+    This specification describes a mechanism for ensuring the 
+  authenticity and integrity of Linked Data documents using 
+  mathematical proofs. 
+
+
 -->
 

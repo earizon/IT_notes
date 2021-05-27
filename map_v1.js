@@ -559,7 +559,7 @@ const MB = { // Menu Bar
      +   ' onerror="src = \'https://singlepagebookproject.github.io/SPB/labelIcon.svg\';" />'
      + '║<a href="../help.html" class="noprint" style="cursor:help" target="_blank" >HelpMan</a>'
      + '║<span blue id="printButton">Print</span>'
-     + '║<div id="hint01">☞move mouse over cell<br/> for preview</div>'
+     + '║<div id="hint01">'+window.document.title+'</div>'
      + '<span id="buttonZoomIn"  blue>🔍︎ dive</span>'
      + '<span id="buttonZoomSep" >⇆</span>'
      + '<span id="buttonZoomOut" blue>📷 orbit</span>'

@@ -1000,20 +1000,48 @@ BºIterators and Generatorsº
 </pre>
 
 <pre zoom labels="aaa,DID,SSI,blockchain">
-<span title>W3C Identity (DID and Verifiable Credentials)</span>
+<span title>W3C DIDs</span>
 • SPEC: @[https://www.w3.org/TR/did-core/]
 • DID stands for Decentralized IDentifier representing any type of subject
   (person, organization, thing, data model, abstract entity, etc.) 
   decoupled from any centralized registries (Active Directory, ..),
-  identity providers (Facebook, Google, ...) or certificate authorities.
-  Eg: did:ether:4f22fA5C2Da550C334B85181B7B194F8311acd76
+  identity providers (Facebook, Google, ...) or certificate authorities.  Eg: 
+
+  did:ether:21tDAKCERh95uGgKbJNHYp;foo:bar=high 
+                                       ───┬────   
+  ┌───────────────────────────────────────┘
+  generic DID parameter names.
+  · hl             resource hash of DID document (integrity protection)
+  · service (id)   Identifies a service from the DID document 
+  · version-id     Identifies a specific version of DID document 
+                   (sequential number, UUID, ...).
+                   (optional in implementations)
+  · version-time   Identifies a certain version timestamp of DID document
+                   (optional in implementations)
+
 • DIDs are URIs linking the DID subject to a DID document. The DID
   document in practice will be:
-   ✓ cryptographic material        (public keys)
+   ✓ cryptographic material        (public keys, revoked pub.keys,...)
    ✓ verification methods/services (signature schemas, ...)
    ? other public credentials as
      desired by the owner/controller
-  Actually a single DID document could be related to N DIDs in 1-to-N
+  · Non-normative (self-managed) minimal DID-document example:
+    {
+      "@context": "https://www.w3.org/ns/did/v1",
+      "id": "did:id_of_DID_method:DIDI_method_specific_id",
+      "authentication": [{
+        "id": "did:id_of_DID_method:DIDI_method_specific_id#keys-1",
+        "type": "RsaVerificationKey2018",
+        "controller": "did:id_of_DID_method:DIDI_method_specific_id",
+        "publicKeyPem": "-----BEGIN PUBLIC KEY...END PUBLIC KEY-----\r\n"
+      }],
+      "service": [{
+        "id":"did:id_of_DID_method:123456789abcdefghi#vcs",
+        "type": "VerifiableCredentialService",
+        "serviceEndpoint": "https://example.com/vc/"
+      }]
+    }
+BºNOTE:º A single DID document could be related to N DIDs in 1-to-N
   relationship, allowing the same "identity" be represented by different
   implementations/methods (e.g., one DID on top Ethereum , and another
   one on top of github+gpg).
@@ -1022,6 +1050,7 @@ BºIterators and Generatorsº
   whithout the intervention of permissions of third parties.
   More formaly, it represents the entity/ies authorized to make changes
   to the associated DID Document.
+  · Authorization and Delegation of DID Document's controller is contemplated.
 • Designed to provide Global unique identifier world-wide.
 • DID registries are in charge of storing or recording the DID documents.
   Such registries can be and many times are virtual ones: 
@@ -1033,406 +1062,101 @@ BºIterators and Generatorsº
           will be the DID registry.
 • Technology neutral but most implementations works on top of public/
   permissioned blockchains.
-• Part of a bigger echosystem. W3C models identity as a graph, where nodes
+•ºPart of a bigger echosystem.º W3C models identity as a graph, where nodes
   are globally unique IDs and directed edges are claims that neighbors nodes
   make towards it:
   <img src="./W3C_Identity.svg" style="min-width:2rem; max-width:90%" />
 • DID BºMethod Registryº:
   more than 80 implementations (methods) currently available
   @[https://w3c-ccg.github.io/did-method-registry/]
-
-<span TODO>Verifiable Credentials</span>
-@[https://w3c.github.io/vc-data-model/]
-@[https://w3c.github.io/vc-use-cases/]
-Verifiable Credentials == "Claim that can be probed by cryptography"
-DID are the "nodes", and Verifiable Credentials are oriented edges.
-Ver.Crendentials are claims that a DID-node makes about another DID-node.
-
-- 4 roles supported by verifiable credentials:
-  ( Issuer , Verifier , Subject , Holder )
-- Introduction
-- Terminology
-- Core Data Model
-- Basic Concepts
-  - Contexts
-  - Identifiers
-  - Types
-  - Credential Subject
-  - Issuer
-  - Issuance Date
-  - Proofs (Signatures)
-  - Expiration
-  - Status
-  - Presentations
-  - Advanced Concepts
-    - Lifecycle Details
-    - Trust Model
-    - Extensibility
-    - Data Schemas
-    - Refreshing
-    - Terms of Use
-    - Evidence
-    - Zero-Knowledge Proofs
-    - Disputes
-    - Authorization
-- Syntaxes: JSON, JSON-LD ,Proof Formats
-- Privacy Considerations
-- Security Considerations
-- Accessibility Considerations
-- Internationalization Considerations
-- Validation
-- Base Context
-- Subject-Holder Relationships
-
-<span title>Decentralized Indentifiers (DID) Summary</span>
-- Identity stack agnostic spec implementation.
-@[https://github.com/decentralized-identity/universal-resolver]
-  Supports DIDs on Sovrin, BTCR, uPort, Jolocom, Veres One,
-  ERC-725, Blockstack, IPFS, and DNS via community-contributed
-  drivers built on top of the Universal Resolver.
-
-- ºUniversal DID Operationsº
-@[https://github.com/WebOfTrustInfo/rwot8-barcelona/blob/master/topics-and-advance-readings/Universal-DID-Operations.md]
- Markus Sabadello (markus@danubetech.com),Nader Helmy(nader.helmy@danubetech.com),
- Vienna, 8th February 2019
-
-All DID methods commonly share 4 operations:
-Registar (Counterpart to "Resolver")
-- Create: (All params are optional)
-  create(method, options, did-doc, wallet)→ state, metadata
-         ^       ^         ^       ^
-         │       │         │       └  storage for existing/generated Priv.Keys
-         │       │         │          (text file, wallet API endpoint,
-         │       │         │           local wallet, etc.)
-         │       │         └  new DID Document
-         │       └ mainnet, testnet,...
-         └───── sov, btcr, v1, ...
-- Update:
-  First, ownership over DID is verified
-  update(identifier, options, wallet, did-doc/-doc-op)
-                                      ^
-                                      └ replace existing doc or
-                                        incremental update to existing Doc
-                                        - add-service
-                                        - remove-service
-                                        - add-publickey
-                                        - remove-publickey
-
-- Revoke:
-
-  First, ownership over DID is verified
-  revoke(identifier, options, wallet) → state, metadata
-
-- CheckOperation:
-  checkOperation(jobid     ) → state, metadata
-  checkOperation(identifier) → state, metadata
-
-At any time, we can query the Registrar to find the state of a
-previous DID operation, or the last known state of the identifier.
-
-jobid
-    returned as part of the state object
-    generated by the Registrar
-
-
-
-Resolver: Read operations
-- Resolve: straightforward implementation:
-    - no authentication/secrets required.
-    - atomic operation
-    - web friendly.
-
-Registar
-states
----------
-finished ( DID , wallet {optional}
-action   ( jobid, actiontype )
-wait     ( jobid, waittype )
-fail     ( error message )
-
-metadata
---------
-operation metadata  : duration
-method metadata     : method-specific hash,
-                      token balance
-
-
-Example states for btcr DID:
-{                                {
-º"state" : "action"º             º"state" : "wait"º
- "jobid": "aa1231",               "jobid": "aa1231",
- "action": "fundingrequired",     "action": "confirmingtransaction",
- "bitcointaddress": "3QA21f...",  "waittime": "100000"             ,
- "satoshis" : "111222"           }
-}
-
-{                                {
-º"state" : "finished"º           º"state" : "failed"º
- "jobid": "aa1231",               "jobid" : "aa1231",
- "identifier": "did:btcr:1a..."   "reason": "network_unavailable"
-}                                }
-
-<hr/>
-<span title>w3c spec</span>
-@[https://w3c.github.io/did-core/]
-(revision 2020-01-22)
-
-Targets:
-- provide verifiable, (D)ecentralized (D)igital (I)dentity.
-  independent of any centralized registry/Cert-Authority.
-
-DIDs:ºURLs that relate a DID subject to a DID document  º
-     ºallowing trustable interactions with that subject.º
-     - component of larger system like Verifiable Credentials ecosystem
-###########
-# DID UML #
-###########
-┌───────────────────────────────┐                             SERVICE ENDPOINT            ←┐
-│DID Registry               ┌──┐│                            ───────────────────────────── │
-│(Registar)                ─┼─ ││                           - represented by URI, UUID,... │
-│                          ─┼─ ││                           - network address at which     │
-│                           └──┘│  ┌─────────────────────┐    a service operates on behalf │
-│mediates creation, verification│  │DID Resolver       ┌┐│    of a DID subject.            │
-│updating, and deactivation of  │  │                  ─╪││    Existing services include:   │
-│decentralized identifiers.     │  │Retrieves DID-doc ─└┘│    ·ºdiscovery servicesº        │
-│"type of" verifiable data      │  │for a given DID      │    ·ºsocial networksº           │
-│ registry.                     │  │                     │    ·ºfile storageº              │
-└───────────────────────────────┘  └─────────────────────┘    ·ºverifiable claimº          │
-                                    ↓                          1repositoryº                │
-      DID Controller  1←→1+ DID   ┌────────→1 DID document                                 │
-      ──────────────      ↑ ───   │           ───────────────                              │
-      (human|...)entity   │ URL 1←┘           + data set describing the DID-subject        │
-       or a group of      │                   + 0+ cryptographic keys                      │
-       entities, in       │                   + mechanisms/verify methods(pub.keys,...)    │
-       control of a       │                     that DID subject can use to authenticate   │
-       DID and/or         │                     itself and prove their association         │
-       DID document.      │                     with the DID.                              │
-       DID subject (opt)  │                   + 0+ attributes/claims describing the        │
-       ┌──────────────────┘                        subject.                                │
-     ─ As many DIDs as necessary to respect   + graph─based data structures                │
-       entity's desired separation of           typically expressed using [JSON─LD].       │
-       identities,personas and contexts in    + 0+ service endpoints enabling    ←─────────┘
-       the everyday sense of these words.          trusted interactions with the
-     ─ Different DIDs can be needed to             DID subject.
-       support different DID methods
-       and different cryptographic schemes
-
-Non-normative DID example:                      Non-normative (self-managed) DID-document example:
-"did:btcr:1BvBMSEYstWetqTFn5Au4m4GFg7xJaNVN2"
-"did:id_of_DID_method:DIDI_method_specific_id"  Minimal self-managed DID document
-└─────────────────────┬──────────────────────┘  {
-                                                  "@context": "https://www.w3.org/ns/did/v1",
-    resolves to a DID document with info like:    "id": "did:id_of_DID_method:DIDI_method_specific_id",
-    - ways to cryptographically authenticate      "authentication": [{
-      the entity in control of the DID.             "id": "did:id_of_DID_method:DIDI_method_specific_id#keys-1",
-    - services that can be used to interact         "type": "RsaVerificationKey2018",
-       with the entity.                             "controller": "did:id_of_DID_method:DIDI_method_specific_id",
-    URI scheme [RFC3986]                            "publicKeyPem": "-----BEGIN PUBLIC KEY...END PUBLIC KEY-----\r\n"
-DID URL:                                          }],
-    DID                                           "service": [{
-  + 0|1 DID path    (/..path...)                    "id":"did:id_of_DID_method:123456789abcdefghi#vcs",
-  + 0|1 DID query   (?..query..)                    "type": "VerifiableCredentialService",
-  + 0|1 DID fragment(#..fragment..):                "serviceEndpoint": "https://example.com/vc/"
-                                                  }]
-                                                }
-
-ºSPEC AIMSº                                       DID-methods (separate spec)
-───────────                                       ───────────
-- Define Generic DID scheme:                      - CRUD DID/DID-document mechanisms
-- Define Generic set of DID-documents operations    (Deletion → deactivation)
-- Define conformance requirements for a           - Apply to (D)IDs in centralized/federated/Decen.
-  DID-method-spec.
-
-did:btrc:21tDAKCERh95uGgKbJNHYp;foo:bar=high  ← Inmutable   1 ←→ 1 subject
-                                    ───┬────    non-reusable
-┌──────────────────────────────────────┘
-generic DID parameter names.
-hl             resource hash of the DID document to add integrity protection, as
-               specified in [HASHLINK].
-------------------------------------------------------------------------
-service        Identifies a service from the DID document by service ID.
-------------------------------------------------------------------------
-version-id     Identifies a specific version of a DID document to be resolved (the
-------------------------------------------------------------------------
-version ID     could be sequential, or a UUID, or method-specific). Note that this
-               parameter might not be supported by all DID methods.
-------------------------------------------------------------------------
-version-time   Identifies a certain version timestamp of a DID document to be
-               resolved. That is, the DID document that was valid for a DID at a
-               certain time.
-               Note that this parameter might not be supported by all DID methods.
-               The exact processing rules for these parameters are specified in
-               [DID-RESOLUTION].
-------------------------------------------------------------------------
-
-6.3 Public Keys
-A DID document MAY include a publicKey property.
-
-DID document.publicKey (optional)
-property value MUST public_key[].       ┌      RsaVerificationKey2018
-                    ----------          ├  Ed25519VerificationKey2018
-                    URI id              ├ Ieee2410VerificationKey2018
-                    Pub Key Type type ──┼                         ...
-                    DID controller         ←────── Authentication used to prove its
-                    specific pub.key properties    association with a DID.
-                    from the Linked Data           (10.2 Binding of Identity )
-                    Cryptographic Suite Registry.
-
-A DID-document MAY contain revoked keys,
-by adding/refering to the revocation information
-for the key (revocation list,...).
-
-Public keys: expressed in either
-- JSON Web Key (JWK) format using the publicKeyJwk property
-- one of the formats listed in next table below.
-(table currently assume PEM and Base58)
-(it might change to base64url and/or base16)
-| Key Type    Support
-├────────────┬──────────────────────────────────────────────────────────────────────────────
-│ RSA        │ JWK or Privacy Enhanced Mail (PEM) encoding
-│            │
-├────────────┼──────────────────────────────────────────────────────────────────────────────
-│ ed25519    │ Ed25519 public key values MUST either be encoded as a JWK or be
-│            │ encoded as the raw 32─byte public key value in Base58 Bitcoin format using the
-│            │ publicKeyBase58 property.
-├────────────┼──────────────────────────────────────────────────────────────────────────────
-│ secp256k1─ │ Secp256k1 Koblitz public key values MUST either be encoded
-│ koblitz    │ as a JWK or be encoded as the raw 33─byte public key value in Base58 Bitcoin
-│            │ format using the publicKeyBase58 property.
-├────────────┼──────────────────────────────────────────────────────────────────────────────
-│ secp256r1  │ Secp256r1 public key values MUST either be encoded as a JWK or be
-│            │ encoded as the raw 32─byte public key value encoded in Base58 Bitcoin format
-│            │ using the publicKeyBase58 property.
-├────────────┼──────────────────────────────────────────────────────────────────────────────
-│ Curve25519 │Curve25519 (also known as X25519) public key values MUST either be
-│            │ encoded as a JWK or be encoded as the raw 32─byte public key value in Base58
-│            │ Bitcoin format using the publicKeyBase58 property.
-└────────────┴──────────────────────────────────────────────────────────────────────────────
-
-ºCaching and expiration of the keys in a DID document is entirely theº
-ºresponsibility of DID resolvers and other clients.º
-
-
-DID_document.authentication: (Optional)
-- Authentication is separate from authorization:
-  - DID controllers might wish to enable others to update
-    their DID document.
-  Ex:
-  {
-    "@context": "https://www.w3.org/ns/did/v1",
-    "id": "did:id_of_DID_method:123456789abcdefghi",
-   º"authentication":º[
-      "did:id_of_DID_method:123456789abcdefghi#keys-1",
-      "did:id_of_DID_method:123456789abcdefghi#biometric-1",
-      {
-        "id": "did:id_of_DID_method:123456789abcdefghi#keys-2",
-        "type": "Ed25519VerificationKey2018",
-        "controller": "did:id_of_DID_method:123456789abcdefghi",
-        "publicKeyBase58": "H3C2AVvLMv6gmMNam3uVAjZpfkcJCwDwnZn6z3wXmqPV"
-      }
-    ],
-  }
-
-ºAuthorization and Delegationº
-- Operation-Authorization:
-- Operation-Delegation:
-
- ºSecurity Considerationsº
-
-  Each DID method MUST define how authorization and delegation are implemented,
-  including any necessary cryptographic operations.
-
-  There are at least two suggested methods for implementing Authorization and
-  Delegation, which may be layered:
-
-      A DID registry could implement a coarse-grained controller pattern by
-  enabling DID documents to express the DID of another DID controller that
-  controls it, or additionally,
-      A DID registry could implement a capabilities-based approach enabling
-  further fine-grained control of authorization and delegation.
-
-  Example 15: DID document with a controller property
-
-  {
-    "@context": "https://www.w3.org/ns/did/v1",
-    "id": "did:id_of_DID_method:123456789abcdefghi",
-    "controller": "did:id_of_DID_method:bcehfew7h32f32h7af3",
-    "service": [{
-      "type": "VerifiableCredentialService",
-      "serviceEndpoint": "https://example.com/vc/"
-    }]
-  }
+• Public Keys in DID documents are expressed in either
+  · JSON Web Key (JWK) format using the publicKeyJwk property
+  · JWK or Privacy Enhanced Mail (PEM) encoding Base58
+  · Ed25519           public key encoded as JWK or raw 32─byte Base58 Bitcoin format
+  · Secp256k1 Koblitz "      "    "       "  "   "  "  33 "     "     "        "
+  · Secp256r1         "      "    "       "  "   "  "  32 "     "     "        "
+  · Curve25519        "      "    "       "  "   "  "  32 "     "     "        "
+    ("X25519")
+• RºWARN:º Caching and expiration of the keys in a DID document is entirely the
+            responsibility of DID resolvers and other clients.
 </pre>
-
-
 </div>
 
 <div groupv>
-<span title>Styling</span>
-<pre zoom bgorange labels="css,">
+<span title>CSS Styling</span>
+<pre zoom bgorange labels="css,101," id="css_selector_summary">
 <span title>CSS Selectors</span>
-By Coordinate
-    lector                    Example                  Example description
-    .class                    .intro                   Selects all elements with class="intro"
-    #id                       #firstname               Selects the element with id="firstname"
-    º                         º                        Selects all elements
-    element                   p                        Selects all ˂p˃ elements
-    element,element           div, p                   Selects all ˂div˃ elements and all ˂p˃ elements
-    element element           div p                    Selects all ˂p˃ elements inside ˂div˃ elements
-    element˃element           div ˃ p                  Selects all ˂p˃ elements where the parent is a ˂div˃ element
-    element+element           div + p                  Selects all ˂p˃ elements that are placed immediately after ˂div˃ elements
-    element1~element2         p ~ ul                   Selects every ˂ul˃ element that are preceded by a ˂p˃ element
-    [attribute]               [target]                 Selects all elements with a target attribute
-    [attribute=value]         [target=_blank]          Selects all elements with target="_blank"
-    [attribute~=value]        [title~=flower]          Selects all elements with a title attribute containing the word "flower"
-    [attribute|=value]        [lang|=en]               Selects all elements with a lang attribute value starting with "en"
-    [attribute^=value]        a[href^="https"]         Selects every ˂a˃ element whose href attribute value begins with "https"
-    [attribute$=value]        a[href$=".pdf"]          Selects every ˂a˃ element whose href attribute value ends with ".pdf"
-    [attributeº=value]        a[hrefº="w3schools"]     Selects every ˂a˃ element whose href attribute value contains the substring "w3schools"
-    :active                   a:active                 Selects the active link
+•ºBY COORDINATE:º
+  selector           Example          Example description
+  --------           -------          ------- -----------
+  .class             .intro           match 1+ element/s by class="intro"
+  #id                #firstname       match element by id
+  º                  º                match all elements
+  html_tag           p                match all ˂p˃ elements
+  sel1,sel2,...      div, p           match ˂div˃ + ˂p˃ elements
+  element element    div p            match ˂p˃ elements inside ˂div˃ elements
+  element˃element    div ˃ p          match ˂p˃ elements with parent ˂div˃ 
+  element+element    div + p          match ˂p˃ elements placed immediately
+                                      after ˂div˃ elements
+  element1~element2  p ~ ul           match every ˂ul˃ element when preceded by ˂p˃s
+  [attribute]        [target]         match elements having a "target" attribute
+  [attribute=value]  [target=_blank]  match all elements with attr. target=_blank
+  [attribute~=value] [title~=flower]  match all elements when title val. contains "flower"
+  [attribute|=value] [lang|=en]       match all elements when lang  val. starts with en
+  [attribute^=value] a[href^="http"]  match ˂a˃ elements when href  val. starts with http
+  [attribute$=value] a[href$="pdf"]   match ˂a˃ elements when href  val. ends   with .pdf
+  [attributeº=value] a[hrefº="w3c"]   match ˂a˃ elements when href  val. contains w3c 
+  :active            a:active         Selects the active link
 
-By Relative Coordinate
-    :first-of-type            p:first-of-type          Selects every ˂p˃ element that is the first ˂p˃ element of its parent
-    :last-of-type             p:last-of-type           Selects every ˂p˃ element that is the last ˂p˃ element of its parent
-    :not(selector)            :not(p)                  Selects every element that is not a ˂p˃ element
-    :first-child              p:first-child            Selects every ˂p˃ element that is the first child of its parent
-    :last-child               p:last-child             Selects every ˂p˃ element that is the last child of its parent
-    :nth-child(n)             p:nth-child(2)           Selects every ˂p˃ element that is the second child of its parent
-    :nth-last-child(n)        p:nth-last-child(2)      Selects every ˂p˃ element that is the second child of its parent, counting from the last child
-    :nth-last-of-type(n)      p:nth-last-of-type(2)    Selects every ˂p˃ element that is the second ˂p˃ element of its parent, counting from the last child
-    :nth-of-type(n)           p:nth-of-type(2)         Selects every ˂p˃ element that is the second ˂p˃ element of its parent
-    :only-of-type             p:only-of-type           Selects every ˂p˃ element that is the only ˂p˃ element of its parent
-    :only-child               p:only-child             Selects every ˂p˃ element that is the only child of its parent
-    :root                     :root                    Selects the document's root element
-    ::after                   p::after                 Insert content after every ˂p˃ element
-    ::before                  p::before                Insert content before the content of every ˂p˃ element
-    :empty                    p:empty                  Selects every ˂p˃ element that has no children (including text nodes)
-    ::first-letter            p::first-letter          Selects the first letter of every ˂p˃ element
-    ::first-line              p::first-line            Selects the first line of every ˂p˃ element
+•ºBY RELATIVE COORDINATE:º
+  selector           Example          Example description
+  --------           -------          ------- -----------
+  :first-of-type     p:first-of-type  match ˂p˃ element  when ˂p˃ is 1st  element of parent
+  :last-of-type      p:last-of-type   match ˂p˃ element  when ˂p˃ is last element of parent
+  :not(selector)     :not(p)          match all elements except ˂p˃s
+  :first-child       p:first-child    match ˂p˃ element  when ˂p˃ is 1st  child of its parent
+  :last-child        p:last-child     match ˂p˃ element  when ˂p˃ is last child of its parent
+  :nth-child(n)      p:nth-child(2)   match ˂p˃ element  when ˂p˃ is 2nd  child of its parent
+  :nth-last-child(n)                  match ˂p˃ element  when ˂p˃ is "-2" child of its parent
+                     p:nth-last-child(2)  
+  :nth-last-of-type(n)                match ˂p˃ element  when ˂p˃ is last-but-2 of ˂p˃'s parent
+                     p:nth-last-of-type(2) 
+  :nth-of-type(n)    p:nth-of-type(2) match ˂p˃ element  when ˂p˃ is nth of ˂p˃'s parent
+ º:only-of-type      p:only-of-type   match ˂p˃ element  when it's the only ˂p˃ of its parentº
+ º:only-child        p:only-child     match ˂p˃ element when it's the only child of its parentº
+  :root              :root            match document's root element
+  ::after            p::after         Insert content after  every ˂p˃ element
+  ::before           p::before        Insert content before every ˂p˃ element
+ º:empty             p:empty          match ˂p˃ elements when it has no children and no textº
+  ::first-letter     p::first-letter  match first-letter of ˂p˃ elements
+  ::first-line       p::first-line    match first-line   of ˂p˃ elements
 
-By From StatusA
-    :checked                  input:checked            Selects every checked ˂input˃ element
-    :disabled                 input:disabled           Selects every disabled ˂input˃ element
-    :enabled                  input:enabled            Selects every enabled ˂input˃ element
-    :valid                    input:valid              Selects all input elements with a valid value
-    :invalid                  input:invalid            Selects all input elements with an invalid value
-    :read-only                input:read-only          Selects input elements with the "readonly" attribute specified
-    :read-write               input:read-write         Selects input elements with the "readonly" attribute NOT specified
-    :required                 input:required           Selects input elements with the "required" attribute specified
-    :in-range                 input:in-range           Selects input elements with a value within a specified range
-    :out-of-range             input:out-of-range       Selects input elements with a value outside a specified range
-    :optional                 input:optional           Selects input elements with no "required" attribute
-    :focus                    input:focus              Selects the input element which has focus
+•ºBY STATUS:º (INPUT ELEMENTS)
+  selector           Example          Example description
+  --------           -------          ------- -----------
+  :checked           input:checked    match checked ˂input˃ element
+  :disabled          input:disabled   match disabled ˂input˃ element
+  :enabled           input:enabled    match enabled ˂input˃ element
+  :valid             input:valid      match input elements with a    valid value
+  :invalid           input:invalid    match input elements with an invalid value
+  :read-only         input:read-only  match input elements with "readonly" attribute     specified
+  :read-write        input:read-write match input elements with "readonly" attribute NOT specified
+  :required          input:required   match input elements with    "required" attribute  specified
+  :optional          input:optional   match input elements with no "required" attribute
+  :in-range          input:in-range   match input elements with a value within  a specified range
+  :out-of-range    input:out-of-range match input elements with a value outside a specified range
+  :focus             input:focus      match the input element which has focus
 
-Links
-    ::selection               ::selection              Selects the portion of an element that is selected by a user
-    :target                   #news:target             Selects the current active #news element (clicked on a URL containing that anchor name)
-    :visited                  a:visited                Selects all visited links
-    :link                     a:link                   Selects all unvisited links
+•ºLINKS:º
+  ::selection        ::selection     match portion of an element selected by a user
+  :target            #news:target    match current active #news element 
+                                     (clicked on a URL containing that anchor name)
+  :visited           a:visited       match all visited links
+  :link              a:link          match all unvisited links
 
-Others
-    :hover                    a:hover                  Selects links on mouse over
-    :lang(language)           p:lang(it)               Selects every ˂p˃ element with a lang attribute equal to "it" (Italian)
+•ºOTHERS:º
+  :hover             a:hover         match links on mouse over
+  :lang(language)    p:lang(it)      match every ˂p˃ element with lang attribute "it"
 </pre>
 
 <pre zoom labels="css,TODO" bgorange>
@@ -1790,7 +1514,7 @@ Icon Gallery:
 
 
 
-<pre zoom labels="payments,blockchain,TODO" bgorange>
+<pre zoom labels="web_monetization,payments,blockchain,TODO" bgorange>
 <span title>Coil: monetizing the Web</span>
 @[https://medium.com/coil/coil-building-a-new-business-model-for-the-web-d33124358b6]
 </pre>

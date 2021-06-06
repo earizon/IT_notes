@@ -1057,172 +1057,169 @@ Ethereum is different, and uses ECRecover instead. ECDSA allows for
 an alternative approach, where a signature is not verified directly.
 </pre>
 
-<pre zoom  labels="101,evm">
-<span xsmall>Gas Price/TX Price</span>
-REF:
-- Gas rationale:
+<pre zoom labels="101,transaction,gas_price,events,evm,zksnark,scalability,"
+  id="tx_gas_price_summary">
+<span xsmall>TX Gas Price</span>
+• REFs:
   @[https://github.com/ethereum/wiki/wiki/Design-Rationale#gas-and-fees]
-- @[http://www.ethdocs.org/en/latest/contracts-and-transactions/account-types-gas-and-transactions.html?highlight=gas#what-is-gas]
-- Gas protect against DoS attacks and buggy nodes, EVMs, and/or smart-contracts.
-
-- Price cost applies to public network and (optionally) to private/consortium networks.
-
-- Notic private/consortium networks will still be constrained to
-  gas limits per TX and/or block even if the gas price is ZERO:
-
-- TXs will fail if the consume too much gas ("CPU" or storage)
+  @[http://www.ethdocs.org/en/latest/contracts-and-transactions/account-types-gas-and-transactions.html?highlight=gas#what-is-gas]
+• Gas rationale:
+  · Gas protect against DoS attacks and buggy nodes, EVMs, and/or smart-contracts.
+  · Price cost applies to public network and (optionally) to private/consortium networks.
+    NOTE: private/consortium networks will still be constrained to
+          gas limits even when gas price is ZERO. [TODO]: Recheck
+  · TXs will fail if the consume too much gas ("CPU" or storage)
   but users will not loose any ethers when price is set to ZERO.
 
-- Theºmost expensive operations by far are storage onesº:
-  ┌────────────┬───────┬────────────────────────────────────────────┐
-  │Operation   │   Gas │ Remark                                     │
-  │Name        │ Spent │                                            │
-  ├────────────┼───────┼────────────────────────────────────────────┤
-  │step        │     1 │ default amount per execution cycle         │
-  ├────────────┼───────┼────────────────────────────────────────────┤
-  │stop        │     0 │ free                                       │
-  ├────────────┼───────┼────────────────────────────────────────────┤
-  │suicide     │     0 │ free                                       │
-  ├────────────┼───────┼────────────────────────────────────────────┤
-  │sha3        │    20 │                                            │
-  ├────────────┼───────┼────────────────────────────────────────────┤
-  │sload       │    20 │ get from permanent storage                 │
-  ├────────────┼───────┼────────────────────────────────────────────┤
-  │sstore      │   100 │ put into permanent storage                 │
-  ├────────────┼───────┼────────────────────────────────────────────┤
-  │balance     │    20 │                                            │
-  ├────────────┼───────┼────────────────────────────────────────────┤
-  │create      │   100 │ contract creation                          │
-  ├────────────┼───────┼────────────────────────────────────────────┤
-  │call        │    20 │ initiating a read─only call                │
-  ├────────────┼───────┼────────────────────────────────────────────┤
-  │memory      │     1 │ every additional word when expanding memory│
-  ├────────────┼───────┼────────────────────────────────────────────┤
-  │txdata      │     5 │ every byte of data or code for a TX        │
-  ├────────────┼───────┼────────────────────────────────────────────┤
-  │transaction │   500 │ base fee transaction                       │
-  ├────────────┼───────┼────────────────────────────────────────────┤
-  │contract    │ 53000 │ changed in homestead from 21000            │
-  │  creation  │       │                                            │
-  └────────────┴───────┴────────────────────────────────────────────┘
-- Most instructions costs 3~10 gases.
-- Gas costs are set somewhat arbitrarily, and could well change in
-  the future. As costs change, compilers would make different choices.
+• Theºmost expensive operations by far are storage onesº:
+  ┌─────────────┬───────┬────────────────────────────────────────────┐
+  │Operation    │   Gas │ Remark                                     │
+  │Name         │ Spent │                                            │
+  ├─────────────┼───────┼────────────────────────────────────────────┤
+  │step         │     1 │ default amount per execution cycle         │
+  ├─────────────┼───────┼────────────────────────────────────────────┤
+  │stop         │     0 │ free                                       │
+  ├─────────────┼───────┼────────────────────────────────────────────┤
+  │suicide      │     0 │ free                                       │
+  ├─────────────┼───────┼────────────────────────────────────────────┤
+  │self-destruct│-24000 │                                            │
+  ├─────────────┼───────┼────────────────────────────────────────────┤
+  │sha3         │    20 │                                            │
+  ├─────────────┼───────┼────────────────────────────────────────────┤
+  │sload        │    20 │ get 32-bytes from permanent storage        │
+  ├─────────────┼───────┼────────────────────────────────────────────┤
+  │sstore  op   │   100 │ put 32-bytes into permanent storage        │
+  │             │       │ (+ ~ 20000 by setting     zero → non-zero) │
+  │             │       │ (- ~ 10000 by setting non-zero → zero)     │
+  ├─────────────┼───────┼────────────────────────────────────────────┤
+  │balance      │    20 │                                            │
+  ├─────────────┼───────┼────────────────────────────────────────────┤
+  │create       │   100 │ contract creation                          │
+  ├─────────────┼───────┼────────────────────────────────────────────┤
+  │call         │    20 │ initiating a read─only call                │
+  ├─────────────┼───────┼────────────────────────────────────────────┤
+  │memory       │     1 │ every additional word when expanding memory│
+  ├─────────────┼───────┼────────────────────────────────────────────┤
+  │txdata       │     5 │ every byte of data or code for a TX        │
+  ├─────────────┼───────┼────────────────────────────────────────────┤
+  │transaction  │   500 │ base fee transaction                       │
+  ├─────────────┼───────┼────────────────────────────────────────────┤
+  │contract     │ 53000 │ changed in homestead from 21000            │
+  │  creation   │       │                                            │
+  └─────────────┴───────┴────────────────────────────────────────────┘
+  - Most instructions costs 3~10 gas.
+  - Gas costs are set somewhat arbitrarily, and will change/adapt in the future.
+  - As costs change, compilers will make different choices.
 
-TX cost: <a href="https://medium.com/@hayeah/how-to-decipher-a-smart-contract-method-call-8ee980311603">REF</a>
-- 21000 paid for every transaction.
--     4 paid for every zero byte of data or code for a transaction.
--    68 paid for every non-zero byte of data or code for a transaction.
+• TX cost:
+  @[https://medium.com/@hayeah/how-to-decipher-a-smart-contract-method-call-8ee980311603]
+  ✓ 21000 gas per TX (fixed cost) 
+  ✓     4 gas per     zero-byte of data|code 
+  ✓    68 gas per non-zero-byte of data|code
+  RºWARNº: Small negative numbers are mostly 1s, costing quite a lot of gas.
 
-- Small negative numbers are mostly 1s, costing you quite a lot of gas.
-
-Logging Gas Costs:  <a href="https://blog.qtum.org/how-solidity-events-are-implemented-diving-into-the-ethereum-vm-part-6-30e07b3037b9">REF</a>
-  - The gas costs for the logging primitives depends on how many topics you have and how much data you log:
+• LOGGING (INMUTABLE EVENTS) GAS COSTS:                        [events]
+@[https://blog.qtum.org/how-solidity-events-are-implemented-diving-into-the-ethereum-vm-part-6-30e07b3037b9]
+  • gas costs for evm logging primitives depends on number of topics (indexes)
+    and payload length:
     (constants are defined in protocol_params)
 
-LogDataGas       uint64 = 8   // Per byte in a LOG operation's data
-topicLogTopicGas uint64 = 375 // Per LOG
-LogGas           uint64 = 375 // Per LOG operation
-MemoryGas        uint64 = 3    // Per byte of memory used
+    ✓   8 gas per byte in a LOG operation's data LogDataGas
+    ✓ 375 gas per LOG                            topicLogTopicGas
+    ✓ 375 gas per LOG operation                  LogGas
+    ✓   3 gas per byte of payload                MemoryGas
 
-If you are passing in the log data as calldata to a TX,
-you’ll need to pay for the transaction data too. The gas costs for calldata are:
+    ✓ ??? gas per data in calldata if source log
+          data comes from mined TX
+          (4 gas per zero-byte, 64 per non-zero-byte)
 
-TxDataZeroGas      uint64 = 4     // zero tx data abyte
-TxDataNonZeroGas   uint64 = 68    // non-zero tx data byte
+    BºHINTº: event with all non-zero bytes called from external
+             TX it is still a lot cheaper than storage.
+             • 3200 no-zero-bytes log gas RºTX FIXED COST(log or sstore)º:
+               (external signed TX sent from wallet/client dApp)
 
-Assuming all 32 bytes are non-zero, this is still a lot cheaper than storage:
+               Concept                     Unit *         Sub
+                                           Unit-cost      Total
+               ─────────────────────────────────────────────────
+               TX cost                    |   1 * 21000 |  21000 
+               external tx non-zero-bytes |3200 *    68 | 217600 ← TIP: optimize non-zero-bytes
+               TX data|code byte          |3200 *     5 |  16000                
+                ────────────────────────────────────────────────
+                                                  TOTAL   254600
 
-// cost of 32 bytes of log data
-32 * 68 = 2176 // tx data cost
-32 *  8 =  256 // log data cost
-32 *  3 =   96 // memory usage cost
-375 // log call cost
-----
-total (2176 + 256 + 96 + 375) ~14% of sstore for 32 bytes
-Most of the gas cost is actually spent on transaction data, not for the log operation itself
+             • 3200 no-zero-bytes log gas bill:
+               Most gas cost is TX data, not log ops itself. 
+                                                                
+               Concept                     Unit *            Sub
+                                           Unit-cost       Total
+               ─────────────────────────────────────────────────
+               TX FIXED COST              |   1 * 254600| 254600 ← Most gas cost is TX data, 
+               log-data-cost              |3200 *      8|  25600   TIP: optimize input data
+               memory usage cost          |3200 *      3|   9600 
+               log call cost              |   1 *    375|    375
+               ─────────────────────────────────────────────────
+                                                  TOTAL   290175 ~ 7.8 times cheaper
 
-The reason that a log operation is cheap is because the log data isn’t really
-stored in the blockchain. Logs, in principle, can be recalculated on the fly
-as necessary.
+             • 320 no-zero-bytes sstore bill:
+               Concept                     Unit *            Sub
+                                           Unit-cost       Total
+               ─────────────────────────────────────────────────
+               TX FIXED COST              |   1 * 254600| 254600 
+               memory usage cost          |3200 *      3|   9600 
+               sstore op                  | 100 *    100|  10000
+               sstore zero → non-zero     | 100 *  20000|2000000
+               ─────────────────────────────────────────────────
+                                                  TOTAL  2274200
+             • The real reason is for lower prices is that log data is NOT
+               really stored as blockchain status. Logs, in principle, can
+               be recalculated on the fly as necessary.
+               TX validation (by miners) will not access past logs.
 
-Miners, in particular, can simply throw away the log data, because future
-calculations can't access past logs anyway.
-
-The network as a whole does not bear the cost of logs.
-Only the API service nodes need to actually process, store, and index the logs.
-
-So the cost structure of logging is just the minimal cost to prevent log spamming.
-
-Extracted from stack-overflow:
-   Q: """The price of ETH has gone from ~8 USD/ETH to ~90 ETH/USD in 6 months,
-      but when I view transactions on the blockchain (example), I see that most
-      people are still using the default gas price of 2e10 wei/gas. Shouldn't
-      we be lowering the gas prices on our transactions to account for this
-      price change?
-      I have built a Dapp where low transaction fees are an important selling
-      point. I intend to drop
-      my gas price to 5e9 (a 75% reduction). Will my transactions still clear
-      in a timely fashion?"""
-   A: """Absolutely. Everyone should. There's a great site here that will help
-     you understand gas and gas prices.
-     It's called Ethereum Gas Station: http://ethgasstation.info/
-      They just recently made this post which explains something they call the
-     Safe Gas Price:
-     https://medium.com/@ethgasstation/the-safe-low-gas-price-fb44fdc85b91"""
-
-
-Ex: 1 Log per TX (NON-compacted):
-TX       : 21000 gas/TX    * 1TX       = 21000
-event    :   375 gas/LOG   * 1LOG      =   375
-Topic    :   375 gas/topic * 3topic    =  1125
-byte/logs: 8 gas/byte  * 150 bytes =  1240
-                                          ------
-                                 TOTAL     23740 gas   = 23740 gas º 0.000000032 Eth/gas º 300 Euros/Eth = 0.228  Eu
-
-Ex: 5 Logs per TX (compacted):
-TX       :  21000 gas/TX    * 1TX        = 21000
-event    :    375 gas/LOG   * 1LOG       =   375
-Topic    :    375 gas/topic * 3topic     =  1125
-byte/logs:      8 gas/byte  * 1500 bytes = 12400
-                                           ------
-                                  TOTAL     34900 gas  = 34900 gas º 0.000000032 Eth/gas º 300 Euros/Eth = 0.33504 Eu (0.07 Eu 1Log)
-
-
-Ex: Internal Storage: (Balance in block-chain):
-TX       :      21000 gas/TX       * 1TX         = 21000
-storage  :  20000 gas/32bytes  º 4º32 bytes      = 80000
-evento   :        375 gas/LOG   * 1LOG           =   375
-Topic    :        375 gas/topic * 3topic         =  1125
-byte/logs:          8 gas/byte  * 150 bytes      =  1240
-                                                  ------
-                                      TOTAL       103740 gas  = 103740 gas º 0.000000032 Eth/gas º 300 Euros/Eth = 0.995904 Eu
+             • Network as a whole does not bear the cost of logs.
+             BºOnly API service nodes need to actually process, store,º
+             Bºand index the logs.º
+             • cost structure is kept  minimal toºprevent log spammingº.
+<hr/>
+<span title>Watch Out default gas price!!!</span>
+• Extracted from stack-overflow:
+   Q: """ETH (to USD) price has gone from ~8 to ~90 USD in 6 months
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+         I see that most people are still using default gas price of
+         2e10 wei/gas.ºShouldn't we be lowering the gas prices per TXº
+        ºto account for this price change?º
+        º... I intend to drop fee gas price by 75%. Will TXs still beº
+        ºmined in a timely fashion?"""º
+   A: ...Absolutely. Everyone should. There's a great site here that 
+         will help you understand gas and gas prices.
+        It's calledºEthereum Gas Station: http://ethgasstation.info/º
+        They just recently made this post which explains something they 
+        call the Safe Gas Price:
+      @[https://medium.com/@ethgasstation/the-safe-low-gas-price-fb44fdc85b91]
 
 <hr/>
 <span xxsmall TODO>EIP 1559</span>
 @[https://blog.ethereum.org/2020/06/16/eth1x-1559/]
-(Supported by Besu and other clients).
-- """...things (gas price) can get out of hand quickly in times of high 
-  demand. When blocks are close to full, the cost of getting a 
-  transaction included in the next block can spike dramatically as 
-  users try to out-bid each other for inclusion. Even though currently 
-  miners have some ability to increase the number of transactions 
-  included in a single block, that limit can’t change very quickly 
-  and realistically miners are happy to capitalize on small full blocks 
-  rather than push the block gas limit up higher (larger blocks are, 
-  because of Uncle rates, a more risky proposition for a miner). 
-  Especially if your wallet is using pricing algorithms to target 
-  inclusion within a specified time frame (read: provide a good 
-  ordinary user experience), you might end up paying pretty ridiculous 
-  fees to get your transaction into a (nearly) full next block.
+• Problem Context:
+  • TX gas price can spike when block ussage is close to full.
+  • wallets trying to pay "fast" (vs waiting for TX demand/fees
+    to go down) might end up paying ridiculous fees.
+    (Supported by Besu and other clients).
+• EIP-1559 dramatically alter how gas fees are calculated.
+  • TX fees broken into two categories:
+    ✓ºbase feeº :Bºpredictableº based on how TX number in last block.
+      ·ºbase fee will be burned (removed from circulation)º vs going 
+        into miner's pockets.
+      · base fee dynamically adjust so that the overall gas usage in
+        a block moves toward the current limit of 10 million gas.
 
-  EIP 1559 introduces the concept of a 'base fee' in gas that is 
-  set to dynamically adjust so that the overall gas usage in a block 
-  moves toward the current limit of 10 million gas. Rather than going 
-  into the pockets of miners, the base fee is burned. To provide 
-  incentive for inclusion, users specify a 'tip' parameter, 
-  together with the maximum amount they are willing to pay for the 
-  transaction to be included in a block, and miners keep the tip.  ..."
+    ✓ºMiner tipº: added at will by TX users in order to incentivize
+                  miners to include their TX in mined block.
+
+NOTES:
+ • EIP-1559 does NOT reduce TX fees. 
+ • technical "Layer 2" rollup solutions used to reduce fees:
+   •ºOptimistic Rollupsº:
+   • zkRollups:                [zksnark]
 </pre>
 
 <pre zoom labels="tool,evm">
@@ -12939,3 +12936,7 @@ Bugs added so far:
 ########################
 Ethereum 2: knowledge base
 https://consensys.net/knowledge-base/ethereum-2/
+########################
+https://github.com/fravoll/solidity-patterns @ma
+####################
+EVM Add diagram similar to: https://fullstacks.org/materials/ethereumbook/14_evm.html

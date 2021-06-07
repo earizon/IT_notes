@@ -171,7 +171,7 @@ const ZW = { /* ZOOM Window */
     document.getElementById("divElementLabels").innerHTML = sLabels;
     const zoomHTML = document.getElementById("zoomHTMLContent")
     zoomHTML.innerHTML = e.outerHTML; 
-    document.getElementById("cellIDPanell").innerHTML=e.id ? ("id:"+e.id ):"(no html id)";
+    document.getElementById("cellIDPanell").innerHTML=e.id ? ("id:"+e.id ):"id(#anchor) not available";
     zoomHTML.querySelectorAll('.innerSearch').forEach(
       dom => {
         dom.addEventListener('click', function() { SE.highlightSearch(dom.innerHTML) })

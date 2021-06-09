@@ -65,7 +65,6 @@ const SF = {  /* search Form */
       SF.searchForm_labelsDOM = document.getElementById("searchFormLabels")
   },
   showSearchForm : function() {
-    IC.hidePreview()
     SF.searchFormDOM.style.display="block";
     document.getElementById("inputQuery").value = SF.regexQuery
     document.getElementById("searchAndMode").checked = SF.labelANDMode
@@ -96,27 +95,28 @@ const SF = {  /* search Form */
 
 const ZW = { /* ZOOM Window */ 
   dom : window,
-  zoomFontSize:1.00,
-  onZoomText : function(mode /* 0 => Zoom In, 1 => Zoom Out*/){
-    ZW.zoomFontSize = ZW.zoomFontSize + ((mode == 0) ? 0.1 : -0.1)
-    document.getElementById("zoomHTMLContent").querySelector("*[zoom]").style.fontSize=""+ZW.zoomFontSize+"rem"
-    return
+  
+  getMouseType : function () {
+    // 2021-06-09: Not used, but can be very useful in a future.
+    if (window.matchMedia("(pointer: coarse)").matches) { return "finger" }
+    if (window.matchMedia("(pointer: fine)"  ).matches) { return "mouse" }
+    return "none"
   },
+  textSizeSlider : document.body,
   renderZoomBox : function() {
     const dom1 = document.createElement('div');
         dom1.setAttribute("id", "zoomDiv")
     dom1.innerHTML = ""
        + "<div style='margin-bottom:0.5rem'>" 
        + " <div id='divClose'>✕ (close)</div>" 
-   //  + " <span style='font-weight:bold' text-align='center'>"+document.title+"</span>"
        + " <div id='historyBackFor' style='display:inline; '>"
        +    "<span id='GoBack'>←</span>&nbsp;"
        +    "<span id='GoForw'>→</span>"
        +    "<span id='cellNofM'>?</span> "
        + " </div>" 
        + ' <div id="butSwitchLectureMode" >?</div>'
-       + ' <div id="textZoomIn" ><span style="font-size:0.7em">🔍︎+</span></div>'
-       + ' <div id="textZoomOut"><span style="font-size:0.7em">🔍︎-</span></div>'
+       + ' <input id="textSizeSlider" type="range" '
+       + '   style="width:100px" value="100" min="30" max="200">'
        + ' <div id="cellIDPanell"></div>'
        + ' <br/>'
        + " <div id='divElementLabels' class='noprint'></div>" 
@@ -124,20 +124,20 @@ const ZW = { /* ZOOM Window */
        + "<div id='zoomHTMLContent'/>"
     ZW.dom = dom1
     document.body.insertBefore(dom1,document.body.children[0])
-    const dom2 = document.createElement('div');
-          dom2.setAttribute("id", "previewHTMLContent")
-    
-    document.body.insertBefore(dom2,document.body.children[1])
     document.getElementById("divClose").addEventListener("click", ZW.doCloseZoom);
     document.getElementById("GoBack" ).addEventListener("click", NAV.goBack);
     document.getElementById("GoForw" ).addEventListener("click", NAV.goForward);
+    ZW.textSizeSlider = document.getElementById("textSizeSlider" )
+    ZW.textSizeSlider.addEventListener("input", 
+      () => {
+         document.getElementById("zoomHTMLContent").
+           querySelector("*[zoom]").style.fontSize=""+(ZW.textSizeSlider.value/100.)+"rem"
+        }
+    );
     document.getElementById("butSwitchLectureMode" ).addEventListener("click", ZW.switchLectureMode);
-    document.getElementById("textZoomIn"  ).addEventListener("click", () => ZW.onZoomText(0));
-    document.getElementById("textZoomOut" ).addEventListener("click", () => ZW.onZoomText(1));
     ZW.updateButtonSwitchLectureMode()
   },
   doOpenZoom : function(e) {
-    IC.hidePreview()
     if (e.target != null ) e = e.target;
     for (let c = 0 ; c < 4; c++) {
       if (e.getAttribute("zoom") != null)  break
@@ -171,7 +171,7 @@ const ZW = { /* ZOOM Window */
     document.getElementById("divElementLabels").innerHTML = sLabels;
     const zoomHTML = document.getElementById("zoomHTMLContent")
     zoomHTML.innerHTML = e.outerHTML; 
-    document.getElementById("cellIDPanell").innerHTML=e.id ? ("id:"+e.id ):"id(#anchor) not available";
+    document.getElementById("cellIDPanell").innerHTML=e.id ? ("id:"+e.id ):"";
     zoomHTML.querySelectorAll('.innerSearch').forEach(
       dom => {
         dom.addEventListener('click', function() { SE.highlightSearch(dom.innerHTML) })
@@ -238,29 +238,13 @@ const ZC = { /* map zoom Control */
         }
     }
   },
-  onZoomOut : function(){
-    if     (ZC.zoomableFontSize > 0.05) {
-       ZC.zoomableFontSize = ZC.zoomableFontSize - ZC.zoomStepOut
-    } else if (ZC.xsmallFontSize > 0.4 ){
-       ZC.zoomableFontSize = 0.0006 // Absolute cero causes rendering problems in Firefox.
-                                     // REF: https://bugzilla.mozilla.org/show_bug.cgi?id=1606305
-       ZC.xsmallFontSize   = ZC.xsmallFontSize - ZC.zoomStepOut
-    } else {
-       ZC.zoomableFontSize = 0.0006
-       ZC.xsmallFontSize   = 0.4
-    }
-    ZC.cssRules[ZC.idxZoomRule  ].style['font-size']=ZC.zoomableFontSize+'rem'
-    ZC.cssRules[ZC.idxXTitleRule].style['font-size']=ZC.xsmallFontSize  +'rem'
-  },
-  onZoomIn : function(mode /* 0 = Zoom Map; 1 = Zoom Text*/) {
-    if (ZC.xsmallFontSize < 1.2) {
-      ZC.xsmallFontSize = ZC.xsmallFontSize + ZC.zoomStepIn
-    } else {
-      ZC.zoomableFontSize = ZC.zoomableFontSize + ZC.zoomStepIn
-    }
-    ZC.cssRules[ZC.idxZoomRule  ].style['font-size']=ZC.zoomableFontSize+'rem'
-    ZC.cssRules[ZC.idxXTitleRule].style['font-size']=ZC.xsmallFontSize  +'rem'
-  },
+  onZoom : function() {
+    const newFontSize = ZC.slider.value / 100.
+    ZC.cssRules[ZC.idxZoomRule  ].style['font-size']=newFontSize + 'rem'
+    ZC.cssRules[ZC.idxXTitleRule].style['font-size']=newFontSize  +'rem'
+    console.log(newFontSize)
+ },
+
 }
 
 const NAV = { // Navigation
@@ -363,87 +347,16 @@ const IC = { // Input Control
   showPreviewTimeout : null,
   showPreviewEvent : null,
   showPreviewInZoom : function() { ZW.doOpenZoom(IC.showPreviewEvent) },
-  showPreview : function(event) {
-    if (!!IC.showPreviewTimeout)  {
-        window.clearTimeout(IC.showPreviewTimeout) 
-    }
-    IC.showPreviewTimeout = setTimeout( () => {
-      const e = event.target
-   // const docWidth = document.body.getBoundingClientRect().width;
-      const docWidth = window.innerWidth
-      const margin = 10
-      const previewDom = document.getElementById("previewHTMLContent")
-      if (!!!IC.showPreviewEvent /* First execution */) { 
-        previewDom.addEventListener('dblclick', IC.showPreviewInZoom, true)
-        IC.showPreviewEvent = event;
-      } else {
-        IC.showPreviewEvent = event;
-      }
-            previewDom.style["top"]  = "" + (e.offsetTop + e.getBoundingClientRect().height ) + "px"
-      previewDom.style["left" ] = ""
-      previewDom.style["right" ] = ""
-      const freeToLeft  = ( e.getBoundingClientRect().left  )
-      const freeToRight = ( docWidth - e.getBoundingClientRect().right )
-
-      previewDom.style["display"] = "block"
-   // previewDom.style["max-width"] = "96%"
-      previewDom.innerHTML =
-         "<div id='previewTop'>" +
-         "<span id='previewHints'> (✅ double click for details)</span>" +
-         "<span id='closePreview'>❌</span><br/>" +
-         "</div>" +
-         e.outerHTML
-      // TODO:(qa) closePreview listener never released. Done automatically ?
-      document.getElementById("closePreview").
-              addEventListener('click', IC.hidePreview ) 
-      setTimeout( () => {
-        if (freeToLeft > freeToRight ) {
-console.log(1)
-             previewDom.style["left" ] = "" + e.getBoundingClientRect().right - previewDom.getBoundingClientRect().width + "px"
-        } else {
-console.log(2)
-           previewDom.style["left"  ] = "" + e.getBoundingClientRect().left                                             + "px"
-        }
-
-        // const previewWidthBy2 = previewDom.getBoundingClientRect().width / 2
-        let overflowRight = false
-        if (previewDom.getBoundingClientRect().right > docWidth ) {
-console.log(3)
-          previewDom.style["right" ] = "calc(100% - 98vw)"
-//        if (previewDom.getBoundingClientRect().width < docWidth ) {
-//          console.log(3.1)
-//          previewDom.style["left" ] = ""
-//        }
-        }
-        if (previewDom.getBoundingClientRect().left < 0 ) {
-console.log(4)
-          previewDom.style["left" ] = "calc(2vw)"
-//        if (previewDom.getBoundingClientRect().width < docWidth ) {
-//  console.log(4.1)
-//          previewDom.style["right" ] = ""
-//        }
-        }
-      }, 1 /* on next tick */)
-    }, 2000)
-  },
-
-  hidePreview : function(event) {
-    const preview = document.getElementById("closePreview")
-    if (!!preview) { preview.removeEventListener('click', IC.hidePreview ) }
-    const previewDom = document.getElementById("previewHTMLContent")
-    previewDom.style["display"] = "none"
-    previewDom.innerHTML = ""
-  },
   initInputControl: function(){
     document.addEventListener('keyup'  , IC.onKeyUp)
+
+    
     const nodeList = document.querySelectorAll('*[zoom]')
     for (let idx in nodeList) { 
        const node = nodeList[idx]
        if (!!! node.addEventListener) continue
        IC.LPC.enableDblClick (node)
        IC.LPC.enableLongTouch(node)
-       node.addEventListener('mouseenter', IC.showPreview )
-       node.addEventListener('mouseleave', function() { window.clearTimeout(IC.showPreviewTimeout) } )
     }
   },
   LPC : { /* (L)ong (P)ress (C)control */
@@ -557,18 +470,17 @@ const MB = { // Menu Bar
         searchDiv.innerHTML = ''
      + '<img id="idLabelsFilter" class="noprint" src="/labelIcon.svg"  '
      +   ' onerror="src = \'https://singlepagebookproject.github.io/SPB/labelIcon.svg\';" />'
-     + '║<a href="../help.html" class="noprint" style="cursor:help" target="_blank" >HelpMan</a>'
-     + '║<span blue id="printButton">Print</span>'
-     + '║<div id="hint01">'+window.document.title+'</div>'
-     + '<span id="buttonZoomIn"  blue>🔍︎ dive</span>'
-     + '<span id="buttonZoomSep" >⇆</span>'
-     + '<span id="buttonZoomOut" blue>📷 orbit</span>'
+     + '<a href="../help.html" class="noprint" style="cursor:help" target="_blank" >❓</a>'
+     + '<span blue id="printButton">Print</span>'
+     + '<span id="loupe"  blue>🔍︎</span>'
+     + '<input id="zoomSlider" type="range" '
+     + '  style="width:100px" value="3.0" min="3.0 " max="20">'
      + '<br/>'
     document.body.insertBefore(searchDiv,document.body.children[0])
     document.getElementById("idLabelsFilter").addEventListener("click", SF.showSearchForm)
     document.getElementById("idLabelsFilter").addEventListener("click", SF.showSearchForm)
-    document.getElementById("buttonZoomIn"  ).addEventListener("click", ZC.onZoomIn  )
-    document.getElementById("buttonZoomOut" ).addEventListener("click", ZC.onZoomOut )
+    ZC.slider = document.getElementById("zoomSlider" )
+    ZC.slider.addEventListener("input", ZC.onZoom  )
     { 
       // https://stackoverflow.com/questions/27116221/prevent-zoom-cross-browser
       const meta = document.createElement('meta')
@@ -576,30 +488,7 @@ const MB = { // Menu Bar
             meta.setAttribute("content", "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no")
       document.head.insertBefore(meta,document.head.children[0])
 
-      function addGestureZoom() {
-        // https://stackoverflow.com/questions/11183174/simplest-way-to-detect-a-pinch/11183333#11183333
-        let last = 0;
-        let lock = false;
-        window.addEventListener('touchmove', 
-          function(event) {
-            if (lock == true) return
-         // if (event.targetTouches.length === 2) 
-            if (event.touches.length == 2) {
-                let hypo1 = Math.hypot((event.targetTouches[0].pageX - event.targetTouches[1].pageX),
-                    (event.targetTouches[0].pageY - event.targetTouches[1].pageY));
-                if (last == 0) { last = hypo1; return; }
-                if      (hypo1  == last) { return        }
-                lock = true
-                if      (hypo1 >  last)  { ZC.onZoomIn ()}
-                else if (hypo1 <  last)  { ZC.onZoomOut()}
-                last = 0;
-                setTimeout(function(){ lock = false; }, 1000)
-            } else {
-                lock = false
-            }
-          }, false);
-      }
-      addGestureZoom()
+
     }
     document.getElementById("printButton").addEventListener("click", MB.spbQuickPrint )
   },

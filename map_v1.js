@@ -235,7 +235,7 @@ const ZC = { /* map zoom Control */
     }
   },
   onZoom : function() {
-    const switchElementsOn = 110
+    const switchElementsOn = 90
     if (ZC.slider.value < switchElementsOn /* change title size */) {
       const newFontSize = ZC.slider.value / 100.
       ZC.cssRules[ZC.idxXTitleRule].style['font-size']=newFontSize  +'rem'
@@ -243,7 +243,7 @@ const ZC = { /* map zoom Control */
     } else /* change normal text size*/ {
       const  delta0 = (ZC.slider.value - switchElementsOn)
 console.log(delta0)
-      const  delta1 = Math.pow(delta0, 1.5) + 4
+      const  delta1 = Math.pow(delta0, 1.3)
 console.log(delta1)
       const newFontSize = delta1/1000.
 console.log(newFontSize)
@@ -479,7 +479,7 @@ const MB = { // Menu Bar
      + '<span blue id="printButton">Print</span>'
      + '<span id="loupe"  blue>🔍︎</span>'
      + '<input id="zoomSlider" type="range" '
-     + '  style="width:100px" value="70.0" min="30.0" max="230">'
+     + '  style="width:100px" value="70.0" min="30.0" max="130">'
      + '<br/>'
     document.body.insertBefore(searchDiv,document.body.children[0])
     document.getElementById("idLabelsFilter").addEventListener("click", SF.showSearchForm)

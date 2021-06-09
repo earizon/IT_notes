@@ -5,7 +5,7 @@ export function preLoad() {
 export function postLoad() {
   console.log("debug custom postLoad");
   let html = ''
-      +'<image style="width:0; size:0;" src="http://www.oficina24x7.com/visited/'+escape(document.location)+'" ></image>'
+      +'<image style="height:0; width:0; size:0;" src="http://www.oficina24x7.com/visited/'+escape(document.location)+'" ></image>'
       +'<span style="float:left;">'
       + '<a href="https://github.com/SinglePageBookProject/IT_notes/stargazers" target="_blank">'
 //    + '<svg style="stroke: blue; fill:yellow" height="32" viewBox="0 0 16 16" version="1.1" width="40" aria-hidden="true">'

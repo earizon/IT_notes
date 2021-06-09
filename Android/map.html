@@ -380,4 +380,183 @@ https://github.com/tldr-pages/tldr/blob/master/pages/common/apktool.md
 https://github.com/tldr-pages/tldr/blob/master/pages/common/dexdump.md
 ##########################
 https://www.javacodegeeks.com/2011/08/android-interview-questions-answers.html
+##########################
+Cross-Compiling native code reference scripts:
+
+• PRE-SETUP (do once to adjust NDK path)
+  tune configure.common 
+  tune CONFIGURE.ANDROID
+  (CONFIGURE.CUSTOM defined as sym-link pointing to 
+   CONFIGURE.ANDROID | CONFIGURE.LINUX | CONFIGURE.WINDOWS, ...)
+
+• For each specific C/C++ package (e.g, libgtk, libx264, ...) create also:
+  ✓ configure_custom_arm_android.sh
+  ✓ make_custom_arm_android.sh
+    (Those scripts will vary for each package depending on the
+    different configure and make switches).
+
+• Once all the scripts are in place all that needed is to execute in order:
+
+  $º$ cd ${SOURCES}/package"N"          º
+  $º$ ./configure_custom_arm_android.sh º
+  $º$ ./make_custom_arm_android.sh"     º
+
+  $ cat CONFIGURE.ANDROID
+  ┌─────────────────────────────────────────────────────────────────────────────
+  │ export GCC_PREFIX="arm-linux-androideabi"
+  │ export     EXE=""
+  │ export  DLLEXT="so"
+  │ # http://stackoverflow.com/questions/8950988/how-to-port-intel-based-linux-application-to-arm-platform
+  │ # ARM 11: -mtune=arm1136j-s -mfpu=vfp -mfp=vfp -march=armv6
+  │ #         -mfloat-abi=softfp    ← # Android/ARM, armeabi (ARMv5TE soft-float),
+  │ #                                   Android 2.2+ (Froyo)
+  │ # Cortex A8: -mtune=cortex-a8 -mfpu=neon -mfloat-abi=softfp 
+  │ # -Wl,--fix-cortex-a8           ← # Android/ARM, armeabi-v7a (ARMv7 VFP),
+  │                                     Android 4.0+ (ICS)
+  │ # Cortex A9: -mtune=cortex-a9 -mfpu=neon -mfloat-abi=softfp
+  │ EXTRA_CFLAGS=" -mtune=cortex-a8 -mfloat-abi=softfp -Wl,--fix-cortex-a8"
+  │ # EXTRA_CFLAGS="-mtune=cortex-a8 -mfpu=neon -mfloat-abi=softfp -Wl,--fix-cortex-a8"
+  │ PLATFORM="/opt/android-ndk-r9d/platforms/android-3/arch-arm" 
+  │ 
+  │ export   CFLAGS="${CFLAGS}   -DANDROID ${EXTRA_CFLAGS} -I ${PLATFORM}/usr/include -Wl,-ldl" 
+  │ export CXXFLAGS="${CXXFLAGS} -DANDROID ${EXTRA_CFLAGS} -I ${PLATFORM}/usr/include -Wl,-ldl" 
+  │ 
+  │ export  LDFLAGS="-L${PLATFORM}/usr/lib"
+  │ export     PATH="${PATH}:/opt/android-ndk-r9d/:/opt/android-ndk-r9d/toolchains/arm-linux-androideabi-4.8/prebuilt/linux-x86_64/bin"
+  │ 
+  │ export BINARY_FORMAT="elf"
+  │ 
+  │ # TODO Adding this CGG flags fixed the crt*o issues in 
+  │ # 05_grep-2.20_ONLY_Android
+  │ # Looks a cleaner way thant adding th symb.links
+  │ SYSROOT="/opt/android-ndk-r9d/platforms/android-3/arch-arm/"
+  │ CFLAGS="  ${CFLAGS} --sysroot ${SYSROOT}"
+  │ CxxFLAGS="${CXXFLAGS} --sysroot /opt/android-ndk-r9d/platforms/android-3/arch-arm/"
+  │ BASE="/opt/android-ndk-r9d/platforms/android-3/arch-arm/usr/lib/"
+  └──────────────────────────────────────────────────────────────────
+
+  $ ls -ld CONFIGURE.CUSTOM --→ CONFIGURE.ANDROID
+
+  $ cat make_custom_arm_android.sh
+  ┌──────────────────────────────────────────────────
+  │ #!/bin/bash
+  │ 
+  │ . configure.common
+  │ 
+  │ echo "WARM: yasm version must be >=1.2.0"
+  │ 
+  │ # export PATH=${PATH}:/usr/local/viotech_dev/bin/
+  │ 
+  │ make -j4 STRIP=  2>&1  | tee ${GCC_PREFIX}_make_custom.log
+  │ 
+  │ if [ $? != 0 ]; then exit 1 ; fi
+  │ 
+  │ # For Android copy just the static library
+  │ 
+  │ ${AR} rc libx264_tmp.a  libx264.a ${SYSROOT}usr/lib/libm.so 
+  │ mv libx264_tmp.a  libx264.a
+  │ cp libx264.a ${BUILD}/lib/
+  └--------------------------------------------------
+
+  $ cat configure.common
+  ┌------------------------------------------------------------------------------
+  | set -e
+  | 
+  | export SOURCE=/home/MyProject/Package_sources # Base source for all packages.
+  | CONFIGURE_CUSTOM=./CONFIGURE.CUSTOM
+  | if [ ! -L ${CONFIGURE_CUSTOM} ]; then 
+  |     # Abort if its not a symbolic link.
+  |     echo "${CONFIGURE_CUSTOM} must be a symbolic link to configure.(i686-w64-mingw32|x686-linux-gnu|...)"
+  |     exit 1;
+  | fi
+  | 
+  | . ${CONFIGURE_CUSTOM}
+  | 
+  | export LC_ALL=C
+  | export BUILD=${SOURCE}/BUILD_${GCC_PREFIX}
+  | for dirI in bin lib include share ; do
+  |     if [ ! -d ${BUILD}/${dirI} ]; then mkdir -p ${BUILD}/${dirI} ; fi
+  | done
+  |  
+  | # If CLEAN_ON_CONFIG not defined them define as yes.
+  | set | grep CLEAN_ON_CONFIG || export CLEAN_ON_CONFIG="yes"
+  | if [ "$CLEAN_ON_CONFIG" != "yes" ] ; then
+  |     echo "Unsetting CLEAN_ON_CONFIG"
+  |     unset CLEAN_ON_CONFIG # this avoid problems with bash conditionals.
+  | fi
+  | echo "CLEAN_ON_CONFIG: ${CLEAN_ON_CONFIG}" 
+  | 
+  | export      CC="${GCC_PREFIX}-gcc -O0 -g " # TODO:(?) Move -O0 -g to CFLAGS?
+  | export     CXX="${GCC_PREFIX}-g++ -O0 -g "
+  | export      AR="${GCC_PREFIX}-ar"
+  | export      LD="${GCC_PREFIX}-ld"
+  | export      NM="${GCC_PREFIX}-nm"
+  | export OBJCOPY="${GCC_PREFIX}-objcopy"
+  | export OBJDUMP="${GCC_PREFIX}-objdump"
+  | export   STRIP="${GCC_PREFIX}-strip"
+  | export  RANLIB="${GCC_PREFIX}-ranlib"
+  | export PREFIX="${BUILD}"
+  | export LD_LIBRARY_PATH=${BUILD}/lib:/usr/${GCC_PREFIX}/lib
+  | export PKG_CONFIG_PATH=${BUILD}/lib/pkgconfig
+  | export  CFLAGS="${CFLAGS}  -I ${BUILD}/include " 
+  | export LDFLAGS="${LDFLAGS} -L${BUILD}/lib -v "
+  | cat ˂˂ EOF ˃ ${GCC_PREFIX}-pkg-config
+  | #!/bin/bash
+  | 
+  | # Ref: http://www.mega-nerd.com/erikd/Blog/CodeHacking/MinGWCross/pkg-config.html
+  | # This file has no copyright assigned and is placed in the Public Domain.
+  | # No warranty is given.
+  | 
+  | # When using the mingw32msvc cross compiler tools, the native Linux
+  | # pkg-config executable works fine as long as the default PKG_CONFIG_LIBDIR
+  | # is overridden.
+  | export PKG_CONFIG_LIBDIR=/usr/${GCC_PREFIX}/lib/pkgconfig
+  | 
+  | # Also want to override the standard user defined PKG_CONFIG_PATH with
+  | # a mingw32msvc specific one.
+  | ### export PKG_CONFIG_PATH=$PKG_CONFIG_PATH_MINGW32MSVC
+  | 
+  | # Now just execute pkg-config with the given command line args.
+  | pkg-config $@
+  | EOF
+  | chmod u+x ${GCC_PREFIX}-pkg-config
+  | PATH=$PATH:.
+  └----------------------------------------------------------------
+
+  $ cat /tmp/scriptExamples/configure_custom_arm_android.sh
+  ┌-------------------------------------------------------------------------------
+  | #!/bin/bash -x
+  | # Use our custom compiled yasm (1.2.0) over debian standard package (yasm 0.8)
+  | 
+  | . configure.common
+  | 
+  | # export PATH=${PATH}:/usr/local/viotech_dev/bin/
+  | 
+  | # --------------------
+  | export CFLAGS="${CFLAGS}     --param=ssp-buffer-size=4 -Wformat "
+  | export CXXFLAGS="${CXXFLAGS} --param=ssp-buffer-size=4 -Wformat "
+  | export CFLAGS="${CFLAGS}     -Werror=format-security"
+  | export CXXFLAGS="${CXXFLAGS} -Werror=format-security" 
+  | export CPPFLAGS="${CPPFLAGS} -D_FORTIFY_SOURCE=2"
+  | # export LDFLAGS="${LDFLAGS} -Wl,-Bsymbolic-functions"
+  | export LDFLAGS="${LDFLAGS}"
+  | export LIBS="libm.so"
+  | # --------------------
+  | 
+  | if [ ${CLEAN_ON_CONFIG} ] ; then
+  |     make distclean || echo "make clean failed $pwd"
+  | fi
+  | 
+  | echo $CFLAGS;
+  | # --disable-asm =˃ Avoid "illegal instruction at runtime"
+  |   ./configure --enable-pic \
+  |         --cross-prefix=${GCC_PREFIX}- \
+  |         --cross-prefix=${GCC_PREFIX}- \
+  |         --host=arm-linux-androideabi  \
+  |         --enable-shared \
+  |         --enable-static \
+  |         --prefix=${PREFIX} 2˃⅋1 | \
+  |       # --disable-asm \
+  |         tee ${GCC_PREFIX}_configure_custom.log
+  └-------------------------------------------------------------------------------
 -->

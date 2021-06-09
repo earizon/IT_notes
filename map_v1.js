@@ -222,29 +222,34 @@ const ZC = { /* map zoom Control */
   idxZoomRule:-1,
   idxXTitleRule:-1,
   zoomStatus: 0, // 0 = inactive, 1 = zoomedContent
-  zoomableFontSize:0.05,
-  xsmallFontSize:0.7, // must match initial size xsmall/title in css
-  zoomStepIn:0.20,
-  zoomStepOut:0.10,
   cssRules : [],
+  initialZoomSize : 0.6, /* must match css * 1000 */
   initCSSIndexes : function() {
     ZC.cssRules = document.styleSheets[0]['cssRules'][0].cssRules;
-    for (let idx=0; idx<ZC.cssRules.length; idx++){
-        if( ZC.cssRules[idx].selectorText == "[zoom]") {
-            ZC.idxZoomRule=idx
-        }
-        if( ZC.cssRules[idx].selectorText == "[title]") {
-            ZC.idxXTitleRule=idx
-        }
+    for (let idx=0; idx<ZC.cssRules.length; idx++) {
+     // console.log(ZC.cssRules[idx].selectorText)
+      if( ZC.cssRules[idx].selectorText == "[zoom]") { ZC.idxZoomRule=idx }
+      if( ZC.cssRules[idx].selectorText == "[xsmall], [zoom] > [title]") {
+          ZC.idxXTitleRule=idx
+      }
     }
   },
   onZoom : function() {
-    const newFontSize = ZC.slider.value / 100.
-    ZC.cssRules[ZC.idxZoomRule  ].style['font-size']=newFontSize + 'rem'
-    ZC.cssRules[ZC.idxXTitleRule].style['font-size']=newFontSize  +'rem'
-    console.log(newFontSize)
+    const switchElementsOn = 110
+    if (ZC.slider.value < switchElementsOn /* change title size */) {
+      const newFontSize = ZC.slider.value / 100.
+      ZC.cssRules[ZC.idxXTitleRule].style['font-size']=newFontSize  +'rem'
+      ZC.cssRules[ZC.idxZoomRule  ].style['font-size']=0.04 + 'rem'
+    } else /* change normal text size*/ {
+      const  delta0 = (ZC.slider.value - switchElementsOn)
+console.log(delta0)
+      const  delta1 = Math.pow(delta0, 1.5) + 4
+console.log(delta1)
+      const newFontSize = delta1/1000.
+console.log(newFontSize)
+      ZC.cssRules[ZC.idxZoomRule  ].style['font-size']=newFontSize + 'rem'
+    }
  },
-
 }
 
 const NAV = { // Navigation
@@ -474,21 +479,19 @@ const MB = { // Menu Bar
      + '<span blue id="printButton">Print</span>'
      + '<span id="loupe"  blue>🔍︎</span>'
      + '<input id="zoomSlider" type="range" '
-     + '  style="width:100px" value="3.0" min="3.0 " max="20">'
+     + '  style="width:100px" value="70.0" min="30.0" max="230">'
      + '<br/>'
     document.body.insertBefore(searchDiv,document.body.children[0])
     document.getElementById("idLabelsFilter").addEventListener("click", SF.showSearchForm)
     document.getElementById("idLabelsFilter").addEventListener("click", SF.showSearchForm)
     ZC.slider = document.getElementById("zoomSlider" )
     ZC.slider.addEventListener("input", ZC.onZoom  )
-    { 
+    {
       // https://stackoverflow.com/questions/27116221/prevent-zoom-cross-browser
       const meta = document.createElement('meta')
             meta.setAttribute("name", "viewport")
             meta.setAttribute("content", "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no")
       document.head.insertBefore(meta,document.head.children[0])
-
-
     }
     document.getElementById("printButton").addEventListener("click", MB.spbQuickPrint )
   },

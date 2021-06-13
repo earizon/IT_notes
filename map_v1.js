@@ -6,10 +6,11 @@ const SF = {  /* search Form */
   regexQuery: "",
   singleLineMode : false,
   matchCaseMode : false,
+  fullWordMode : false,
   labelANDMode : true,
   labelAndOrText : { 
-      true : "←<span brown>AND</span> mode must contains <span brown>all</span> selected topics",
-      false: "←<span green>OR </span> mode must contains <span green>any</span> selected topics"
+      true : "Note contains ALL selected topics",
+      false: "Note contains ANY selected topic"
   },
   switchANDORSearch : function() {
     SF.labelANDMode=!SF.labelANDMode  
@@ -24,16 +25,21 @@ const SF = {  /* search Form */
       + ' <div id="divClose">✕ (close)</div>' 
       + ' <div id="doSearchButton">&#128065;Search/Filter</div>&nbsp;'
       + ' <div id="unhide" hidden >show all</div>'
-      + '  <input id="inputQuery" type="text" placeholder="(regex)search" maxlength="30" />&nbsp;'
-      + '  <input id="singleLineOnly" type="checkbox" > '
-      + '  <span class="regexFlags">single-line</span>'
-      + '  <input id="caseSensitive"  type="checkbox">'
-      + '  <span class="regexFlags">Case-Match</span>'
+      + '  <div id="divRegexForm">'
+      + '  <input id="inputQuery"  type="text" placeholder="(regex)search"  />'
+      + '  <div   id="matchNumber" ></div>'
+      + '  <br/>'
+      + '  <input id="singleLineOnly" type="checkbox" /> '
+      + '  <label for="singleLineOnly">single-line</label>'
+      + '  <input id="caseSensitive"  type="checkbox" />'
+      + '  <label for="caseSensitive">Case-Match</label>'
+      + '  <input id="fullWord"  type="checkbox" />'
+      + '  <label for="fullWord">Full Word</label>'
+      + '  </div>'
       + '  <br/>'
       if (Object.keys(LM.labelMap).length > 0) {
           html += 
-           '<b>Filter by topic</b>:\n '
-        +  '<input id="searchAndMode" type="checkbox">'
+           '<input id="searchAndMode" type="checkbox">'
         +  '<span id="idLabelSearchAndMode" mono></span>'
         +  '<br/>\n'
         +  '<div id="searchFormLabels">\n'
@@ -52,10 +58,12 @@ const SF = {  /* search Form */
         document.getElementById("searchAndMode").addEventListener("change",  SF.switchANDORSearch )
       }
       document.getElementById("doSearchButton").addEventListener('click', SF.doHideSearchFormAndSearch )
-      const swithSingleLineDom = document.getElementById("singleLineOnly");
-            swithSingleLineDom.addEventListener('click', function (){ SF.singleLineMode=swithSingleLineDom.checked; } )
-      const swithCaseSensitDom = document.getElementById("caseSensitive");
-      swithCaseSensitDom.addEventListener('click',  function () { SF.matchCaseMode=swithCaseSensitDom.checked; } )
+      const swithSingleLineDom = document.getElementById("singleLineOnly")
+      const swithCaseSensitDom = document.getElementById("caseSensitive")
+      const swithCaseFullWord  = document.getElementById("fullWord")
+      swithSingleLineDom.addEventListener('click', ()=>{ SF.singleLineMode=swithSingleLineDom.checked; } )
+      swithCaseSensitDom.addEventListener('click', ()=>{ SF.matchCaseMode =swithCaseSensitDom.checked; } )
+      swithCaseFullWord .addEventListener('click', ()=>{ SF.fullWordMode  =swithCaseFullWord.checked; } )
 
       const domInputQuery = document.getElementById("inputQuery")
       domInputQuery.addEventListener("change",  function () { SF.regexQuery = this.value } )
@@ -70,6 +78,7 @@ const SF = {  /* search Form */
     document.getElementById("searchAndMode").checked = SF.labelANDMode
     document.getElementById("singleLineOnly").checked = SF.singleLineMode
     document.getElementById("caseSensitive" ).checked = SF.matchCaseMode
+    document.getElementById("fullWord" ).checked = SF.fullWordMode
     document.getElementById("idLabelSearchAndMode" ).innerHTML = SF.labelAndOrText[SF.labelANDMode]
   
     var htmlLabels = ''
@@ -490,7 +499,7 @@ const MB = { // Menu Bar
       // https://stackoverflow.com/questions/27116221/prevent-zoom-cross-browser
       const meta = document.createElement('meta')
             meta.setAttribute("name", "viewport")
-            meta.setAttribute("content", "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no")
+            meta.setAttribute("content", "width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no")
       document.head.insertBefore(meta,document.head.children[0])
     }
     document.getElementById("printButton").addEventListener("click", MB.spbQuickPrint )
@@ -627,14 +636,18 @@ const SE = { // (S)earch (E)ngine
     return searchFound
   },
   highlightSearch :   function(query) {
-    let unhideButton = document.getElementById("unhide");
+    const unhideButton = document.getElementById("unhide");
     unhideButton.setAttribute("hidden","");
 
     if (typeof query != "string") query = "";
     if (!!query) { SF.regexQuery = query; }
     let finalQueryRegex = SF.regexQuery.replace(/ +/g,".*");
     SE.resetTextFoundAttr(false);
-    let isEmptyQuery = /^\s*$/.test(finalQueryRegex)
+    const isEmptyQuery = /^\s*$/.test(finalQueryRegex)
+
+    if (SF.fullWordMode) {
+       finalQueryRegex = "\\b"+finalQueryRegex+"\\b"
+    }
 
     if ((!LM.isAnyLabelSelected()) && isEmptyQuery) { return false; /* Nothing to do */ }
 
@@ -688,6 +701,9 @@ const SE = { // (S)earch (E)ngine
     if (numberOfMatches == 1) {
         ZW.doOpenZoom(lastElementFound);
     }
+    let sMatchText = "<span red>no matches</span>"
+    if (numberOfMatches > 0) sMatchText = numberOfMatches + " found"
+    document.getElementById("matchNumber").innerHTML = sMatchText
     unhideButton.removeAttribute("hidden","");
     return false // avoid event propagation
   },

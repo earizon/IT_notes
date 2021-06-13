@@ -239,7 +239,7 @@ const ZC = { /* map zoom Control */
     if (ZC.slider.value < switchElementsOn /* change title size */) {
       const newFontSize = ZC.slider.value / 100.
       ZC.cssRules[ZC.idxXTitleRule].style['font-size']=newFontSize  +'rem'
-      ZC.cssRules[ZC.idxZoomRule  ].style['font-size']=0.04 + 'rem'
+      ZC.cssRules[ZC.idxZoomRule  ].style['font-size']=0.0001 + 'rem'
     } else /* change normal text size*/ {
       const  delta0 = (ZC.slider.value - switchElementsOn)
 console.log(delta0)

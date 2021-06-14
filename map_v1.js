@@ -621,6 +621,14 @@ const SE = { // (S)earch (E)ngine
     finalRegex.lastIndex = 0;
     node.setAttribute("textFound", searchFound?"true":"false")
     if (searchFound) {
+        for (
+            let nodeI = node.parentElement ;
+            nodeI != null ;
+            nodeI = nodeI.parentElement ) {
+          nodeI.setAttribute("textFound", "true")
+        }
+    }
+    if (searchFound) {
         const nodeListList =  (node.parentNode.parentNode.tagName != "BODY")
           ? [node.parentNode.parentNode.querySelectorAll(':not(div)[title]'),
              node.parentNode.querySelectorAll('[title]')]
@@ -651,12 +659,20 @@ const SE = { // (S)earch (E)ngine
 
     if ((!LM.isAnyLabelSelected()) && isEmptyQuery) { return false; /* Nothing to do */ }
 
-    [document.querySelectorAll('body>div>[title]'),
-        document.querySelectorAll('body>div>div>[title]')].forEach(nodeList => {
+    [document.querySelectorAll('div[group]' ),
+     document.querySelectorAll('div[groupv]')].forEach(nodeList => {
             nodeList.forEach(node => {
-                node.setAttribute("hidden", "true")
+                node.setAttribute("textFound", "false")
             })
         })
+
+//  [document.querySelectorAll('body>div>[title]'),
+//      document.querySelectorAll('body>div>div>[title]')].forEach(nodeList => {
+//          nodeList.forEach(node => {
+//              node.setAttribute("hidden", "true")
+//          })
+//      })
+
     // If some label has been selected then choose only those with matching labels
     document.querySelectorAll('*[zoom]').forEach(node => { 
         node.setAttribute("textFound", "false")

@@ -123,10 +123,10 @@ const ZW = { /* ZOOM Window */
        +    "<span id='GoForw'>→</span>"
        +    "<span id='cellNofM'>?</span> "
        + " </div>" 
+       + ' <div id="cellIDPanell"></div>'
        + ' <div id="butSwitchLectureMode" >?</div>'
        + ' <input id="textSizeSlider" type="range" '
        + '   style="width:100px" value="100" min="30" max="200">'
-       + ' <div id="cellIDPanell"></div>'
        + " <div id='divElementLabels' class='noprint'></div>" 
        + "</div>"
        + "<div id='zoomHTMLContent'/>"

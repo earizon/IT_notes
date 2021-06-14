@@ -484,7 +484,7 @@ const MB = { // Menu Bar
      + '<span blue id="printButton">Print</span>'
      + '<span id="loupe"  blue>🔍︎</span>'
      + '<input id="zoomSlider" type="range" '
-     + '  style="width:100px" value="70.0" min="30.0" max="130">'
+     + '  style="width:100px" value="70.0" min="30.0" max="190">'
      + '<br/>'
     document.body.insertBefore(searchDiv,document.body.children[0])
     document.getElementById("idLabelsFilter").addEventListener("click", SF.showSearchForm)
@@ -619,7 +619,7 @@ const SE = { // (S)earch (E)ngine
     if (searchFound) {
         for (
             let nodeI = node.parentElement ;
-            nodeI != null ;
+            nodeI != null && nodeI != document.body ;
             nodeI = nodeI.parentElement ) {
           nodeI.setAttribute("textFound", "true")
         }

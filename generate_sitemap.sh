@@ -16,6 +16,7 @@ done
 
 (
 cat << EOF
+index.html                           1.0
 Blockchain/ethereum_map.html         1.0
 JAVA/java_map.html                   1.0
 General/cryptography_map.html        1.0

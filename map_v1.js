@@ -622,6 +622,8 @@ const SE = { // (S)earch (E)ngine
             nodeI = nodeI.parentElement ) {
           nodeI.setAttribute("textFound", "true")
         }
+        NAV.visited.push(node)
+        window.lastElementFound = node
     }
     return searchFound
   },

@@ -112,7 +112,7 @@ const ZW = { /* ZOOM Window */
     return "none"
   },
   textSizeSlider : document.body,
-  renderZoomBox : function() {
+  renderZoomBox : function() { /* Executed once at page load */
     const dom1 = document.createElement('div');
         dom1.setAttribute("id", "zoomDiv")
     dom1.innerHTML = ""
@@ -143,7 +143,8 @@ const ZW = { /* ZOOM Window */
            querySelector("*[zoom]").style.fontSize=""+(ZW.textSizeSlider.value/100.)+"rem"
         }
     );
-    document.getElementById("butSwitchLectureMode" ).addEventListener("click", ZW.switchLectureMode);
+    document.getElementById("butSwitchLectureMode" )
+       .addEventListener("click", ZW.switchLectureMode);
     ZW.updateButtonSwitchLectureMode()
   },
   doOpenZoom : function(e) {
@@ -162,7 +163,8 @@ const ZW = { /* ZOOM Window */
 
     if (NAV.visited.length > 1) {
       document.getElementById("historyBackFor").style.display="inline"
-      document.getElementById("cellNofM").innerHTML = NAV.visited_idx+1 + "/"+(NAV.visited.length)
+      document.getElementById("cellNofM").innerHTML = 
+         NAV.visited_idx+1 + "/"+(NAV.visited.length)
     } else {
       document.getElementById("historyBackFor").style.display="none"
     }
@@ -363,8 +365,6 @@ const IC = { // Input Control
   showPreviewInZoom : function() { ZW.doOpenZoom(IC.showPreviewEvent) },
   initInputControl: function(){
     document.addEventListener('keyup'  , IC.onKeyUp)
-
-    
     const nodeList = document.querySelectorAll('*[zoom]')
     for (let idx in nodeList) { 
        const node = nodeList[idx]
@@ -407,16 +407,13 @@ const IC = { // Input Control
        node.addEventListener('dblclick', ZW.doOpenZoom, true)
      },
      enableLongTouch : function (node) { 
-    // node.addEventListener("mousedown" , IC.LPC.start);
        node.addEventListener("touchstart", IC.LPC.start);
-    // node.addEventListener("click"     , IC.LPC.click);
        node.addEventListener("mouseleave", IC.LPC.cancel);
        node.addEventListener("touchend"  , IC.LPC.cancel);
        node.addEventListener("touchleave", IC.LPC.cancel);
        node.addEventListener("touchcancel",IC.LPC.cancel);
      }
   }
-
 }
 
 const TPP = {  // (T)ext (P)re (P)rocessor
@@ -425,7 +422,7 @@ const TPP = {  // (T)ext (P)re (P)rocessor
     const  document_name=window.location.pathname.split("/").pop()
 
     const nodeList = document.querySelectorAll('*[zoom]')
-    for (let idx in nodeList) { // TODO:(?) Replace on demand, when cell opened.
+    for (let idx in nodeList) { // TODO:(qa) Replace on demand, when cell opened.
         let N = nodeList[idx]
         let H = N.innerHTML
         if (!!! H) { continue }
@@ -469,9 +466,8 @@ const TPP = {  // (T)ext (P)re (P)rocessor
         H = H.replace(/[:]\n/g, ":<br/>")   
         H = H.replace(/\n\s*\n/g, "<br/><br/>")   
         N.innerHTML = H
-
-        // TODO: Add markdown table parser. REF: https://github.com/blattmann/mdtablesparser/blob/master/js/parser.js
-
+        // TODO:(enhancement) Add markdown table parser.
+        // REF: https://github.com/blattmann/mdtablesparser/blob/master/js/parser.js
     }
 
   },
@@ -628,19 +624,6 @@ const SE = { // (S)earch (E)ngine
           nodeI.setAttribute("textFound", "true")
         }
     }
-    if (searchFound) {
-        const nodeListList =  (node.parentNode.parentNode.tagName != "BODY")
-          ? [node.parentNode.parentNode.querySelectorAll(':not(div)[title]'),
-             node.parentNode.querySelectorAll('[title]')]
-          : [node.parentNode.querySelectorAll('[title]')]
-        nodeListList.forEach( nodeList => {
-             nodeList.forEach( labelEl => {
-               labelEl.removeAttribute("hidden")
-             })
-        })
-        NAV.visited.push(node)
-        window.lastElementFound = node
-    }
     return searchFound
   },
   highlightSearch :   function(query) {
@@ -665,14 +648,6 @@ const SE = { // (S)earch (E)ngine
                 node.setAttribute("textFound", "false")
             })
         })
-
-//  [document.querySelectorAll('body>div>[title]'),
-//      document.querySelectorAll('body>div>div>[title]')].forEach(nodeList => {
-//          nodeList.forEach(node => {
-//              node.setAttribute("hidden", "true")
-//          })
-//      })
-
     // If some label has been selected then choose only those with matching labels
     document.querySelectorAll('*[zoom]').forEach(node => { 
         node.setAttribute("textFound", "false")
@@ -731,12 +706,6 @@ const SE = { // (S)earch (E)ngine
      *                                  (textFound==false is assigned to display none in css)
      * bKeepHighlightedSearch = false => Reset all (remove any textFound attribute)
      */
-    [document.querySelectorAll('body>div>[title]'),
-     document.querySelectorAll('body>div>div[title]')].forEach(nodeList => {
-        nodeList.forEach(node => {
-            node.removeAttribute("hidden")
-        })
-     })
     const removeNodeList = document.querySelectorAll('*[textFound]');
     if (removeNodeList.length == 0) return; // Nothing to do.
     for (let idx in removeNodeList) {

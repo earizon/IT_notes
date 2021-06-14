@@ -116,7 +116,7 @@ const ZW = { /* ZOOM Window */
     const dom1 = document.createElement('div');
         dom1.setAttribute("id", "zoomDiv")
     dom1.innerHTML = ""
-       + "<div style='margin-bottom:0.5rem'>" 
+       + "<div id='zoomDivControls' style='margin-bottom:0.5rem'>" 
        + " <div id='divClose'>✕ (close)</div>" 
        + " <div id='historyBackFor' style='display:inline; '>"
        +    "<span id='GoBack'>←</span>&nbsp;"
@@ -127,7 +127,6 @@ const ZW = { /* ZOOM Window */
        + ' <input id="textSizeSlider" type="range" '
        + '   style="width:100px" value="100" min="30" max="200">'
        + ' <div id="cellIDPanell"></div>'
-       + ' <br/>'
        + " <div id='divElementLabels' class='noprint'></div>" 
        + "</div>"
        + "<div id='zoomHTMLContent'/>"
@@ -451,7 +450,7 @@ const TPP = {  // (T)ext (P)re (P)rocessor
         H = H.replace(/Yº([^º\n]*)º/g, "<b yellow>  $1 </b>")   
         H = H.replace(/[$]º([^º\n]*)º/g, "  <span console>$1</span>")   
         H = H.replace(/_º([^º\n]*)º/g, "<span sub>$1   </span>")
-        H = H.replace(/^º([^º\n]*)º/g, "<span super>$1   </span>")
+        H = H.replace(/^º([^º\n]*)º/g, "<span super>$1 </span>")
         H = H.replace( /º([^º\n]*)º/g, "<b        > $1 </b>")   
         H = H.replace( /[˂]/g, "&lt;")
         H = H.replace( /[˃]/g, "&gt;")

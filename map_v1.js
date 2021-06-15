@@ -72,6 +72,17 @@ const SF = {  /* search Form */
       SF.searchFormDOM = div;
       SF.searchForm_labelsDOM = document.getElementById("searchFormLabels")
   },
+  compareTopic: function (a,b) {
+    const idxA = a.indexOf(".")
+    const idxB = b.indexOf(".")
+    let result = 0
+         if (idxA<idxB) result = -1
+    else if (idxA>idxB) result =  1
+    else if ( a < b ) result = -1
+    else if ( a > b ) result =  1
+console.log(a,b, idxA, idxB, result)
+    return result
+  },
   showSearchForm : function() {
     SF.searchFormDOM.style.display="block";
     document.getElementById("inputQuery").value = SF.regexQuery
@@ -83,7 +94,7 @@ const SF = {  /* search Form */
  
     const openDiv = '<div class="labelBlock">'
     var htmlLabels = openDiv, currentPrefix=""
-    Object.keys(LM.labelMap).map((l)=>l.toLowerCase()).sort()
+    Object.keys(LM.labelMap).map((l)=>l.toLowerCase()).sort( SF.compareTopic )
        .forEach(label_i => {
         if (label_i.indexOf(".")>0) {
             const prefixI = label_i.substr(0,label_i.indexOf("."))
@@ -313,11 +324,10 @@ console.log(label)
   },
   renderLabel : function(sLabelKey) {
     sLabelKey = sLabelKey.toLowerCase()
-console.log(sLabelKey)
     var  sLabel = sLabelKey
     const idxPrefix = sLabel.indexOf(".")+1
     if (idxPrefix>0) { sLabel = sLabel.substr(idxPrefix) }
-    let cssAtribute    = (sLabelKey.indexOf("todo")) ? "red"  : ""
+    let cssAtribute    = (sLabelKey.indexOf("todo")>=0) ? " red"  : ""
     return "<div "+cssAtribute+" class='labelButton' selected="+(!!LM.labelMapSelected[sLabelKey])+
            " type='button' value='"+sLabelKey+"' />"+sLabel+"</div><span labelcount>"+LM.labelMap[sLabelKey].length+"</span>" ;
   },

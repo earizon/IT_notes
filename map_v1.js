@@ -57,7 +57,7 @@ const SF = {  /* search Form */
       if (Object.keys(LM.labelMap).length > 0) {
         document.getElementById("searchAndMode").addEventListener("change",  SF.switchANDORSearch )
       }
-      document.getElementById("doSearchButton").addEventListener('click', SF.doHideSearchFormAndSearch )
+      document.getElementById("doSearchButton").addEventListener('click', SE.executeSearch )
       const swithSingleLineDom = document.getElementById("singleLineOnly")
       const swithCaseSensitDom = document.getElementById("caseSensitive")
       const swithCaseFullWord  = document.getElementById("fullWord")
@@ -80,12 +80,21 @@ const SF = {  /* search Form */
     document.getElementById("caseSensitive" ).checked = SF.matchCaseMode
     document.getElementById("fullWord" ).checked = SF.fullWordMode
     document.getElementById("idLabelSearchAndMode" ).innerHTML = SF.labelAndOrText[SF.labelANDMode]
-  
-    var htmlLabels = ''
-    Object.keys(LM.labelMap).sort()
+ 
+    const openDiv = '<div class="labelBlock">'
+    var htmlLabels = openDiv, currentPrefix=""
+    Object.keys(LM.labelMap).map((l)=>l.toLowerCase()).sort()
        .forEach(label_i => {
+        if (label_i.indexOf(".")>0) {
+            const prefixI = label_i.substr(0,label_i.indexOf("."))
+            if (currentPrefix != prefixI) {
+              htmlLabels += "</div>"+openDiv + "<div class='labelBlockTitle'>"+ prefixI +":</div>" 
+              currentPrefix = prefixI
+            }
+        }
         htmlLabels += LM.renderLabel(label_i)
     })
+    htmlLabels += "</div>"
     SF.searchForm_labelsDOM.innerHTML = htmlLabels;
     document.querySelectorAll('.labelButton').forEach(
       domElement => {
@@ -95,10 +104,6 @@ const SF = {  /* search Form */
   },
   hideSearchForm : function() {
     SF.searchFormDOM.style.display="none";
-  },
-  doHideSearchFormAndSearch : function () {
-    // SF.hideSearchForm();
-    SE.highlightSearch();
   },
 }
 
@@ -148,7 +153,7 @@ const ZW = { /* ZOOM Window */
   },
   doOpenZoom : function(e) {
     if (e.target != null ) e = e.target;
-    for (let c = 0 ; c < 4; c++) {
+    for (let c = 0 ; c < 4 /* TODO:(qa) 4 max depth level is arbitraty */ ; c++) {
       if (e.getAttribute("zoom") != null)  break
       e = e.parentNode
     }
@@ -184,7 +189,7 @@ const ZW = { /* ZOOM Window */
     document.getElementById("cellIDPanell").innerHTML=e.id ? ("id:"+e.id ):"";
     zoomHTML.querySelectorAll('.innerSearch').forEach(
       dom => {
-        dom.addEventListener('click', function() { SE.highlightSearch(dom.innerHTML) })
+        dom.addEventListener('click', function() { SE.executeSearch(dom.innerHTML) })
       }
     )
     zoomHTML.querySelectorAll('.innerLink').forEach(
@@ -287,8 +292,9 @@ const LM = { // Lavel management
     return Object.keys(LM.labelMapSelected).length > 0
   },
   onLabelClicked : function (e) {
-    const dom = e.target;
-    const label = dom.value;
+    const dom = e.target
+    const label = dom.getAttribute("value")
+console.log(label)
     if (!dom.attributes) {
          dom.attributes = { selected : { value : "false" } }
     }
@@ -305,11 +311,15 @@ const LM = { // Lavel management
       document.getElementById("idLabelsFilter").removeAttribute("active"); 
     }
   },
-  renderLabel : function(sLabel) {
-    sLabel = sLabel.toLowerCase()
-    let cssAtribute    = (sLabel.startsWith("todo")) ? "red"  : ""
-    return "<input "+cssAtribute+" class='labelButton' selected="+(!!LM.labelMapSelected[sLabel])+
-           " type='button' value='"+sLabel+"' /><span labelcount>"+LM.labelMap[sLabel].length+"</span>" ;
+  renderLabel : function(sLabelKey) {
+    sLabelKey = sLabelKey.toLowerCase()
+console.log(sLabelKey)
+    var  sLabel = sLabelKey
+    const idxPrefix = sLabel.indexOf(".")+1
+    if (idxPrefix>0) { sLabel = sLabel.substr(idxPrefix) }
+    let cssAtribute    = (sLabelKey.indexOf("todo")) ? "red"  : ""
+    return "<div "+cssAtribute+" class='labelButton' selected="+(!!LM.labelMapSelected[sLabelKey])+
+           " type='button' value='"+sLabelKey+"' />"+sLabel+"</div><span labelcount>"+LM.labelMap[sLabelKey].length+"</span>" ;
   },
   getDomListForLabel: function (label) {
       if (!!!LM.labelMap[label]) return [];
@@ -544,7 +554,7 @@ function pageLoadedEnd() {
   let query = getParameterByName("query")
   if (!!query) { SF.regexQuery = query; }
   if (!!query || !!label_l) {
-    SE.highlightSearch()
+    SE.executeSearch()
   }
 
   let doShowSearchMenu = getParameterByName("showSearchMenu")  || ""
@@ -627,7 +637,7 @@ const SE = { // (S)earch (E)ngine
     }
     return searchFound
   },
-  highlightSearch :   function(query) {
+  executeSearch : function(query) {
     const unhideButton = document.getElementById("unhide");
     unhideButton.setAttribute("hidden","");
 
@@ -655,7 +665,7 @@ const SE = { // (S)earch (E)ngine
     })
     var innerZoom_l = []
     if (LM.isAnyLabelSelected()) {
-        let label_l=Object.keys(LM.labelMapSelected)
+        let label_l=Object.keys(LM.labelMapSelected) // @ma
         innerZoom_l = LM.getDomListForLabel(label_l[0]);
         for (let idx=0; idx<label_l.length; idx++) {
             innerZoom_l = SF.labelANDMode 

@@ -16,6 +16,17 @@ const SF = {  /* search Form */
     SF.labelANDMode=!SF.labelANDMode  
     document.getElementById("idLabelSearchAndMode").innerHTML = SF.labelAndOrText[SF.labelANDMode]
   },
+  onRegexInputChanged : function () {
+console.log(" @ma " + SF.regexInputTimer)
+        if (SF.regexInputTimer !== null) {
+           clearTimeout(SF.regexInputTimer)
+           SF.regexInputTimer = null
+        }
+        SF.regexQuery = this.value
+        SF.regexInputTimer = setTimeout(
+             SE.executeSearch, 1000)
+console.log(" @ma " + SF.regexInputTimer)
+    },
   renderSearchForm : function() {
     const div = document.createElement('div');
           div.setAttribute("id", "searchForm")
@@ -23,7 +34,6 @@ const SF = {  /* search Form */
     document.body.insertBefore(div,document.body.children[0])
     let html = ''
       + ' <div id="divClose">✕ (close)</div>' 
-      + ' <div id="doSearchButton">&#128065;Search/Filter</div>&nbsp;'
       + ' <div id="unhide" hidden >show all</div>'
       + '  <div id="divRegexForm">'
       + '  <input id="inputQuery"  type="text" placeholder="(regex)search"  />'
@@ -57,7 +67,6 @@ const SF = {  /* search Form */
       if (Object.keys(LM.labelMap).length > 0) {
         document.getElementById("searchAndMode").addEventListener("change",  SF.switchANDORSearch )
       }
-      document.getElementById("doSearchButton").addEventListener('click', SE.executeSearch )
       const swithSingleLineDom = document.getElementById("singleLineOnly")
       const swithCaseSensitDom = document.getElementById("caseSensitive")
       const swithCaseFullWord  = document.getElementById("fullWord")
@@ -66,13 +75,15 @@ const SF = {  /* search Form */
       swithCaseFullWord .addEventListener('click', ()=>{ SF.fullWordMode  =swithCaseFullWord.checked; } )
 
       const domInputQuery = document.getElementById("inputQuery")
-      domInputQuery.addEventListener("change",  function () { SF.regexQuery = this.value } )
+      domInputQuery.addEventListener("input",  SF.onRegexInputChanged )
       domInputQuery.focus()
   
       SF.searchFormDOM = div;
       SF.searchForm_labelsDOM = document.getElementById("searchFormLabels")
   },
-  compareTopic: function (a,b) {
+  regexInputTimer : null,
+  
+  compareTopic: function (a , b) {
     const idxA = a.indexOf(".")
     const idxB = b.indexOf(".")
     let result = 0
@@ -142,7 +153,7 @@ const ZW = { /* ZOOM Window */
        + ' <div id="cellIDPanell"></div>'
        + ' <div id="butSwitchLectureMode" >?</div>'
        + ' <input id="textSizeSlider" type="range" '
-       + '   style="width:100px" value="100" min="30" max="200">'
+       + '   style="width:100px" value="100" min="30" max="250">'
        + " <div id='divElementLabels' class='noprint'></div>" 
        + "</div>"
        + "<div id='zoomHTMLContent'/>"
@@ -321,6 +332,7 @@ const LM = { // Lavel management
     } else {
       document.getElementById("idLabelsFilter").removeAttribute("active"); 
     }
+    SE.executeSearch()
   },
   renderLabel : function(sLabelKey) {
     sLabelKey = sLabelKey.toLowerCase()

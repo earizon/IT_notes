@@ -304,17 +304,17 @@ const LM = { // Lavel management
   },
   onLabelClicked : function (e) {
     const dom = e.target
-    const label = dom.getAttribute("value")
-console.log(label)
+    const labelKey = dom.value ? dom.value : dom.getAttribute("value")
+
     if (!dom.attributes) {
          dom.attributes = { selected : { value : "false" } }
     }
     if (dom.attributes.selected.value == "false") {
         dom.attributes.selected.value = "true"
-        LM.labelMapSelected[label] = true
+        LM.labelMapSelected[labelKey] = true
     } else {
         dom.attributes.selected.value = "false"
-        delete LM.labelMapSelected[label]
+        delete LM.labelMapSelected[labelKey]
     }
     if (LM.isAnyLabelSelected()){
       document.getElementById("idLabelsFilter").setAttribute("active","true"); 
@@ -331,9 +331,9 @@ console.log(label)
     return "<div "+cssAtribute+" class='labelButton' selected="+(!!LM.labelMapSelected[sLabelKey])+
            " type='button' value='"+sLabelKey+"' />"+sLabel+"</div><span labelcount>"+LM.labelMap[sLabelKey].length+"</span>" ;
   },
-  getDomListForLabel: function (label) {
-      if (!!!LM.labelMap[label]) return [];
-      else return LM.labelMap[label];
+  getDomListForLabel: function (labelKey) {
+      if (!!!LM.labelMap[labelKey]) return [];
+      else return LM.labelMap[labelKey];
   },
   labelMapSelectedToCSV: function() {
     return Object.keys(LM.labelMapSelected).sort().join(",")
@@ -346,12 +346,12 @@ console.log(label)
       const csvAttributes = node.getAttribute("labels")
       if (!csvAttributes || !csvAttributes.trim()) continue;
       var labelCount = 0
-      csvAttributes.split(",").forEach( label => {
-          if (!!! label) return
-          label = label.toLowerCase()
-          let list = LM.getDomListForLabel(label)
+      csvAttributes.split(",").forEach( labelKey => {
+          if (!!! labelKey) return
+          labelKey = labelKey.toLowerCase()
+          let list = LM.getDomListForLabel(labelKey)
               list.push(node)
-          LM.labelMap[label] = list
+          LM.labelMap[labelKey] = list
           labelCount++
       })
       if (labelCount>0) {

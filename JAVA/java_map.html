@@ -13,9 +13,11 @@
 <body>
     <br/>
     <div style="text-align:center; text-size: 1.5em; padding:0.5rem;">
+<!--
     ⏿ You can also be interested in the <a target="_new" href="../WebTechnologies/map.html">Web Technologies</a>, 
     <a target="_new" href="../General/cryptography_map.html">Cryptography</a> and
     <a target="_new" href="../Architecture/architecture_map.html?topics=enterprise_patterns">Enterprise Patterns</a> maps.☜
+-->
     <br/>
     
     </div>
@@ -899,9 +901,9 @@ Rºthe web application, such as within the Application Server.º
 </div>
 
 <div groupv>
+<span title>Java lang. 101</span>
 <pre zoom labels="strings,101,TODO">
 <span xsmall>Strings</span>
-
   final String 
      output1 = Stringº.formatº("%s = %d", "joe", 35), ← Format string
      output2 = Stringº.formatº("%4d",100);            ←
@@ -3993,7 +3995,7 @@ BºMethod injectionº
 
 </pre>
 
-<pre zoom labels="spring,jpa,configuration,persistence,aaa,oauth,qa,error_control,devops,cryptography,api_management,openapi" id="spring_summary">
+<pre zoom labels="spring,jpa,configuration,persistence,aaa,oauth,qa,error_control,devops,cryptography,api_management,openapi,troubleshooting" id="spring_summary">
 <span xsmall>Spring+JPA+JWT summary</span>
 BºSwagger (OpenAPI) º [config] {{
 - file: com/myComp/openApi/SwaggerConfig.java  {{
@@ -4044,7 +4046,6 @@ BºSwagger (OpenAPI) º [config] {{
       }
     }
 }}
-
 ───────────────────────────────────────────────────────────────
 BºJPA Configº
 
@@ -4055,70 +4056,215 @@ TODO: https://www.logicbig.com/tutorials/spring-framework/spring-data/specificat
 - file: com/myComp/jpa/LocalDateTimeAttributeConverter.java    [persistence][jpa]
   package com.myComp.jpa;
   
-  import java.sql.Timestamp;                                   // ← SQL         friendly type
-  import java.time.LocalDateTime;                              // ← Application friendly type
+  import java.sql.Timestamp;                         // ← SQL         friendly type
+  import java.time.LocalDateTime;                    // ← Application friendly type
   
   import javax.persistence.AttributeConverter;
   import javax.persistence.Converter;
    
-  @Converter(autoApply = true)
-  public class LocalDateTimeAttributeConverter                 // ← Fix impedance problems DDBB / App types
-  implements AttributeConverter˂LocalDateTime, Timestamp˃ {
+  @Converter(autoApply = true)                       
+  public class LocalDateTimeAttributeConverter       // ← Fix impedance problems 
+  implements AttributeConverter                      //   DDBB types ←→ JAVA types
+             ˂LocalDateTime, Timestamp˃ {  
        
       @Override
-      public Timestamp convertToDatabaseColumn(                //   Java type → DDBB column
+      public Timestamp convertToDatabaseColumn(      //   Java type → DDBB-column-type
         LocalDateTime locDateTime) {
           return Timestamp.valueOf(locDateTime);
       }
    
       @Override
-      public LocalDateTime convertToEntityAttribute(           //   Java type ← DDBB column
+      public LocalDateTime convertToEntityAttribute( //   Java type ← DDBB-column-type
         Timestamp sqlTimestamp) {
           return sqlTimestamp.toLocalDateTime();
       }
   }
 
+- Spring Data schema summary:
+  ┌─ SPRING BOOT APPLICATION ───────────────────────────────────────────────┐
+  ·                            º┌─ SPRING DATA ───────────────────────────┐º·
+  · ┌───────┐                  º│┌───────────┐                    ┌──────┐│º·
+  · │Service ·· gets access to·º·→ Repository| ··· manages  ······→Entity|│º·
+  · └───────┘    data using    º│└───────────┘    operations on   └──────┘│º·
+  ·                            º└─────────────┬───────────────────────────┘º· 
+  ·                                           v                             ·
+  ·                                  gets database                          ·
+  ·                                connectivity  from                       ·
+  ·                                           │                             ·
+  ·                                           v                             ·
+  ·                                    ┌────────────┐                       ·  ┌──────────┐
+  ·                                    │ DDBB driver··· defines ··············→│ Database │
+  ·                                    └────────────┘  integration          ·  └──────────┘
+  ·                                                    With                 ·
+  └──SPRING BOOT APPLICATION ───────────────────────────────────────────────┘
+
 - file: com/myComp/jpa/Entity1Repository.java                    [persistence][jpa]
   import org.springframework.data.jpa.repository.JpaRepository;
   import org.springframework.data.jpa.repository.Query;
   import org.springframework.stereotype.Repository;
-Bº@Repositoryº
-  public interface Entity1Repository extends JpaRepository˂Entity1, Long˃{
-    
-    @Query(value = 
-          " SELECT * "
-        + " FROM entity1 en1 "
+Bº@Repositoryº                              //   @Repository: Spring-Data abstraction for data storage+retrieval
+                                            //   independent of source (sql/nosql ddbbs, kafka, message-queues, ...) 
+                                            //   Used to isolated Domain Layer (Business logic) from data persistence
+Bº@Repositoryº                              // ← internals.
+  public interface Entity1Repository        
+  extends JpaRepository˂Entity1, Long˃{     //   ← JpaRespository extends Repository with SQL like DB º*1º
+                                            //     For standard CRUD operation CrudRepository could have been used.
+                                            //     (JpaRespotory offers a more specialized one with extra?features) ← [TODO]
+                     // └────────────┴─·········  Entity1 specifies the type-of-data, Long specifies the type-of-"@Id"
+
+    @Query(value =                          //   ← Custom query. 
+          " SELECT * "                      //                   
+        + " FROM entity1 en1 "              //                   
         +   " JOIN entity2 en2 ON en2.id = en1.entity2_id "
         +   " JOIN entity3 en3 ON en3.id = en2.entity3_id "
         + "WHERE en2column2 = :col2Value "
         + "AND en3.id = :Entity3ID ", nativeQuery = true)
-      Entity1 query1(Long entity3Id, String col2Value);
+  OºEntity1 query1(Long entity3Id, String col2Value);º   // ← Developer's responsability is to define the interface.
 
-  @Query(value = 
-        " SELECT en2.* "
-      + " FROM entity2 en2 " 
-      + " JOIN entity3 en3 ON en2.entity3_id = en3.id " 
-      + " WHERE en3.col5 = :column5Value", nativeQuery = true)
-  public List˂SmartContractCondition˃ linkOrganization(String column5Value);
+
+    @Query(value =                          //   ← Custom query.
+          " SELECT en2.* "
+        + " FROM entity2 en2 " 
+        + " JOIN entity3 en3 ON en2.entity3_id = en3.id " 
+        + " WHERE en3.col5 = :column5Value", 
+        nativeQuery = true)
+  Oºpublic List˂Entity2˃ linkOrganization(String id);º   // ←···┘
+
+
+    void deleteById(Long id);               // ← standard nomenclature. Autogenerated º*2º.  
+                                                 standard CRUD. transactional by default.
+
+                                            //  ºSpring-framework declarative transaction management:º
+                                            //   for the non-CRUD-and-mutating method we must indicate whether
+    @Transactional                          // ← it should be part of a transaction (single-unit-of-work). º*3º
+    void deleteByColumn2(LocalDateTime id); // ← standard nomenclature. Autogenerated º*2º.  
+
 
   }
 
-- file: com/myComp/jpa/Entity1Repository.java [persistence][jpa]
+ *º1º: Maven / gradle will contain dependencies similar to    
+    GROUP_ID                  ARTIFACT_ID
+    org.springframework.boot  spring-boot-starter-data-jpa    Compile/implementation dependency
+    org.postgresql            postgresql                      runtime dependency (provided by server,...)
+  
+ *º2º:@[https://spring.io/projects/spring-data]         
+    Spring-data auto-generates the code for standard cases by justºusing standard nomenclatureºfor methods: 
+        
+      REPOSITORY METHOD   | EXAMPLES
+      BUILDING BLOCK      |[TODO]: Add detailed example/s
+      =================== | ==================================
+      · Action            | find, exists, delete, count 
+      · Limit             | One, All, First10
+      · By                | -
+      · Property expr.    | findByIsbnOrTitle,  findByIsbnAndTitle
+      · Comparison        | findByTitleContaining, findByTitleEndingWith, 
+                          | findByDateLessThan
+      · Ordering operator | orderByTitleAsc
+           
+ *º3º: @Transactional (optional) attributes can be:
+  ┌────────────────────────────────────────────────────────────────────────────────────┐
+  │ • rollbackFor,         : By default rollback on RuntimeException|Error.            │
+  │   rollbackForClassName   To rollback also on CheckedExceptions do something like   │
+  │                         @Transactional (                                           │
+  │                            ...                                                     │
+  │                            rollbackForClassName={"FileNotFoundException" ,"..."}   │
+  │                                     rollbackFor={ FileNotFoundException.class,... }│
+  │                          )                                                         │
+  │                                                                                    │
+  │ • noRollbackFor,       : Skip rollback / ignore exceptions indicated               │
+  │   noRollbackForClassName                                                           │
+  │                                                                                    │
+  │ • readOnly             : true | *false . true triggers (Spring TX manager)         │
+  │                          optimizations  [peformance]                               │
+  │ • timeout              : defaults to underlying ddbb timeout.                      │
+  │ • ...                                                                              │
+  │                                                                                    │
+  │                                                                                    │
+  │                                                                                    │
+  │ • isolation            : Defaults to default of underlaying database:              │
+  │                                                                                    │
+  │   • Common problems in (physically) distributed databases and/or central           │
+  │     databases with parallel updates / reads by different clients where we          │
+  │     can NOT warrant that lecture of state by a client will see the latest          │
+  │     update by a parallel update TX.                                                │
+  │                                                                                    │
+  │               (time advances up → down)                                            │
+  │                                                                                    │
+  │         DIRTY        │  NON-REPEATABLE  │  PHANTOM                                 │
+  │         READ         │    READ          │   READ                                   │
+  │     ==============   │ ==============   │ ====================================     │
+  │                      │                  │                                          │
+  │     TX 1    TX 2     │   TX 1   TX 2    │ TX 1               TX 2                  │
+  │     ·       ·        │   ·      ·       │ ·                  ·                     │
+  │     read    ·        │  •read   ·       │ ·                RºSELECT * FROM T1º     │
+  │     x=5     ·        │   x=5    ·       │ ·                Rº· WHERE num ˃ 10º     │
+  │     write   ·        │   ·   Rº•read    │•INSERT INTO T1(num)·                     │
+  │     x=7     ·        │   ·      x=5     │ · VALUES(20);      ·                     │
+  │     ·    Rº•readº    │  •write  ·       │•COMMIT;            ·                     │
+  │     ·    Rº x=7 º    │   x=7    ·       │                  RºSELECT * FROM T1º     │
+  │     roll-   ·        │   ·   Rº•read    │                  Rº  WHERE num ˃ 10º     │
+  │     bakc    ·        │          x=7     │                                          │
+  │                      ·                  ·                                          │
+  │                      ·                  ·                      Isolation levels    │
+  │     Read Uncomminted │ Read Uncomminted │  Read Uncomminted  ┐ where corresponding │
+  │                      │ Read    Commited │  Read    Commited  ├ read error may      │
+  │                      │                  │  Repeatable read   ┘ (randomnly) occur   │
+  │     Only the (very slow!!!) Serializable isolation level is 100% safe.             │
+  │     e.g: @Transactional (isolation=Isolation.READ_COMMITTED)                       │
+  │                                                                                    │
+  │                                                                                    │
+  │ • propagation: define how (java) business methods should place in the TX.          │
+  │   · REQUIRED      : Reuse existing TX or create new. (Used for "inner" methods)    │
+  │   · REQUIRES_NEW  : Always create new.                                             │
+  │                     rollbacks will not be propagated to any calling methods with   │
+  │                     another TX in course.                                          │
+  │   · SUPPORTS      : execute within existing TX if any, otherwise  without new TX.  │
+  │   · MANDATORY     : Fail if no existing TX is in place. Method is always part of   │
+  │                     any other existing TX flow.                                    │
+  │   · NOT_SUPPORTED : "Pause" any existing transaction and execute inner code.       │
+  │                     (maybe a method for which we can not deterministically known   │
+  │                      the output).                                                  │
+  │   · NEVER         : Fail if an active TX exists.                                   │
+  │   · NESTED        : If current TX exists, executes within nested transaction       │
+  │                      otherwise behave like REQUIRED.                               │
+  └────────────────────────────────────────────────────────────────────────────────────┘
+
+  @application.yml will be similar to:
+  spring:
+    datasource:
+      username: admin
+      password: admin
+      url: jdbc:postgresql://localhost:5432/ddbb1
+      hikari:                    ← Spring  Boot  uses  HikariCP  for connection pooling   [performance]
+       connection-timeout: 5000    for details on connection pool tunning visit:
+       maximum-pool-size: 20     @[https://github.com/brettwooldridge/HikariCP/wiki/About-Pool-Sizing]
+       pool-name: app01-pool
+    jpa:
+       hibernate.ddl-auto: create-drop   ← Just for dev.purposes. Prefer Flywai|Liquidbase|...
+                                           for production enviroments.
+
+- file: com/myComp/jpa/Entity1.java                     [persistence][jpa]
   import java.io.Serializable;
   import javax.persistence.*;
   import com.fasterxml.jackson.annotation.JsonIgnore;
-  
+ 
+
+  ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
   @Entity
-  @Table(name = "entity1")
-  public class Entity1 implements Serializable {
-    private static final long serialVersionUID = 1L;
-  
-    public Entity1() { }                                 // ← Empty constructor required by JPA
+  @Table(name = "entity1")             // ← By default JPA mast to lowercase
+  public class Entity1                 //   classname. use @Table to override def.map.
+  @EntityListeners                     // ← Mark class to listen for: º*1º
+    (AuditingEntityListener.class)     //   ← Specify a callback listener to process event
+  implements Serializable {            //     data (timestamps, "who did it", 
+    private static final                            num. of modifications, ...). 
+       long serialVersionUID = 1L;
+    public Entity1() { }               // ← Empty constructor required by JPA
   
     // ---- id ----
-    @JsonIgnore                                          // ← Class can also be used for Json
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @JsonIgnore                        // ← Class can also be used for Json
+    @Id                                // ← @Id required by JPA Entities
+    @GeneratedValue(strategy = 
+           GenerationType.IDENTITY)  
     @Column(name="id", length=20)
     private Long id;
  
@@ -4126,22 +4272,18 @@ Bº@Repositoryº
     public Long getId() { return id; }
     ...
 
-    // -------- column2 --------
-    @Column(name = "column2")
+   º@Column(name = "column2")º
     private LocalDateTime column2;
   
-    // -------- entity2 --------
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY)   //º ---- entity2 ---- º
     @JoinColumn(
       name = "entity2_id",
       referencedColumnName = "id",
       insertable = false,
       updatable = false)
     private Entity2 entity2;
-  
 
-    // -------- entity3 --------
-    @JoinColumn(
+    @JoinColumn(                         //º ---- entity3 ---- º
       name = "entity3_id",
       referencedColumnName = "id"
     )
@@ -4152,83 +4294,85 @@ Bº@Repositoryº
       this.entity3List = _entity3List;
     }
   
-    public void addEntity3(Entity3 _entity3) {
-      getEntity3List()                              // ← WARN: get force load from DBs (vs entity3List)
-        .add(_entity3);
+    public void
+    addEntity3(Entity3 _entity3) {
+      getEntity3List()                   // ← WARN: get force load from DBs 
+        .add(_entity3);                  //         (vs entity3List)
       _entity3.setEntity1(this);
     }
   
-    public void removeEntity3(Entity3 _entity3) {
-      getEntity3List()                              // ← WARN: get force load from DBs (vs entity3List)
-        .remove(_entity3);
+    public void
+    removeEntity3(Entity3 _entity3) {
+      getEntity3List()                   // ← WARN: get force load from DBs 
+        .remove(_entity3);               //  (vs entity3List) 
       _entity3.setEntity1(null);
     }
 
-    // -------- entity4 --------
-    @OneToMany(
+    @OneToMany(                          //º ---- entity4 ---- º
       fetch = FetchType.LAZY,
-      cascade = CascadeType.ALL)                    // ← ALL | PERSIST | ...?
-    private List˂Entity4˃ entity4List;
+      cascade = CascadeType.ALL)         // ← ALL | PERSIST | ...?
+    private List˂Entity4˃ entity4List;  
 
-    // -------- entity5 --------
-    @Formula(value = 
+    @Formula(value =                     //º ---- entity5 ---- º
           "(SELECT COUNT(1) "
         + "FROM entity5 en5 "
         +   "JOIN entity1 en1 ON en1.id = en5.entity1_id "
         + "WHERE en5.id = id AND en5.bCondition = 1)")
     private Long entity5List;
-    @Transient public Long getEntity5List() { return entity5List; }
-    @Transient public void setEntity5List(Long entity5List) { this.entity5List = entity5List; }
 
+    @Transient                           // ← Do NOT persists.
+    public Long
+    getEntity5List() {
+      return entity5List;
+    }
+
+    @Transient                           // ← Do NOT persists. 
+    public void 
+    setEntity5List(Long entity5List) {
+       this.entity5List = entity5List; 
+    }
 
     @Override
-    public int hashCode() {
-      return Objects.hash(column2, column3, ...);
+    publicºint hashCode()º{              // ← Override when needed to avoid  [troubleshooting]
+      return Objects.hash( ...);         //   hash collisions
     }
     
-    @Override
-    public boolean equals(Object obj) {
+    @Override                            // ← Override when needed
+    publicºboolean equals(Object obj)º{                               
       Entity1 that = (Entity1) obj;
       return Objects.equals(column1, that.column1)
-          && Objects.equals(column2, that.column2)
-          && ... ;
+          ⅋⅋ Objects.equals(column2, that.column2)
+          ⅋⅋ ... ;
     }
-  
-  
+
+    @CreatedDate private Long createdDate;// JPA Audit: º*1º
+    @Version      private int version;    // JPA Audit: º*1º
   }
-    ──────────────────────────────────────────────────────────────────────────────────────────────
-- file: com/myComp/jpa/Entity2.java                   file: com/myComp/jpa/Entity2.java   [persistence]
-     @Entity                                        │ @Entity
-     @Table(name = "entity2")                       │ @Table(name = "smart_contract_condition")
-     public class Entity2 implements Serializable { │ public class Entity3 implements Serializable {
-       private static final                         │   private static final long serialVersionUID = 1L;
-          long serialVersionUID = 1L;               │ 
-                                                    │   @Id
-       @Id                                          │   @GeneratedValue(
-       @GeneratedValue(                             │     strategy = GenerationType.IDENTITY)
-         strategy = GenerationType.IDENTITY)        │   private Long id;
-       private Long id;                             │ 
-                                                    │   @Column(name = "min")
-       ...                                          │   private double min;
-     }                                              │ 
-                                                    │   @Column(name = "min_time")
-                                                    │   private int minTime;
-                                                    │ 
-                                                    │   @JsonIgnore
-                                                    │   @ManyToOne(fetch = FetchType.LAZY)
-                                                    │   @JoinColumn(
-                                                    │     name = "entity1_id",
-                                                    │     referencedColumnName = "id",
-                                                    │     insertable = false,
-                                                    │     updatable = false)
-                                                    │   private Entity1 entity1;
-                                                    │ 
-                                                    │   public Entity3() { }
-                                                    │ 
-                                                    │   ...
-                                                    │                                                      
-                                                    │  }
-    ──────────────────────────────────────────────────────────────────────────────────────────────
+
+  º*1º: ToBºenable JPA Auditingº it must also be indicated in Spring config like:
+  
+   ºpackage com.myComp.jpa;º
+    import org.springframework.context.annotationº.Configurationº;
+    import org.springframework.data.jpa.repository.configº.EnableJpaAuditingº;
+   º@Configurationº
+   º@EnableJpaAuditingº         //  ← Dump create/update/delete JPA events  [debug][jpa]
+    public class JpaConfig {}   //    for all persistent entities
+  
+  
+    When database auditing is enabled, next (org.springframework.data.annotation)
+    annotations can be used onºentity fieldsº to capture audit information.
+    
+      ANNOTATION          TRIGGERED ON
+      ==========          ================
+    · @CreatedBy          entity creation
+    · @CreatedDate        entity creation
+    · @LastModifiedBy     persist operation
+    · @LastModifiedDate   persist operation.
+    · @Version            updated at every op.
+                          starting by 0.
+  
+
+  ──────────────────────────────────────────────────────────────────────────────────────────────
 BºJWT (OAuth2)Support:º {{{                                    [aaa], [oauth], [cryptography]
   com/myComp/security/OAuth2Const.java
   public class OAuth2Const {
@@ -4321,9 +4465,10 @@ BºJWT (OAuth2)Support:º {{{                                    [aaa], [oauth],
   import org.springframework.web.cors.CorsConfigurationSource;
   import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
   
-  @Configuration
+  @Configuration                                 ← Mark as Spring Conf. class [configuration]
   @EnableWebSecurity
-  public class WebSecurity extends WebSecurityConfigurerAdapter {         ← AAA
+  public class WebSecurity                       
+  extends WebSecurityConfigurerAdapter {         ← [AAA]
   
     @Autowired private 
     UserDetailsService userDetailsService;
@@ -4505,10 +4650,19 @@ BºMAIN (entry point to Spring Boot app)º
   
   @SpringBootApplication                     //  ← main class for SpringB. project.
                                              //    (must be present in base path)
-                                             //    triggering the scan for sub-packages  
-  @Configuration                             //    [configuration]
-  @EnableAutoConfiguration                   //    [configuration]
-  @ComponentScan({ "com.myComp"})            //  ← [configuration] Package to scan 
+                                             //    shortcut for 
+                                             //         @Configuration (mark class as a src of beans definitions)
+                                             //       + @ComponentScan (enable component scanning to find+register
+                                             //                         beans in the Spring context)
+                                             //       + @EnableAutoConfiguration : once enable auto-configuration 
+                                             //            is triggered by on several conditions such as:
+                                             //            - presence of certain classes in classpath
+                                             //            - existence  of  specific  beans
+                                             //            - value of  some properties.
+                                             //            e.g: If project depends on Springspring-boot-starter-web
+                                             //            Spring Boot will initialize an embedded Tomcat server
+                                             //            with minimal configuration required. 
+  @ComponentScan({ "com.myComp"})            //  ← [configuration] Package to scan. 
   public class App {                         //    for Spring components
     public static void main(String[] args) {
       SpringApplication.run(App.class, args);
@@ -4766,279 +4920,242 @@ BºMAIN (entry point to Spring Boot app)º
 <div groupv>
 <span title>Spring Boot/Cloud Summary</span>
 
-<pre zoom labels="spring,cloud,TODO">
+<pre zoom labels="spring.cloud,cloud,service_discovery">
 <span xsmall>Spring Cloud Configuration</span>
-- PRESETUP: 2+ APIs running independently has been developed
+• CONTEXT: 
+  2+ APIs running independently have been developed.
 
-- Target: Bootstrap next micro-services:
-  1) Configuration Server:
-     - centralizes micro-services configuration.
-       (Sort of "etcd" for Spring)
+  We want toºBOOTSTRAP NEXT THREE MICRO-SERVICESº:
 
-  2) Discovery Server: allow apps to find each other
+  •ºConfiguration Serverº: centralizes micro-services configuration.
+                           (Sort of "etcd" for Spring)
+  •ºDiscovery Serverº    : allow apps to find each other
+  •ºGateway Serverº      : reverse proxy encapsulating all decoupled
+                           micro-services in a single port.
 
-  3) Gateway Server: reverse proxy encapsulating all
-     independent micro-services in a single port.
+Bº###############################º
+Bº# Configuration Server HOW-TO:#º
+Bº###############################º
+   maven/gradle dependencies:
+   groupId                    artifactId 
+   org.springframework.cloud  spring-cloud-config-server
+   org.springframework.cloud  spring-cloud-starter-eureka
+   org.springframework.boot   spring-boot-starter-security
 
+   @SpringBootApplication            ← Spring Boot Entry point
+   @EnableConfigServer               ← Make Configuration Service discoverable
+   @Enable                           ← via EurekaClient
+   public class ConfigApplication {
+     ...
+   }
+   
+  ºapplication.propertiesº:                       ← Standard Spring Boot config file
+   server.port=8081        
+   spring.application.name=config              ┐
+   spring.cloud.config.server.git.uri=  ←······│· set to real git path
+       file:///${user.home}/application-config ├─ Spring Cloud   
+   eureka.client.region=default                │  Config.Server config
+   eureka.client.registryFetchIntervalSeconds=5│ 
+   eureka.client.serviceUrl.defaultZone=       ┘
+          =http://discUser:discPassword@localhost:8082/eureka/
+   security.user.name=configUser               │
+   security.user.password=configPassword       │
+   security.user.role=SYSTEM                   ┘
 
-   └ 1) Configuration Server HOW-TO:
-   | └ Configuration Ser. Maven Deps:
-   | · Configuration Server deps:
-   | · ˂dependency˃
-   | ·     ˂groupId˃org.springframework.cloud˂/groupId˃
-   | ·     ˂artifactId˃spring-cloud-config-server˂/artifactId˃
-   | · ˂/dependency˃
-   | · ˂dependency˃
-   | ·     ˂groupId˃org.springframework.cloud˂/groupId˃
-   | ·     ˂artifactId˃spring-cloud-starter-eureka˂/artifactId˃
-   | · ˂/dependency˃
-   | · ˂dependency˃
-   | ·      ˂groupId˃org.springframework.boot˂/groupId˃
-   | ·      ˂artifactId˃spring-boot-starter-security˂/artifactId˃
-   | · ˂/dependency˃
-   | ·
-   | └  Configuration Server IoT Setup:
-   | ·    @SpringBootApplication
-   | ·    @EnableConfigServer       ← Make Configuration Service discoverable
-   | ·    @Enable                   ← via EEurekaClienturoka client
-   | ·    public class ConfigApplication {
-   | ·      ...
-   | ·    }
-   | ·
-   | └ Configuration Server Config. file:
-   | · - application.properties:
-   | ·   server.port=8081
-   | ·   spring.application.name=config
-   | ·   spring.cloud.config.server.git.uri=            ← set to real git path
-   | ·          file:///${user.home}/application-config
-   | ·   eureka.client.region=default                    
-   | ·   eureka.client.registryFetchIntervalSeconds=5
-   | ·   eureka.client.serviceUrl.defaultZone=
-   | ·          =http://discUser:discPassword@localhost:8082/eureka/
-   | ·   security.user.name=configUser
-   | ·   security.user.password=configPassword
-   | ·   security.user.role=SYSTEM
+Bº############################
+Bº# Discovery Server HOW-TO: #
+Bº############################
+  groupId                    artifactId 
+  org.springframework.cloud  spring-cloud-starter-eureka-server
+  org.springframework.cloud  spring-cloud-starter-config
+  org.springframework.boot   artifactId˃spring-boot-starter-security
+                   
+  @SpringBootApplication     ← Spring Boot Entry point
+  @EnableEurekaServerpublic  ← "IoT Setup"
+  class DiscoveryApplication {...}
 
+  BºSecure Server endpoints anotattionsº:
+  @Configuration
+  @EnableWebSecurity
+  @Order(1)                          ←  There are two security configurations for the
+  public class SecurityConfig           Discover Serv. endpoints + dashboard.
+  extends WebSecurityConfigurerAdapter {
+     @Autowired
+     public void configureGlobal(
+         AuthenticationManagerBuilder auth) 
+     {
+        auth.inMemoryAuthentication()
+          .withUser("discUser") 
+          .password("discPassword") 
+          .roles("SYSTEM");
+     }
+     @Override
+     protected void configure(HttpSecurity http) 
+     {
+       http
+       .sessionManagement()
+       .sessionCreationPolicy(
+           SessionCreationPolicy.ALWAYS).and()
+       .requestMatchers()
+          .antMatchers("/eureka/**").and()
+       .authorizeRequests()
+          .antMatchers("/eureka/**")
+              .hasRole("SYSTEM")
+          .anyRequest().denyAll().and()
+       .httpBasic().and()
+       .csrf().disable();
+     }
+  }
 
-   └ 2) Discovery Server HOW-TO:
-     └ Discovery Ser. Maven Deps:
-       ˂dependency˃
-           ˂groupId˃org.springframework.cloud˂/groupId˃
-           ˂artifactId˃spring-cloud-starter-eureka-server˂/artifactId˃
-       ˂/dependency˃
-       ˂dependency˃
-           ˂groupId˃org.springframework.cloud˂/groupId˃
-           ˂artifactId˃spring-cloud-starter-config˂/artifactId˃
-       ˂/dependency˃
-       ˂dependency˃
-           ˂groupId˃org.springframework.boot˂/groupId˃
-           ˂artifactId˃spring-boot-starter-security˂/artifactId˃
-       ˂/dependency˃
+ ºDISCOVERY SERV. : SECURE DASHBOARD HOW-TOº:
+  @Configuration
+  public static class AdminSecurityConfig
+  extends WebSecurityConfigurerAdapter {
+    @Override
+    protected void configure(HttpSecurity http) {
+    http
+    .sessionManagement()
+    .sessionCreationPolicy(
+       SessionCreationPolicy.NEVER).and()
+    .httpBasic().disable()
+    .authorizeRequests()
+      .antMatchers(HttpMethod.GET, "/")
+         .hasRole("ADMIN")
+      .antMatchers("/info", "/health")
+         .authenticated()
+      .anyRequest().denyAll().and()
+    .csrf().disable();
+    }
+  }
 
-     └  Discovery Server IoT Setup:
-          @SpringBootApplication
-          @EnableEurekaServerpublic
-          class DiscoveryApplication {...}
+ ºDISCOVERY SERV. : CONFIG. FILESº
+  └ºbootstrap.propertiesº                              Must match Discovery serv. in 
+    spring.cloud.config.name=discovery               ← configuration repository.
+    spring.cloud.config.uri=http://localhost:8081    ← URL of the confi. server 
+    spring.cloud.config.username=configUser
+    spring.cloud.config.password=configPassword
 
-     └ Discovery Service: Secure Server endpoints:
-       @Configuration
-       @EnableWebSecurity
-       @Order(1)                          ←  There are two security configurations for the
-       public class SecurityConfig           Discover Serv. endpoints + dashboard.
-       extends WebSecurityConfigurerAdapter {
-          @Autowired
-          public void configureGlobal(
-                    AuthenticationManagerBuilder auth) 
-             {
-             auth.inMemoryAuthentication()
-               .withUser("discUser") 
-               .password("discPassword") 
-               .roles("SYSTEM");
-          }
-          @Overridep
-          protected void configure(HttpSecurity http) {
-            http
-            .sessionManagement()
-            .sessionCreationPolicy(SessionCreationPolicy.ALWAYS).and()
-            .requestMatchers().antMatchers("/eureka/**").and()
-            .authorizeRequests()
-               .antMatchers("/eureka/**").hasRole("SYSTEM")
-               .anyRequest().denyAll().and()
-            .httpBasic().and()
-            .csrf().disable();
-          }
-       }
+  └ºdiscovery.propertiesº                            ← Add also to application-config Git repo
+    spring.application.name=discovery
+    server.port=8082
+    eureka.instance.hostname=localhost
+    eureka.client.serviceUrl.defaultZone=
+       http://discUser:discPassword@localhost:8082/eureka/
+    eureka.client.register-with-eureka=false
+    eureka.client.fetch-registry=false
+    spring.redis.host=localhost
+    spring.redis.port=6379
 
-     └ Secure Discovery Serv. Eureka dashboard:
-       @Configuration
-       public static class AdminSecurityConfig
-       extends WebSecurityConfigurerAdapter {
-           @Override
-           protected void configure(HttpSecurity http) {
-           http
-           .sessionManagement()
-           .sessionCreationPolicy(SessionCreationPolicy.NEVER).and()
-           .httpBasic().disable()
-           .authorizeRequests()
-             .antMatchers(HttpMethod.GET, "/").hasRole("ADMIN")
-             .antMatchers("/info", "/health").authenticated()
-             .anyRequest().denyAll().and()
-           .csrf().disable();
-           }
-       }
+Bº##########################
+Bº# Gateway Server HOW-TO: #
+Bº##########################
+  groupId                    artifactId 
+  org.springframework.cloud  spring-cloud-starter-config
+  org.springframework.cloud  spring-cloud-starter-eureka
+  org.springframework.cloud  spring-cloud-starter-zuul
+  org.springframework.boot   spring-boot-starter-security
 
-     └ Discovery Service config. Files: 
-     
-       - bootstrap.properties                               Must match Discovery serv. in 
-         spring.cloud.config.name=discovery               ← configuration repository.
-         spring.cloud.config.uri=http://localhost:8081    ← URL of the confi. server 
-         spring.cloud.config.username=configUser
-         spring.cloud.config.password=configPassword
-
-       - discovery.properties                             ← Add also to application-config Git repo
-         spring.application.name=discovery
-         server.port=8082
-         eureka.instance.hostname=localhost
-         eureka.client.serviceUrl.defaultZone=
-            http://discUser:discPassword@localhost:8082/eureka/
-         eureka.client.register-with-eureka=false
-         eureka.client.fetch-registry=false
-         spring.redis.host=localhost
-         spring.redis.port=6379
-
-   └ 3) Gateway Server HOW-TO:
-     └ Gateway Ser. Maven Deps:
-       ˂dependency˃
-         ˂groupId˃org.springframework.cloud˂/groupId˃
-         ˂artifactId˃spring-cloud-starter-config˂/artifactId˃
-       ˂/dependency˃
-       ˂dependency˃
-         ˂groupId˃org.springframework.cloud˂/groupId˃
-         ˂artifactId˃spring-cloud-starter-eureka˂/artifactId˃
-       ˂/dependency˃
-       ˂dependency˃
-         ˂groupId˃org.springframework.cloud˂/groupId˃
-         ˂artifactId˃spring-cloud-starter-zuul˂/artifactId˃
-       ˂/dependency˃
-       ˂dependency˃
-         ˂groupId˃org.springframework.boot˂/groupId˃
-         ˂artifactId˃spring-boot-starter-security˂/artifactId˃
-       ˂/dependency˃
-     └ Gatewy Server IoT Setup:
-       @SpringBootApplication
-       @EnableZuulProxy
-       @EnableEurekaClient
-       public class GatewayApplication {}
+  @SpringBootApplication     ← Spring Boot Entry Point
+  @EnableZuulProxy
+  @EnableEurekaClient
+  public class GatewayApplication {}
 
 
-     └ Secure Gateway Server:
-       @EnableWebSecurity
-       @Configuration
-       public class SecurityConfig extends WebSecurityConfigurerAdapter 
-       {
-         @Autowired
-         public void configureGlobal(AuthenticationManagerBuilder auth)
-         throws Exception {
-            auth.inMemoryAuthentication()
-       .withUser("user").password("password").roles("USER")
-       .and()
-       .withUser("admin").password("admin").roles("ADMIN");
-       }
+  BºGATEWAY SERVER: SECURE HOW-TOº
+    @EnableWebSecurity
+    @Configuration
+    public class SecurityConfig 
+    extends WebSecurityConfigurerAdapter 
+    {
+      @Autowired
+      public void configureGlobal
+         (AuthenticationManagerBuilder auth)
+      throws Exception {
+        auth.inMemoryAuthentication()
+          .withUser("user").password("password").roles("USER")
+          .and()
+          .withUser("admin").password("admin").roles("ADMIN");
+      }
 
-       @Override
-       protected void configure(HttpSecurity http) throws Exception {
-           http.authorizeRequests()
-           .antMatchers("/book-service/books").permitAll()
-           .antMatchers("/eureka/**").hasRole("ADMIN")
-           .anyRequest().authenticated().and()
-           .formLogin().and()
-           .logout().permitAll().and()
-           .csrf().disable();
-           }
-       }
+      @Override
+      protected void configure(HttpSecurity http)
+      throws Exception {
+        http.authorizeRequests()
+          .antMatchers("/book-service/books")
+             .permitAll()
+          .antMatchers("/eureka/**")
+             .hasRole("ADMIN")
+          .anyRequest().authenticated().and()
+          .formLogin().and()
+          .logout().permitAll().and()
+          .csrf().disable();
+        }
+    }
        
-     └ Secure Gateway Config. files
-       - resources/bootstrap.properties:
-         spring.cloud.config.name=gateway
-         spring.cloud.config.discovery.service-id=config
-         spring.cloud.config.discovery.enabled=true
-         spring.cloud.config.username=configUser
-         spring.cloud.config.password=configPassword
-         eureka.client.serviceUrl.defaultZone=
-           http://discUser:discPassword@localhost:8082/eureka
+  BºGATEWAY SERVER: SECURE CONFIG. FILESº
+    └ºresources/bootstrap.properties:º
+      spring.cloud.config.name=gateway
+      spring.cloud.config.discovery.service-id=config
+      spring.cloud.config.discovery.enabled=true
+      spring.cloud.config.username=configUser
+      spring.cloud.config.password=configPassword
+      eureka.client.serviceUrl.defaultZone=
+        http://discUser:discPassword@localhost:8082/eureka
 
-       - gateway.properties:  (from app-config Git repo)
-         spring.application.name=gateway
-         server.port=8080
-         eureka.client.region = default
-         eureka.client.registryFetchIntervalSeconds = 5
-         management.security.sessions=always
-         
-         zuul.routes.book-service.path=/book-service/**            ← route any request to /boot-servie to our Book Ser.app
-         zuul.routes.book-service.sensitive-headers=Set-Cookie,Authorization
-         hystrix.command.book-service.execution.isolation.thread.timeoutInMilliseconds=600000
-         zuul.routes.rating-service.path=/rating-service/**
-         zuul.routes.rating-service.sensitive-headers=Set-Cookie,Authorization
-         hystrix.command.rating-service.execution.isolation.thread.timeoutInMilliseconds=600000
-         zuul.routes.discovery.path=/discovery/**
-         zuul.routes.discovery.sensitive-headers=Set-Cookie,Authorization
-         zuul.routes.discovery.url=http://localhost:8082
-         hystrix.command.discovery.execution.isolation.thread.timeoutInMilliseconds=600000
-         
-         spring.redis.host=localhost
-         spring.redis.port=6379
+    └ºgateway.properties:º (from app-config Git repo)
+      spring.application.name=gateway
+      server.port=8080
+      eureka.client.region = default
+      eureka.client.registryFetchIntervalSeconds = 5
+      management.security.sessions=always
+      
+    └ºzuul.routes.book-service.path=/book-service/**º   ← route /boot-service HTTP requests 
+                                                             to our Book Ser.app
+      zuul.routes.book-service.sensitive-headers=Set-Cookie,Authorization
+      hystrix.command.book-service.execution.isolation.thread.timeoutInMilliseconds=600000
+      zuul.routes.rating-service.path=/rating-service/**
+      zuul.routes.rating-service.sensitive-headers=Set-Cookie,Authorization
+      hystrix.command.rating-service.execution.isolation.thread.timeoutInMilliseconds=600000
+      zuul.routes.discovery.path=/discovery/**
+      zuul.routes.discovery.sensitive-headers=Set-Cookie,Authorization
+      zuul.routes.discovery.url=http://localhost:8082
+      hystrix.command.discovery.execution.isolation.thread.timeoutInMilliseconds=600000
+      
+      spring.redis.host=localhost
+      spring.redis.port=6379
 
-- Common Maven Depen. for Config Client, Eureka, JPA, Web an Security:
-  ˂dependency˃
-      ˂groupId˃org.springframework.cloud˂/groupId˃
-      ˂artifactId˃spring-cloud-starter-config˂/artifactId˃
-  ˂/dependency˃
-  
-  ˂dependency˃
-      ˂groupId˃org.springframework.cloud˂/groupId˃
-      ˂artifactId˃spring-cloud-starter-eureka˂/artifactId˃
-  ˂/dependency˃
-  
-  ˂dependency˃
-      ˂groupId˃org.springframework.boot˂/groupId˃
-      ˂artifactId˃spring-boot-starter-data-jpa˂/artifactId˃
-  ˂/dependency˃
-  
-  ˂dependency˃
-      ˂groupId˃org.springframework.boot˂/groupId˃
-      ˂artifactId˃spring-boot-starter-web˂/artifactId˃
-  ˂/dependency˃
-  
-  ˂dependency˃
-      ˂groupId˃org.springframework.boot˂/groupId˃
-      ˂artifactId˃spring-boot-starter-security˂/artifactId˃
-  ˂/dependency˃
+Bº#########################################################################
+Bº# Common Dependencies. for Config Client, Eureka, JPA, Web an Security: #
+Bº#########################################################################
+  GROUP ID                         ARTIFACT ID
+  org.springframework.cloud        spring-cloud-starter-config
+  org.springframework.cloud        spring-cloud-starter-eureka
+  org.springframework.boot         spring-boot-starter-data-jpa
+  org.springframework.boot         spring-boot-starter-web
+  org.springframework.boot         spring-boot-starter-security
 
-- (Sharing) Session Configuration:
-  - Maven dependencies to add to Discovery server, gateway server and micro-service1/2/... servers
-    ˂dependency˃
-        ˂groupId˃org.springframework.session˂/groupId˃
-        ˂artifactId˃spring-session˂/artifactId˃
-    ˂/dependency˃
-    ˂dependency˃
-        ˂groupId˃org.springframework.boot˂/groupId˃
-        ˂artifactId˃spring-boot-starter-data-redis˂/artifactId˃
-    ˂/dependency˃
 
-  - Add next IoT to Discovery Server and REST APIs.
+Bº####################################
+Bº# (Sharing) Session Configuration: #
+Bº####################################
+  └ dependencies to add to Discovery server, gateway server and micro-service 1/2/... 
+    GROUP ID                       ARTIFACT ID
+    org.springframework.session    spring-session
+    org.springframework.boot       spring-boot-starter-data-redis
+
+  └ Add next IoT to DISCOVERY SERVER and REST APIs.
     @EnableRedisHttpSession
     public class SessionConfig 
     extends AbstractHttpSessionApplicationInitializer {  }
 
-  - For the Gateway Server:
+  └ For the GATEWAY SERVER:
     @Configuration
     @EnableRedisHttpSession(redisFlushMode = RedisFlushMode.IMMEDIATE)
     public class SessionConfig 
     extends AbstractHttpSessionApplicationInitializer {}
 
-  - For the Gateway Server add a simple filter to forward 
-    the session so that authentication will propagate to
-    another service after login:
+  └ For the GATEWAY SERVERºadd a simple filter to forward the session º
+   ºso that authentication will propagate to another service after login:º
 
     @Component
     public class SessionSavingZuulPreFilter
@@ -5053,13 +5170,16 @@ BºMAIN (entry point to Spring Boot app)º
     
       @Override
       public Object run() {
-        RequestContext context = RequestContext.getCurrentContext();
-        HttpSession httpSession = context.getRequest().getSession();
-        Session session = repository.getSession(httpSession.getId());
+        final RequestContext context   =
+           RequestContext.getCurrentContext();
+        final HttpSession httpSession  = 
+           context.getRequest().getSession();
+        final Session session          = 
+           repository.getSession(httpSession.getId());
         
         context.addZuulRequestHeader(
           "Cookie", "SESSION=" + httpSession.getId());
-        return null;
+        return Rºnullº;
       }
       
       @Override
@@ -5070,35 +5190,40 @@ BºMAIN (entry point to Spring Boot app)º
       public int filterOrder() {return 0;}
     }
 
-BºTESTING Rest APIº
+Bº####################
+Bº# TESTING Rest API #
+Bº####################
+  private final String ROOT_URI = "http://localhost:8080";
+  private FormAuthConfig formConfig
+     = new FormAuthConfig("/login", "username", "password");
 
-private final String ROOT_URI = "http://localhost:8080";
-private FormAuthConfig formConfig
-   = new FormAuthConfig("/login", "username", "password");
-@Before
-public void setup() {
-  RestAssured.config = config().redirect(
-    RedirectConfig.redirectConfig().followRedirects(false)
-  );
-}
-
-@Test
-public void whenGetAllBooks_thenSuccess() {
-  Response response = RestAssured.get(ROOT_URI + "/book-service/books");
-  Assert.assertEquals(HttpStatus.OK.value(), response.getStatusCode());
-  Assert.assertNotNull(response.getBody());
-}
-
-// Try to access protected resource:
-@Test
-public void whenAccessProtectedResourceWithoutLogin_thenRedirectToLogin() {
-  Response response = RestAssured.get(ROOT_URI + "/book-service/books/1");
-  Assert.assertEquals(HttpStatus.FOUND.value(), response.getStatusCode());
-  Assert.assertEquals("http://localhost:8080/login", response.getHeader("Location"));
-}
-
+  @Before
+  public void setup() {
+    RestAssured.config = config().redirect(
+      RedirectConfig.redirectConfig().followRedirects(false)
+    );
+  }
+  
+  @Test
+  public void whenGetAllBooks_thenSuccess() {
+    Response response = RestAssured.get(ROOT_URI + "/book-service/books");
+    Assert.assertEquals(HttpStatus.OK.value(), response.getStatusCode());
+    Assert.assertNotNull(response.getBody());
+  }
+  
+  // Try to access protected resource:
+  @Test
+  public void protectedResourceMustRedirectToLogin() {
+    Response response =
+      RestAssured.get(ROOT_URI + "/book-service/books/1");
+    Assert.assertEquals(
+      HttpStatus.FOUND.value(), response.getStatusCode());
+    Assert.assertEquals(
+      "http://localhost:8080/login", response.getHeader("Location"));
+  }
 </pre>
-<pre zoom labels="spring,cloud,service_discovery,TODO">
+
+<pre zoom labels="spring,spring.cloud,cloud,service_discovery,TODO">
 <span xsmall>"Cloudify"</span>
 @[http://files.zeroturnaround.com/pdf/zt_spring_annotations_cheat_sheet.pdf]
   ┌────────→ @SpringBootApplication      HTTP Request                        ºCLOUDº
@@ -10205,3 +10330,31 @@ DONT's:
 Invoquing sub-processes from java, curl example:
 WARN: non-cross-platform
 https://www.baeldung.com/java-curl
+####################
+spring.boot,cli:
+https://docs.spring.io/spring-cloud-cli/docs/current/reference/html/
+####################
+SQL,qa,maven,gradle,JPA?
+Flywai Schema database migrations
+https://www.baeldung.com/database-migrations-with-flyway
+
+See also alternative: Liquidbase
+#########################
+embedded servers usually comprise two logical components:
+
+┌───────────────────────────────────┬────────────────────────────────
+│  LOGICAL COMPONENT                │  TOMCAT equivalent
+├───────────────────────────────────┼────────────────────────────────
+│  a web server component           │  Coyote
+│  listening for HTTP requests and  │  
+│  returning HTTP responses         │  
+├───────────────────────────────────┼────────────────────────────────
+│  an execution context to make     │  Catalina, based on Servlet API
+│  a Java web application interact  │  (usually called the Servlet 
+│  with the web server.             │  Container)
+└───────────────────────────────────┴────────────────────────────────
+#######################
+Reactive isn't Complicated with Vert.x and the new Mutiny APIs
+https://www.youtube.com/watch?v=3tdU5WRvuuo
+#######################
+

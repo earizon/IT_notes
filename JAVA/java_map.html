@@ -2640,6 +2640,22 @@ BºThis is necessary for IPv4+IPv6 and for services hosted in redundant data cen
 
 <div groupv>
 <span title>Debug&amp;Profile</span>
+<pre zoom labels="debugging,containers,jvm,">
+<span title>Debug remote (container) JVM</span>
+• STEP 1: inject next ENV.VAR into app JVM:
+  JAVA_TOOL_OPTIONS=""
+  JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS}-agentlib:jdwp=transport=dt_socket"
+  JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS},server=y"
+  JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS},suspend=n"
+  JAVA_TOOL_OPTIONS="${JAVA_TOOL_OPTIONS},address=*:8001"
+                                      ┌──┬──────────┴──┘
+• STEP 2: Export debuggin port (e.g.: 8001)
+
+• STEP 3: In JAVA IDE configure debugger to attach to remote machine
+  (e.g., in IntelliJ , add remote debugger in Run/Debug Configurations)
+</pre>
+
+
 <pre zoom labels="JVM,performance,troubleshooting,tool,TODO">
 <span xsmall>jcmd</span>
 man 1 jcmd
@@ -4240,8 +4256,12 @@ Bº@Repositoryº                              // ← internals.
        maximum-pool-size: 20     @[https://github.com/brettwooldridge/HikariCP/wiki/About-Pool-Sizing]
        pool-name: app01-pool
     jpa:
-       hibernate.ddl-auto: create-drop   ← Just for dev.purposes. Prefer Flywai|Liquidbase|...
-                                           for production enviroments.
+       hibernate.ddl-auto:Qºcreate-dropº ← Just forºdev.purposesº. Forºproduction environmentsº
+                                          ºdatabase schema is kept versionedº("a la git") with
+                                           some tool like Flyway or Liquidbase. The spring boot
+                                           is changed to:  hibernate.ddl-auto:Qºvalidateº
+                                           The start-up Spring-data will get sure that internal
+                                           JPA models match the externally defined SQL schema.
 
 - file: com/myComp/jpa/Entity1.java                     [persistence][jpa]
   import java.io.Serializable;
@@ -8382,6 +8402,51 @@ The SHA256 hash sum used for verifying the downloaded Gradle distribution.
 
 <div groupv>
 <span title>DDBB/persistence</span>
+<pre zoom labels="sql,qa,persistence,cloud,spring,jpa,TODO">
+<span xsmall>Flyway: SQL schema versioning</span>
+• tool providing version control for database (SQL) schemas
+  and automated schema (tables, columns, sequences), data, views, procedures
+  and packages evolution.
+• Single source of truth for DDBB versioning.
+• highly reliable
+• Supports for many different SQL databases, including        [cloud]
+  cloud ones (Amazon RDS, Azure Database, Google Cloud SQL).
+
+Bº##########º
+Bº# HOW-TO #º
+Bº##########º
+• PRESETUP: The target database to manage and user with update privileges be created first,
+            "outside" of flyway. 
+
+• Database changee are called aºMigrationsº. They can be: 
+  · Versioned  migrations: identified by a version number, applied in order exactly once.
+                           An optional revert migration version can be provided to roolback
+                           changes in case of error.
+  · Repeatable migrations:  
+
+• Flyway used anºinternal flyway_schema_history ddbb to keep track of migrations appliedº.
+
+• SQL and JAVA  migrations in src/main/resources/db/migration/ are automatically      [spring]
+  applied in Spring Boot when  'org.flywaydb:flyway-core' compile dependency is
+  detected.
+  src/main/resources/db/migration/
+  └ºV1__Initial_schema.sqlº  ← Flyway expected file name 
+                               "Verssion"__"Prefix".sql
+    CREATE TABLE table01 (
+     id      BIGSERIAL PRIMARY KEY NOT NULL,
+     column1 BIGINT NOT NULL,
+     column2 FLOAT8 NOT NULL,
+     column3 INTEGER NOT NULL,
+     column4 VARCHAR(255) UNIQUE NOT NULL,
+    );
+
+  └ºV2__Add_column5.sqlº
+    ALTER TABLE table01 
+      ADD COLUMN column5 VARCHAR(255);
+
+</pre>
+
+
 <pre zoom labels="sql,low_code,persistence,qa,vertx,TODO">
 <span xsmall>Jooq: SQL made simple</span>
 @[https://www.jooq.org/]
@@ -10034,7 +10099,7 @@ BºLet developers concentrate on logic vs network plumbing and TCP errors.º
   consumption and garbage collector issues. 
 </pre>
 
-<pre zoom labels="data_persistence,sql,qa,TODO">
+<pre zoom labels="persistence,sql,qa,TODO">
 <span xsmall>Obevo: DDBB change manager</span>
 - (Goldman Sachs)
   Obevo is a database deployment tool that helps teams manage database 
@@ -10053,7 +10118,7 @@ BºLet developers concentrate on logic vs network plumbing and TCP errors.º
   community around the tool.”
 </pre>
 
-<pre zoom labels="testing,data_persistence,big_data,TODO">
+<pre zoom labels="testing,persistence,big_data,TODO">
 <span xsmall>Tablasco</span>
 - (By Goldman Sasch) JUnit rule that adds table verification to unit 
   tests. For software products that produce large amounts of data, this 

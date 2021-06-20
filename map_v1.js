@@ -33,8 +33,8 @@ console.log(" @ma " + SF.regexInputTimer)
           div.classList.add("noprint")
     document.body.insertBefore(div,document.body.children[0])
     let html = ''
-      + ' <div id="divClose">✕ (close)</div>' 
-      + ' <div id="unhide" hidden >show all</div>'
+      + ' <div id="divClose1">✕</div>' 
+      + ' <div id="unhide" hidden >&nbsp;show all&nbsp;</div>'
       + '  <div id="divRegexForm">'
       + '  <input id="inputQuery"  type="text" placeholder="(regex)search"  />'
       + '  <div   id="matchNumber" ></div>'
@@ -58,7 +58,7 @@ console.log(" @ma " + SF.regexInputTimer)
         html += "(No topics found).<br/>\n"
       }
       div.innerHTML = html;
-      document.getElementById("divClose").addEventListener("click", SF.hideSearchForm);
+      document.getElementById("divClose1").addEventListener("click", SF.hideSearchForm);
       document.getElementById("unhide"        ).addEventListener("click", function () { 
           SE.resetTextFoundAttr(true);
           this.setAttribute("hidden","true"); 
@@ -144,7 +144,7 @@ const ZW = { /* ZOOM Window */
         dom1.setAttribute("id", "zoomDiv")
     dom1.innerHTML = ""
        + "<div id='zoomDivControls' style='margin-bottom:0.5rem'>" 
-       + " <div id='divClose'>✕ (close)</div>" 
+       + " <div id='divClose2'>✕ </div>" 
        + " <div id='historyBackFor' style='display:inline; '>"
        +    "<span id='GoBack'>←</span>&nbsp;"
        +    "<span id='GoForw'>→</span>"
@@ -159,7 +159,7 @@ const ZW = { /* ZOOM Window */
        + "<div id='zoomHTMLContent'/>"
     ZW.dom = dom1
     document.body.insertBefore(dom1,document.body.children[0])
-    document.getElementById("divClose").addEventListener("click", ZW.doCloseZoom);
+    document.getElementById("divClose2").addEventListener("click", ZW.doCloseZoom);
     document.getElementById("GoBack" ).addEventListener("click", NAV.goBack);
     document.getElementById("GoForw" ).addEventListener("click", NAV.goForward);
     ZW.textSizeSlider = document.getElementById("textSizeSlider" )

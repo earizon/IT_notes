@@ -710,9 +710,21 @@ $º$ kubectl edit svc/my-service-1  # Edit resource º
   Ex:
 $º$ kubectl get pods --field-selector       metadata.name==my-service,spec.restartPolicy=Alwaysº
 $º$ kubectl get pods --field-selector  metadata.namespace!=default,status.phase==Running       º
-</pre>
+<hr/>
+<span xsmall>Octant</span>
+@[https://octant.dev/]
+• web based easy-to-install (on client laptops) web dashboard.
+$º$ octant º ← creates dashboard at http://localhost:7777 by default.
+  (a "pre-packaged" desktop version is also available)
 
+ The dashboard homepages provides a  overview of Deployments/Pods/ReplicaSets/Services/... 
+ running on the cluster.
+
+  It also allows to enable port forwarding on a given pods, read logs, modify pods manifest,
+  check pod conditions (initialized, ready, containersReady, PodsScheduled, ...)
+</pre>
 </div>
+
 </div>
 
 <div group>
@@ -4047,23 +4059,63 @@ Tools and techniques that can really help accelerate your ability to learn the k
 <span xsmall TODO>Skaffold</span>
 @[https://www.infoq.com/news/2018/03/skaffold-kubernetes/]
 
-- Tool to facilitate Continuous Development by allowing Local Kubernetes Development.
-  optimized “Source to Kubernetes” - Skaffold detects changes in
-  your source code and handles the pipeline to build, push, and deploy
-  your application automatically with policy-based image tagging and
-  highly optimized, fast local workflows.
+•ºlightweight client-sideºtool triggering ºhighly optimized local deploymentº
+ ºpipelinesºwhen source-code changes are detected by compiling, building
+  OCI images, pushing, and deploying the app automatically with policy-based
+  image tagging, resource port-forwarding, logging, file syncing, and much more.
 
-- Skaffold handles the workflow for building, pushing and deploying the application,
-   allowing to focus on what matters most: writing code.
+  NON-SKAFFOLD                      │  SKAFFOLD 
+    PIPELINE                        │  PIPELINE           
+  ============                      │  =========          
+  · git clone                       │  git clone          
+  · build app                       │$º$ skaffold run º ← Support for: ✓ profiles ✓ env.vars 
+  · create Dockerfile               │    └─────┬────┘                  ✓ local-user-config ✓ flags 
+  · build app OCI                   │    Build,deploy, watch for changes. When source changes 
+  · push image to k8s cluster       │    , roll out updated  objects in local k8s.
+  · deploy DDBB from Helm chart     │    Skaffold's inner loop PROVIDES
+  · create k8s YAML manifest        │    BºINSTANT FEEDBACK WHILE DEVELOPING!!!º
+      for app deployment, services, │    
+      ...                           │$º$ skaffold dev   --port-forward º ← like run, forward ports
+  · collecting logs and dump into   │$º$ skaffold debug --port-forward º ← like run, forward ports   
+  · local console.                  │                                      and add remote debugger
+                                                                           (JVM def: localhost:5005)
+Bº###################º
+Bº# Skaffold HOW-TO #º
+Bº###################º
+$º$ cd .../"project_root"                  º 
+$º$ skaffold init --XXenableBuildbacksInit º ← init skaffold using "Cloud Native Buildpacks"
+                                               to build OCI image.
+                                              º./skaffold.yamlº will be created: It can be
+                                               customized to use "Cloud Native Buildpacks" Paketo 
+                                               implementation (e.g. Used by Spring Boot),
+                                               define new resources to deploy, ...
 
--ºLightweightº: client-side only.
--ºWorks Everywhereº: share your project with 'git clone' → 'skaffold run'.
-- Support forºprofiles, local user config, environment variables, and flagsº
-  to easily incorporate differences across environments.
--ºFeature Richº:  policy-based image tagging, resource port-forwarding and
-  logging, file syncing, and much more.
--ºOptimized Developmentº: Skaffold's inner loop is tight and highly optimized,
-  providing instant feedback while developing.
+apiVersion: skaffold/v2beta13                ← k8s manifest for k8s non-standard object
+kind: Config                                 
+metadata:
+  name: catalog-service
+build:                                       ← How to build the App from source 
+  artifacts:                                   (java+mvn in this example)
+    - image: myCompany/myApp01
+      buildpacks:
+        builder: gcr.io/paketo-buildpacks/builder:base 
+        env:
+          - BP_JVM_VERSION=11.*
+deploy:
+  helm:
+    releases:
+      - name: myApp01-ddbb
+      remoteChart: bitnami/postgresql
+      setValues:
+        postgresqlUsername: admin
+        postgresqlPassword: admin
+        postgresqlDatabase: myApp01-ddbb
+        image.tag: 13
+  kubectl:
+    manifests:
+      - k8s/*.yml
+                                             
+  
 </pre>
 
 <pre zoom labels="code_snippet,java,API,">
@@ -5278,5 +5330,45 @@ especially when there are multiple accounts and access levels to
 manage. And the problem only grows in complexity as more people 
 on-board, off-board, or change teams, and projects multiply.
 
+#############################
+Extracted from Cloud_Native_Spring_in_Action_v7.pdf, Chapter 2.4:
+...  There  are  a  few  ways  to  install  Kubernetes  in  your                     @ma, bootstrap cluster
+local  environment.  The  approach  Irecommend  is  installing    ,  
+a  tool  for  running  local  Kubernetes  clusters  using  
+Dockerkindcontainers. Since you have already installed Docker on your 
+local machine, it’s a convenient wayto get a local Kubernetes 
+cluster as well...
+ $º $ kind create cluster º    ← bootstrap ew k8s cluster, 1 single command!!!
+ $ kind load docker-image myLocalImage:0.0.1-SNAPSHOT  ← Import image from local docker registry
+ $º $ kind delete cluster º    ← Remove the cluster!!!
 
+    https://kind.sigs.k8s.io/
+    kind is a tool for running local Kubernetes clusters using Docker container “nodes”.
+    kind was primarily designed for testing Kubernetes itself, but may be used for local development or CI.
+    Why kind? 🔗︎
+    -ºkind supports multi-node (including HA) clustersº
+    - kind supports building Kubernetes release builds from source
+    - support for make / bash or docker, in addition to pre-published builds
+    - kind supports Linux, macOS and Windows
+    - kind is a CNCF certified conformant Kubernetes installer
+    
+    kind supports building Kubernetes release builds from source 
 
+#############################
+...  you might consider using DNS records relying on a round-robin 
+namere solution ... However, this approach is not the best fit 
+for cloud environments because the Rºtopology changes too oftenº.
+Some DNS implementations cache the result for too long.... 
+there’s a high chance of using a hostname/IPaddress resolution 
+no longer valid.
+Service discovery requires a different solution (etcd and proxies).
+
+A Service object is an abstraction targeting a set of Pods (typically 
+using labels) and defining the access policy. 
+→ The Service name is then resolved to the IP address of the Service
+  itself by a local DNS server running in the Kubernetes Control Plane.
+  → After resolving the Service name to its IP address, Kubernetes 
+    relies on kube-proxies (installed on each work-node) which intercept
+    the request to the Service object and forwards it to one of the
+    Pods targeted by the Service. (by updating the info from etcd).
+  BºNOTE: there is no DNS resolution involved in this step.º

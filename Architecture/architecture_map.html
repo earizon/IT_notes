@@ -1,38 +1,23 @@
 <!DOCTYPE html>
 <html>
    <meta charset="UTF-8">
-   <title>architecture map (alpha) <!-- ignore --></title>
+   <title>architecture map (WiP)</title>
+   <meta name="viewport"
+     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+   <meta name="keywords" content="API management,authentication authorization access,cache,cassandra,cloud,consistency,data architecture,data integration,db engine,distributed,elasticsearch,enterprise pattern,etcd,event stream,kafka,log collect,low code,messaging,monitoring,multifactor authentication,quality assurance,redis,serverless,service registry,storage,time series,troubleshooting,wide column store,">
 <head>
 <script type=module src=/IT_notes/map_v1.js></script>
 <link rel='stylesheet' type='text/css' href='/IT_notes/map_v1.css' />
 </head>
-
 <body>
-
 <div group>
 <span title>DB Engines Types</span><br/>
 <div groupv>
-<pre zoom>
-<span xsmall>Ext.Links</span>
+<pre bgorange zoom labels="db_engine,101,resource">
+<span xsmall>External Links</span>
 @[https://db-engines.com/]
 @[https://db-engines.com/en/ranking]
 @[https://dzone.com/articles/rant-there-is-no-nosql-data-storage-engine]
-
-<span small>TODO</span>
-@[https://www.infoq.com/news/2018/09/pinterest-goku-timeseries-db]
-  Pinterest Switches from OpenTSDB to Their Own Time Series Database
-- https://facebook.github.io/prophet/
-  Prophet: TSDB forecasting library (wrapper around Stan), particularly
-  approachable place to use Bayesian Inference for forecasting use cases
-  general purpose.
-  - Prophet is a procedure for forecasting time series data based on an
-    additive model where non-linear trends are fit with yearly, weekly, and daily
-    seasonality, plus holiday effects. It works best with time series that have
-    strong seasonal effects and several seasons of historical data. Prophet is
-    robust to missing data and shifts in the trend, and typically handles outliers well.
-
-@[https:// technologyconversations.com/2015/09/08/service-discovery-zookeeper-vs-etcd-vs-consul/]
-@[https://www.infoq.com/news/2019/05/hashicorp-consul-1.5.0]
 </pre>
 
 <pre bgorange zoom labels="db_engine,101,consistency,storage,distributed,cassandra,cosmosdb,TODO">
@@ -1848,28 +1833,42 @@ BºOptaPlannerº [optimization]
 </div>
 
 <div groupv>
-<span title>Messaging</span>
-<pre zoom label="messaging,enterprise_patterns,data_integration,event_stream,decoupled_systems,101," bgorange>
+<span title>Messaging (event-driven arch)</span>
+<pre zoom label="messaging,enterprise_patterns,data_integration,event_stream,decoupled_systems,101," bgorange id="messaging_summary">
 <span xsmall>Summary</span>
-- Messaging represents a layer down ESB. Messaging architectures
-  focus on reliable delivery of messages of different nature/timelife.
-  On top of the ESB add data management/processing/transformation.
+• Messaging represents a layer down ESB in some cases.
+  Messaging architectures focus on reliable delivery of messages of different nature/timelife.
+  On top of them, ESB add data management/processing/transformation.
 
-- See also:
-  “The many meanings of event-driven architecture,”
-@[https://www.youtube.com/watch?v=STKCRSUsyP0]
-  (By Martin Fowler)
+- Message classification by consumption model:
+ ┌──────────────────────────────────────────────────────────────────────────────────────────┐
+ │ publish/  │ Publishers send messages (commands) to be consumed-and-forgotten.            │
+ │ subscribe │ Events cannot be replayed after being received.                              │
+ │           │ New consumers will not be able to retrieve past events.                      │
+ │           │ Messages are ussually interpreted and processed in the same way              │
+ │           │ by all clients. They behave like a sort of async-and-remote function call.   │
+ │           │ where subscribing clients acts as the called function.                       │
+ │           │ subscribers are decoupled in time, but coupled in logic.                     │
+ │──────────────────────────────────────────────────────────────────────────────────────────│
+ │ Event     │ Publishers write new events (source-of-true)in order to a long-lasting log.  │
+ │ streaming │ Consumers don't need to subscribe, and they can read from any part of the    │
+ │           │ even stream log, allowing to replay reads.                                   │
+ │           │ Different clients can interpret and process event stream logs differently    │
+ │           │ and for different purposes.                                                  │
+ │           │ subscribers are decoupled in time and in logic.                              │
+ └──────────────────────────────────────────────────────────────────────────────────────────┘
 
-- Messages classification by message validity:
- ┌────────────────────────────────────────────────┐
- │MESSAGE VALID           │ MESSAGIN SYSTEM NEEDS │
- │────────────────────────│───────────────────────│
- │for a short time        │ fast delivery         │
- │────────────────────────│───────────────────────│
- │until consumed.         │ persistence           │
- │────────────────────────│───────────────────────│
- │for repeated consumption│ persistence and index │
- └────────────────────────────────────────────────┘
+
+- Messages classification by message expiration-time validity:
+ ┌────────────────────────────────────────────────────────────────────┐
+ │MESSAGE VALID           │ MESSAGIN SYSTEM NEEDS │ Consumption model │
+ │────────────────────────│───────────────────────│───────────────────│
+ │for a short time        │ fast delivery         │ publish/subscribe │ 
+ │────────────────────────│───────────────────────│───────────────────│
+ │until consumed          │ persistence           │ publish/subscribe │
+ │────────────────────────│───────────────────────│───────────────────│
+ │for repeated consumption│ persistence and index │ event streaming   │
+ └────────────────────────────────────────────────────────────────────┘
 
 - Message classification by semmantics:
   ┌─────────────────────────────────────────────┐
@@ -1885,17 +1884,19 @@ BºOptaPlannerº [optimization]
   └─────────────────────────────────────────────┘
 
    Ex messaging system:
-   SYSTEM        BEST FOR     SEMANTICS  WORST FOR
-  ┌─────────────────────────────────────────────────────┐
-  │MQ "Classic   ·Durable     ·Command   ·Replayable    │
-  │    Broker"   ·Volatile    ·event                    │
-  │─────────────────────────────────────────────────────│
-  │KAFKA         ·Replayable  ·Event     ·Volatile      │
-  │              ·Scalability            ·light hardware│
-  │─────────────────────────────────────────────────────│
-  │Qpid          ·Volatile    ·Command   ·Durable       │
-  │                           ·Query     ·Replayable    │
-  └─────────────────────────────────────────────────────┘
+   SYSTEM           BEST FOR    SEMANTICS    WORST FOR
+  ┌───────────────────────────────────────────────────────┐
+  │MQ "Classic  │ ·Durable     │·Command │ ·Replayable    │
+  │Broker"      │ ·Volatile    │·event   │                │
+  │─────────────│──────────────│─────────│────────────────│
+  │KAFKA        │ ·Replayable  │·Event   │ ·Volatile      │
+  │             │ ·Scalability │         │ ·light hardware│
+  │             │ ·Decoupled   │         │                │
+  │             │  components  │         │                │
+  │─────────────│──────────────│─────────│────────────────│
+  │Qpid         │ ·Volatile    │·Command │ ·Durable       │
+  │             │              │·Query   │ ·Replayable    │
+  └───────────────────────────────────────────────────────┘
  ┌───────────────────────────────────────────────────────────────────────────────────────────────┐
  │  Working   │ Description                │ PROS                      │ CONS                    │
  │  Model     │                            │                           │                         │
@@ -1959,6 +1960,11 @@ Defined by
   also supported by SpringSource
 ...
 - Java JMS
+
+• See also:
+  “The many meanings of event-driven architecture,”
+@[https://www.youtube.com/watch?v=STKCRSUsyP0]
+  (By Martin Fowler)
 </pre>
 <pre zoom label="messaging,enterprise_patterns,data_integration,event_stream,decoupled_systems,101," bgorange>
 <span xsmall>Message Brokers</span>
@@ -2164,23 +2170,114 @@ Other evict strategies can be found at
 - Failover is supported via migration of sessions
 @[https://www.infoworld.com/article/3063161/why-redis-beats-memcached-for-caching.html]
 </pre>
-<pre zoom labels="redis,TODO,">
-<a xsmall href="https://redis.io/">Redis</a>
-- in-memory data structure store, used as a key-value database and cache
-- Since it can also notify listener of changes in its state it can
+<pre zoom labels="redis,key_value,cache,db_engine,TODO," id="redis_summary">
+<span title>Redis</span>
+@[https://redis.io/]
+• in-memory data structure store, used as a key-value database, cache.
+  Commonly used as shared-session in balanced REST APIs (e.g, Spring has
+  zero-code/low-config options to "move" sessions to redis in spring-cloud
+  module).
+• Since it can also notify listener of changes in its state it can
   also be used as message broker (this is the case for example
   in Kubernetes, where etcd implement an asynchronous message system
   amongst its componentes).
-- supports data structures such as strings, hashes, lists, sets, sorted sets
+• supports data structures such as strings, hashes, lists, sets, sorted sets
   with range queries, bitmaps, hyperloglogs and geospatial indexes with
   radius queries
-- Redis has built-in replication, Lua scripting, LRU eviction, transactions
+• Redis has built-in replication, Lua scripting, LRU eviction, transactions
   and different levels of on-disk persistence, and provides high availability
   via Redis Sentinel and automatic partitioning with Redis Cluster
 @[https://www.infoworld.com/article/3063161/why-redis-beats-memcached-for-caching.html]
 @[https://www.infoq.com/news/2018/10/Redis-5-Released]
 
-- Eval: Lua Scripts [TODO]
+• redis supports a variety of data types all oriented around binary safe strings.
+  - binary-safe strings (most common)
+  - lists of strings
+  - unordered sets of strings
+  - hashes
+  - sorted sets of strings
+  - maps of strings
+- redis works best with smaller values (100k or less):
+Bºconsider chopping up bigger data into multiple keysº
+
+•ºeach data value is associated to a keyºwhich can be used
+  to lookup the value from the cache.
+• up to 500 mb values are possible, but increases
+  network latency and Rºcan cause caching and out-of-memory issuesº
+Rºif cache isn't configured to expire old valuesº
+
+• redis keys: binary safe strings.
+  - guidelines for choosing keys:
+    - avoid long keys. they take up more memory and require longer
+      lookup times because they have to be compared byte-by-byte.
+    - prefer hash of big keys to big keys themself.
+    - maximum size: 512 mb, but much smaller must be used.
+    - prefer keys like "sport:football;date:2008-02-02" to
+      "fb:8-2-2". extra size and performance difference is
+      negligible.
+
+• data in redisºis stored in nodes and clustersº
+•ºclusters are sets of three or more nodesºyour dataset is split
+  across.
+
+Bº#########################º
+Bº# common redis commands #º
+Bº#########################º
+  ┌───────────────────────────────────────────────────────────────────────┐
+  │command          │ description                                         │
+  │─────────────────┼─────────────────────────────────────────────────────│
+  │ping             │ping the server. returns "pong".                     │
+  │─────────────────┼─────────────────────────────────────────────────────│
+  │set [key] [value]│sets key/value in cache. Return "ok" on success.     │
+  │─────────────────┼─────────────────────────────────────────────────────│
+  │get [key]        │gets a value from cache.                             │
+  │─────────────────┼─────────────────────────────────────────────────────│
+  │exists [key]     │returns '1' if key exists, '0' if it doesn't.        │
+  │─────────────────┼─────────────────────────────────────────────────────│
+  │type [key]       │returns type associated to value                     │
+  │─────────────────┼─────────────────────────────────────────────────────│
+  │incr [key]       │increment the given value associated with key by '1'.│
+  │                 │value must be integer|double. Return new value       │
+  │─────────────────┼─────────────────────────────────────────────────────│
+  │incrby           │ increment value (associated to key) by  amount      │
+  │   [key] [amount]│value must be integer|double. Return new value       │
+  │─────────────────┼─────────────────────────────────────────────────────│
+  │del [key]        │ deletes the value associated with the key.          │
+  │─────────────────┼─────────────────────────────────────────────────────│
+  │flushdb          │ delete all keys and values in the database.         │
+  └───────────────────────────────────────────────────────────────────────┘
+   + create batch , create transaction related ones                       [TODO]
+
+-ºredis has a command-line tool (redis-cli)º: ex:
+  STRING VALUE                      INTEGER VALUE 
+  ============                    | =============
+  ˃ set key01 value01 ←ok         | ˃ set key02 100   ←ok
+  ˃ get key01         ←"value01"  | ˃ get  key02      ←(integer) 100
+                                  | ˃ incr key02      ←(integer) 101
+                                  | ˃ incrby key02 50 ←(integer) 151
+  ˃ type key01        ←(string)   | ˃ type key02      ←(integer)
+  ˃ exists key01      ←(string) 1 | 
+  ˃ del key01         ←(string) 1 | 
+  ˃ exists key01      ←(string) 0 | 
+
+-ºadding an expiration timeº  (key time-to-live (ttl))
+  after which key is automatically deleted from cache.
+  - expirations can be set using seconds or milliseconds precision
+    but expire-time resolution is always 1 millisecond.
+  - expire information is replicated to disk, so if server remains 
+    stopped, at restart stop-time is counted as consumed time.
+  - expiration example:    
+                          returns
+    ˃ set counter 100   ← OK
+    ˃ºexpire counter 5º ← (integer) 1
+    ˃ get counter         100
+    ... wait ...
+    ˃ get counter        º(nil)º
+
+
+• redis deployments can consists of:
+   ºsingle node  º, ºmultiple nodeº, ºclusteredº
+• Eval: Lua Scripts                                                       [TODO]
 @[https://redis.io/commands/eval] 
 </pre>
 <pre zoom>
@@ -2295,7 +2392,7 @@ performance than the existing implementations. """
 <span xsmall>cluster-FS comparative</span>
 @[http://zgp.org/linux-tists/20040101205016.E5998@shaitan.lightconsulting.com.html]
 </pre>
-<pre bgorange zoom labels="storage,cepth,distributed,TODO">
+<pre bgorange zoom labels="storage,ceph,distributed,TODO">
 <pre zoom labels="storage,ceph,TODO">
 <span xsmall>Ceph (exabyte Soft.Defined Storage)</span>
 @[http://ceph.com/ceph-storage/]
@@ -2753,7 +2850,7 @@ BºSpring Boot Java App using Keycloak for AAº
 @[https://cucumber.io/docs/guides/10-minute-tutorial/]
 </pre>
 
-<pre zoom labels="tracing,debugging,decoupled_systems,k8s,">
+<pre zoom labels="tracing,debugging,decoupled_systems,kubernetes,">
 <span xsmall>Infra vs App Monitoring</span>
 BºInfrastructure Monitoring:º
   - Prometheus + Grafana
@@ -5730,11 +5827,17 @@ external inputs.
 In both cases, the application artifact is never changed. 
 It's immutable.
 
-The Observability Engineering team at Twitter identifies four pillars of observability:
-Monitoring: Monitoring is about measuring specific aspects of an application to get information on its overall health and identify failures.
-(e.g:  export to Prometheus of relevant metrics about the application).
+The Observability Engineering team at Twitter identifies four pillars 
+of observability:
+Monitoring: Monitoring is about measuring specific aspects of an 
+application to get information on its overall health and identify 
+failures.
+(e.g:  export to Prometheus of relevant metrics about the 
+application).
 
-Alerting/visualization: When a failure is identified while monitoring an application, an alert should be triggered, and some action should be taken to handle it.  (email, grafana, ...)
+Alerting/visualization: When a failure is identified while monitoring 
+an application, an alert should be triggered, and some action should 
+be taken to handle it.  (email, grafana, ...)
 
 Distributed systems tracing infrastructure: trace the data flowing
   through the different subsystems. (e.g: Spring Cloud Sleuth integrated with Jaeger)
@@ -5748,5 +5851,44 @@ provide a better picture of the system behavior and have the possibility
 of running analytics to mine information from thosedata.
 E.g: ELK (Elastic, Logstash, Kibana) or  EFK (Elastic, Fluentd, Kibana)
 
+####################
+https://www.infoq.com/articles/microservicilities-istio/      @ma
 
+• Services in a microservices architecture may be developed in 
+  different languages, for example, Service A in Java and Service B in 
+  Go. The challenge of having polyglot services is learning how to 
+  implement these microservicilities for each language. For example, 
+  which library may be used for implementing resiliency in Java, in Go, 
+  etc....
+  In the case of Java, we may add new libraries (with all its 
+  transitive dependencies) for each of the “microservicilitities”, 
+  such as Resiliency4J for resiliency, Jaeger for tracing, or 
+  Micrometer for monitoring. While there is nothing wrong with this, we 
+  are increasing the chances of getting classpath conflicts when adding 
+  different kinds of libraries in the classpath. Moreover, the memory 
+  consumption and boot-up times are increased as well. Last, but not 
+  least, there is the problem of maintaining library versions aligned 
+  across all Java services, so all of them run the same version.
+• So arriving at this point, we may wonder why we need to implement 
+  all these microservicilities?
+  ...  A Service Mesh is a dedicated infrastructure layer for 
+  handling service-to-service communication that is safe, fast and 
+  reliable.
+#######################
+@[https://www.infoq.com/news/2018/09/pinterest-goku-timeseries-db]
+  Pinterest Switches from OpenTSDB to Their Own Time Series Database
+- https://facebook.github.io/prophet/
+  Prophet: TSDB forecasting library (wrapper around Stan), particularly
+  approachable place to use Bayesian Inference for forecasting use cases
+  general purpose.
+  - Prophet is a procedure for forecasting time series data based on an
+    additive model where non-linear trends are fit with yearly, weekly, and daily
+    seasonality, plus holiday effects. It works best with time series that have
+    strong seasonal effects and several seasons of historical data. Prophet is
+    robust to missing data and shifts in the trend, and typically handles outliers well.
+#######################
+@[https:// technologyconversations.com/2015/09/08/service-discovery-zookeeper-vs-etcd-vs-consul/]
+#######################
+@[https://www.infoq.com/news/2019/05/hashicorp-consul-1.5.0]
+#######################
 -->

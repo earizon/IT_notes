@@ -1834,7 +1834,7 @@ BºOptaPlannerº [optimization]
 
 <div groupv>
 <span title>Messaging (event-driven arch)</span>
-<pre zoom label="messaging,enterprise_patterns,data_integration,event_stream,decoupled_systems,101," bgorange id="messaging_summary">
+<pre zoom label="messaging,enterprise_patterns,data_integration,event_stream,decoupled_systems,101,redis,comparative" bgorange id="messaging_summary">
 <span xsmall>Summary</span>
 • Messaging represents a layer down ESB in some cases.
   Messaging architectures focus on reliable delivery of messages of different nature/timelife.
@@ -1871,17 +1871,18 @@ BºOptaPlannerº [optimization]
  └────────────────────────────────────────────────────────────────────┘
 
 - Message classification by semmantics:
-  ┌─────────────────────────────────────────────┐
-  │NATURE          │                            │
-  │Command/Order   │·leads state change         │
-  │                │·Requires response/result   │
-  │────────────────│────────────────────────────│
-  │Query           │·Requires response/result   │
-  │                │ sync/async(fire and forget)│
-  │────────────────│────────────────────────────│
-  │Event           │·Doesn't require response   │
-  │                │                            │
-  └─────────────────────────────────────────────┘
+  ┌───────────────────────────────────────────────────────────────────────────┐
+  │NATURE          │                            │                             │
+  │────────────────│────────────────────────────│─────────────────────────────│
+  │Command/Order   │·leads state change         │· Async resilient alternative│
+  │                │·Requires response/result   │  to sync HTTP PUT/POST      │
+  │────────────────│────────────────────────────│─────────────────────────────│
+  │Query           │·Requires response/result   │· Async resilient alternative│
+  │                │ sync/async(fire and forget)│  to sync HTTP PUT/POST      │
+  │────────────────│────────────────────────────│─────────────────────────────│
+  │Event           │·Doesn't require response   │· Used in Cmd-Query Responsa-│
+  │                │                            │  bility Segregation         │
+  └───────────────────────────────────────────────────────────────────────────┘
 
    Ex messaging system:
    SYSTEM           BEST FOR    SEMANTICS    WORST FOR
@@ -1912,59 +1913,70 @@ BºOptaPlannerº [optimization]
  └───────────────────────────────────────────────────────────────────────────────────────────────┘
 
 
-ºMessage Queuesº
-Defined by
-- message oriented architecture
-- Persistence (or durability until comsuption)
-- queuing
-- Routing: point-to-point / publish-and-subscribe
-- No processing/transformation of message/data
+Bº##################º
+Bº# Message Queues #º
+Bº##################º
+  Defined by
+  - message oriented architecture
+  - Persistence (or durability until comsuption)
+  - queuing
+  - Routing: point-to-point / publish-and-subscribe
+  - No processing/transformation of message/data
+  
+  ºImplementations and standardsº
+  - AMQP
+  @[https://en.wikipedia.org/wiki/Advanced_Message_Queuing_Protocol]
+    - Open standard network protocol
+    - Often compared to JMS:
+      - JMS defines API interfaces, AMQP defines network protocol
+      - JMS has no requirement for how messages are formed and
+        transmitted and thus every JMS broker can implement the
+        messages in a different (incompatible) format.
+        AMQP publishes its specifications in a downloadable XML format,
+        allowing library maintainers to generate APIs driven by
+        the specs while also automating construction of algorithms to
+        marshal and demarshal messages.
+    - brokers implementations supporting it:
+      RabbitMQ, ActiveMQ, Qpid, Solace, ...
+      @[https://www.amqp.org/about/examples]
+      - Apache Qpid (TODO)
+      @[http://qpid.apache.org/]
+      - INETCO's AMQP protocol analyzer
+      @[http://www.inetco.com/resource-library/technology-amqp/]
+      - JORAM  JMS + AMPQ
+      @[http://joram.ow2.org/] 100% pure Java implementation of JMS
+      - Kaazing's AMQPºWeb Clientº
+      @[http://kaazing.net/index.html]
+      - Azure Service Bus+ AMPQ
+  -RºWhat's wrong with AMQP?º. Extracted from
+   @[https://news.ycombinator.com/item?id=1657574]
+    """ ... My answer, as someone who recentlyºswitched an AMQP backend º
+     ºto using redisºfor queues and pub/sub broadcast: AMQP is wrong the   [comparative]
+      same way RDBMSes or Java are "wrong." It's too heavy, too slow, or 
+      too complex for a great-many use cases...
+    Bº  The truth is that something with a radically reduced feature set, º
+    Bºthat's simpler to use and understand, is really all that's needed toº 
+    Bºmeet a whole lot of "real world" use cases.                         º
 
-ºImplementations and standardsº
-- AMQP
-@[https://en.wikipedia.org/wiki/Advanced_Message_Queuing_Protocol]
-  - Open standard network protocol
-  - Often compared to JMS:
-    - JMS defines API interfaces, AMQP defines network protocol
-    - JMS has no requirement for how messages are formed and
-      transmitted and thus every JMS broker can implement the
-      messages in a different (incompatible) format.
-      AMQP publishes its specifications in a downloadable XML format,
-      allowing library maintainers to generate APIs driven by
-      the specs while also automating construction of algorithms to
-      marshal and demarshal messages.
-  - brokers implementations supporting it:
-    RabbitMQ, ActiveMQ, Qpid, Solace, ...
-    @[https://www.amqp.org/about/examples]
-    - Apache Qpid (TODO)
-    @[http://qpid.apache.org/]
-    - INETCO's AMQP protocol analyzer
-    @[http://www.inetco.com/resource-library/technology-amqp/]
-    - JORAM  JMS + AMPQ
-    @[http://joram.ow2.org/] 100% pure Java implementation of JMS
-    - Kaazing's AMQPºWeb Clientº
-    @[http://kaazing.net/index.html]
-    - Azure Service Bus+ AMPQ
-- What's wrong with AMQP?
-@[https://news.ycombinator.com/item?id=1657574]
-- @[http://www.windowsazure.com/en-us/develop/net/how-to-guides/service-bus-amqp-overview/]
-- JBoss A-MQ, built from @[http://qpid.apache.org/]
-@[http://www.redhat.com/en/technologies/jboss-middleware/amq]
-- IBM MQLight
-@[https://developer.ibm.com/messaging/mq-light/]
-- StormMQ
-@[http://stormmq.com/]
-  a cloud hosted messaging service based on AMQP
-- RabbitMQ (by VMware Inc)
-@[http://www.rabbitmq.com/];
-  also supported by SpringSource
-...
-- Java JMS
+  - @[http://www.windowsazure.com/en-us/develop/net/how-to-guides/service-bus-amqp-overview/]
+  - JBoss A-MQ, built from @[http://qpid.apache.org/]
+  @[http://www.redhat.com/en/technologies/jboss-middleware/amq]
+  - IBM MQLight
+  @[https://developer.ibm.com/messaging/mq-light/]
+  - StormMQ
+  @[http://stormmq.com/]
+    a cloud hosted messaging service based on AMQP
+  - RabbitMQ (by VMware Inc)
+  @[http://www.rabbitmq.com/];
+    also supported by SpringSource
+  ...
+  - Java JMS
 
 • See also:
-  “The many meanings of event-driven architecture,”
-@[https://www.youtube.com/watch?v=STKCRSUsyP0]
-  (By Martin Fowler)
+  ·@[../WebTechnologies/map.html#asyncapi_summary] standard to model   [standard] 
+    event-driven async APIs.
+  · "The many meanings of event-driven architecture,"
+    @[https://www.youtube.com/watch?v=STKCRSUsyP0] (By Martin Fowler)
 </pre>
 <pre zoom label="messaging,enterprise_patterns,data_integration,event_stream,decoupled_systems,101," bgorange>
 <span xsmall>Message Brokers</span>
@@ -2050,6 +2062,24 @@ https://github.com/OpenHFT/
 
 </pre>
 
+<pre zoom labels="event_stream" id="CQRS_summary,">
+<span title>CQRS</span>
+REF: @[https://www.redhat.com/architect/pros-and-cons-cqrs]
+• CQRS stands for Command Query Responsibility Segregation 
+• The data-processing architecture pattern separates a service's write
+  tasks from its read tasks:
+• Separating write activity from ready activities allows you to use the 
+  best database technology for the task at hand, for example, a stream-event
+  engine (Kafka/Pulse/...) for writing and a non-SQL database for reading.
+• While reading and writing to the same database is acceptable for 
+  small applications, distributed applications operating at web-scale 
+  require a segmented approach.
+• Typically there's more read activity than write activity. Also,
+  read activity is immutable. Thus, replicas dedicated to reading data
+   can be spread out over a variety of geolocations.
+• This approach allows users to get the data that closest to them 
+  resulting in a more efficient and scalable solution.
+</pre>
 
 </div>
 
@@ -2170,7 +2200,7 @@ Other evict strategies can be found at
 - Failover is supported via migration of sessions
 @[https://www.infoworld.com/article/3063161/why-redis-beats-memcached-for-caching.html]
 </pre>
-<pre zoom labels="redis,key_value,cache,db_engine,TODO," id="redis_summary">
+<pre zoom labels="redis,messaging,enterprise_patterns,key_value,cache,db_engine,event_stream,decoupled_systems,TODO," id="redis_summary">
 <span title>Redis</span>
 @[https://redis.io/]
 • in-memory data structure store, used as a key-value database, cache.
@@ -2187,6 +2217,8 @@ Other evict strategies can be found at
 • Redis has built-in replication, Lua scripting, LRU eviction, transactions
   and different levels of on-disk persistence, and provides high availability
   via Redis Sentinel and automatic partitioning with Redis Cluster
+• Redis Bºis also considered as a lightweight alternative to "heavy" messagingº
+Bºsystems (AMPQ, ...)º.
 @[https://www.infoworld.com/article/3063161/why-redis-beats-memcached-for-caching.html]
 @[https://www.infoq.com/news/2018/10/Redis-5-Released]
 
@@ -5752,20 +5784,7 @@ interesting sight about, give it a read.
 https://hackernoon.com/goodbye-redux-26e6a27b3a0b
 
 #######################
-https://www.redhat.com/architect/pros-and-cons-cqrs
-The Command Query Responsibility Segregation (CQRS) pattern separates 
-a service’s write tasks from its read tasks.
-Separating write activity from ready activities allows you to use the 
-best database technology for the task at hand, for example, a SQL 
-database for writing and a non-SQL database for reading.
-While reading and writing to the same database is acceptable for 
-small applications, distributed applications operating at web-scale 
-require a segmented approach.  Typically there’s more read activity 
-than write activity. Also, read activity is immutable. Thus, replicas 
-dedicated to reading data can be spread out over a variety of 
-geolocations.  This approach allows users to get the data that 
-closest to them. The result is a more efficient enterprise 
-application.
+
 #####################
 https://www.infoq.com/news/2021/05/airbnb-himeji/
 Airbnb recently described how it built Himeji, a scalable centralized 

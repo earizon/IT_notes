@@ -1,5 +1,6 @@
 import { preLoad , postLoad } from './custom.js';
 
+// TODO:(0) put document.getElementById("zoomDiv") is const var. 
 const SF = {  /* search Form */
   searchFormDOM : window,
   searchForm_labelsDOM : window,
@@ -63,7 +64,7 @@ console.log(" @ma " + SF.regexInputTimer)
           SE.resetTextFoundAttr(true);
           this.setAttribute("hidden","true"); 
       })
-    
+
       if (Object.keys(LM.labelMap).length > 0) {
         document.getElementById("searchAndMode").addEventListener("change",  SF.switchANDORSearch )
       }
@@ -145,6 +146,7 @@ const ZW = { /* ZOOM Window */
     dom1.innerHTML = ""
        + "<div id='zoomDivControls' style='margin-bottom:0.5rem'>" 
        + " <div id='divClose2'>✕ </div>" 
+       + ' <pre id="switchMaximize" >╔╗</pre>'
        + " <div id='historyBackFor' style='display:inline; '>"
        +    "<span id='GoBack'>←</span>&nbsp;"
        +    "<span id='GoForw'>→</span>"
@@ -169,6 +171,11 @@ const ZW = { /* ZOOM Window */
            querySelector("*[zoom]").style.fontSize=""+(ZW.textSizeSlider.value/100.)+"rem"
         }
     );
+    document.getElementById("switchMaximize" ).addEventListener("click", function () { 
+       const state = document.getElementById("zoomDiv").getAttribute("maximized") 
+       document.getElementById("zoomDiv").setAttribute("maximized", state=="true"?"false":"true")
+    })
+ 
     document.getElementById("butSwitchLectureMode" )
        .addEventListener("click", ZW.switchLectureMode);
     ZW.updateButtonSwitchLectureMode()

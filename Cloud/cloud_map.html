@@ -7553,6 +7553,8 @@ performed on your resources. it does not include read operations
   <span title>integrate caching⅋cdns</span>
 <pre zoom labels="azure,troubleshoot,cache">
 <span xsmall>Azure cache for redis</span>
+- For an introduction to redis visit: @[../Architecture/architecture_map.html#redis_summary]
+
 -  with Azure cache for redis, fast storage is located in-memory
   instead of being loaded from disk by a database.
 
@@ -7561,42 +7563,6 @@ performed on your resources. it does not include read operations
 
 - performance improved by taking advantage of the
   low-latency, high-throughput performance of the redis engine.
-
-- redis supports a variety of data types all oriented
-  around binary safe strings.
-  - binary-safe strings (most common)
-  - lists of strings
-  - unordered sets of strings
-  - hashes
-  - sorted sets of strings
-  - maps of strings
-- redis works best with smaller values (100k or less)
-  Bº:consider chopping up bigger data into multiple keysº
-
--ºeach data value is associated to a keyºwhich can be used
-  to lookup the value from the cache.
-- up to 500 mb values are possible, but increases
-  network latency and Rºcan cause caching and out-of-memory issuesº
-Rºif cache isn't configured to expire old valuesº
-
-- redis keys: binary safe strings.
-  - guidelines for choosing keys:
-    - avoid long keys. they take up more memory and require longer
-      lookup times because they have to be compared byte-by-byte.
-    - prefer hash of big keys to big keys themself.
-    - maximum size: 512 mb, but much smaller must be used.
-    - prefer keys like "sport:football;date:2008-02-02" to
-      "fb:8-2-2". extra size and performance difference is
-      negligible.
-
-- data in redisºis stored in nodes and clustersº
--ºclusters are sets of three or more nodesºyour dataset is split
-  across.
-
-- redis caching architectures?
-  -ºsingle node  º:
-  -ºmultiple nodeº:
-  -ºclustered    º:
 
 - redis caching architectures areºsplit across Azure by (pricing)tiers:º
   -ºbasic cacheº: single node redis cache.
@@ -7645,72 +7611,6 @@ parameters:
      c0 really meant for simple dev
      (shared cpu core and very little memory)
   - ºp0 to p4ºfor premium.
-
-
-ºaccessing the redis instanceº
-
-a command is typically issued as:
-command parameter1 parameter2 parameter3
-
-common commands include:
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│command          │ description                                                          │
-│─────────────────┼──────────────────────────────────────────────────────────────────────│
-│ping             │ping the server. returns "pong".                                      │
-│─────────────────┼──────────────────────────────────────────────────────────────────────│
-│set [key] [value]│sets a key/value in the cache. returns "ok" on success.               │
-│─────────────────┼──────────────────────────────────────────────────────────────────────│
-│get [key]        │gets a value from the cache.                                          │
-│─────────────────┼──────────────────────────────────────────────────────────────────────│
-│exists [key]     │returns '1' if the key exists in the cache, '0' if it doesn't.        │
-│─────────────────┼──────────────────────────────────────────────────────────────────────│
-│type [key]       │returns the type associated to the value for the given key.           │
-│─────────────────┼──────────────────────────────────────────────────────────────────────│
-│incr [key]       │increment the given value associated with key by '1'. the             │
-│                 │value must be an integer or double value. this returns the new value. │
-│─────────────────┼──────────────────────────────────────────────────────────────────────│
-│incrby           │ increment the given value associated with key by the specified amount│
-│   [key] [amount]│ the value must be an integer or double value.                        │
-│                 │ this returns the new value.                                          │
-│─────────────────┼──────────────────────────────────────────────────────────────────────│
-│del [key]        │ deletes the value associated with the key.                           │
-│─────────────────┼──────────────────────────────────────────────────────────────────────│
-│flushdb          │ delete all keys and values in the database.                          │
-└────────────────────────────────────────────────────────────────────────────────────────┘
-
--ºredis has a command-line tool (redis-cli)º: ex:
-  ˃ set somekey somevalue     ˃ set counter 100
-  ok                          ok
-  ˃ get somekey               ˃ incr counter
-  "somevalue"                 (integer) 101
-  ˃ exists somekey            ˃ incrby counter 50
-  (string) 1                  (integer) 151
-  ˃ del somekey               ˃ type counter
-  (string) 1                  (integer)
-  ˃ exists somekey
-  (string) 0
-
--ºadding an expiration time to valuesº
- key time to live (ttl)
-
-when the ttl elapses, key is automatically deleted.
-some notes on ttl expirations.
-  - expirations can be set using seconds or milliseconds precision.
-  - the expire time resolution is always 1 millisecond.
-  - information about expires are replicated and persisted on disk,
-    the time virtually passes when your redis server remains stopped
-(this means that redis saves the date at which a key will expire).
-
-example of an expiration:
-˃ set counter 100
-ok
-˃ºexpire counter 5º
-(integer) 1
-˃ get counter
-100
-... wait ...
-˃ get counter
-(nil)
 
 ºaccessing a redis cache from a clientº
 - clients need:
@@ -7790,7 +7690,6 @@ intended to be kept around while you need access to the cache.
   │                 │ string, list, set, zset and hash.                             │
   └─────────────────┴───────────────────────────────────────────────────────────────┘
 
-
 ºexecuting other commandsº
 - idatabase instances can use execute and executeasync
   to pass textual commands to the redis server.
@@ -7840,8 +7739,6 @@ intended to be kept around while you need access to the cache.
 ºcleaning up the connectionº
  redisconnection.dispose();
  redisconnection = null;
-
-(video)
 </pre>
 <pre zoom labels="azure,storage,performance,cache">
 <span xsmall>develop for storage on cdns</span>
@@ -11368,30 +11265,33 @@ BºS3 STORAGE CLASSESº:
   -RºWARNº: $0.01/GB for transfer among availability zones          [price]
 
   - compute main families types:
-  | Type | Mnemonic   | Category           | Description                                   | Use-cases |
-  | ---- | --------   | --------           | -----------                                   | --------- |
-  | M    | (M)ain/    | General purpose    | Balance of compute, memory, network resources | General, mid-size databases,
-           (M)edium                                                                        | web apps |
-  | ---- | --------   | --------           | -----------                                   | --------- |
-  | C    | (C)ompute  |  Compute optimized | Advanced CPUs                                 | Modeling, analytics, databases |
-  | ---- | --------   | --------           | -----------                                   | --------- |
-  | H    | (H)DD      | Storage optimized  | Local HDD storage                             | Map reduce |
-  | ---- | --------   | --------           | -----------                                   | --------- |
-  | R    | (R)am      | Memory Optimized   | More ram per $                                | In-memory caching |
-  | ---- | --------   | --------           | -----------                                   | --------- |
-  | X    | (X)treme   | Memory Optimized   | Terabytes of RAM and SSD                      | In-memory databases |
-  | ---- | --------   | --------           | -----------                                   | --------- |
-  | I    | (I)ops     | IO optimized       | Local SSD storage, High IOPS                  | NoSQL databases |
-  | ---- | --------   | --------           | -----------                                   | --------- |
-  | G    | (G)PU      | GPU Graphics       | GPUs with video encoders                      | 3D rendering |
-  | ---- | --------   | --------           | -----------                                   | --------- |
-  | P    | (P)ictures | GPU Compute        | GPUs with tensor cores                        | Machine learning |
-  | ---- | --------   | --------           | -----------                                   | --------- |
-  | F    | (F)ield    | Accelerated        | Field Programmable Gate Array,                | Genomics, financial analytics |
-                      | Computing          |  custom hardware accelerations                |
-  | ---- | --------   | --------           | -----------                                   | --------- |
-  | T    | (T)iny     | Burstable, Shared  | Web servers                                   |               [price]
-           (T)urbo    | CPUs, lowest cost  |                                               |
+  | Type | Mnemonic   | Category           | Description                     | Use-cases 
+  | ---- | --------   | --------           | -----------                     | --------- 
+  | M    | (M)ain/    | General purpose    | Balance of compute, memory,     | General, 
+           (M)edium                          network resources               | web apps 
+  |      |            |                    |                                 | mid-size ddbbs
+  | ---- | --------   | --------           | -----------                     | --------- 
+  | C    | (C)ompute  |  Compute optimized | Advanced CPUs                   | Modeling, 
+  |      |            |                    |                                 | ddbbs
+  |      |            |                    |                                 | ...     
+  | ---- | --------   | --------           | -----------                     | --------- 
+  | H    | (H)DD      | Storage optimized  | Local HDD storage               | Map reduce 
+  | ---- | --------   | --------           | -----------                     | --------- 
+  | R    | (R)am      | Memory Optimized   | More ram per $                  | In-memory caching
+  | ---- | --------   | --------           | -----------                     | --------- 
+  | X    | (X)treme   | Memory Optimized   | Terabytes of RAM and SSD        | In-memory ddbbs
+  | ---- | --------   | --------           | -----------                     | --------- 
+  | I    | (I)ops     | IO optimized       | Local SSD storage, High IOPS    | NoSQL ddbbs
+  | ---- | --------   | --------           | -----------                     | --------- 
+  | G    | (G)PU      | GPU Graphics       | GPUs with video encoders        | 3D rendering 
+  | ---- | --------   | --------           | -----------                     | --------- 
+  | P    | (P)ictures | GPU Compute        | GPUs with tensor cores          | ML
+  | ---- | --------   | --------           | -----------                     | ---------
+  | F    | (F)ield    | Accelerated        | Field Programmable Gate Array,  | Genomics,
+                      | Computing          |  custom hardware accelerations  |fin.analytics
+  | ---- | --------   | --------           | -----------                     | --------- 
+  | T    | (T)iny     | Burstable, Shared  | Web servers                     |                                  [price]
+           (T)urbo    | CPUs, lowest cost  |                                 |
 
    RºContrainº: Only if VM launched in an Amazon VPC.
 
@@ -13156,5 +13056,87 @@ purchase details for your Reserve Instance (RI) and Savings Plan (SP)
 purchases, a summary by services, a summary by linked account, as 
 well as additional details on any discounts or credits. You will no 
 longer receive RFPs.
+##########################
+... (Docker like) Containers are also involved even when using PaaS platforms like Heroku or Cloud Foundry. Youdeploy your applications on those platforms by providing just the JAR artifact since they takecare of the Java Runtime Environment, the middleware, the OS, and any needed dependencies.
+##########################
+... deploying aninstance of a PostgreSQL database server on Azure is as simple as running the command: 
+ $º $ az postgres create º
+##########################
+2021,06, AWS Annuance general availability of Proton:
+https://www.infoq.com/news/2021/06/aws-proton-container-ga/
+AWS Proton brings together customers' infrastructure as code, CI/CD 
+pipeline, and observability into a single interface, so developers 
+can quickly go from code in a repo to a production application. 
+Developers rely on AWS Proton's self-service capabilities to deploy 
+code quickly and securely without having to become experts on each of 
+the underlying services involved, while the central infrastructure 
+team can be assured that the apps deployed by their developers using 
+AWS Proton meet the standards they have set for their business.
+<pre zoom labels="networking,comparative,TODO">
+<span xsmall>IP failover providers</span>
+@[https://serverfault.com/questions/293333/any-vps-providers-with-ip-failover]
+Q: Any VPS providers with IP failover? [closed]
+I thought keeping this list updated could be useful for others. Here are the ones I know:
+- Linode: http://blog.linode.com/2007/11/12/support-for-high-availability-ip-failover/
+- Mammoth Hosting: http://www.mammothvps.com.au/add-ons/ip-failover
+- Rimu Hosting: rimuhosting.com
+- TekTonic: tektonic.net/virtual-servers.html
+- OVH: ovh.co.uk (Their IP Failover guide: help.ovh.com/DedieMac )
+- Kimsufi: www.kimsufi.co.uk
+- evoRack: evorack.com (UK. Quick replies to pre-sale questions and good reputation.)
+- ensCloud: www.enscloud.com/products/cloudvps/features/ 
+-          (Near bottom ... price. Reviews are mixed regarding support/reliability)
+- Anchor Systems can do that; they'll also do IP failover on
+-    your dedicated systems (and anything else you'd care to mention). 
+- Disclaimer: I used to work for them, but they certainly 
+- don't pay me anything to spruik their stuff any more.
+</pre>
 
+#########################
+<pre zoom labels="">
+<span xsmall>Cloud-Init.io</span>
+@[https://cloud-init.io/]
+The standard for customising cloud instances
 
+Cloud images are operating system templates and every instance starts out as 
+an identical clone of every other instance. It is the user data that gives 
+every cloud instance its personality and cloud-init is the tool that applies 
+user data to your instances automatically.
+</pre>
+######################
+<pre zoom labels="">
+<span xsmall>Packer.io</span>
+- Creates multi-cloud (AWS, ... ) images to boot images
+</pre>
+####################
+<pre zoom labels="">
+<span xsmall>Free Hosting</span>
+Google Free hosting:
+@[https://cloud.google.com/free/docs/always-free-usage-limits]
+</pre>
+
+########################
+price,comparative
+<span xsmall>Provider Comparative</span>
+REF: https://www.terraform.io/docs/providers/
+- Scaleway                (Europe)
+- https://www.time4vps.eu (Lituania)
+- OVH                     (Europe, "World")
+- Linode                  (UK)
+- Vultr
+- https://www.lws.fr/kvm-vs-openvz.php
+- https://www.packet.net/bare-metal/servers/
+- https://metal.equinix.com/product/servers/
+  ºbare metal Serversº: 
+  SGX capable, embedded P630 GPU, Intel E-2278G 8 Physical Cores @ 3.4 GHz
+  32 GB of DDR4, 2 x 480 GB SSD, 2 x 10Gbps Bonded   º$0.50/hourº
+
+- AWS           ("World")   ?
+- AWS lightSail https://aws.amazon.com/lightsail/
+- Azure                     ?
+- Exoscale.com (Suiza)      ?
+- DigitalOcean              ?
+- <a href="https://www.huaweicloud.com/en-us/product/ecs.html">Huawei Cloud</a>
+
+</pre>
+ 

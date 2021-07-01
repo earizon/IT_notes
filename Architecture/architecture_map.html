@@ -1990,10 +1990,51 @@ Bº##################º
   Message broker examples are, Qpid, Open AMQ or ActiveMQ.
 - Kafka can also be used as message broker but is not its main intention
 </pre>
+
+<pre zoom labels="messaging,enterprise_patterns,ha," id="activemq_summary">
+<span title>ActiveMQ</span>
+• Based on JAVA
+Bº######################
+Bº# ActiveMQ "Classic" #
+Bº######################
+  endlessly pluggable architecture serving many generations of 
+  applications.
+  · Web interface.
+  · JMS 1.1 with full client implementation including JNDI
+    (RºNo JMS 2.0 supportº)
+  ·ºHigh availabilityºusing shared storage
+  · Familiar JMS-based addressing model
+  · "Network of brokers" for distributing load
+  · KahaDB+JDBC options for persistence
+  ·BºQUICK DEVELOPMENT SETUP:º
+     → Setup Java/$JAVA_HOME
+       → Download ActiveMQ Classic 
+         → Execute (apache-activemq-5.16.2/bin/)wrapper
+           → Open http://localhost:8161/admin/index.jsp
+             → "Queues" tab → "Create" button
+               DONE!!!
+  
+Bº####################
+Bº# ActiveMQ Artemis #
+Bº####################
+  next generation High-performance, non-blocking architecture  
+  · Web interface.
+  · JMS 1.1, 2.0 with full client implementation including JNDI
+  ·ºHigh availabilityºusing shared storage or network replication
+  · Simple + powerful protocol agnostic addressing model
+  · Flexible clustering for distributing load
+  · Advanced journal implementations for low-latency persistence
+    as well as JDBC
+  · High feature parity with ActiveMQ "Classic" to ease migration
+  · Very good and free documentation:
+  @[https://activemq.apache.org/components/artemis/documentation/latest/book.pdf]
+</pre>
+
 <pre zoom labels="messaging,enterprise_patterns,TODO" id="rabbitmq_summary">
 <span xsmall>RabbitMQ</span>
-@[https://www.rabbitmq.com/getstarted.html]
-- Multiprotocol (AMQP, ...)
+@-[https://www.rabbitmq.com/getstarted.html]
+•  Based on Erlang (Rºvery reduce developer communityº)
+• Multiprotocol (AMQP, ...)
   P: Producer, C: consumer
 
   P →  │││queue_name │││ ──→ C                                Work queues
@@ -2029,11 +2070,12 @@ Bº##################º
   └─── Reply               ─── │││ response │││ ──────┘ 
          correlation_id=abc
 
+See @[#activemq_summary]
 </pre>
 
 <pre zoom labels="queue,TODO">
 <span xsmall>OpenHFT: microSec Messaging storing to disk</span>
-https://github.com/OpenHFT/
+@[https://github.com/OpenHFT/]
    - Chronicle-Queue: Micro second messaging that stores everything to disk
    - Chronicle-Accelerate: HFT meets Blockchain in Java platform
          XCL is a new cryptocurrency project that, learning from the previous
@@ -3504,14 +3546,36 @@ can wait for ACK.         ↓                          CONSUMER   |    CONSUMER 
      processing over a collection of processes (the members of the consumer group).
    - As with publish-subscribe, Kafka allows you to broadcast messages to
      multiple consumer groups
-
-
 </pre>
 
 <span title>data-schema Support</span>
 <pre zoom labels="kafka,TODO">
 <span xsmall>Apache AVRO format</span>
-Efficient compac way to store data in disk.
+• Efficient compac way to store data in disk.
+• "Imported" from Hadoop's World. 
+• Efficient: Binary format, containing only data (vs JSON/JSON-schema field name+data)
+  libraries (avro-tools.jar, kafka-avro-console-consumer,...) used to write/read.
+• Schema never goes inside the message, only the "SchemaID". 
+• Support for (fast) Google’s Snappy Compression.
+• Support forºon-demand deserialization of columns (vs full data)º.
+• It's not a column store (like Parquet, supporting better compression and insertion    [comparative]
+  predicates), but it adapts better to big fragments of data.
+@[https://www.slideshare.net/HadoopSummit/file-format-benchmark-avro-json-orc-parquet]
+
+• Example:
+  JAVA Class         ←··→ Avro Schema 
+  =================       ======================
+  public class User {     {
+      long   id;            "type": "record",
+      String name;          "name": "User",
+  }                         "fields" : [
+                              {"name": "id"  , "type": "long"  },
+                              {"name": "name", "type": "string"}
+                            ]
+                          }
+
+• No data is null by default                             [million_dolar_mistake]
+ 
 @[https://shravan-kuchkula.github.io/kafka-schemas/#understand-why-data-schemas-are-a-critical-part-of-a-real-world-stream-processing-application]
 <hr/>
 <span xsmall>Kafka Schema Registry</span>
@@ -4014,10 +4078,10 @@ KSQL :
      // set how to turn key|value ProducerRecord instances into bytes.
      kafkaconf.put("key.serializer"  , "org.apache.kafka.common.serialization.StringSerializer");
      kafkaconf.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-     producer<string, string> producer = new kafkaproducer<>(kafkaconf);
+     producer˂string, string˃ producer = new kafkaproducer˂˃(kafkaconf);
 
      producer.send(                        // ← sending-topics is async: (added to buffer 
-         new ProducerRecord<string, string>(    of pending records)
+         new ProducerRecord˂string, string˃(    of pending records)
              "my-topic",
              integer.tostring(i),
              integer.tostring(i)
@@ -4931,6 +4995,10 @@ API that is trivial to implement in any language.
 - Pulsar is a younger project Bºinspired and informed by Kafkaº. 
   Kafka on the other side has a bigger community. 
 
+- Pulsar Webinars                                          [resource]
+@[https://streamnative.io/resource#pulsar]
+
+
 BºPulsas "PRO"s over Kafkaº
 Bº========================º
 @[https://kafkaesque.io/7-reasons-we-choose-apache-pulsar-over-apache-kafka/]
@@ -5609,42 +5677,75 @@ https://dzone.com/articles/apache-airflow-20-a-practical-jump-start?edition=6763
                                                                        Telegram
 </pre>
 
+<pre zoom labels="SQL,tool,data_management,TODO">
+<span title>Jailer SQL "Explorer"</span>
+@[https://github.com/Wisser/Jailer]
+• Jailer Database:  tool for database subsetting and relational data browsing.
+• The Subsetter exports consistent, referentially intact row-sets 
+  from relational databases, generates topologically sorted SQL-DML, 
+  DbUnit datasets and hierarchically structured XML.
+• The Data Browser allows bidirectional navigation through the 
+  database by following foreign-key-based or user-defined relationships.
 
-</div><!-- non ordered -->
-</body>
-</html>
-<!--
+FEATURES
+• Exports consistent and referentially intact row-sets from your 
+  productive database and imports the data into your development and 
+  test environment.
+• Improves database performance by removing and archiving obsolete 
+  data without violating integrity.
+• Generates topologically sorted SQL-DML, hierarchically structured 
+  XML and DbUnit datasets.
+• Data Browsing. Navigate bidirectionally through the database by 
+  following foreign-key-based or user-defined relationships.
+• SQL Console with code completion, syntax highlighting and 
+  database metadata visualization.
+• A demo database is included with which you can get a first 
+   impression without any configuration effort.
+</pre>
+
+<pre zoom labels="storage,performance,TODO">
+<span title>zstd fast lossless compression </span>
 Storage: Release Zstandard v1.4.7
 https://github.com/facebook/zstd/releases/tag/v1.4.7 
 Zstandard, or zstd as short version, is a fast lossless compression 
 algorithm, targeting real-time compression scenarios at zlib-level 
 and better compression ratios. It's backed by a very fast entropy 
 stage, provided by Huff0 and FSE library.
-_______________________________
-New Object Storage Protocol Could Mean the End for POSIX
+</pre>
+
+<pre zoom labels="TODO">
+<span title>New Object Storage Protocol Could Mean the End for POSIX</span>
 https://www.enterprisestorageforum.com/cloud-storage/object-storage-protocol-could-mean-the-end-for-posix.html
-_______________________________
-Identity Technologies:
-  Modern Authentication (OpenID Connect, Oauth, SAML 2.0)
-  Microsoft EMS, Azure Log Analytics Server, Active Directory, 
-  Kerberos, Tiering ModelMicrosoft PKI (HSM, Certificate Management), 
-  Venafi CMSZero Trust Concept, B2B Guest Concept
+</pre>
 
-#########################
-kafka, architecture: Removing the Dependency of Zookeeper on Kafka
+<pre zoom labels="kafka,zookeeper,TODO">
+<span title>Kafka: Removing Zookeeper Dependency</span>
 https://www.infoq.com/podcasts/kafka-zookeeper-removing-dependency/
+</pre>
 
-##########################
-Stream: Apache Pulsar Resources, Webinars, and TGI Pulsar Videos | StreamNative
-https://streamnative.io/resource#pulsar 
+<pre zoom labels="identity,TODO">
+<span title>Noclassified Identity Technologies</span>
+• Modern Authentication (OpenID Connect, Oauth, SAML 2.0)
+• Microsoft EMS, Azure Log Analytics Server, Active Directory, 
+• Kerberos, Tiering ModelMicrosoft PKI (HSM, Certificate Management), 
+• Venafi CMSZero Trust Concept, B2B Guest Concept
+</pre>
 
-#####################
-Dual graph - Wikipediahttps://en.m.wikipedia.org/wiki/Dual_graph
-Glossary of graph theory terms - Wikipediahttps://en.m.wikipedia.org/wiki/Glossary_of_graph_theory_terms 
-####################
+<pre zoom labels="graph_db,TODO">
+<span title>Dual graph</span>
+ - Wikipedia
+https://en.m.wikipedia.org/wiki/Dual_graph
+https://en.m.wikipedia.org/wiki/Glossary_of_graph_theory_terms 
+</pre>
+
+</div><!-- non ordered -->
+</body>
+</html>
+<!--
 Adobe prepara un nuevo estándar de metadatos para proteger y atribuir imágenes: CAI apunta a ser la evolución de EXIF
 https://www.xataka.com/fotografia-y-video/adobe-prepara-nuevo-estandar-metadatos-para-proteger-atribuir-imagenes-cai-apunta-a-ser-evolucion-exif 
 ###################
+
 ISO approves eDelivery message exchange protocol as International Standard
 https://ec.europa.eu/cefdigital/wiki/display/CEFDIGITAL/2020/07/24/ISO+approves+eDelivery+message+exchange+protocol+as+International+Standard 
 
@@ -5910,4 +6011,14 @@ https://www.infoq.com/articles/microservicilities-istio/      @ma
 #######################
 @[https://www.infoq.com/news/2019/05/hashicorp-consul-1.5.0]
 #######################
--->
+@[https://en.wikipedia.org/wiki/Worse_is_better]
+ As long as the initial program is basically good, it will take much 
+less time and effort to implement initially and it will be easier to 
+adapt to new situations. Porting software to new machines, for 
+example, becomes far easier this way.
+######################
+File format comparative: Avro, JSON, ORC , Parquet 
+@[https://www.slideshare.net/HadoopSummit/file-format-benchmark-avro-json-orc-parquet]
+
+
+- ->

@@ -3643,6 +3643,188 @@ Add mirror to existing disk without deleting data:
 
 
 <span title>Encryption</span>
+<pre zoom labels="encryption,kernel,storage" id="keyring_summary">
+<span title>Kernel Keyrings</span>
+@[https://www.kernel.org/doc/Documentation/security/keys.txt]
+• in-Kernel cache for cryptographic secrets (encrypted FS passwords, kernel services,...),
+ ºused by various kernel components -file-systems, hardware modules,...- to cacheº
+ ºsecurity data, authentication keys, encryption keys, ... in kernel spaceº.
+
+  (kernel) KEY OBJECT
+  ┌── attributes ────┐
+  │ · type           │ Must be registered in kernel by a kernel service (FS,...)
+  │                  │ and determine operations allowed for key.
+  │------------------│ e.g: AFS FS might want to define a Kerberos 5 ticket key type.
+  │ · serial number  │ 32-bit uint ID º*1º
+  │------------------│
+  │ · description    │ arbitrary printable stringºused in searchsºprefixed with "key-type"
+  │                  │ prefix allows kernel to invoke proper implementations to type.
+  │                  │ "description" meaning can be different for a File System, a HSM, ...
+  │------------------│ 
+  │ · Access control │ == ( owner ID, group ID, permissions mask) to control what a process
+  │                  │ may do to a kernel-key from userspace or whether kernel service 
+  │------------------│ will be able to find the key.
+  │ · Expiry time    │
+  │------------------│
+  │ · payload        │ ← blob of data (º"secret"º) or key-list for keyrings
+  │------------------│   Optional. Payload can be stored in kernel struct itself
+  │ · State          │ ← Non garbage collected: Uninstantiated | Instantiated | Negative 
+  │                  │       garbage collected: Expired | Revoked |  Dead  
+  ├─── functions ────┤
+  │ · Constructor    │ ← Used at key instantiation time. Depends on type
+  │ · read           │ ← Used to convert the key's internal payload back into blob
+  │ · "find"         │ ← Match a description to a key.
+  └──────────────────┘
+  º*1º SPECIAL KEY IDS :
+  · 0          : No key
+  · @t  or -1  : Thread  keyring, 1st on searchs, replaced  on (v)fork|exec|clone
+  · @p  or -2  : Process keyring, 2nd on searchs, replaced  on (v)fork|exec
+  · @s  or -3  : Session keyring, 3rd on searchs, inherited on (v)fork|exec|clone
+                 It/They can be named and joined with existing ones. 
+  · @u  or -4  : User specific, shared by processes owned by user.
+                 Not searched directly, but normally linked to/from @s.
+  · @us or -5  : User default session keyring upon succesful login (by root login processes)
+  · @g  or -6  : Group specific keyring, Rºnot actually implemented yet in the kernelº.
+  · @a  or -7  : Assumed request_key authorisation key:
+  · %:${name}  : named      keyring, to be searched for in [process's keyrings , º/proc/keysº]
+  · %$typ:$name: named type:keyring, to be searched for in [process's keyrings , º/proc/keysº]
+
+• RELATED PROCFS FILES:
+  · /proc/keys                          ← list keys granted View perm/task reading the file.
+  · /proc/key-users                     ← lists quota+stats by user
+• RELATED SYSCTL PROCFS FILES:
+  · /proc/sys/kernel/keys/root_maxkeys  
+    /proc/sys/kernel/keys/root_maxbytes
+    /proc/sys/kernel/keys/maxkeys
+    /proc/sys/kernel/keys/maxbytes
+	/proc/sys/kernel/keys/gc_delay      ← timeout to garbage-collect revoked|expired keys
+
+• e.g.: When a filesystem/device calls "file-open", the kernel react by
+        searching for a key, releasing it upon close.
+        (How to deal with conflicting keys due to concurrent users opening 
+         the same file is left to the filesystem author to solve)
+Bº########################º
+Bº# man 1 keyctl summary #º (Used by scripts, ...)
+Bº########################º
+$º$ keyctl show [$ring]    º ← Show (recursively by default) keys and keyrings     [Troubleshooting]
+   ºSessionºKeyring            a process is subscribed-to or just keyring $ring
+      84022412 --alswrv  0     -x : display IDs in hex (vs decimal).
+     204615789 --alswrv  0 6   0  keyring: _ses                     
+     529474961 --alsw-v  0  5534   \_ keyring: _uid.0
+      84022412 --alswrv  0     0   \_ logon: f2fs:28e21cc0c4393da1
+                                             └─┬─┘
+                                           ex key-type used by f2fs file-system.
+
+$º$ keyctl add           \ º  ← create+add key to $ring.
+$º$   $type "${descrip}" \ º    $data: instantiates new key with $data 
+$º$   "${data}" $ring      º    Use padd (vs add) to read $data from STDIN
+    26                        ← New key's ID printed to STDOUT       
+
+$º$ keyctl request   $type $desc      º ← Request key lookup in process's keyrings 
+    26                                    of the given type and description. Print Key's ID
+                                          to STDOUT in case of match, or ENOKEY otherwise.
+                                          If an optional ${dest_keyring} (last option) is 
+                                          provided, key will be added to it.
+$º$ keyctl request2  $type $desc $infoº ← alt: create partial key (type,desc) and calls out 
+$º$ keyctl prequest2 $type $desc      º   key creation to /sbin/request-key to (attempt to)
+                                          instantiate the key in some manner.
+                                          prequest2 (vs request2) reads (callout) $info 
+                                          from STDIN.
+
+$º$ keyctl update $key $data          º  ← replace key data (pupdate to get data from STDIN)
+$º$ keyctl newring $name $ring        º  ← Create new keyring $name attached to existing $keyring
+                                           e.g.:  $ keyctl newring squelch @us
+$º$ keyctl revoke $key                º   ← Revoke key
+$º$ keyctl clear $ring                º   ← Clear $keyring (unlinks all keys attached)
+
+$º$ keyctl   link $key $ring          º   ← Link key to keyring (if there's enough capacity)
+$º$ keyctl unlink $key [$ring]        º  ← UnLink key. If $ring unset do depth-first search
+                                                      (unlinking all links found for $key)
+
+$º$ keyctl search $ring $type \º  ← Search key non-recursively
+$º  $desc [$dest_ring]         º  ← Id $dset_ring set and key found, attach to it.
+  e.g.:
+$º$ keyctl search @us user debug:hello º 
+  23
+$º$ keyctl search @us user debug:bye   º
+  keyctl_search: Requested key not available
+
+   Restrict a keyring
+$º$ keyctl restrict_keyring $ring \ º ← limit linkage-of-keys to the given $ring
+$º  [$type [$restriction]]          º   using a provided restriction-scheme 
+                                        (associated with a given key type)
+                                        · If restriction-scheme not provided,
+                                          keyring will reject all links.
+  e.g.:
+$º$ keyctl restrict_keyring $1 \ º  ← Options typically contain a restriction-name
+$º  asymmetric builtin_trusted   º    possibly followed by key ids or other data
+                                      relevant to the restriction.
+
+                            Read (payload) of key:
+$º$ keyctl read  $key  º  ← dumps raw-data to STDOUT as a hex dump
+$º$ keyctl pipe  $key  º  ← dumps raw-data to STDOUT
+$º$ keyctl print $key  º  ← dumps raw-data to STDOUT if entirely printable 
+                                                     or as ":hex:"+hex dump otherwise
+                           "Operation not supported" returned 
+                           if key-type does not support payload-reading
+
+                           LIST CONTENTS OF A KEYRING
+$º$ keyctl list  $ring º ←           pretty-prints $ring list-of-key IDs 
+$º$ keyctl rlist $ring º ← space-separated  prints $ring list-of-key IDs            
+  e.g.:
+$º$ keyctl list @us º
+  2 keys in keyring:
+         22: vrwsl----------  4043    -1 keyring: _uid.4043
+         23: vrwsl----------  4043  4043 user: debug:hello
+$º$ keyctl rlist @us º
+    22 23
+
+                                    DESCRIBE A KEY
+$º$ keyctl describe @us         ª ← pretty prints description 
+    -5: vrwsl-... _uid_ses.4043
+$º$ keyctl rdescribe @us [$sep]ª  ← prints raw data returned from kernel.
+    keyring;4043;-1;3f1f0000;_uid_ses.4043
+    └─────┘ └──┘ └┘ └──────┘ └───────────┘
+     type   uid gid  permis.  description
+
+                                    CHANGE KEY ACCESS CONTROLS
+$º$ keyctl chown $key $uid  º ← change owner: It also governs which quota a key is taken out of
+                              RºNOT currently supported!º
+$º$ keyctl chgrp $key $gid  º ← change group (process's GID|GID in process's groups list
+                                              for non-root users)
+                                              
+ 
+$º$ keyctl setperm $key $mask º ← Set permissions mask(as "0x..." hex or "0..." octal)
+
+   The hex numbers are a combination of:
+   Possessor UID       GID       Other     Permission Granted
+   ┌┐======  ==┌┐====  ====┌┐==  ======┌┐
+   010.....  ..01....  0...01..  0...  01  View  : allow view  of key type, description, "others"
+   020.....  ..02....  0...02..  0...  02  Read  : allow view  of payload|ring list (if supported)
+   040.....  ..04....  0...04..  0...  04  Write : allow write of payload|ring list (if supported)
+   080.....  ..08....  0...08..  0...  08  Search: allow key to be found in linked keyring.
+   100.....  ..10....  0...10..  0...  10  Link  : allow key to be linked to keyring.
+   200.....  ..20....  0...20..  0...  20  Set Attribute: allows change of own|grp|per.msk|timeout 
+   3f0.....  ..3f....  0...3f..  0...  3f  All
+   └┘======  ==└┘====  ====└┘==  ======└┘
+  e.g.:
+$º$ $ keyctl setperm 27 0x1f1f1f00 º
+
+  See man 1 keyctl for further info about how to:
+  · Start a new session with fresh keyrings
+  · Instantiate a new key or mark as invalid, timeout.
+  · Retrieve a key's (SELinux) security context
+  · Give the parent process a new session keyring
+  · Remove/purge keys 
+  · Get persistent keyring
+     keyctl get_persistent $ring [<uid>]
+  · Compute a Diffie-Hellman shared secret or public key from (private, prime, base)
+  · Compute a Diffie-Hellman shared secret and derive key material
+     from (private, prime, base, output_length, hash_type)
+  · Compute a Diffie-Hellman shared secret and apply KDF with other input
+     from (private, prime, base, output_length, hash_type)
+  · Perform public-key operations with an asymmetric key (encrypt/decript, sign/verify)
+</pre>
 <pre zoom labels="storage,encryption,security">
 <span xsmall>eCryptfs</span>
 Linux Kernel 2.6.19+
@@ -3848,8 +4030,7 @@ Features:
 
 <span title>Flash Storage</span>
 <pre zoom labels="storage,flash">
-<span xsmall>Detect</span>
-<span xsmall>false Flash</span>
+<span xsmall>Detecting false Flash</span>
 @[https://www.linuxlinks.com/essential-system-tools-f3-detect-fix-counterfeit-flash-storage/]
 2019-02-08  Steve Emms
 - f3: Detect and fix counterfeit flash storage:
@@ -3899,15 +4080,87 @@ $ sudo make install-extra
 
 - f3brew
   f3brew is designed to help developers determine how fake drives work.
+</pre>
 
-
-<span xsmall>FSFS</span>
-<span xsmall>(Flash FS)</span>
+<pre zoom labels="storage,flash,security,encryption" id="f2fs_summary">
+<span xsmall>Flash Friendly FS "F2FS"</span>
 @[https://www.usenix.org/conference/fast15/technical-sessions/presentation/lee]
+@[https://mjmwired.net/kernel/Documentation/filesystems/f2fs.rst]
+@[man mkfs.f2fs]
+• Much better than EXT4 for Flash Storage:
+  - ~3.1x faster with iozone
+  - ~2.0x faster with SQLite
+  - ~2.5x faster in SATA SSD and 1.9 (PCIe SSD).
 
--  A New File System for Flash Storage
-(Much better than EXT4)
-Experimental results highlight the desirable performance of F2FS; on a state-of-the-art mobile system, it outperforms EXT4 under synthetic workloads by up to 3.1 (iozone) and 2 (SQLite). It reduces elapsed time of several realistic workloads by up to 40%. On a server system, F2FS is shown to perform better than EXT4 by up to 2.5 (SATA SSD) and 1.8 (PCIe SSD).
+Bº#########################º
+Bº# man mkfs.f2fs summary #º
+Bº#########################º
+  EXAMPLE:                           QºSTEP 1:º
+  $º# mkfs.f2fs -O encrypt         º ← Formats to f2fs supporting encrypt.
+  $º  [ -d debugging-level ] \     º ← 0: basic debug
+  $º  -Oºencryptº[,options]  \     º ←ºencrypt: enable encryptionº
+  $º  [ -e extension-list ]  \     º ← treat files with extension as cold files to be stored in
+                                       ºcold logº.  Default list includes most multimedia extensions
+                                       (jpg, gif, mpeg, mkv, ...)
+  $º  [ -f ]                 \     º ← Force overwrite if existing FS is detected.
+  $º  [ -l volume-label ]    \     º
+  $º  [ -m ]                 \     º ← Enable block-zoned-feature support 
+                                       Useful in NVMe disks according to @[https://zonedstorage.io/]
+  $º  [ -q  ]                \     º ← Quiet mode.
+┌→$º  [ other options   ]\   \     º ← º*1º
+│ $º    /dev/... [sectors]         º 
+└ º*1º:
+   [ -a heap-based-allocation ]            [ -t nodiscard/discard ] 
+   [ -c device ]                           [ -w specific sector_size for target sectors ] 
+   [ -o overprovision-ratio-percentage ]   [ -z #-of-sections-per-zone ] 
+   [  -s  #-of-segments-per-section ] 
+
+  $º# mount /dev/... ${MNT}         º QºSTEP 2:º Mount device partition "somewhere"
+  $º# mkdir ${MNT}/dir1             º
+  $º# mkdir ${MNT}/dir2             º
+
+                                      QºSTEP 3:º Use f2fscrypt to encrypt (f2fs-tools v1.9+)
+  $º# f2fscrypt add_key -S 0x1234   º ← create key in session keyring to be used
+      ...                               to set the policy for encrypted directories.
+     Added key with descriptor          [-k $keyring] Use $keyring. (default:Session keyring)
+   Oº[28e21cc0c4393da1]º                -S 0x1234: use simple salt
+     └────────────────┴────────────   ← Kernel will create a new key with a key descriptor.
+                                        Users apps will later on inform kernel about key 
+                                        to use by passing the matching descriptor
+
+
+(use f2fscrypt new_session to isolate temporal keyring)
+
+  $º# f2fscrypt set_policy      \   º ← Set enc.policy (8bytes/16-hex sym.key) for dir.
+  $º ºOº28e21cc0c4393da1º$º     \   º   ← (use by kernel to search for key)
+  $º    ${MNT}/dir1  ${MNT}/dir2 .. º   ← dir.list to apply policy (sym.key encryp.key)
+                                        
+  $º# edit ${MNT}/dir1/test.txt     º ← Create encrypted file
+
+Rº(..........  REBOOT MACHINE .................)º
+
+  $º# ls -l ${MNT}/dir1             º
+    -rw-r--r-- ...Rºzbx7tsUEMLzh+...º ← Output after reboot.
+
+  $º# f2fscrypt get_policy $MNT/dir1º ← Retrieve enc.policy 
+  $º/.../dir1/:Oº28e21cc0c4393da1º  º   ← This provide a hint about key (Salt?) to use.
+
+  $º# f2fscrypt add_key -S 0x1234   º ← Recreate same key using same salt
+  $º ...                            º
+  $º Added key with descriptor      º
+   Oº[28e21cc0c4393da1]º              ← Key descriptor must match 
+
+  $º# ls -l ${MNT}/dir1/            º
+    -rw-r--r--. ...Gº21:41 test.txtº
+
+
+  $º# keyctl show                   º ←  Show process keyring/s  [Troubleshooting]
+   ºSessionºKeyring
+      84022412 --alswrv  0     0  keyring: _ses
+     204615789 --alswrv  0 65534   \_ keyring: _uid.0
+     529474961 --alsw-v  0     0   \_ logon: f2fs:28e21cc0c4393da1
+                                             └─┬─┘
+                                           ex key-type used by f2fs file-system.
 </pre>
 
 
@@ -6142,7 +6395,8 @@ ZeroConf Linux impl.
 <span title>Docker</span><br/>
 <div groupv>
 <pre zoom labels="docker">
-Content moved to <a href="./containers_map.html" target="_new">Containers map</a>
+<span title>summary</span>
+Content moved to <a href="../DevOps/devops_map.html?topics=docker" target="_new">DevOps map (topic: docker)</a>
 </pre>
 </div>
 </div> <!-- docker -->
@@ -7133,3 +7387,9 @@ Display the partition layout of a volume system. More information:
 https://wiki.sleuthkit.org/index.php?title=Mmls.
 ##################
 https://stackoverflow.com/questions/19430200/how-to-clear-vim-registers-effectively
+##################
+eBPF,
+https://netflixtechblog.com/how-netflix-uses-ebpf-flow-logs-at-scale-for-network-insight-e3ea997dca96
+How Netflix uses eBPF flow logs at scale for network insight
+
+Netflix has developed a network observability sidecar called Flow Exporter that uses eBPF tracepoints to capture TCP flows at near real time. At much less than 1% of CPU and memory on the instance, this highly performant sidecar provides flow data at scale for network insight.

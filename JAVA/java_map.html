@@ -4119,7 +4119,7 @@ TODO: https://www.logicbig.com/tutorials/spring-framework/spring-data/specificat
   import org.springframework.data.jpa.repository.Query;
   import org.springframework.stereotype.Repository;
 Bº@Repositoryº                              //   @Repository: Spring-Data abstraction for data storage+retrieval
-                                            //   independent of source (sql/nosql ddbbs, kafka, message-queues, ...) 
+                                            //   independent of source (sql/nosql ddbbs, kafka, redis, message-queues, ...) 
                                             //   Used to isolated Domain Layer (Business logic) from data persistence
 Bº@Repositoryº                              // ← internals.
   public interface Entity1Repository        
@@ -4127,6 +4127,8 @@ Bº@Repositoryº                              // ← internals.
                                             //     For standard CRUD operation CrudRepository could have been used.
                                             //     (JpaRespotory offers a more specialized one with extra?features) ← [TODO]
                      // └────────────┴─·········  Entity1 specifies the type-of-data, Long specifies the type-of-"@Id"
+                                            //     When using R2DBC reactive alternative to JDBC, ReactiveCrudRepository
+                                            //     will be used (Note: R2DBC looks not to be compatible with JPA anotations?)
 
     @Query(value =                          //   ← Custom query. 
           " SELECT * "                      //                   
@@ -4246,6 +4248,9 @@ Bº@Repositoryº                              // ← internals.
   └────────────────────────────────────────────────────────────────────────────────────┘
 
   @application.yml will be similar to:
+  server:
+     port: 8001
+     shutdown: gracefull
   spring:
     datasource:
       username: admin
@@ -4755,12 +4760,11 @@ BºMAIN (entry point to Spring Boot app)º
     import org.springframework.beans.factory.annotation.Value;
     import org.springframework.context.annotation.Bean;
     import org.springframework.context.annotation.Configuration;
-    import org.springframework.web.client.RestTemplate;
-    import org.springframework.web.filter.CharacterEncodingFilter;
-    import org.web3j.protocol.admin.Admin;
-    import org.web3j.protocol.Web3j;
-    
-    
+    import org.springframework.web.client.RestTemplate;            // ← Note: RestTemplate has been deprecated by WebClient
+    import org.springframework.web.filter.CharacterEncodingFilter;            with Spring 5.0. The new one offers async
+    import org.web3j.protocol.admin.Admin;                                    support, while RestTemplate does NOT. webClient
+    import org.web3j.protocol.Web3j;                                          also has support for timeouts, retry with
+                                                                              exponential backoff, ...
     @Configuration
     public class ConfigurationCore {
       @Bean public Service1 getService1() { return new Service1Impl(); }
@@ -5275,6 +5279,8 @@ beans to      ┌──like─  ─┐
                         server and discover other services through it.
 
 º@EnableCircuitBreakerº- configures Hystrix circuit breaker protocols.
+                         Note: Hystrix looks to be discontinued. Replaced by 
+                         Resilince4j
 
 º@HystrixCommand(fallbackMethod = “fallbackMethodName”)º
   marks methods to fall back to another method if they cannot succeed normally.
@@ -5285,20 +5291,19 @@ beans to      ┌──like─  ─┐
 <div groupv>
 <span title>Spring: Non classified</span><br/>
 <pre zoom labels="spring,batch_processing,TODO">
-<span xsmall>Spring  Batch</span>
-FROM https://stackoverflow.com/questions/33188368/spring-batch-vs-quartz-jobs
-Quartz is a scheduling framework. Like "execute something every hour 
-or every last friday of the month"
-
-Spring Batch is a framework that defines that "something" that will 
-be executed. You can define a job, that consists of steps. Usually a 
-step is something that consists of item reader, optional item 
-processor and item writer, but you can define a custom stem. You can 
-also tell Spring batch to commit on every 10 items and a lot of other 
-stuff.  From Spring 2 , it can also schedule tasks
-(See also https://jcp.org/en/jsr/detail?id=352, Batch applications 
-  for the Java Platform)
-
+<span xsmall>Spring Batch</span> <!-- @ma -->
+  FROM https://stackoverflow.com/questions/33188368/spring-batch-vs-quartz-jobs
+  Quartz is a scheduling framework. Like "execute something every hour 
+  or every last friday of the month"
+  
+  Spring Batch is a framework that defines that "something" that will 
+  be executed. You can define a job, that consists of steps. Usually a 
+  step is something that consists of item reader, optional item 
+  processor and item writer, but you can define a custom stem. You can 
+  also tell Spring batch to commit on every 10 items and a lot of other 
+  stuff.  From Spring 2 , it can also schedule tasks
+  (See also https://jcp.org/en/jsr/detail?id=352, Batch applications 
+    for the Java Platform)
 </pre>
 
 
@@ -5521,9 +5526,11 @@ used in the dependency mechanism or Spring factories, see the related issue #
 <pre zoom labels="spring,angular,low_code,TODO">
 <span xsmall>JHipster</span>
 @[https://www.jhipster.tech/]
-JHipster is a development platform to generate, develop and deploy 
-Spring Boot + Angular / React / Vue Web applications and Spring 
-microservices.
+• JHipster is a development platform to generate, develop and deploy 
+  Spring Boot + Angular / React / Vue Web applications and Spring 
+  microservices.
+• Created by Julien Dubois, currently (2021-06) Java Developer Advocacy 
+  manager at Microsoft 
 </pre>
 </div>
 </div> <!-- }}} spring end -->
@@ -8965,9 +8972,7 @@ Ex Ussage:
      --enable-http
 </pre>
 <pre zoom labels="graalvm,jvm,k8s,performance,TODO">
-<span xsmall>Quarkus</span>
-<span xsmall>GraalVM</span>
-<span xsmall>Framework</span>
+<span xsmall>Quarkus (GraalVM) Framework</span>
 @[https://quarkus.io/guides/]
 @[https://quarkus.io/guides/kogito-guide]
 @[https://marketplace.visualstudio.com/items?itemName=kie-group.vscode-extension-kogito-bundle]
@@ -8982,6 +8987,26 @@ Hibernate ORM is the de facto JPA implementation and offers you the full
 breadth of an Object Relational Mapper. It makes complex mappings possible,
 but it does not make simple and common mappings trivial. Hibernate ORM with
 Panache focuses on making your entities trivial and fun to write in Quarkus.
+
+  Panache example:
+  @Entity
+  public class Person extends PanacheEntity {
+      public String    name;
+      public LocalDate birth;
+      public Status    status;
+  
+      public staticºPerson      findByName(String name)º{
+        return find("name", name).firstResult(); 
+      }
+      public staticºList˂Person˃ findAlive           ()º{
+        return list("status", Status.Alive);
+      }
+      public staticºvoid       deleteStefs           ()º{
+        delete("name", "Stef"); 
+      }
+  }
+
+
 </pre>
 </div>
 
@@ -9328,8 +9353,7 @@ https://blog.plan99.net/kotlin-native-310ffac94af2
 <pre zoom labels="async/reactive,sql,TODO">
 <span xsmall>R2DBC API</span>
 @[https://www.infoq.com/news/2018/10/springone-r2dbc]
-  Experimental Reactive Relational Database Connectivity Driver, R2DBC, Announced at SpringOne
-
+• Project initiated by Pivotal to provide an async/reactive alternative to JDBC.
   Ex:
   connectionFactory.create()
     .flatMapMany ( conn -˃
@@ -9337,6 +9361,18 @@ https://blog.plan99.net/kotlin-native-310ffac94af2
           .execute()
             .flatMap (result -˃ 
               result.map(( row, metadata -→ row.get("value"))))
+
+  An example Spring boot (src/main/resources/)application.yml config could be
+  similar to:
+  spring:
+    r2dbc:
+      username: XXX
+      password: XXX
+      url: r2dbc:postgresql://...:5432/ddbb_app01
+      pool:
+        max-create-connection-time: 5s
+        initial-size: 5                        ← probably much lower numbers than
+        max-size: 10                             those used for JDBC.
 </pre>
 
 <pre zoom labels="jvm,TODO">
@@ -10421,5 +10457,72 @@ embedded servers usually comprise two logical components:
 #######################
 Reactive isn't Complicated with Vert.x and the new Mutiny APIs
 https://www.youtube.com/watch?v=3tdU5WRvuuo
-#######################
+##################################
+https://www.vavr.io/  "turns java™ upside down"   @ma
+• Started in 2014 by https://touk.pl/
 
+• Powerful collection library saves us from source.stream().really("?").collect(sink()) pipelines.
+  List<String> names = persons
+    .filter(p -> p.age > 12)
+      .map(Person::getName);
+
+• The functional For is an expression that yields a value. The result is a lazy evaluated collection of elements.
+  Iterator<String> iterator =
+    For(persons.filter(Person::hasAddress), p ->
+      For(p.addresses).yield(a ->
+        p.name + "," + a.street
+      )
+    );
+
+• Vavr and Java are fully interoperable.
+  java.util.List<Integer> result =
+      iterator.map(String::length).asJava();
+
+  • Generated objects are also compatible with Jackson.
+    https://github.com/vavr-io/vavr-jackson
+
+• Structural pattern matching is an easy way to decompose values. The result is ... a value!
+
+  Number num = Match(personOption).of(
+      Case($Some($Person($())), person -> 1.0d),
+          Case($None(), 0)
+          );
+
+• The Try monad represents the result state of a computation which may be a Success or a Failure.
+  R result = Try(() -> mightFail())
+     .recover(x -> ...)
+        .getOrElse(defaultValue);
+
+• Java's Optional is not Serializable. We use Vavr's Option for remote operations. Check out our JSON module!
+  class Person implements Serializable {
+    final Option<String> title;
+    final String name;
+    ...
+  }
+
+##################################
+Yourkit commercial (non OOSS) profiler with advanced features:
+https://www.yourkit.com/java/profiler/features/
+##################################
+Resilience4j library: higher-order functions (decorators) to enhance 
+  any functional interface, lambda expression or method reference with 
+  a Circuit Breaker, Rate Limiter, Retry or Bulkhead. You can stack 
+  more than one decorator on any functional interface, lambda 
+  expression or method reference. The advantage is that you have the 
+  choice to select the decorators you need and nothing else.
+##################################
+• Spring Cloud Function promotes the implementation of business 
+logic via functionsºbased on the standard interfaces introduced by Java 8º:
+Supplier: A supplier is a function with only output, no input.
+          It’s also known as a 'producer', 'publisher' or 'source'.
+Function :A function has both input and output.
+          It’s also known as a processor.
+Consumer. A consumer is a function with input but no output. 
+          It’s also known as a 'subscriber' or 'sink'
+
+#####################
+troubleshooting,devops,
+JDeps,
+JDeps is a dependency analysis tool for Java bytecode, i.e. class 
+files and JARs. 
+https://nipafx.dev/jdeps-tutorial-analyze-java-project-dependencies/

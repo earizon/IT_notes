@@ -1457,6 +1457,165 @@ BºMDC How To:º
       ...
 </pre>
 
+<pre zoom labels="security,101,low_code,spring,jvm,TODO">
+<span title>Security 101</span>
+@[https://snyk.io/blog/10-java-security-best-practices/]
+1. Make code immutable:
+   · Tag variables as 'final' by default.
+     (a final variable is not variable but constant)
+   · Try to initialize all classes in constructors. and centralize
+     all input checks in the constructor. Raise a runtime exception
+     if the constructor is not happy with input data.
+     (vs using getters and setters).
+      Doing so warrants that a class is properly instantiated and
+     safe upon constructor exit.
+      This also warrants fail-fast applications. If something is
+     undefined at startup time constructors will not be able to
+     initialize and the application will fail to start: This is
+     life-saving for DevOps and normal deployments. 
+
+2. Parameterize SQL:
+   query = "SELECT ... WHERE lastname = "Rº+ parameterº;  // ← Incorrect:
+   Statement         stm01 = con.createStatement();
+
+   query = "SELECT ... WHERE lastname = ?";               // ← Correct
+   PreparedStatement stm01 = con.prepareStatement(query);
+   statementBº.setString(1, parameter);º
+
+   ...  stm01.executeQuery(query);
+
+3. Use OpenID Connect with 2FA:
+   OpenID summary: OAuth 2.0 extension providing user information.
+   · It adds an ID token in addition to an access token plus 
+     a /userinfo endpoint to retrieve additional information
+     plus endpoint discovery and dynamic client registration.
+
+   low-code OpenID in Spring:
+   STEP 1: Addd next dependencies:
+     org.springframework.boot:spring-boot-starter-oauth2-client
+     org.springframework.boot:spring-boot-starter-security
+
+   STEP 2: Spring Configuration
+   │ spring:
+   │  ...
+   │  security:
+   │    oauth2:
+   │      client:
+   │        registration:
+   │         ºgithub:º
+   │            client─id: ...
+   │            client─secret: ....
+   │         ºokta:º
+   │            client─id: ...
+   │            client─secret: ...
+   │            client─name: ...
+   │         ºgoogle:º
+   │            ...
+   │        provider:
+   │          okta:
+   │            issuer─uri: https://.....okta.com/oauth2/default
+
+4. Scan dependencies for known vulnerabilities
+   Ej.: Use a service like  @[https://snyk.io/test/] !!!
+
+5. Handle sensitive data with care 
+   - Use secrets on-demand and remove from memory as soon as possible.
+     Ideally manage secrets through HSM. Secrets (signature keys, password,
+     ...) must never leave the HSM.
+   - If using Lombok generated toString(), mark with @ToString.Exclude
+     sensitive fields.
+
+6. Sanitize all input.
+   Example 1, sanitizing HTML
+   · Add next dependency:
+     org.owasp.encoder:encoder:vX.Y.Z
+   · final String
+      untrustedInput = "˂script˃ alert(1); ˂/script˃",
+        trustedInput = StEncode.forHtml(untrustedInput));
+
+7.  Configure your XML-parsers to disable XXE (eXternal Entity)
+    ˂?xml version="1.0" encoding="UTF-8" standalone="yes"?˃
+      ˂!DOCTYPE bar [
+           ˂!ENTITY xxe SYSTEM Rº"file:///etc/passwd"º˃] ˃      ← attack
+           ˂song˃
+              ˂artist˃Rº⅋xxe;º˂/artist˃
+              ...
+           ˂/song˃
+
+
+    e.g. In xerces 1/2 disable external entities and doctypes like:
+         ...
+         factory   = SAXParserFactory.newInstance();
+         saxParser = factory.newSAXParser();
+         factory.setFeature(
+           "https://xml.org/sax/features/external-general-entities",ºfalseº);
+         saxParser.getXMLReader().setFeature(
+           "https://xml.org/sax/features/external-general-entities",ºfalseº);
+         factory.setFeature(
+           "https://apache.org/xml/features/disallow-doctype-decl" ,ºtrueº); 
+         ... 
+
+8. Avoid Java serialization as much as possible
+   • Java serialization is also called Rº“the gift that keeps on giving”º.
+     Oracle is planning to eventually remove Java serialization as part of Project Amber.
+
+     If you really need to implement serializable on your domain entities, 
+     implement its own readObject().
+
+     private final void
+     readObject(ObjectInputStream in) throws java.io.IOException {
+       // check 1
+       // check 2
+       ...
+       throw new java.io.IOException("Deserialized not allowed");
+     }
+
+     If you need to Deserialize an inputstream yourself, you should use an
+     ObjectsInputStream with restrictions. 
+     e.j Apache Commons IO ValidatingObjectInputStream, that checks whether
+         the object being deserialized is allowed or not.
+
+         final FileInputStream fileInput = new FileInputStream(fileName);
+         ValidatingObjectInputStream in = new ValidatingObjectInputStream(fileInput);
+         in.accept(Foo.class);
+         Foo foo_ = (Foo) in.readObject();
+
+     Object deserialization can also apply to JSON, XML, ...
+     (@[https://snyk.io/blog/jackson-deserialization-vulnerability/])
+
+9. Use strong encryption and hashing algorithms.
+   TIP: Prefer Google Tink  (vs Low Level Java crypto libraries)
+
+10. Enable the Java Security Manager                                       [jvm]
+   · By default, JVM imposes no restrictions to running apps.
+     (file system, network, ..)
+     · Ex. By default the Attach API is active allowing to easely
+       change bytecode of running apps. (from inside the machine). 
+   
+   · Activate it like:
+   $º$ java ... -Djava.security.manager          º ← Use default policy
+   $º$ java ... -Djava.security.manager \        º ← Use custom  policy
+   $º  -Djava.security.policy==.../custom.policy º   ← == replace default.
+                                                       =  expand  default.
+   More info at
+ @[https://docs.oracle.com/en/java/javase/11/security/permissions-jdk1.html]
+   java.awt.AWTPermission                        java.sql.SQLPermission
+   java.io.FilePermission                        java.util.logging.LoggingPermission
+   java.io.SerializablePermission                java.util.PropertyPermission
+   java.lang.RuntimePermission                   javax.management.MBeanPermission
+   java.lang.management.ManagementPermission     javax.management.MBeanServerPermission
+   java.lang.reflect.ReflectPermission           javax.management.MBeanTrustPermission
+   java.net.NetPermission                        javax.management.remote.SubjectDelegationPermission
+   java.net.URLPermission                        javax.net.ssl.SSLPermission
+   java.net.SocketPermission                     javax.security.auth.AuthPermission
+   java.nio.file.LinkPermission                  javax.security.auth.PrivateCredentialPermission
+   java.security.AllPermission                   javax.security.auth.kerberos.DelegationPermission
+   java.security.SecurityPermission              javax.security.auth.kerberos.ServicePermission
+   java.security.UnresolvedPermission            javax.sound.sampled.AudioPermission
+
+11. Centralize logging and monitoring
+</pre>
+
 <span title>Functional</span>
 <pre zoom labels="101,functional,TODO">
 <span xsmall>Lambdas</span>
@@ -9354,6 +9513,16 @@ https://blog.plan99.net/kotlin-native-310ffac94af2
 <span xsmall>R2DBC API</span>
 @[https://www.infoq.com/news/2018/10/springone-r2dbc]
 • Project initiated by Pivotal to provide an async/reactive alternative to JDBC.
+
+RºWARNº: Since Spring Data R2dbc evolved very quickly, thre are plenty
+         of breaking changes introduced since Spring 5.2 and Spring 
+         Data R2dbc 1.2.
+         breaking changes (Compared to Spring Data R2dbc 1.1):
+           · Spring Data R2dbc 1.1 DatabaseClient was split into two parts.
+             a simple new DatabaseClient is part of Spring framework, as an 
+             alternative of Jdbc.
+           · Another part of the old DatabaseClient is reorganized into a new 
+             class R2dbcEntityTemplate which acts as the role of JdbcTemplate.
   Ex:
   connectionFactory.create()
     .flatMapMany ( conn -˃
@@ -9362,16 +9531,14 @@ https://blog.plan99.net/kotlin-native-310ffac94af2
             .flatMap (result -˃ 
               result.map(( row, metadata -→ row.get("value"))))
 
-  An example Spring boot (src/main/resources/)application.yml config could be
-  similar to:
   spring:
-    r2dbc:
+    r2dbc:                 ← ... (src/main/resources/)application.yml  example:
       username: XXX
       password: XXX
       url: r2dbc:postgresql://...:5432/ddbb_app01
       pool:
         max-create-connection-time: 5s
-        initial-size: 5                        ← probably much lower numbers than
+        initial-size: 5        ←················ probably much lower numbers than
         max-size: 10                             those used for JDBC.
 </pre>
 
@@ -9414,16 +9581,36 @@ jLine: GNU/readline alike library for JAVA:
 - Builtin support for console variables, scripts, custom pipes, widgets and object printing.
 - Autosuggestions
 - Language REPL Support
-
 <hr/>
 <span xsmall>PicoCli</span>
 @[https://picocli.info/]
-Picocli is a one-file framework for creating Java command line 
-applications with almost zero code. It supports a variety of command 
-line syntax styles including POSIX, GNU, MS-DOS and more. It 
-generates highly customizable usage help messages that use ANSI 
-colors and styles to contrast important elements and reduce the 
-cognitive load on the user.
+  Picocli is a one-file framework for creating Java command line 
+  applications with almost zero code. It supports a variety of command 
+  line syntax styles including POSIX, GNU, MS-DOS and more. It 
+  generates highly customizable usage help messages that use ANSI 
+  colors and styles to contrast important elements and reduce the 
+  cognitive load on the user.
+
+<hr/>
+<span title>Clig.Dev</span>
+@[https://clig.dev/]
+· Command Line Interface Guidelines
+  · An open-source guide to help you write better command-line 
+    programs, taking traditional UNIX principles and updating them for 
+    the modern day.
+    · ...
+    · Use a command-line argument parsing library where you can. Either 
+       your language’s built-in one, or a good third-party one. They will 
+       normally handle arguments, flag parsing, help text, and even spelling 
+       suggestions in a sensible way.
+
+· Note: Alternatives in other languajes:
+  · Go: Cobra, cli
+  · Node: oclif
+  · Python: Click, Typer
+  · Ruby: TTY
+  · Rust: clap, structopt
+  · PHP: console
 </pre>
 
 <pre zoom labels="resource,TODO">
@@ -9636,16 +9823,19 @@ FROM https://github.com/google/guice/wiki/JSR330
 
 <pre zoom labels="security,aaa,secret_mng,TODO">
 <span xsmall TODO>Crypto.API(JCA)</span> [TODO]
-- See also:
-  - Cryptography map:
-  @[../General/cryptography_map.html]
+RºWARNº: Prefer a high level cryptographic API like Google Tink 
+         when possible.
 
-  - Bounce Castle FIPS JCA provider
-  @[https://www.bouncycastle.org/fips-java/BCFipsIn100.pdf]
-
-BºPKCS#11 Ref.guideº: [TODO]
-@[https://docs.oracle.com/javase/7/docs/technotes/guides/security/p11guide.html]
-About PCKS#11: @[http:./../General/cryptography_map.html?topics=pkcs]
+  - See also:
+    - Cryptography map:
+    @[../General/cryptography_map.html]
+  
+    - Bounce Castle FIPS JCA provider
+    @[https://www.bouncycastle.org/fips-java/BCFipsIn100.pdf]
+  
+  BºPKCS#11 Ref.guideº: [TODO]
+  @[https://docs.oracle.com/javase/7/docs/technotes/guides/security/p11guide.html]
+  About PCKS#11: @[http:./../General/cryptography_map.html?topics=pkcs]
 </pre>
 
 <pre zoom labels="configuration,low_code,TODO">
@@ -10248,12 +10438,20 @@ BºLet developers concentrate on logic vs network plumbing and TCP errors.º
         SMTP username credential is 20-chars (letters and numbers)
 </pre>
 
-
-
-</div>
-</body>
-</html>
-<!--
+<pre zoom labels="performance,persistence,sql,TODO">
+<span title>jFleet</span>
+@[https://github.com/jerolba/jfleet]
+· JFleet is a Java library whichºpersist in database large collections º
+ ºof Java POJOs as fast as possible, using the best available techniqueº
+ ºin each database provider,ºachieving it with alternate persistence 
+  methods from each JDBC driver implementation.
+  
+· Its goal is to store a large amount of information in a single table 
+  using available batch persistence techniques.
+  
+· despite being able to use JPA annotations to map Java objects to 
+  tables and columns,ºJFleet is not an ORM.º
+</pre>
 
 <pre zoom labels="jvm,TODO">
 <span xsmall>JVM Anatomy</span>
@@ -10292,7 +10490,7 @@ Bºseveral modules with specified dependencies.º
 
 <pre zoom labels="concurrency,resource,TODO">
 <span xsmall>Java Threading resources</span>
-https://avaldes.com/?s=java+thread
+@[https://avaldes.com/?s=java+thread]
 
 - Java Thread, Concurrency and Multithreading Tutorial
 - Java Threads and Concurrent Locks with Examples
@@ -10303,31 +10501,18 @@ https://avaldes.com/?s=java+thread
 - Java Threads Wait, Notify and NotifyAll Example
 </pre>
 
+
+</div>
+</body>
+</html>
+<!--
 _____________________________________
 https://stackoverflow.com/questions/53452713/why-is-2-i-i-faster-than-2-i-i-in-java
 _____________________________________
-https://www.roseindia.net/eclipse/plugins/codemanagement/Anyedittools.shtml
+Write to Files with Guava:  TODO:
 _____________________________________
-TODO:
-Write to Files with Guava.
-_____________________________________
-https://clig.dev/
-Use a command-line argument parsing library where you can. Either 
-your language’s built-in one, or a good third-party one. They will 
-normally handle arguments, flag parsing, help text, and even spelling 
-suggestions in a sensible way.
-
-Here are some that we like:
-Go: Cobra, cli
 
 
-Node: oclif
-Python: Click, Typer
-Ruby: TTY
-Rust: clap, structopt
-PHP: console
-####################
-10 Java security best practices | Snykh:ttps://snyk.io/blog/10-java-security-best-practices/
 ####################
 AmadeusITGroup/HttpSessionReplacer: Store JEE Servlet HttpSessions in Redis
 https://github.com/AmadeusITGroup/HttpSessionReplacer 
@@ -10526,3 +10711,11 @@ JDeps,
 JDeps is a dependency analysis tool for Java bytecode, i.e. class 
 files and JARs. 
 https://nipafx.dev/jdeps-tutorial-analyze-java-project-dependencies/
+##################
+https://hantsy.github.io/spring-r2dbc-sample/auditing.html 
+###################
+TODO: Spring SecurityContext*
+######################1
+jvm,security,
+https://blog.frankel.ch/jvm-security/4/
+

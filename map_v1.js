@@ -13,12 +13,16 @@ const SF = {  /* search Form */
       true : "Note contains ALL selected topics",
       false: "Note contains ANY selected topic"
   },
+  copyLabels : function() {
+    var text = "";
+    LM.getLabelsKeysOrdereded().forEach( label_i => { text += label_i + "\n" } )
+    alert("select and copy:\n\n" + text)
+  },
   switchANDORSearch : function() {
     SF.labelANDMode=!SF.labelANDMode  
     document.getElementById("idLabelSearchAndMode").innerHTML = SF.labelAndOrText[SF.labelANDMode]
   },
   onRegexInputChanged : function () {
-console.log(" @ma " + SF.regexInputTimer)
         if (SF.regexInputTimer !== null) {
            clearTimeout(SF.regexInputTimer)
            SF.regexInputTimer = null
@@ -26,7 +30,6 @@ console.log(" @ma " + SF.regexInputTimer)
         SF.regexQuery = this.value
         SF.regexInputTimer = setTimeout(
              SE.executeSearch, 1000)
-console.log(" @ma " + SF.regexInputTimer)
     },
   renderSearchForm : function() {
     const div = document.createElement('div');
@@ -48,6 +51,7 @@ console.log(" @ma " + SF.regexInputTimer)
       + '  <label for="fullWord">Full Word</label>'
       + '  </div>'
       + '  <br/>'
+      + '  <div id="copyLabels">Copy Labels</div>'
       if (Object.keys(LM.labelMap).length > 0) {
           html += 
            '<input id="searchAndMode" type="checkbox">'
@@ -64,7 +68,7 @@ console.log(" @ma " + SF.regexInputTimer)
           SE.resetTextFoundAttr(true);
           this.setAttribute("hidden","true"); 
       })
-
+      document.getElementById("copyLabels").addEventListener("click",  SF.copyLabels )
       if (Object.keys(LM.labelMap).length > 0) {
         document.getElementById("searchAndMode").addEventListener("change",  SF.switchANDORSearch )
       }
@@ -92,7 +96,6 @@ console.log(" @ma " + SF.regexInputTimer)
     else if (idxA>idxB) result =  1
     else if ( a < b ) result = -1
     else if ( a > b ) result =  1
-console.log(a,b, idxA, idxB, result)
     return result
   },
   showSearchForm : function() {
@@ -106,7 +109,7 @@ console.log(a,b, idxA, idxB, result)
  
     const openDiv = '<div class="labelBlock">'
     var htmlLabels = openDiv, currentPrefix=""
-    Object.keys(LM.labelMap).map((l)=>l.toLowerCase()).sort( SF.compareTopic )
+    LM.getLabelsKeysOrdereded()
        .forEach(label_i => {
         if (label_i.indexOf(".")>0) {
             const prefixI = label_i.substr(0,label_i.indexOf("."))
@@ -286,11 +289,8 @@ const ZC = { /* map zoom Control */
       ZC.cssRules[ZC.idxZoomRule  ].style['font-size']=0.0001 + 'rem'
     } else /* change normal text size*/ {
       const  delta0 = (ZC.slider.value - switchElementsOn)
-console.log(delta0)
       const  delta1 = Math.pow(delta0, 1.3)
-console.log(delta1)
       const newFontSize = delta1/1000.
-console.log(newFontSize)
       ZC.cssRules[ZC.idxZoomRule  ].style['font-size']=newFontSize + 'rem'
     }
  },
@@ -316,9 +316,11 @@ const NAV = { // Navigation
 const LM = { // Lavel management
   labelMapSelected : { /* label : isSelected true|false */ },
   labelMap : { /* label : dom_list*/ },
-
   isAnyLabelSelected : function() {
     return Object.keys(LM.labelMapSelected).length > 0
+  },
+  getLabelsKeysOrdereded : function() {
+    return Object.keys(LM.labelMap).map((l)=>l.toLowerCase()).sort( SF.compareTopic )
   },
   onLabelClicked : function (e) {
     const dom = e.target

@@ -213,7 +213,7 @@ const ZW = { /* ZOOM Window */
         .from(
           new Set(e.attributes.labels.value.split(",")))
         .filter(e => !!e)
-        .forEach(label_i => { sLabels += LM.renderLabel(label_i) })
+        .forEach(label_i => { sLabels += LM.renderLabel(label_i, true /* show prefix */) })
     }
     document.getElementById("divElementLabels").innerHTML = sLabels;
     const zoomHTML = document.getElementById("zoomHTMLContent")
@@ -343,11 +343,13 @@ const LM = { // Lavel management
     }
     SE.executeSearch()
   },
-  renderLabel : function(sLabelKey) {
+  renderLabel : function(sLabelKey, showPrefix) {
     sLabelKey = sLabelKey.toLowerCase()
     var  sLabel = sLabelKey
-    const idxPrefix = sLabel.indexOf(".")+1
-    if (idxPrefix>0) { sLabel = sLabel.substr(idxPrefix) }
+    if (!!!showPrefix) {
+      const idxPrefix = sLabel.indexOf(".")+1
+      if (idxPrefix>0) { sLabel = sLabel.substr(idxPrefix) }
+    }
     let cssAtribute    = (sLabelKey.indexOf("todo")>=0) ? " red"  : ""
     return "<div "+cssAtribute+" class='labelButton' selected="+(!!LM.labelMapSelected[sLabelKey])+
            " type='button' value='"+sLabelKey+"' />"+sLabel+"</div><span labelcount>"+LM.labelMap[sLabelKey].length+"</span>" ;

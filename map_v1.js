@@ -88,12 +88,12 @@ const SF = {  /* search Form */
   },
   regexInputTimer : null,
   
-  compareTopic: function (a , b) {
+  compareTopic: function (a , b) { // TODO:(0) Fix
     const idxA = a.indexOf(".")
     const idxB = b.indexOf(".")
     let result = 0
-         if (idxA<idxB) result = -1
-    else if (idxA>idxB) result =  1
+         if (idxA < 0 && idxB>=0) result = -1
+    else if (idxB < 0 && idxA>=0) result =  1
     else if ( a < b ) result = -1
     else if ( a > b ) result =  1
     return result
@@ -520,8 +520,7 @@ const MB = { // Menu Bar
     const searchDiv = document.createElement('div');
         searchDiv.setAttribute("id", "upper_bar")
         searchDiv.innerHTML = ''
-     + '<img id="idLabelsFilter" class="noprint" src="/labelIcon.svg"  '
-     +   ' onerror="src = \'https://singlepagebookproject.github.io/SPB/labelIcon.svg\';" />'
+     + '<img id="idLabelsFilter" class="noprint" src="/labelIcon.svg" />'
      + '<a href="../help.html" class="noprint" style="cursor:help" target="_blank" >❓</a>'
      + '<span blue id="printButton">Print</span>'
      + '<span id="loupe"  blue>🔍︎</span>'

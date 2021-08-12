@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
    <meta charset="UTF-8">
-   <meta name="keywords" content="cryptography,cheat sheet,mind map,tutorial,101,primitives,elliptic curve,Curve25519,accumulator,aes,asymmetric,authentication,authorization,cipher,CA,dsa,fingerprint,gpg,low code,hash,IV,keystore,repudability,pkcs,pki,rsa,session,signature,standards,symmetric,tls,vault,x509">
+   <meta name="keywords" content="cryptography,cheat sheet,mind map,tutorial,101,primitives,elliptic curve,Curve25519,accumulator,aes,symmetric encryption,asymmetric encryption,authentication authorization and access (AAA),cipher,CA,dsa,fingerprint,gpg,low code,hash,IV,keystore,repudability,pkcs,pki,rsa,session establishment,signature,standards,tls,vault,x509">
    <meta name="viewport"
      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
    <title>Cryptography map</title>
@@ -607,7 +607,7 @@ and capture the energy of:
 º2^69 = 5.9 x 10^20 Suns during a year!!!º
 </pre>
 
-<pre zoom  labels="101,rsa,tls">
+<pre zoom  labels="101,rsa,protocol.TLS">
 <span xsmall>Random number generators</span>
 - True random number generators(quantum, thermanl, oscillators,...)
 - Cryptographically secure pseudorandom generators (Unix /dev/urandom, Windows CryptGenRandom,...)
@@ -625,7 +625,7 @@ Wrong Random number generation can break many systems. Example:
 
 <div groupv>
 <span title>Symmetric cryptography</span>
-<pre zoom labels="101,stream_cipher,block_cipher">
+<pre zoom labels="101,stream_cipher,block_cipher,IV,nonce,comparative">
 <span xsmall>Symmetric primitives</span>
 Peer 1                              Peer 2
 Plain → |Encrypt|→ C1 → |Decrypt| → Plain
@@ -636,83 +636,75 @@ NOTE: In symmetric crypto the key is often refered with
       the name of "password" to distinguish from the "private key"
       used in asymmetric crypto. schemas.
 
-Symmetric cyrptography broadly splits into:
-ºStream cipherº:
- - inputs of "any lenght". Very difficult to implement properly
-   Implementations: ChaCha, ...
+• Symmetric cyrpto. broadly splits in two categories:
+  ·ºStream cipherº:                                                [stream_cipher]
+    - inputs of "any lenght". Very difficult to implement properly
+      Implementations: ChaCha, ...
 
-     INPUT     → |Keystream |→ K0, K1, ...
-   (KEY, NONCE)  |Generator |         → XOR → C0, C1, ...
-                               M0, M1, ...
+        INPUT     → |Keystream |→ K0, K1, ...
+      (KEY, NONCE)  |Generator |         → XOR → C0, C1, ...
+                                  M0, M1, ...
 
- - "BUTS": Generate a safe (non predictive) KEY for the stream cipher is "difficult"
-ºBlock cipherº:
- - inputs must be divided into chunks of same size
- - Hide plaintext transformation to ciphertext through:
-   - ºconfusionº: mapping input to output hard to predict (not linear and parts of keys)
-   - ºdiffusionº: permutate bits
-ºSP-Networksº:
- - Most block ciphers are based on SP-Networks composed of:
-   - Subtitution box : "map˂byte, byte˃"   (replace bytes with bytes )
-   - Permutation box :  moves bits around
-   - Some substitution plus permutation are combined into a single round
-   - Rounds are then repeated enough times to ensure the algorithm is secure
-   - SP-Networks alone are not enought. KEY secret is used like:
-                  ROUND1                ROUND2
-   Plain → XOR → |Subsitution| → XOR → |Subsitution| → C
-           KEY   |Permutation|   KEY   |Permutation|
+    -Rº"BUTS":º
+      · Generate a safe (non predictive) KEY for the stream cipher is "difficult"
 
+  ·ºBlock  cipherº:                                                [block_cipher]
+    - inputs must be divided into chunks of same size
+    - Hide plaintext transformation to ciphertext through:
+      - ºconfusionº: mapping input to output hard to predict (not linear and parts of keys)
+      - ºdiffusionº: permutate bits
+
+    - Most block ciphers are based onºSP-Networksºcomposed of:
+      - Subtitution box : "map˂byte, byte˃"   (replace bytes with bytes )
+      - Permutation box :  moves bits around
+      - Some substitution plus permutation are combined into a single round
+      - Rounds are then repeated enough times to ensure the algorithm is secure
+      - SP-Networks alone are not enought. An extra º(secret)KEYº is used like:
+
+                         ROUND1                ROUND2       ...
+
+        Plain →ºXORº→ │Subsitution│ → XOR → │Subsitution│ → ... → C
+               ºKEYº  │Permutation│   KEY   │Permutation│
+
+    - Block ciphers have one or more block size(s), but during transformation
+      the block size is always fixed.
+
+    - Block cipher operation modes:
+      - A block cipher alone can only encrypt a single block of N-bits.
+      - The operation mode describes how to repeatedly apply a
+        cipher's single-block operation to securely transform N blocks.
+      - Most modes require an initialization vector (IV) for each new encrypt.  [IV]
+        -ºIV must be non-repeating and, for some modes, random as well.º
+        - IV ensure distinct ciphertexts are produced even for the same plaintext.
+          when reusing the same (private and symmetric) key.
+      - Operation modes include:
+        ·RºElectronic code block (ECB):º
+           M1 → |E_k| → C1  ← RºWARN:ºDon't use it, if different messages share 
+           M2 → |E_k| → C2            same data information leaks cans rise
+           M3 → |E_k| → C3
+        ·BºCipher block chaining (CBC):º
+          IV: Initialization vector                                            [IV]
+                                         Rº"BUTs":º
+          M1 → |XOR(IV)| → |E_k| → C1       - Not paralelizable.
+             → |XOR(M2)| → |E_k| → C2       - can not seek randomnly
+             → |XOR(M3)| → C3               - Needs an IV (Difficult to generate)
+            
+        ·BºCounter Mode (CT):º (Can be paralellized)
+          Nonce + 0 → |E_k| → XOR(M1) → C1  ← ºNoces are used onceº        [comparative]
+          Nonce + 1 → |E_k| → XOR(M2) → C2    ºIVs must be unpredictableº  [nonce]
+          Nonce + 2 → |E_k| → XOR(M3) → C3
+
+    -Rº"BUTS":
+      ·Rºblock chipers require Paddingº when the message does NOT exactly
+        match a multiple of key size. This can introduce security bugs if not
+        implemented properly.
+      @[https://en.wikipedia.org/wiki/Padding_(cryptography)]
+
+        (There are block chiper operation modes that do NOT require padding
+         because they effectively use a block cipher as a stream cipher).
 </pre>
-<pre zoom TODO  labels="101,block_cipher">
-<span xsmall>Padding</span>:
-@[https://en.wikipedia.org/wiki/Padding_(cryptography)]
-- used when the message does exactly match a multiple of key size.
-- Required by block padding cyphers. Streaming modes of operation
-  can encrypt and decrypt messages of any size and therefore do
-  not require padding.
-</pre>
 
-<pre zoom labels="101,IV,block_cipher">
-<span xsmall>Modes of operation</span>
-- A block cipher by itself is only suitable for the secure cryptographic
-  transformation (encryption or decryption) of one fixed-length group of bits
-  called a block. A mode of operation describes how to repeatedly apply a
-  cipher's single-block operation to securely transform amounts of data larger
-  than a block.
-- Most modes require a unique binary sequence, often called
-  an initialization vector (IV), for each encryption operation. The IV has to
-  be non-repeating and, for some modes, random as well. The initialization
-  vector is used to ensure distinct ciphertexts are produced even when the
-  same plaintext is encrypted multiple times independently with the same key.
-- Block ciphers have one or more block size(s), but during transformation
-  the block size is always fixed.
-- Block cipher modes operate on whole blocks and require that the last part
-  of the data be padded to a full block if it is smaller than the current
-  block size.
-- There are, however, modes that do not require padding because they
-  effectively use a block cipher as a stream cipher.
-- Electronic code block (ECB):
-  (WARN: Don't use it, if different messages share same data information leaks cans rise)
-M1 → |E_k| → C1
-M2 → |E_k| → C2
-M3 → |E_k| → C3
-- Cipher block chaining (CBC):
-IV: Initialization vector
-M1 → |XOR(IV)| → |E_k| → C1
-   → |XOR(M2)| → |E_k| → C2
-   → |XOR(M3)| → C3
-  "BUTs":
-   - Not paralelizable , and can not seek randomnly
-   - Needs an IV (Difficult to generate)
-- Counter Mode (CT):(Can be paralellized)
-  Nonce + 0 → |E_k| → XOR(M1) → C1
-  Nonce + 1 → |E_k| → XOR(M2) → C2
-  Nonce + 2 → |E_k| → XOR(M3) → C3
-  ^^^^^
- ºNoces are used onceº
- ºIVs must be unpredictableº
-</pre>
-<pre zoom labels="101,symmetric,aes,des,java,TODO">
+<pre zoom labels="101,type.symmetric,aes,use_case.encryption,des,java,TODO">
 <span xsmall>AES</span>
 -ºº: SP-Network based (Advanced Encryption Standard).
   - "Almost every block cipher uses AES". Supersedes DES (2002 Standard)
@@ -804,32 +796,29 @@ RºTODO:º What every Software Engineer should know about AES
 
 <div groupv>
 <span title>Asymmetric cryptography</span>
-<pre zoom labels="101,asymmetric,signature,authentication,pki,tls,session,rsa,dsa">
+<pre zoom labels="101,type.asymmetric,use_case.signature,use_case.AAA,pki,RSA,DSA">
 <span xsmall>Asymmetric primitives</span>
-
 - 4 keys are need for bidirectional communication.
-- Public  key (known to everyone) is used for encryption
-- Private key (known to owner   ) is used for decryption
+  - 1 Public  key (known to everyone) is used for encryption by sender   Alice
+  - 1 Private key (known to owner   ) is used for decryption by receiver Bob
+  (and two extra keys for Bob to Alice communication)
 
-PEER 1                                                     PEER 2
-            ENCRYPTION FROM PEER 1 TO PEER 2
-            --------------------------------
-        | Encrypt with |                | Decrypt with |
-Plain → |    Peer 2    | → CypherText → |   Peer 2     | → Plain
-text    | public  key  |                | private  key |   text
-
-
-            ENCRYPTION FROM PEER 2 TO PEER 1
-            --------------------------------
-
-        | Decrypt with |                | Encrypt with |
-Plain ← |    Peer 1    | ← CypherText ← |   Peer 1     | ← Plain
-text    | private  key |                | private  key |   text
+- PEER 1  ·                                              ·   PEER 2
+          ·                                              ·
+          │ Encrypt with │                │ Decrypt with │           ← Asymmetrically encrypted msg.
+  Plain → │    Peer 2's  │ → CypherText → │   Peer 2's   │ → Plain     PEER 1 → PEER 2
+  text    │ public  key  │                │ºprivate  keyº│   text
+          ·                                              ·       
+          ·                                              ·
+          ·                                              ·
+          │ Decrypt with │                │ Encrypt with │           ← Asymmetrically encrypted msg.
+  Plain ← │    Peer 1's  │ ← CypherText ← │   Peer 1's   │ ← Plain     PEER 2 → PEER 1
+  text    │ºprivate  keyº│                │ public   key │   text
 
 
   - ºpublic/private keyº where Public Key can be computed easely from private key
-      but the inverse in infeasible (intractable mathematical problem).
-      WARN: Quantum computer will totally defeat it
+      but the inverse in infeasible (intractable mathematical problem or so we think).
+      WARN: Quantum computer will totally defeat it??
 
   - ºSigningº "==" message →Hash → PrivKey_encrypt → signature
     Everyone can decrypt using pub.key., probiding:
@@ -846,7 +835,8 @@ text    | private  key |                | private  key |   text
     - Repeated use of key makes it easier to crack
 
 </pre>
-<pre id="digital_signature_101" zoom bgorange labels="signature,101,comparative,rsa,dsa,asymmetric,non_repudability,diagram">
+<pre id="digital_signature_101" zoom bgorange 
+  labels="use_case.signature,101,comparative,rsa,dsa,type.asymmetric,use_case.non_repudability,diagram">
 <span xsmall>Digital Signature</span>
 - Private key (known to owner   ) is used for signing.
 - Public  key (known to everyone) is used for checking document signature.
@@ -909,7 +899,7 @@ RºWARN:ºkey-generation algorithm is as important as the signing and verificati
 
 </pre>
 
-<pre zoom labels="comparative,rsa,dsa,asymmetric,signature,standards">
+<pre zoom labels="comparative,rsa,dsa,type.asymmetric,use_case.signature,standards">
 <span xsmall>(EC)DSA vs RSA compared</span>
 BºDIGITAL SIGNATURE HISTORYº
 2 Approaches                                          YEAR
@@ -1145,7 +1135,7 @@ OºSº= M power d (mod R)                                  computes their public
 
 </pre>
 
-<pre zoom labels="comparative,asymmetric,signature">
+<pre zoom labels="comparative,type.asymmetric,use_case.signature">
 <span xsmall>ed25519/ECDSA compared</span>
 Extracted from @[https://tools.ietf.org/html/rfc6979]
 " Deterministic signatures retain the cryptographic
@@ -1233,7 +1223,7 @@ Summary of advantages versus ECDSA:
 @[https://blog.cloudflare.com/a-relatively-easy-to-understand-primer-on-elliptic-curve-cryptography/]
 </pre>
 
-<pre zoom labels="tls,signature,asymmetric,tls,comparative,tool,qa,TODO">
+<pre zoom labels="use_case.signature,type.asymmetric,protocol.TLS,comparative,tool,qa,TODO">
 <span xsmall>Elliptic Curves Comparative</span>
 - ¿Safe?Curves:
 @[http://safecurves.cr.yp.to/]
@@ -1263,7 +1253,7 @@ Comparisions of secp256r1-vs-secp256k1 Elliptic Curves:
 
 <div groupv>
 <span title>Hash Primitives</span>
-<pre zoom labels="101,hash,integrity" >
+<pre zoom labels="101,type.hash,use_case.data_integrity,use_case.proof-of-existence" >
 <span xsmall>Hash primitives</span>
 Plain  → | Hash | → Hash Result
 
@@ -1292,27 +1282,27 @@ CipherText + HASH(KEY+CipherText)
   better avalanching(@[http://en.wikipedia.org/wiki/Avalanche_effect]).
   You'll find "magic constants" in just about every hash algo.
 </pre>
-<pre zoom labels="hash,TODO">
+<pre zoom labels="type.hash,use_case.data_integrity,use_case.proof-of-existence,TODO">
 <span xsmall>SHA-3</span>
 @[https://en.wikipedia.org/wiki/SHA-3]
 SHA-3 is a subset of the broader cryptographic primitive family Keccak
 </pre>
 
-<pre zoom labels="hash,android,comparative,TODO">
+<pre zoom labels="type.hash,android,comparative,use_case.proof-of-existence,TODO">
 <span xsmall>BLAKE3: CPU Parallelizable Hash</span>
-BLAKE3 Is an Extremely Fast, Parallel Cryptographic Hash
-https://www.infoq.com/news/2020/01/blake3-fast-crypto-hash/
-- BLAKE3 is the most recent evolution of the BLAKE cryptographic hash
-  function. Created by Jack O'Connor, Jean-Philippe Aumasson, Samuel
-  Neves, and Zooko Wilcox-O'Hearn, BLAKE3 combines general purpose
-  cryptographic tree hash bao with BLAKE2 to provide a big performance
-  improvement over SHA-1, SHA-2, SHA-3, and BLAKE2.
+- BLAKE3 Is an Extremely Fast, Parallel Cryptographic Hash
+@[https://www.infoq.com/news/2020/01/blake3-fast-crypto-hash/]
+  - BLAKE3 is the most recent evolution of the BLAKE cryptographic hash
+    function. Created by Jack O'Connor, Jean-Philippe Aumasson, Samuel
+    Neves, and Zooko Wilcox-O'Hearn, BLAKE3 combines general purpose
+    cryptographic tree hash bao with BLAKE2 to provide a big performance
+    improvement over SHA-1, SHA-2, SHA-3, and BLAKE2.
 </pre>
 
-<pre zoom labels="101,symmetric,hash">
-<span xsmall>HMAC primitives</span>
-<span xsmall>"secret-shared signature"</span>
-
+<pre zoom labels="101,type.symmetric,type.hash,use_case.AAA,use_case.data_integrity">
+<span xsmall>HMAC primitives: "secret-shared signature"</span>
+- Allows for authentication of the signer of a given "frozen" file/data
+  (vs authentication in session establishment of a network protocol).
 - HMAC = "MAC + symmetric encryption"
 - Message passes throuh a hash function twice, and is combined with
   the (secret key) key before each pass
@@ -1331,12 +1321,12 @@ message
     assurances to a signature scheme based on public-key cryptography
 </pre>
 <span title>Diffie-Hellman(-Merkle)</span>
-<pre zoom labels="aaa,asymmetric,session,101">
-<span xsmall>Diffie-Hellman</span>
-two non-local parties can jointly agree a shared secret over an insecure channel
-
+<pre zoom labels="key_exchange,use_case.remote_session_establishment,type.asymmetric,101">
+<span xsmall>Diffie-Hellman Key "exchange"</span>
+- two non-local parties can jointly agree a shared secret over an insecure channel
     - DH-KEX (Key exchange) Underpins almost every aspect of our modern lives!
     - DH security is based first on "very big numbers", with 4096 bits becoming more ussual.
+      Key is not actually "exchanged" but calculated by both parties simultaneously.
     - The DH-KEX generated shared-secret is usually called the "pre-master secret"
     - It's used to derive session keys through hashing for example
     - Ephemeral Mode. DH is used only for minutes/hours and not stored.
@@ -1385,7 +1375,7 @@ Next elements of randomness complements to keys:
 <div groupv>
 <span title>Advanced Primitives</span>
 
-<pre zoom labels="qa,integrity,symmetric,comparative,TODO" >
+<pre zoom labels="qa,use_case.data_integrity,type.symmetric,comparative,TODO" >
 <span xsmall>Fernet sym. encrypt</span>
 - Fernet guarantees that a message encrypted using it
   cannot be manipulated or read without the key.
@@ -1467,7 +1457,7 @@ https://github.com/dfinity-side-projects/vss
 
 </pre>
 
-<pre zoom labels="101,signature,comparative">
+<pre zoom labels="101,use_case.signature,comparative">
 <span xsmall><b>MultiSig vs threshold</b> Signature Schemes</span>
 NOTE:
 - Multi-signature schemes require the network to verify each signature,
@@ -1606,29 +1596,60 @@ NOTE:
 └────────────────────────────────────────────────────────────────────┘
 </pre>
 
-<pre zoom labels="101,hash,accumulator,one_way,radar">
+<pre zoom labels="101,type.hash,accumulator,use_case.privacy,use_case.data_integrity,TODO">
 <span xsmall bgorange>Crypto accumulator</span>
+- introducced in 1993 by Benaloh and de Mare.
 - one way non-invertible function.
 - It answers a query as to whether a potential candidate is
    a member of a set without revealing the individual members of the set.
 
-  Ex: large composite number CP01 = P1 x P2 x P3 x ... PN
-      Does P2 "belongs" to CP01? Yes, but we still don't known P1, P3, ... PN
-- New members may be added or subtracted to the set of
-  factors simply by multiplying or factoring out the number respectively.
+- They are the cryptographic counterpart of Bloom Filters data structure:
+  @[https://hal.archives-ouvertes.fr/hal-00999432/document]
+  - A Bloom filter is a space-efficient probabilistic data structure, 
+    used to test whether an element is a member of a set.
+    Bloom filter setup)
+                          bloom-filter0 = 000000000000...........0
+      Element1 → hash1 →  bloom-filter1 = bloom-filter 0   || hash1 
+      Element2 → hash2 →  bloom-filter2 = bloom-filter 1      hash2
+      ...                 ...                                           
+      ElementN → hashN →  bloom-filterN = bloom-filter N-1    hashN
+
+    Bloom filter Ussage)
+      Q: ElementI belongs to Set?
+      A: ElementI → hashI
+         if (hashI && bloom-filterN == hashI ) "maybe" (false positives are possible)
+         else                                  "definetly no"
+
+  - Crypto Accumulator Ex:
+    large composite number 
+    CP01 = P1 x P2 x P3 x ... PN
+           └────────┬──────────┘
+    New members may be added or subtracted to the set of
+    factors simply by multiplying or factoring out the number respectively.
+
+    Q: Does P2 "belongs" to CP01?
+    A: Yes, but we still don't known P1, P3, ... PN
+
+-  Use case include: time-stamping schemes , search on encrypteddata ,
+   data aggregation in sensor networks [19] and distillation codes.
+-ºSanderet al. use RSA accumulator to designblind and auditablea
+ ºmembership proof scheme in the context of e-cash. The ideais that an º
+ ºaccumulator of all the valid electronic coins is created andº
+ ºpublished.During coins transfer, anyone can verify the validity of º
+ ºthe exchange thanks tothe accumulator.º
 
 Extracted from:
 @[https://medium.com/@aurelcode/cryptographic-accumulators-da3aa4561d77]
-We can think of accumulators as a super-charged hash function that
-works on sets. A regular hash function, like SHA-3, takes a single message and
-outputs a fixed-size hash. An accumulator, however, takes a set of values and
-turns them into a single number, also of constant size.
+  We can think of accumulators as a super-charged hash function that
+  works on sets. A regular hash function, like SHA-3, takes a single message and
+  outputs a fixed-size hash. An accumulator, however, takes a set of values and
+  turns them into a single number, also of constant size.
 
-Alice secret
-  → alt 1: hash secret        → publish hash  → reveal message to Bob (Bob can check)
-  → alt 2: add to accumulator → publish accu  → reveal message to Bob, Bob can check,
-                                                but the rest of secrets of the
-                                                accumulator stay in place.
+  Alice secret
+    → alt 1: hash secret        → publish hash  → reveal message to Bob (Bob can check)
+    → alt 2: add to accumulator → publish accu  → reveal message to Bob, Bob can check,
+                                                  but the rest of secrets of the
+                                                  accumulator stay in place.
 
 <hr />
 <span xsmall>Batching Techniques for Accumulators</span>
@@ -1705,7 +1726,7 @@ Extracted from @[https://nakamoto.com/cambrian-explosion-of-crypto-proofs/]
 
 </div><!-- } building blocks -->
 <div groupv>
-<pre zoom labels="hash,integrity,">
+<pre zoom labels="type.hash,use_case.data_integrity,">
 <span xsmall>Data integrity</span>
 BºHash chainº
 @[https://en.wikipedia.org/wiki/Hash_chain]
@@ -1771,15 +1792,15 @@ BºMerkle treeº
 </pre>
 
 
-<pre zoom labels="integrity,TODO">
+<pre zoom labels="use_case.data_integrity,TODO">
 <span xsmall>Authenticated Encryption with associated data(AEAD)</span>
-
-<a xsmall href="https://en.wikipedia.org/wiki/Authenticated_encryption"></a>
+@[https://en.wikipedia.org/wiki/Authenticated_encryption]
 - The need for AE emerged from the observation that securely combining
    separate confidentiality and authentication block cipher operation modes
    could be error prone and difficult confirmed by a number of practical
    attacks introduced into production protocols and applications by
    incorrect implementation, or lack, of authentication (including SSL/TLS)
+
 - A typical programming interface for AE mode implementation would provide the following functions:
 
  Encryption
@@ -1801,7 +1822,7 @@ BºMerkle treeº
 <div group>
     <span title>WebApp. Crypto</span><br/>
 <div groupv>
-<pre zoom labels="jwt,signature,web,aaa,tool,standards,TODO">
+<pre zoom labels="jwt,web,standards,use_case.AAA,use_case.signature,code_snippet,comparative,tool,TODO">
 <span xsmall>JWT intro</span>
 TODO:
 - (Very Good) Introduction to JWT!!!
@@ -1823,10 +1844,7 @@ $º '{{json_string}}'             º
 $º$ jwt encode --alg {{HS256}} \ º ← Encode key pair payload to JWT
 $º  --secret {{1234567890}}    \ º
 $º -P key=value                  º
-</pre>
-
-
-<pre zoom labels="jwt,aaa,authorization,web,signature,code_snippet,comparative">
+<hr/>
 <span xsmall>JSON Web Token (JWT)</span>
 @[https://tools.ietf.org/html/rfc7519]
 - URL-safe means of representing claims to be transferred between
@@ -1991,7 +2009,7 @@ thinks it is.
 </pre>
 </div>
 <div groupv>
-<pre zoom labels="aaa,web,comparative,jwt,diagram,">
+<pre zoom labels="protocol.OAuth,use_case.AAA,standards,web,comparative,jwt,diagram,">
 <span xsmall>OAuth</span>
 @[https://tools.ietf.org/html/rfc6749]
 @[https://alexbilbie.com/guide-to-oauth-2-grants/]
@@ -2118,7 +2136,7 @@ See also:
 -@[https://oauth.net/2/]
 </pre>
 
-<pre zoom labels="aaa,oauth,jwt,low_code,TODO" id="gotrue_oauth_summary">
+<pre zoom labels="use_case.AAA,protocol.oauth,jwt,low_code,TODO" id="gotrue_oauth_summary">
 <span title>GoTrue OAuth</span>
 @[https://github.com/netlify/gotrue]
 
@@ -2172,7 +2190,7 @@ See also:
 </pre>
 
 <span title>OpenID</span>
-<pre zoom labels="identity,standards,TODO">
+<pre zoom labels="use_case.identity,standards,TODO">
 <a xsmall href="https://www.simpleorientedarchitecture.com/openid-connect-in-a-nutshell/">OpenID</a>
 @[https://stackoverflow.com/questions/1087031/whats-the-difference-between-openid-and-oauth]
 @[https://security.stackexchange.com/questions/44611/difference-between-oauth-openid-and-openid-connect-in-very-simple-term/130411#130411]
@@ -2197,7 +2215,7 @@ providers like GitHub, Google, and Active Directory.
 to Dex, then Dex handles the protocols for a given backend.
 </pre>
 
-<pre zoom labels="aaa,comparative">
+<pre zoom labels="use_case.AAA,comparative">
 <span xsmall>OpenID vs OAuth2 vs SAML</span>
 REF:
 @[https://spin.atomicobject.com/2016/05/30/openid-oauth-saml/]
@@ -2382,7 +2400,7 @@ $ openssl x509 -text -in myCert.pem
                                 (P)rivacy (E)nhanced (M)ail
 </pre>
 
-<pre zoom labels="tls,x509,fingerprint,web,java" id="openssl_summary">
+<pre zoom labels="protocol.tls,x509,fingerprint,web,java" id="openssl_summary">
 <span title>openSSL</span>
 │ºExternal Refsº
 │@[https://www.openssl.org/docs/manmaster/man1/]
@@ -2655,7 +2673,7 @@ Related projects:
 @[https://jamielinux.com/docs/openssl-certificate-authority/index.html]
 </pre>
 
-<pre zoom labels="pki,tls,low_code,qa,java,TODO" id="caddy_https_server"
+<pre zoom labels="pki,protocol.TLS,low_code,qa,java,TODO" id="caddy_https_server"
   id="caddy_server_summary">
 <span xsmall>Caddy HTTPS server</span>
 https://caddyserver.com/
@@ -2693,7 +2711,7 @@ https://developers.redhat.com/blog/2020/10/07/install-a-signed-certificate-with-
   bug fixes.
 </pre>
 
-<pre zoom labels="ca,tls,secret_mng,wallet,tool,TODO">
+<pre zoom labels="ca,protocol.TLS,secret_mng,wallet,tool,TODO">
 <span xsmall>Portecle: Cert+Keystore GUI</span>
 https://www.sslsupportdesk.com/portecle-advanced-keystore-creation-and-manipulation-tool/
 Portecle is a user friendly GUI application for creating, managing and
@@ -2727,7 +2745,7 @@ Portecle can be used to, for example:
 - Delete, clone, and rename keystore entries.
 - View the details of certificate revocation list (CRL) files.
 </pre>
-<pre zoom labels="ca,x509,tls,comparative,TODO">
+<pre zoom labels="ca,x509,protocol.TLS,comparative,TODO">
 <span xsmall>RFC 8555: PKI using X.509</span>
 @[https://tools.ietf.org/html/rfc8555]
 Published on 2015-05-22 according to
@@ -2744,7 +2762,7 @@ verification and certificate issuance.  The protocol also provides
 facilities for other certificate management functions, such as
 certificate revocation.
 </pre>
-<pre zoom labels="tls,standards,protocol,TODO">
+<pre zoom labels="protocol.tls,standards,qa,TODO">
 <span xsmall>IETF ACME</span>
 @[https://tools.ietf.org/html/rfc8555]
 - ACME stands for Automatic Certificate Management Environment (ACME) protocol.
@@ -2801,7 +2819,7 @@ TLS clients may refuse to connect to sites that have suspect certificates.
 </pre>
 
 
-<pre zoom labels="authentication,protocol,tls,TODO">
+<pre zoom labels="use_case.AAA,protocol.TLS,TODO">
 <span xsmall>SASL</span>
 https://en.wikipedia.org/wiki/Simple_Authentication_and_Security_Layer
 
@@ -2898,7 +2916,7 @@ As of 2012 protocols currently supporting SASL include:
 </pre>
 
 <span title>TLS Related</span>
-<pre zoom labels="tls,protocol,comparative">
+<pre zoom labels="protocol.TLS,comparative">
 <span xsmall>OCSP</span>
 @[https://en.wikipedia.org/wiki/Online_Certificate_Status_Protocol]
 
@@ -2973,7 +2991,7 @@ Rºciting latency and privacy issues and instead uses theirº
 Rºown update mechanism to retrieved revoked certificatesº
 </pre>
 
-<pre zoom labels="signature,comparative">
+<pre zoom labels="use_case.signature,standards,comparative">
 <span xsmall>XML Signature</span>
 @[https://en.wikipedia.org/wiki/XML_Signature]
 
@@ -3044,7 +3062,7 @@ Rºown update mechanism to retrieved revoked certificatesº
 
 <div groupv>
 <span title>kerberos+ldap "=" AD</span>
-<pre zoom labels="activeDirectory,aaa,protocol,symmetric,asymmetric">
+<pre zoom labels="use_case.AAA,activeDirectory,protocol.kerberos,type.symmetric,type.asymmetric">
 <span xsmall>Kerberos protocol</span>
 @[https://en.wikipedia.org/wiki/Kerberos_(protocol)]
 @[https://web.mit.edu/Kerberos/]
@@ -3180,7 +3198,7 @@ STEP 2: Communicating with other nodes ("principal")
       Database1 → Database1: check that user-kerberos-ticket1 is allowed
 </pre>
 
-<pre zoom labels="activeDirectory,authorization,protocol">
+<pre zoom labels="use_case.AAA,activeDirectory,protocol.LDAP,">
 <span xsmall>LDAP</span>
 @[https://en.wikipedia.org/wiki/Lightweight_Directory_Access_Protocol]
 
@@ -3362,7 +3380,7 @@ BºNOTEº: Clients may learn about the schema elements that the server supports
 </pre>
 
 
-<pre zoom labels="activeDirectory,AAA,kerberos,ldap,">
+<pre zoom labels="use_case.AAA,activeDirectory,protocol.kerberos,protocol.ldap,">
 <span xsmall TODO>Active Directory</span>
 Active Directory LDAP requires that names of directory objects be
 formed according to RFC 1779 and RFC 2247:
@@ -3410,7 +3428,7 @@ formed according to RFC 1779 and RFC 2247:
 
 <div groupv>
 <span title>OpenPGP(GPG/...)</span>
-<pre zoom id="pgp_summary" labels="secret_mng,pgp,git,standard,keystore,symmetric,asymmetric,signature,troubleshooting">
+<pre zoom id="pgp_summary" labels="secret_mng,pgp,git,standards,keystore,type.symmetric,type.asymmetric,use_case.signature,troubleshooting">
 <span title>Summary</span>
   PGP: Pretty Good Privacy: encryption program (1991 Phil Zimmermann)
        Used for signing, encrypting, and decrypting texts, e-mails,
@@ -3457,9 +3475,9 @@ Bº*****************************º
             (probably safer, but can not be scripted easily)
 
    -ºSAFE CLEAN-UPº:
-    $º$ shred -n 2 -z -v secrets.txtª  ← deleting the file leaves original bytes in the hard-disk
-
-
+    $º$ shred -n 2 -z -v secrets.txtº  ← safe/secure deletion. Standard
+                                         "rm" leaves original bytes in the 
+                                         hard-disk
 <hr/>
 Bº***************************º
 Bº* managing pub/priv. keys *º
@@ -3571,12 +3589,12 @@ Bº****************************************º
    cat ${LEVEL1} | base64 -d | ${GPG_C} ${PASS_LEVEL3} ˃  PLAIN_TEXT  ← 
 </pre>
 
-<pre zoom labels="pgp,ssh,ca,tls,TODO">
+<pre zoom labels="pgp,protocol.ssh,ca,protocol.tls,TODO">
 <span xsmall>Convert keys GPG|OpenSsh|OpenSSL</span>
 http://sysmic.org/dotclear/index.php?post/2010/03/24/Convert-keys-betweens-GnuPG%2C-OpenSsh-and-OpenSSL
 </pre>
 
-<pre zoom labels="pgp,standards,signature,linked_data_signature,TODO">
+<pre zoom labels="pgp,standards,use_case.signature,linked_data_signature,TODO">
 <span xsmall>OpenPgpSignature2019</span>
 https://github.com/decentralized-identity/OpenPgpSignature2019
 
@@ -3618,7 +3636,7 @@ This signature suite follows the approach taken by:
   });
 </pre>
 
-<pre zoom labels="pgp,keybase,secret_mng,identity,signature,wallet" bgblue>
+<pre zoom labels="pgp,keybase,secret_mng,use_case.identity,use_case.signature,wallet,qa" bgblue>
 <span xsmall>Keybase ("GPG++")</span>
 @[https://julien.ponge.org/blog/simpler-gnupg-with-another-look-at-keybase/]
 - Keybase essentially introduced a modern way to build trust networks, because
@@ -3653,7 +3671,7 @@ guncat's  standard  output  stream, which may thereupon be processed by
 other tools.
 </pre>
 
-<pre zoom labels="pgp,js,TODO">
+<pre zoom labels="pgp,javascript,TODO">
 <span xsmall>OpenPGP.js</span>
 @[https://github.com/openpgpjs/openpgpjs]
 JavaScript implementation of the OpenPGP protocol defined in RFC 4880.
@@ -3721,7 +3739,7 @@ of the p=reject policy by Oct.16.
 
 
 <div groupv>
-<pre zoom bgorange labels="standards,PKCS,asymmetric,signature,secret_mng,signature,">
+<pre zoom bgorange labels="standards,PKCS,type.asymmetric,secret_mng,use_case.signature,">
 <a xsmall href="https://en.wikipedia.org/wiki/PKCS">PKCS</a>
 PKCS: Set of "high-level" "Public Key Cryptography Standards":</a>
 - ºPKCS #1º math. properties + format of RSA pub/priv keys, and
@@ -3773,13 +3791,13 @@ BºWebCrypto API providesº;
 
 
 <span title>OASIS STANDARDS</span>
-<pre zoom labels="signature,TODO">
+<pre zoom labels="use_case.signature,standards,TODO">
 <span xsmall>XAdES</span>
 @[https://www.w3.org/TR/XAdES/]
 XML Advanced Electronic Signatures (XAdES)
 </pre>
 
-<pre zoom labels="signature,standards,java" TODO>
+<pre zoom labels="use_case.signature,standards,java" TODO>
 <span xsmall>DSS</span>
 OASIS XML Digital Signature Services (DSS) TC
 (Not to be confused with Digital Signature Standard DSS)
@@ -3834,7 +3852,7 @@ the integration and use of DSS in their applications.
   or time-stamp tokens into one single digital (zip) container.
 </pre>
 
-<pre zoom labels="signature,comparative,TODO">
+<pre zoom labels="use_case.signature,comparative,TODO">
 <span xsmall>JaDES vs EADES</span>
 Why do we want to support AdES formats using x509 certificates? JAdES
 may be the only one worth considering if it can be used e.g. in a VC
@@ -3862,10 +3880,9 @@ person more active driving the drafts, just to see if they are aware
 and check.
 </pre>
 
-<pre zoom labels="hash,non_repudability,x509">
+<pre zoom labels="type.hash,use_case.non_repudability,use_case.proof-of-existence,x509">
 <span xsmall>X.509 TimeStamp Protocol</span>
 @[https://tools.ietf.org/html/rfc3161]
-
 - RFC describes format for request and responses sent to a
   Time Stamping Authority (TSA)
 - It establishes several security-relevant requirements for TSA
@@ -4004,9 +4021,9 @@ https://www.computer.org/csdl/proceedings-article/sp/2019/666000b002/19skg8v5fZS
 
 <div groupv>
 <span title>Quantum Related</span>
-<pre zoom labels="signature,asymmetric,radar,TODO">
+<pre zoom labels="use_case.signature,type.asymmetric,radar,TODO">
 <span xsmall>Lamport signatures</span>
-- quantum-proof cryptographic signatures
+- quantum-proof cryptographic signatureS
 - Quantum Safe Ethereum proxy with
   Winternitz One-Time signatures
   @[https://github.com/tjade273/QEth]
@@ -4016,7 +4033,7 @@ https://www.computer.org/csdl/proceedings-article/sp/2019/666000b002/19skg8v5fZS
 <div groupv>
 <span title>Zero Knowledge Execution</span>
 
-<pre zoom labels="zero_knowledge,resources">
+<pre zoom labels="zero_knowledge,resource">
 <span xsmall>Ext. Links</span>
 - Awesome ZKP:
   https://github.com/matter-labs/awesome-zero-knowledge-proofPurpose
@@ -4149,7 +4166,7 @@ the creation of public addresses without the knowledge of
 the private key. Seeds are typically serialized into
 human -readable words in a Mnemonic phrase.
 </pre>
-<pre zoom labels="signature">
+<pre zoom labels="use_case.signature">
 <span xsmall>JS Carbon Wallet</span>
 @[https://en.bitcoin.it/wiki/CarbonWallet]
 
@@ -4180,7 +4197,7 @@ human -readable words in a Mnemonic phrase.
 
 <span title>Hardware wallets</span>
 
-<pre zoom labels="secret_mng,25519,hardware,wallet,signature" >
+<pre zoom labels="secret_mng,25519,hardware,wallet,use_case.signature" >
 <span xsmall>Lattice 1</span>
 @[https://github.com/GridPlus]
 @[https://blog.gridplus.io/lattice1-sdk-and-generalized-signatures-e17da7cf65d7]
@@ -4431,7 +4448,7 @@ Ex:
 @[https://people.eecs.berkeley.edu/~daw/papers/hwkeysearch96-www/chap-10_local.html]
 </pre>
 
-<pre zoom labels="aaa,hardware,TODO">
+<pre zoom labels="use_case.AAA,hardware,TODO">
 <span xsmall>yubikey</span>
 @[https://www.yubico.com/products/yubikey-hardware/]
 @[https://github.com/drduh/YubiKey-Guide]
@@ -4444,7 +4461,7 @@ two-factor, multi-factor and passwordless authentication."""
 - Multi-protocol support: FIDO2, U2F, Smart card, OTP
 </pre>
 
-<pre zoom labels="secret_mng,hardware,signature,aaa,java,keystore">
+<pre zoom labels="secret_mng,hardware,use_case.signature,use_case.AAA,java,keystore">
 <span xsmall>USB Armory</span>
 @[https://inversepath.com/usbarmory]
 The following example security application ideas
@@ -4463,7 +4480,7 @@ illustrate the flexibility of the USB armory concept:
 - low level USB security testing
 </pre>
 
-<pre zoom labels="secret_mng,aaa,hardware,signature,keystore">
+<pre zoom labels="secret_mng,use_case.AAA,hardware,use_case.signature,keystore">
 <span xsmall>Enterprise HSM</span>
 @[https://safenet.gemalto.com/data-encryption/hardware-security-modules-hsms/protectserver-security-module/]
 
@@ -4483,7 +4500,7 @@ Gemalto    │              │          │                │                 
 <span title>MultiFacto authentication</span>
 </pre>
 
-<pre zoom  labels="101,aaa,TODO">
+<pre zoom  labels="101,use_case.AAA,TODO">
 <span xsmall>Universal Second Factor (U2F)</span>
 - See also:
 @[https://en.wikipedia.org/wiki/Multi-factor_authentication]
@@ -4696,7 +4713,7 @@ including Integers, Big Numbers, Elliptic Curves and Profilers.
 <a TODO href="https://www.fi.muni.cz/~xsvenda/jcalgtest/index.html">Java Card Comparision</a>
 </pre>
 
-<pre zoom labels="aaa,hardware,secret_mng">
+<pre zoom labels="use_case.AAA,hardware,secret_mng">
 <span xsmall>Security token</span>
 @[https://en.wikipedia.org/wiki/Security_token]
 - Physical devices used to gain access to an
@@ -4821,7 +4838,7 @@ execution environment (TEE).
 Bºencrypting secrets that can be more easily recovered by humans.º
 </pre>
 
-<pre zoom labels="secret_mng,protocol,pkcs,TODO">
+<pre zoom labels="secret_mng,protocol.PKCS#11,pkcs,TODO">
 <span xsmall>KMIP: Key Mng.Interop.Prot. PKCS#11 </span>
 
 KMIP: @[https://en.wikipedia.org/wiki/Key_Management_Interoperability_Protocol_(KMIP)]
@@ -4922,9 +4939,9 @@ SM2, SM3, SM4 replace RSA, SHA , AES
 https://hackernoon.com/a-guide-to-post-quantum-cryptography-d785a70ea04b
 </pre>
 
-<pre zoom labels="signature,asymmetric,TODO">
+<pre zoom labels="use_case.signature,type.asymmetric,TODO">
 <span xsmall>BLS Signature Scheme</span>
-https://medium.com/@srikarv/the-bls-signature-scheme-a-short-intro-801c723afffa
+@[https://medium.com/@srikarv/the-bls-signature-scheme-a-short-intro-801c723afffa]
 ... Some prominent encryption schemes in literature and the fundamental
 reasoning behind their formulation include:
 
@@ -4963,21 +4980,49 @@ reasoning behind their formulation include:
   Tate pairing computation, and curve selection.
 </pre>
 
-<pre zoom labels="signature,hardware,TODO">
+<pre zoom labels="use_case.signature,hardware,TODO">
 <span xsmall>Trusted Signature Pad</span>
 https://www.google.com/search?q=trusted+signature+pad
 </pre>
 
-<pre zoom labels="pgg,postgresql,low_code,TODO">
-<span xsmall>PostgreSQL pgcrypto</span>
-@[https://www.postgresql.org/docs/8.3/pgcrypto.html]
-- Cryptographic functions for PostgreSQL.  </pre>
+<pre zoom labels="protocol.ssh,qa,secret_mng,use_case.identity,TODO">
+<span title>OKKA ASA: Ssh + PKI</span>
+@[https://dzone.com/articles/ssh-is-dead-long-live-ssh-one-million-ssh-logins-w]
+
+·Bº...more of our customers have come to the realization that server º
+ Bºaccess is an identity problem first and foremost.... º
+ BºThe more you can unify access with identity, the better.º
+
+· "...Our customers use Okta Advanced Server Access  (Okta ASA) to 
+  securely automate identity and access controls for their teams to use 
+  SSH safely. And we've just reached a significant adoption milestone 
+  by registering over 1 million SSH logins per month... and growing!..."
+ ºWith Okta ASA, SSH logins now follow a familiar Single Sign-On experience,º
+
+· SSH transport protocol is inherently secure; however, the backing    [secret_mng]
+  credential mechanism is prone to human error-with potentially 
+  catastrophic results....  companies have traditionally been forced 
+  to do one of the following:
+  - Implement a security policy forcing users to rotate their personal SSH Keys (easiest, least secure).
+  - Operate a secure vault service storing SSH Keys, checked out on demand (harder, more secure).
+  - Purchase and deploy a privileged access management product to act as a gateway for remote access (hardest, most secure).
+
+· traditional Public Key Infrastructure backing SSH was built for a 
+  different time, where a key exchange meant enough to grant trust. 
+
+· OpenSSH introduced in 2011 the capability to authenticate using a
+  Client Certificate (vs SSH Key). Client Certs. metadata carry 
+  cryptographically verifiable metadata to store usernames, roles, ... 
+  and an ºexpiration dateº.
+</pre>
+
 
 
 </div>
 </body>
 </html>
 <!--
+#####################
 https://martin.kleppmann.com/2020/11/18/distributed-systems-and-elliptic-curves.html
 
 New courses on distributed systems and elliptic curve cryptography
@@ -4987,8 +5032,6 @@ I have just published new educational materials that might be of
 interest to computing people: a new 8-lecture course on distributed 
 systems, and a tutorial on elliptic curve cryptography.
 #####################
-OKKA ASA: Ssh + PKI
-https://dzone.com/articles/ssh-is-dead-long-live-ssh-one-million-ssh-logins-w
 ########################
 IBM Launches Fully Homomorphic Encryption (FHE) Toolkit for Linux - 9to5Linux
 https://9to5linux.com/ibm-launches-fully-homomorphic-encryption-fhe-toolkit-for-linux 

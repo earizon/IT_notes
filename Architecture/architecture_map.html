@@ -13,14 +13,14 @@
 <div group>
 <span title>DB Engines Types</span><br/>
 <div groupv>
-<pre bgorange zoom labels="db_engine,101,resource">
+<pre bgorange zoom labels="db_engine.*,101,resource">
 <span xsmall>External Links</span>
 @[https://db-engines.com/]
 @[https://db-engines.com/en/ranking]
 @[https://dzone.com/articles/rant-there-is-no-nosql-data-storage-engine]
 </pre>
 
-<pre bgorange zoom labels="db_engine,101,consistency,storage,distributed,cassandra,cosmosdb,TODO">
+<pre bgorange zoom labels="db_engine.*,101,consistency,storage.*,distributed,cassandra,cosmosdb,TODO">
 <span xsmall>Consistency models</span>
 (in distributed databases)
 ºFive consistency modelsº natively supported by the A.Cosmos DBºSQL APIº
@@ -59,22 +59,26 @@ Local               Consistent prefix   Consistent prefix
 
 
 
-<pre zoom labels="101,schema,TODO">
+<pre zoom labels="101,db_engine.*,diagram,comparative,TODO">
 <span xsmall>dbEngine: Data Topology compared</span>
-  Key-value:    wide-Column:         Document
-  o -- O        o -- O O O O ... O   O→O→O...
-  o -- O        o -- O O O O ... O    ↘    
-  o -- O        o -- O O O O ... O     O→O
-  ...           ...                     ↘   
-                                         O→O
-                                          ↘ 
-                                           O  
+  Key-value:    wide-Column:         Document        Graph                   RDMS
+  o -- O        o -- O O O O ... O   O→O→O...    (Hyper-Relational)    
+  o -- O        o -- O O O O ... O    ↘             O → O ←─┐          Table1   Table2  Table3
+  o -- O        o -- O O O O ... O     O→O              ↓   │            O ──┐   O ←─┐   O
+  ...           ...                     ↘            ┌─ O   │            O   │   O ←───→ O
+                                         O→O         │  ↓   │            O   └─→ O   └─→ O
+                                          ↘          │  O → O
+                                           O         │    ↘            (Less powerful than
+                                                     └────→ O           Graph but easier to
+                                                  Graph represent the   mantain)
+                                                  most general 
+
 </pre>
  
 </div>
 
 <div groupv>
-<pre zoom  labels="graph_db,comparative,db_engine,comparative">
+<pre zoom  labels="db_engine.graph_db,comparative,comparative">
 <span xsmall>Graph DBMS</span>
 - represent data in graph structures of nodes (entities) and edges(relations).
 - Relations are are first class citizens (vs foreign keys in SQL ddbbs, 
@@ -229,11 +233,76 @@ BºGraph Management Software Summaryº
   - Storage:
     - Hadoop, Neo4j, Apache HBase, Cassandra.
 </pre>
+<pre zoom labels="101,db_engine.graph_db,db_engine.rdf,comparative">
+<span title>RDF vs Graph</span>
+@[https://www.youtube.com/watch?v=t1Mn178sEYg]
+Both RDF and LPG are types fo Graph databases.
 
-<pre zoom labels="graphs,charts,ui,TODO">
-<span xsmall>Graph analytics and rendering</span>
+  RDF: w3c recomendation for data exchange.               LPG: Label Property Graph (Neo4j, ...)
+===========================================               ===========================================
+· Developed in the "beginnings" of Web to add             · Developed in Sweden (2000 - 2007)
+  semantics to web.                                       · (e)fficient (graph native) storage
+· Specialized RDF stores (triple/quad) stores             · (f)ast query and traversal
+  arises, also called "Semantic Graph Databases".         · (h)umane model: Close to the way we think
+                                                          · understand and reason about the world.
+                                                          · LPG can also be used as an efficient storage mechanism for
+                                                            RDF data.
 
-BºNetWorkXº
+· Based on the notion of statement:                       · LPG focus on objects (vs RDF statements)
+  statement == triplet [subject,predicate,object]           
+  ej:                                                       ej:  
+  subject      predicate     object                         
+  =========    ==========   =======                         
+  ppl://ann ·· is a ········ person      ┐               ┌─ "There is a person that is described by her name: Ann,
+  ppl://ann ·· user ID is ·· @ann       ─┴···············┴─   her user ID: @ann, and a globally unique identifier: ppl://ann "  
+  ppl://ann ·· name is ····· Ann Smith  ··················· "There is a person with a unique identifier: ppl://dan"
+  ppl://dan ·· likes ······· ppl://ann  ··················· "Dan likes Ann"
+Bº"""...Basically it is an atomic decomposition of º
+Bº   the data model around facts"º
+
+· • Vertices:                                             · • Vertices:
+    Every statement produces two vertices in the graph.       Unique Id + set of key-value pairs
+    - Some are uniquely identified by URIs: Resources       
+    - Some are property values: Literals.                   
+  • Edges:                                                  • Edges:
+    Every statement produces an edge.                         Unique Id + set of key-value pairs
+    Uniquely identified by URIs.                            
+  • Vertices or Edges have RºNOºinternal structureº         • Vertices and Edges Bºhave internal structureº
+
+· Query Language: SparQL                                  · Query Language: Cypher
+
+  prefix ms: ˂http://myschma.me/˃
+  prefix rdf: ˂http://www ...  #˃ 
+
+  SELECT ?who             ································  MATCH (who)-[:LIKES]-˃(a:Person)
+  {                                                         WHERE a.name CONTAINS 'Ann'
+    ?a rdf:type ms:Person .                                 RETURN who
+    ?a ms:name ?asName .
+    FILTER regex(?asName, 'Ann')
+    ?who ms:likes ?a .
+  }
+
+· RDF Stores (vs RDF model) is highly indexed,            · Native GraphDBs (Neo4j,...?) excel with highly
+  causing "JOIN" problems.                                  dynamic datasets and transactions UC where 
+                                                            data integrity is key
+
+· RDF has no inference capabilities                       · Graph native can have inference capabilities
+ BºSemantics on RDF are just RULES called ONTOLOGIESº,      e.g.:
+  an Bºoptional layerºon top of RDF data.                    Philip owns a        Mercedes
+  """ ... They are difficult to debug and reasoning          Juan   is married to Mercedes 
+   with ontology languages is intractable/                  
+   undecidable"""                                            The inference engine can deduce that 1st
+                                                             Mercedes is an instance of a car, and the
+                                                             2nd is an instance of a person
+
+
+<hr/>
+<span xsmall>Do graph DBs scale</span>
+@[https://dzone.com/articles/do-graph-databases-scale]             [scalability][TODO]
+
+<hr/>
+<span xsmall>analytics and rendering</span>
+BºNetWorkXº                                      [data.visualization][data.analytics][ui]
 https://networkx.org/documentation/stable/index.html
 - Python package for the creation, manipulation, and 
   study of the structure, dynamics, and functions of complex networks.
@@ -245,17 +314,7 @@ BºGraphViz Graph Visualizationº
 http://www.graphviz.org/gallery/
 </pre>
 
-
-
-
-
-
-<pre zoom labels="graph_db,db_engine,distributed,TODO">
-<span xsmall>Do graph DBs scale</span>
-https://dzone.com/articles/do-graph-databases-scale
-</pre>
-
-<pre zoom labels="graph_db,db_engine,distributed,TODO">
+<pre zoom labels="db_engine.graph_db,distributed,TODO">
 <span xsmall TODO>Distributed Graph DB</span>
 <span xsmall>Query</span>
 @[https://www.infoq.com/presentations/graph-query-distributed-execution/]
@@ -290,14 +349,65 @@ http://owlgred.lumii.lv/
 
 https://www.cognitum.eu/Semantics/FluentEditor/  
 </pre>
+</div>
 
+<div groupv>
+<pre zoom labels="db_engine.rdf,comparative">
+<span xsmall>RDF stores</span>
+@[https://db-engines.com/en/article/RDF+Stores]
+@[https://en.wikipedia.org/wiki/Resource_Description_Framework]
+- Resource Description Framework stores
+  ºdescribes information in triplets:º
+ º(subject,predicate,object)º
+- Originally used for describing
+  IT-resources-metadata.
+- Today often used in semantic web.
+- RDS is a subclass of graph DBMS:
+  (subject,predicate,object)
+   ^          ^      ^
+   node      edge   node
+  but it offer specific methods
+  beyond general graph DBMS ones. Ex:
+  SPARQL, SQL-like query lang. for
+  RDF data, supported by most
+  RDF stores.
 
+ºExamplesº
+- MarkLogic
+- Jena
+- Virtuoso
+- Amazon Neptune
+- GraphDB
+- Apache Rya:
+</pre>
+<pre zoom labels="db_engine.rdf,standards,TODO">
+<span xsmall>JSON-LD</span>
+- format for mapping JSON data into the RDF semantic graph model, as defined by [JSON-LD]. 
+
+@[https://en.wikipedia.org/wiki/JSON-LD
+</pre>
+
+<pre zoom labels="db_engine.rdf,apache_rya,spark,scalability">
+<span xsmall>Apache Rya</span>
+@[https://searchdatamanagement.techtarget.com/news/252472464/Apache-Rya-matures-open-source-triple-store-database]
+· Started by Adina Crainiceanu, associate professor of computer science at
+  the U.S.  Naval Academy. Initial research paper published in 2012
+· scalable cloud-based RDF triple store that supports fast-and-easy access to 
+  data through SPARQL queries.
+  built on top of Apache Accumulo®. (MongoDB back-end also implemented). 
+· Rya uses novel storage methods, indexing schemes, and query 
+  processing techniques thatºscale to billions of triples across º
+ ºmultiple nodes.º
+
+· Rya's users include U.S. Navy (autonomous drones,...). 
+
+</pre>
 </div>
 
 
 
 <div groupv>
-<pre zoom labels="rdbm,sql,db_engine,comparative">
+<pre zoom labels="db_engine.rdbm,sql,comparative">
 <span xsmall>RDBMS</span>
 ºRDBMSº
 ºFeaturesº
@@ -372,7 +482,7 @@ https://www.cognitum.eu/Semantics/FluentEditor/
        WHERE ... ORDER BY ...
 </pre>
 
-<pre zoom labels="rdbm,low_code,event_stream,kafka,sql,TODO">
+<pre zoom LABELs="db_engine.rdbm,low_code,architecture.event_stream,kafka,sql,TODO">
 <span xsmall>Materialize: Stream 2 PSQL</span>
 @[https://github.com/MaterializeInc/materialize]
 - Streaming database for real-time applications, accepting input data from
@@ -390,7 +500,7 @@ https://www.cognitum.eu/Semantics/FluentEditor/
   to support builting PostgreSQL functions.
 </pre>
 
-<pre zoom labels="rdbm,sql,sqlite,db_engine,comparative" >
+<pre zoom labels="db_engine.rdbm,sql,sqlite,comparative" >
 <span xsmall>dqlite.io</span>
 @[https://dqlite.io/]
 Dqlite (“distributed SQLite”) extends SQLite across a cluster of machines,
@@ -401,7 +511,7 @@ transactional consensus and fault tolerance while preserving SQlite’s
 outstanding efficiency and tiny footprint.
 </pre>
 
-<pre zoom labels="rdbm,qa,sql,tool">
+<pre zoom labels="db_engine.rdbm,qa,sql,tool">
 <span xsmall>SchemaSpy</span>
 @[http://schemaspy.org/]
 - SchemaSpy is generates database to HTML documentation, including Entity Relationship diagrams.
@@ -410,7 +520,7 @@ outstanding efficiency and tiny footprint.
 </div>
 
 <div groupv>
-<pre zoom labels="key_value,comparative,db_engine">
+<pre zoom labels="db_engine.key_value,comparative">
 <span xsmall>KEY-VALUE</span>
 ºKEY-VALUE STORESº
 -ºsimplestºform of DBMS.
@@ -494,7 +604,7 @@ outstanding efficiency and tiny footprint.
   - Used by Geth/Besu/... and other Ethereum clients ...
 </pre>
 
-<pre zoom labels="key_value,db_engine">
+<pre zoom labels="db_engine.key_value">
 <span xsmall>RocksDB</span>
 @[https://raw.githubusercontent.com/facebook/rocksdb/gh-pages-old/intro.pdf]
 
@@ -535,7 +645,7 @@ BºA block, once written to storage, is never modified.º
 </div>
 
 <div groupv>
-<pre zoom labels="search,comparative,db_engine,comparative">
+<pre zoom labels="db_engine.search,comparative,comparative">
 <span xsmall>Search</span>
 - "NoSQL" DBMS for search of content
 - Optimized for:
@@ -576,7 +686,7 @@ BºA block, once written to storage, is never modified.º
 </div>
 
 <div groupv>
-<pre zoom labels="timeseries,comparative,db_engine,comparative">
+<pre zoom labels="db_engine.timeseries,comparative,comparative">
 <span xsmall>Time Series</span>
 - Managing time series data
 - very high TX load:
@@ -688,12 +798,12 @@ BºA block, once written to storage, is never modified.º
   @[https://www.infoq.com/articles/redis-time-series-grafana-real-time-analytics/]
     How to Use Redis TimeSeries with Grafana for Real-time Analytics
 </pre>
-<pre zoom labels="timeseries,comparative,TODO,db_engine,comparative">
+<pre zoom labels="db_engine.timeseries,comparative,TODO">
 <span xsmall>TS Popularity</span>
 @[https://www.techrepublic.com/article/why-time-series-databases-are-exploding-in-popularity/]
 </pre>
 
-<pre zoom labels="timeseries,db_engine,TODO">
+<pre zoom labels="db_engine.timeseries,TODO">
 <span xsmall>M3DB</span>
 M3DB: (Uber) OOSS distributed timeseries database 
 - ability to shard its metrics into partitions,
@@ -704,60 +814,10 @@ M3DB: (Uber) OOSS distributed timeseries database
 
 </div>
 
-<div groupv>
-<pre zoom labels="rdf,db_engine,comparative">
-<span xsmall>RDF stores</span>
-@[https://db-engines.com/en/article/RDF+Stores]
-@[https://en.wikipedia.org/wiki/Resource_Description_Framework]
-- Resource Description Framework stores
-  ºdescribes information in triplets:º
- º(subject,predicate,object)º
-- Originally used for describing
-  IT-resources-metadata.
-- Today often used in semantic web.
-- RDS is a subclass of graph DBMS:
-  (subject,predicate,object)
-   ^          ^      ^
-   node      edge   node
-  but it offer specific methods
-  beyond general graph DBMS ones. Ex:
-  SPARQL, SQL-like query lang. for
-  RDF data, supported by most
-  RDF stores.
 
-ºExamplesº
-- MarkLogic
-- Jena
-- Virtuoso
-- Amazon Neptune
-- GraphDB
-- Apache Rya:
-</pre>
-<pre zoom labels="rdf,TODO">
-<span xsmall>JSON-LD</span>
-- format for mapping JSON data into the RDF semantic graph model, as defined by [JSON-LD]. 
-
-@[https://en.wikipedia.org/wiki/JSON-LD
-</pre>
-
-<pre zoom labels="rdf,apache_rya,db_engine">
-<span xsmall>Apache Rya</span>
-@[https://searchdatamanagement.techtarget.com/news/252472464/Apache-Rya-matures-open-source-triple-store-database]
-The project started at the U.S. government's Laboratory for Telecommunication
-Sciences with an initial research paper published in 2012.
-
-Among Rya's users is the U.S. Navy, which is using the open source technology
-in a number of efforts, including one for autonomous drones. The project got
-started because there was a need for a scalable RDF triple store and no
-existing system that met all requirements, said Adina Crainiceanu, vice
-president of Apache Rya and associate professor of computer science at the U.S.
-Naval Academy.
-
-</pre>
-</div>
 
 <div groupv>
-<pre zoom labels="service_registry,db_engine,comparative">
+<pre zoom labels="db_engine.service_registry,comparative">
 <span xsmall>Service Registry</span>
  ºand Discoveryº
 
@@ -852,7 +912,7 @@ Naval Academy.
  - Comparision chart:
  coreos.com/etcd/docs/latest/learning/why.html
 </pre>
-<pre zoom labels="service_registry,db_engine,etcd,101">
+<pre zoom labels="db_engine.service_registry,etcd,101">
 <span xsmall>etcd 101</span>
 "etcd" name refers to unix "/etc" folder and "d"istributed system.
 
@@ -918,7 +978,7 @@ Physical view:
 
 <DIV groupv >
 
-<pre zoom labels="wide_column,db_engine,cassandra,Spark,Kafka,Elasticsearch,hbase,scylla,comparative,cosmosdb,spanner">
+<pre zoom labels="db_engine.wide_column,cassandra,big_data.spark,Kafka,Elasticsearch,hbase,comparative,cosmosdb,spanner">
 <span xsmall>Wide Column Stores</span>
 (also called extensible record stores)
 -ºshort of two-dimensionalº ºkey-value stores.º
@@ -955,7 +1015,6 @@ Physical view:
   -ºIntegrated Managed Data    º
    ºLayer Solutions with Spark,º
    ºKafka and Elasticsearch.   º
-
 - PostgreSQL + cstore_fdw extension: columnar store extension for analytics
   use cases where data is loaded in batches.
   Cstore_fdw’s columnar nature delivers performance by only reading relevant
@@ -964,20 +1023,18 @@ Physical view:
 
 
 -ºScyllaº
-  - compatible with Cassandra (same CQL and Thrift protocols,
-     and same SSTable file formats)
-    with  higher throughputs and lower latencies (10x).
+  - compatible with Cassandra (same CQL and Thrift protocols,      [scalability]
+    and same SSTable file formats) with  higher throughputs and 
+    lower latencies (10x).
   - C++14 (vs Cassandra Java)
-  -ºcustom network managementºthat minimizes resource by
-   ºbypassing the Linux kernel. No system call is requiredº
+  -ºcustom network managementºthat minimizes resource by º
+   ºbypassing the Linux kernel. No system call is required º
     to complete a network request. Everything happens in userspace.
   -ºSeastar async lib replacing threadsº
   - sharded design by node:
     - each CPU core handles a data-subset
-    - authors claim to achieve much better
-      performance on modern NUMA SMP archs,
-      and to scale very well with the number
-      of cores:
+    - authors claim to achieve much better performance on modern NUMA SMP archs,
+      and to scale very well with the number of cores:
       -ºUp to 2 million req/sec per machineº
 -ºHBaseº. Apache alternative to Google BigTable
   Internally uses skip-lists:
@@ -986,7 +1043,7 @@ _ºCosmosDBº
 REF: Google bigTable-osdi06.pdf
 -ºGoogle Spannerº
 </pre>
-<pre zoom labels="wide_column,101,cassandra,db_engine,">
+<pre zoom labels="db_engine.wide_column,101,cassandra,">
 <span xsmall>Cassandra 101</span>
 RºWARN:º
 - Why It's a Poor Choice For a Metadata Database for Object Stores
@@ -1003,8 +1060,8 @@ RºWARN:º
     keeping them from ever moving past simple archival workloads.
 
 
-
-
+- NOTE: It is not unusual to see Cassandra clusters
+  with 100+ nodes in production enviroments.
 
 Cassandra whitepaper:
 -ºdistributed key-value storeº
@@ -1245,7 +1302,7 @@ Cassandra Orchestration Tool by Spotify
    OS X or Linux with python3, and Bourne style shell."""
 </pre>
 
-<pre zoom labels="document_store,db_engine,comparative,TODO">
+<pre zoom labels="db_engine.document_store,comparative,TODO">
 <span xsmall>Dynamo vs Cassandra</span>
 https://sujithjay.com/data-systems/dynamo-cassandra/
 Dynamo vs Cassandra : Systems Design of NoSQL Databases
@@ -1259,7 +1316,7 @@ guarantees come in a range of flavours; but they are bunched under a
 category called NoSQL databases.
 </pre>
 
-<pre zoom labels="wide_column,db_engine,">
+<pre zoom labels="db_engine.wide_column,">
 <span xsmall>Google Spanner</span>
 (BigTable subtitution)
 https://cloud.google.com/spanner/
@@ -1274,7 +1331,7 @@ https://cloud.google.com/spanner/
 </div>
 
 <div groupv>
-<pre zoom labels="document_store,db_engine,comparative">
+<pre zoom labels="db_engine.document_store,comparative">
 <span xsmall>Document Stores</span>
 - also called document-oriented DBMS
 - schema-free:
@@ -1314,7 +1371,7 @@ Note from https://www.xplenty.com/blog/couchdb-vs-mongodb/
   - Reviews: MongoDB seems to have somewhat better reviews than CouchDB.
 </pre>
 
-<pre zoom labels="mongo,document_store,db_engine,101" id="mongo_summary">
+<pre zoom labels="mongo,db_engine.document_store,101" id="mongo_summary">
 <span xsmall>MongoDB Summary</span>
 $ mongo                                  ← Launch mongo shell
 
@@ -1413,7 +1470,7 @@ BºIndexesº
 </div>
 
 <div groupv>
-<pre zoom labels="log_collect,db_engine,comparative">
+<pre zoom labels="db_engine.log_collect,comparative">
 <span xsmall>Data(log) collect</span>
 ºFluentDº                                     |ºLogstashº
  "Improved" logstat                           |- TheºLº in ELK
@@ -1449,15 +1506,14 @@ See also: Spring cloud Sleuth: @[../JAVA/java_map.html#spring_cloud_summary]
   Distributed tracing for Spring Cloud compatible with Zipkin, HTrace log-based 
   (e.g. ELK) tracing.
 </pre>
-<pre zoom labels="log_collect,db_engine,prometheus,kubernetes,cloud">
+<pre zoom labels="db_engine.log_collect,prometheus,computing.kubernetes,cloud">
 <span xsmall>Loki</span>
 @[https://grafana.com/loki]
 - logging backend, optimized for Prometheus and Kubernetes
 - optimized to search, visualize and explore your logs natively in Grafana.
 </pre>
-<pre zoom labels="search,timeseries,log_collect,qa,security">
-<span xsmall>Logreduce</span>
-<span xsmall>IA filter</span>
+<pre zoom labels="db_engine.search,db_engine.timeseries,db_engine.log_collect,qa,security,aaa.*,ia">
+<span xsmall>Logreduce IA filter</span>
 <a xsmall TODO href="https://opensource.com/article/18/9/quiet-log-noise-python-and-machine-learning">Logreduce IA filter</a>
   - <a href=https://pypi.org/project/logreduce/">logreduce@pypi</a>
   - Quiet log noise with Python and machine learning
@@ -1466,8 +1522,8 @@ See also: Spring cloud Sleuth: @[../JAVA/java_map.html#spring_cloud_summary]
 
 <div groupv>
 
-<pre zoom labels="event_stream">
-<span xsmall TODO>Streams</span>
+<pre zoom labels="architecture.event_stream">
+<span xsmall TODO>Event Stream Architectures</span>
 Distributed (<a href="https://martinfowler.com/eaaDev/EventSourcing.html">Event</a>) Stream Processors
 REF:
 - <a href="https://en.wikipedia.org/wiki/Stream_processing">Stream_processing@Wikipedia</a>
@@ -1644,7 +1700,7 @@ Domain Driven Design, CQRS and Event Sourcing
 <div groupv>
 <span title>Enterprise Patterns</span>
 
-<pre zoom labels="enterprise_patterns,data_integration,101">
+<pre zoom labels="enterprise_patterns,data.integration,101">
 <span xsmall>ESB Architecture</span>
 - Can be defined by next feautes:
   - Monitoring of services/messages passed between them
@@ -1681,7 +1737,7 @@ s   |
     |   Message Service                    MQ Series, MSMQ, ...
 </pre>
 
-<pre zoom label="enterprise_patterns,data_integration,event_stream,low_code,ui,tool,decoupled_systems,kafka," bgorange>
+<pre zoom labels="enterprise_patterns,data.integration,architecture.event_stream,low_code,ui,tool,decoupled_systems,kafka," bgorange>
 <span xsmall>Apache NiFi: Data Routing</span>
 @[https://nifi.apache.org]
 - no-code, .drag-and-drop Web-GUI to build pipelines for
@@ -1833,12 +1889,22 @@ BºOptaPlannerº [optimization]
 </div>
 
 <div groupv>
-<span title>Messaging (event-driven arch)</span>
-<pre zoom label="messaging,enterprise_patterns,data_integration,event_stream,decoupled_systems,101,redis,comparative" bgorange id="messaging_summary">
+<span title>Messaging Architecture</span>
+<pre zoom label="architecture.messaging,enterprise_patterns,data.integration,architecture.event_stream,decoupled_systems,101,redis,comparative" bgorange id="messaging_summary">
 <span xsmall>Summary</span>
 • Messaging represents a layer down ESB in some cases.
   Messaging architectures focus on reliable delivery of messages of different nature/timelife.
   On top of them, ESB add data management/processing/transformation.
+• In general a message in message driven architectures represents some information that
+ *MUST* be processed, while an event in event stream architecture ("Kafka", "Pulse", fast 
+  distributed queues) represent a more generic information that MUST or MUST not be processed.
+    Event streams can most of the time be used to build a message stream architecture on top
+  and ussually the have better real-time performance and/or scalability (big data) performance.
+    On the other side conventional messaging architectures focus on warranting the proper
+  delivery and consumption of messages.
+    For example, messages triggering transactions representing "money" that do not require 
+  big-data scalation are better deal with message archictectures than general event stream 
+  architectures.
 
 - Message classification by consumption model:
  ┌──────────────────────────────────────────────────────────────────────────────────────────┐
@@ -1978,7 +2044,7 @@ Bº##################º
   · "The many meanings of event-driven architecture,"
     @[https://www.youtube.com/watch?v=STKCRSUsyP0] (By Martin Fowler)
 </pre>
-<pre zoom label="messaging,enterprise_patterns,data_integration,event_stream,decoupled_systems,101," bgorange>
+<pre zoom label="architecture.messaging,enterprise_patterns,data.integration,architecture.event_stream,decoupled_systems,101," bgorange>
 <span xsmall>Message Brokers</span>
 - Routing
 - (De-)Multiplexing of messages from/into multiple messages to different recipients
@@ -1991,7 +2057,7 @@ Bº##################º
 - Kafka can also be used as message broker but is not its main intention
 </pre>
 
-<pre zoom labels="messaging,enterprise_patterns,ha," id="activemq_summary">
+<pre zoom labels="architecture.messaging,enterprise_patterns,ha," id="activemq_summary">
 <span title>ActiveMQ</span>
 • Based on JAVA
 Bº######################
@@ -2030,7 +2096,7 @@ Bº####################
   @[https://activemq.apache.org/components/artemis/documentation/latest/book.pdf]
 </pre>
 
-<pre zoom labels="messaging,enterprise_patterns,TODO" id="rabbitmq_summary">
+<pre zoom labels="architecture.messaging,enterprise_patterns,TODO" id="rabbitmq_summary">
 <span xsmall>RabbitMQ</span>
 @-[https://www.rabbitmq.com/getstarted.html]
 •  Based on Erlang (Rºvery reduce developer communityº)
@@ -2073,7 +2139,7 @@ Bº####################
 See @[#activemq_summary]
 </pre>
 
-<pre zoom labels="queue,TODO">
+<pre zoom labels="architecture.event_stream,performance,TODO">
 <span xsmall>OpenHFT: microSec Messaging storing to disk</span>
 @[https://github.com/OpenHFT/]
    - Chronicle-Queue: Micro second messaging that stores everything to disk
@@ -2104,7 +2170,7 @@ See @[#activemq_summary]
 
 </pre>
 
-<pre zoom labels="event_stream" id="CQRS_summary,">
+<pre zoom labels="architecture.event_stream,architecture.CQRS" id="CQRS_summary,">
 <span title>CQRS</span>
 REF: @[https://www.redhat.com/architect/pros-and-cons-cqrs]
 • CQRS stands for Command Query Responsibility Segregation 
@@ -2242,7 +2308,7 @@ Other evict strategies can be found at
 - Failover is supported via migration of sessions
 @[https://www.infoworld.com/article/3063161/why-redis-beats-memcached-for-caching.html]
 </pre>
-<pre zoom labels="redis,messaging,enterprise_patterns,key_value,cache,db_engine,event_stream,decoupled_systems,TODO," id="redis_summary">
+<pre zoom labels="redis,architecture.messaging,enterprise_patterns,db_engine.key_value,cache,architecture.event_stream,decoupled_systems,TODO," id="redis_summary">
 <span title>Redis</span>
 @[https://redis.io/]
 • in-memory data structure store, used as a key-value database, cache.
@@ -2410,18 +2476,18 @@ cacheManager.close();
     <span title>Distributed Storage</span></br>
 <div groupv>
 
-<pre zoom labels="101,storage,TODO">
+<pre zoom labels="101,storage.hardware,TODO">
 <span xsmall>SAN vs ...</span>
 @[https://serversuit.com/community/technical-tips/view/storage-area-network,-and-other-storage-methods.html]
 Storage Area Network, and Other Storage Methods
 </pre>
 
-<pre bgorange zoom labels="101,storage,TODO">
+<pre bgorange zoom labels="101,storage.*,TODO">
 <span xsmall>Data Lake</span>
 @[https://en.wikipedia.org/wiki/Data_lake]
 </pre>
 
-<pre bgorange zoom labels="storage,TODO">
+<pre bgorange zoom labels="storage.distributed,TODO">
 <span xsmall bgorange>UStore!!!</span>
 @[https://arxiv.org/pdf/1702.02799.pdf]
 Distributed Storage with rich semantics!!!
@@ -2458,16 +2524,15 @@ development and the UStore-backed applications can have better
 performance than the existing implementations. """
 </pre>
 
-<pre bgorange zoom labels="storage,distributed,TODO">
+<pre bgorange zoom labels="storage.distributed,TODO">
 <span xsmall>NFS considered harmful</span>
 @[http://www.time-travellers.org/shane/papers/NFS_considered_harmful.html]
 </pre>
-<pre bgorange zoom labels="storage,distributed,TODO">
+<pre bgorange zoom labels="storage.distributed,TODO">
 <span xsmall>cluster-FS comparative</span>
 @[http://zgp.org/linux-tists/20040101205016.E5998@shaitan.lightconsulting.com.html]
 </pre>
-<pre bgorange zoom labels="storage,ceph,distributed,TODO">
-<pre zoom labels="storage,ceph,TODO">
+<pre bgorange zoom labels="storage.ceph,distributed,TODO">
 <span xsmall>Ceph (exabyte Soft.Defined Storage)</span>
 @[http://ceph.com/ceph-storage/]
 Ceph’s RADOS provides you with extraordinary data storage  scalability—
@@ -2512,14 +2577,13 @@ Bº  the same environments Ceph integrates with, alongside your Ceph º
 Bº  deployment.º
 </pre>
 
-</pre>
-<pre bgorange zoom labels="storage,distributed,TODO">
+<pre bgorange zoom labels="storage.distributed,TODO">
 <span TODO xsmall>GlusterFS</span>
 - Software defined distributed storage,
 </pre>
 </div>
 <div groupv>
-<pre bgorange zoom labels="storage,distributed,TODO">
+<pre bgorange zoom labels="storage.distributed,TODO">
 <span xsmall>Tachyon memory-centric distributed FS</span>
 @[http://tachyon-project.org/index.html]
 - memory-centric distributed file system enabling reliable file sharing at memory-speed
@@ -2535,7 +2599,7 @@ It has more than 40 contributors from over 15 institutions, including Yahoo, Int
 The project is the storage layer of the Berkeley Data Analytics Stack (BDAS) and also part of the
 Fedora distribution.
 </pre>
-<pre bgorange zoom labels="storage,cloud,TODO">
+<pre bgorange zoom labels="storage.cloud,TODO">
 <span xsmall>S3QL FUSE FS (Amazon S2, GCS, OpenStack,...)</span>
 - FUSE-based file system
 - backed by several cloud storages:
@@ -2559,13 +2623,13 @@ Fedora distribution.
   cache), and decrypted/uncompressed on the fly.
 </pre>
 
-<pre zoom labels="storage,TODO">
+<pre zoom labels="storage.*,TODO">
 <span xsmall>Nexenta</span>
 @[https://nexenta.com/]
 - Software-Defined Storage Product Family.
 </pre>
 
-<pre zoom labels="storage,distributed,TODO">
+<pre zoom labels="storage.distributed,storage.cloud,TODO">
 <span xsmall>Minio.io</span>
 @[https://minio.io]
 - Private Cloud Storage
@@ -2574,7 +2638,7 @@ Fedora distribution.
   world with over 146.6M+ docker pulls.
 </pre>
 
-<pre zoom labels="storage,TODO">
+<pre zoom labels="storage.*,TODO">
 <span xsmall>Why Object storage?</span>
 @[https://www.ibm.com/developerworks/library/l-nilfs-exofs/index.html]
 
@@ -2646,7 +2710,7 @@ These processes and tools are further described in this documentation.
 
 <div groupv>
 <span title>AAA</span>
-<pre zoom labels="aaa,oauth,">
+<pre zoom labels="aaa.*,aaa.oauth,standards">
 <span xsmall>keycloak</span>
 @[https://www.keycloak.org/]
 @[https://medium.com/keycloak/keycloak-essentials-86254b2f1872]                   [TODO]
@@ -2899,7 +2963,7 @@ BºSpring Boot Java App using Keycloak for AAº
 
 
 </pre>
-<pre zoom labels="aaa,TODO,">
+<pre zoom labels="aaa.*,TODO,">
 <span xsmall>FreeIPA</span>
 @[https://www.reddit.com/r/linuxadmin/comments/apbjtc/freeipa_groups_and_linux_usernames/]
 </pre>
@@ -2924,7 +2988,7 @@ BºSpring Boot Java App using Keycloak for AAº
 @[https://cucumber.io/docs/guides/10-minute-tutorial/]
 </pre>
 
-<pre zoom labels="tracing,debugging,decoupled_systems,kubernetes,">
+<pre zoom labels="tracing,debugging,decoupled_systems,computing.kubernetes,">
 <span xsmall>Infra vs App Monitoring</span>
 BºInfrastructure Monitoring:º
   - Prometheus + Grafana
@@ -3051,7 +3115,7 @@ BºDATA QUERY (App. Monit)º                    ·  ·
   <a href="https://dzone.com/articles/when-disruptor-not-good-fit">When Disruptor is not good fit</a>
 </pre>
 
-<pre zoom labels="graph_db,graphql,important,api,TODO">
+<pre zoom labels="graphql,standards,important,api,performance,protocol.client_server,data.integration,TODO">
 <span xsmall>GraphQL</span>
 GraphQL: Facebook-developed language that provides a powerful API to get only
 the dataset you need in a single request, seamlessly combining data sources.
@@ -3066,26 +3130,27 @@ The purpose of this monorepo is to give the GraphQL Community:
     examples of how to implement or extend GraphiQL.
 
 
-<span xsmall>ApolloGraphQL</span>
-Simplify app development by combining APIs, databases, and microservices into a
-single data graph that you can query with GraphQL
+<span xsmall>Apollo GraphQL Middelware</span>
 @[https://www.apollographql.com/]
+· Simplify app development by combining APIs, databases, and microservices into a
+  single data graph that you can query with GraphQL.
+· @[https://www.infoq.com/news/2020/06/apollo-platform-graphql/]
+  Apollo Data Graph Platform: A GraphQL Middleware Layer for the Enterprise
 </pre>
 
 
-
-
+</pre>
 </div>
 
 <div groupv>
 <span title>Big Data</span>
-<pre zoom labels="hadoop,devops">
+<pre zoom labels="big_data.hadoop,storage.distributed,devops,low_code,">
 <span xsmall>Ambari: Hadoop Cluster Provision</span>
 @[https://projects.apache.org/project.html?ambari]
 Apache Ambari makes Hadoop cluster provisioning, managing, and monitoring dead simple.
 </pre>
 
-<pre zoom labels="event_stream,olap,TODO">
+<pre zoom labels="architecture.event_stream,big_data.spark,architecture.olap,TODO">
 <span xsmall>Spark</span>
 @[http://spark.apache.org/]
 - General cluster computing framework 
@@ -4242,7 +4307,7 @@ Basics:
 @[http://kafka.apache.org/documentation/#connectconfigs]
 </pre>
 
-<pre zoom labels="kafka,api,adminClient,TODO">
+<pre zoom labels="kafka,api,ui,TODO">
 <span xsmall>AdminClient</span>
 @[http://kafka.apache.org/11/javadoc/index.html?org/apache/kafka/clients/admin/AdminClient.html]
 
@@ -4253,7 +4318,7 @@ Basics:
 @[http://kafka.apache.org/documentation/#adminclientconfigs]
 </pre>
 
-<pre zoom labels="kafka,event_stream,snapshot,TODO">
+<pre zoom labels="kafka,architecture.event_stream,TODO">
 <span xsmall>Streams</span>
 @[http://kafka.apache.org/25/documentation/streams/]
 See also:
@@ -4591,7 +4656,7 @@ See also:
 
 <div groupv>
 <span title>Developer Tools</span>
-<pre zoom labels="kafka,tool,low_code,docker,">
+<pre zoom labels="kafka,tool,low_code,computing.containerization,">
 <span XSMALl>Docker Img For Developers</span>
 @[https://github.com/lensesio/fast-data-dev]
 - Apache Kafka docker image for developers; with Lenses (lensesio/box) 
@@ -4776,7 +4841,7 @@ http://kafka.apache.org/documentation.html#compaction
 
 <div groupv>
 <span title>Kafka+Kubernetes</span>
-<pre zoom labels="kafka,TODO">
+<pre zoom labels="kafka,devops,TODO">
 <span xsmall>Strimzi (Images+Operators)</span>
 @[https://developers.redhat.com/blog/2019/06/06/accessing-apache-kafka-in-strimzi-part-1-introduction/]
 @[https://developers.redhat.com/blog/2019/06/07/accessing-apache-kafka-in-strimzi-part-2-node-ports/]
@@ -4981,7 +5046,7 @@ You can find the complete source code on GitHub.
   current list of available connectors is located here, and the list is growing.
 </pre>
 
-<pre zoom labels="kafka,low_code,TODO,">
+<pre zoom labels="kafka,low_code,protocol.client_server,low_code,TODO,">
 <span xsmall>Pixy</span>
 @[https://github.com/mailgun/kafka-pixy]
 Kafka-Pixy is a dual API (gRPC and REST) proxy for Kafka with 
@@ -4990,7 +5055,7 @@ complexity of the Kafka client protocol and provide a stupid simple
 API that is trivial to implement in any language.
 </pre>
 
-<pre zoom labels="pulsar,kafka,comparative,TODO">
+<pre zoom labels="architecture.event_stream,pulsar,kafka,comparative,TODO">
 <span xsmall>Pulsar vs Kafka</span>
 - Pulsar is a younger project Bºinspired and informed by Kafkaº. 
   Kafka on the other side has a bigger community. 
@@ -5138,7 +5203,7 @@ https://github.com/robinhood/faust
     <span title>ELK</span><br/>
 <div groupv>
     <span title>ElasticSearch (Search Engine)</span><br/>
-<pre zoom labels="log_collect,db_engine,elasticsearch,logstash,kibana,nosql,search,">
+<pre zoom labels="db_engine.log_collect,elasticsearch,logstash,kibana,db_engine.search,">
 <span xsmall>ELK Summary</span>
 -ºElasticSearch cluster solutions in practice means:º
   - Deploy dozens of machines/containers.
@@ -5178,7 +5243,7 @@ According to the Cerebro GitHub page:
 Cerebro is an open source (MIT License) elasticsearch web admin tool built
 using Scala, Play Framework, AngularJS, and Bootstrap.
 </pre>
-<pre zoom labels="search,solr,comparative,TODO">
+<pre zoom labels="db_engine.search,solr,comparative,TODO">
 <span xsmall>Solr (ElasticSearch Alternative)</span>
 @[http://lucene.apache.org/solr/]
 - blazing-fast, search platform built on Apache Lucene
@@ -5189,7 +5254,7 @@ using Scala, Play Framework, AngularJS, and Bootstrap.
 </div>
 <div groupv>
     <span title>Logstash (Collector)</span><br/>
-<pre zoom labels="logstash,data_collection,TODO">
+<pre zoom labels="logstash,data.collection,TODO">
 
 - Logstash: log pipeline (ingest/transform/load it into a store
             like Elasticsearch)
@@ -5291,8 +5356,8 @@ Plugins that can extend Logstash's functionality.
     <span title>Non-Ordered</span><br/>
 
 <div group>
-<pre zoom labels="elk,influxdb,TODO">
-<span xsmall>InfluxDB (Elas.Search Alt from TimeSeries</span>
+<pre zoom labels="elk,influxdb,db_engine.timeseries,TODO">
+<span xsmall>InfluxDB (Elas.Search Alt for TimeSeries)</span>
 @[https://logz.io/blog/influxdb-vs-elasticsearch/]
 </pre>
 <pre zoom labels="influxdb,resource,TODO">
@@ -5347,35 +5412,39 @@ Tools whose primary or sole purpose is to feed data into InfluxDB.
 </div>
 
 
-<pre zoom labels="aaa,mfa,TODO">
+<pre zoom labels="aaa.mfa,TODO">
 <span xsmall>MFA OOSS</span>
 https://opensource.com/article/20/3/open-source-multi-factor-authentication Open source alternative for multi-factor authentication: privacyIDEA 
 </pre>
 
-<pre zoom labels="ntp,infrasctructure,TODO">
+<pre zoom labels="ntp,computing.infraestructure,TODO">
 <span xsmall>Chrony (NTP replacement)</span>
 https://www.infoq.com/news/2020/03/ntp-chrony-facebook/ 
 Facebook’s Switch from ntpd to chrony for a More Accurate, Scalable NTP Service
 </pre>
 
-<pre zoom labels="TODO">
+<pre zoom labels="architecture.batch,architecture.event_stream,TODO">
 <span xsmall>Apache Beam</span>
-Apache Beam provides an advanced unified programming model, allowing 
-you to implement batch and streaming data processing jobs that can 
-run on any execution engine.
-Allows to execute pipelines on multiple environments such as Apache 
-Apex, Apache Flink, Apache Spark among others.
+• Apache Beam provides an advanced unified programming model, allowing 
+  you to implement batch and streaming data processing jobs that can 
+  run on any execution engine.
+• Allows to execute pipelines on multiple environments such as Apache 
+  Apex, Apache Flink, Apache Spark among others.
 </pre>
 
-<pre zoom labels="TODO">
+<pre zoom labels="TODO,architecture.olap,architecture.oltp,db_engine.rdbm,performance,">
 <span xsmall>Apache Ignite</span>
-Apache Ignite is a high-performance, integrated and distributed 
-in-memory platform for computing and transacting on large-scale data 
-sets in real-time, orders of magnitude faster than possible with 
-traditional disk-based or flash technologies.
+• Apache Ignite is a high-performance, integrated and distributed 
+  in-memory platform for computing and transacting on large-scale data 
+  sets in real-time, orders of magnitude faster than possible with 
+  traditional disk-based or flash technologies.
+
+• Can be used to dramatically increase RDBMS (SQL) Online Analytics Processing (OLAP)
+  and Online Transaction Processing (OLTP).
+@[https://www.gridgain.com/resources/papers/accelerate-mysql-olap-oltp-use-cases]
 </pre>
 
-<pre zoom labels="sql,analytics,big_data,TODO">
+<pre zoom labels="sql,data.analytics,big_data.prestodb,scalability,TODO">
 <span xsmall>Apache PrestoDB</span>
 @[https://prestodb.io/]
 - distributed SQL query engine originally developed by Facebook.
@@ -5410,7 +5479,7 @@ CERN, cambia el uso de Facebook Workplace por Mattermost y Discourse
 https://www.linuxadictos.com/cern-cambia-el-uso-de-facebook-workplace-por-mattermost-y-discourse.html 
 </pre>
 
-<pre zoom labels="storage,TODO">
+<pre zoom labels="storage.hardware,TODO">
 <span xsmall>Intel Optane DC performance</span>
 http://mikaelronstrom.blogspot.com/2020/02/benchmarking-5-tb-data-node-in-ndb.html?m=1
 Through the courtesy of Intel I have access to a machine with 6 TB of Intel
@@ -5450,7 +5519,7 @@ almost 500.000 rows in a number of tables.
 SOAP vs RESTfull vs JSON-RPC vs gRPC vs Drift
 </pre>
 
-<pre zoom labels="event_stream,TODO">
+<pre zoom labels="architecture.event_stream,TODO">
 <span xsmall>EventQL</span>
 eventql/eventql: Distributed "massively parallel" SQL query engine
 https://github.com/eventql/eventql 
@@ -5470,12 +5539,6 @@ https://github.com/eventql/eventql
   pairs according to the application. The n-grams typically are 
   collected from a text or speech corpus. When the items are words, 
   n-grams may also be called shingles[clarification needed].
-</pre>
-
-<pre zoom labels="graphql,TODO">
-<span xsmall>Apollo GraphQL Middelware</span>
-https://www.infoq.com/news/2020/06/apollo-platform-graphql/
-Apollo Data Graph Platform: A GraphQL Middleware Layer for the Enterprise
 </pre>
 
 <pre zoom labels="TODO">
@@ -5552,7 +5615,7 @@ themselves.
 https://github.com/AmadeusITGroup/Time-Series-Library-with-Spark
 </pre>
 
-<pre zoom labels="messaging,kafka,TODO" bgorange>
+<pre zoom labels="architecture.messaging,kafka,TODO" bgorange>
 <span xsmall>NATS</span>
 
 Extracted from:
@@ -5615,33 +5678,37 @@ include:
 - Augmenting or Replacing Legacy Messaging Systems
 </pre>
 
-<pre zoom labels="lambda,TODO">
-<span title>"Lambda" Architecture</span>
-<span xsmall>LinkedIn drops Lambda Arch to remove complexity</span>
-https://www.infoq.com/news/2020/12/linkedin-lambda-architecture/
+<pre zoom labels="architecture.serverless,low_code,computing.kubernetes,TODO">
+<span title>Serverless Architecture</span>
+· Also known as (AWS non official name) "Lambda" architecture.
 
+· LinkedIn drops Lambda Arch to remove complexity                         [TODO]
+@[https://www.infoq.com/news/2020/12/linkedin-lambda-architecture/]
+
+<hr/>
 <span title>OpenFaas (k8s)</span>
 @[https://www.openfaas.com/]
-Serverless Functions, Made Simple.
-OpenFaaS® makes it simple to deploy both functions and existing code to Kubernetes
-
-
+· Serverless Functions, Made Simple.                                  [low_code]
+  OpenFaaS® makes it simple to deploy both functions and existing code to Kubernetes.
 </pre>
 
 
-<pre zoom labels="low_code,ui,cli,TODO">
+<pre zoom labels="low_code,ui,cli,qa,TODO">
 <span xsmall>CliG Dev</span>
-https://clig.dev/
+@[https://clig.dev/]
 Command Line Interface Guidelines
 </pre>
 
-<pre zoom labels="db_engine,event_stream,distributed,rdbm,sql,kafka,TODO">
+<pre zoom labels="enterprise_patterns,db_engine.rdbm,architecture.event_stream,distributed,sql,kafka,TODO">
 <span xsmall>Debezium: Reacting to RDBM row changes</span>
 @[https://developers.redhat.com/blog/2020/12/11/debezium-serialization-with-apache-avro-and-apicurio-registry/]
 - Debezium is a set of distributed services that captures row-level 
   database changes so that applications can view and respond to them. 
   Debezium connectors record all events to a Red Hat AMQ Streams Kafka 
   cluster. Applications use AMQ Streams to consume change events.
+
+- See also: 
+  https://developers.redhat.com/articles/2021/07/30/avoiding-dual-writes-event-driven-applications#
 </pre>
 
 <pre zoom labels="low_code,integration,ui,cloud,gcp,aws,azure,monitoring,TODO">
@@ -5675,9 +5742,12 @@ https://dzone.com/articles/apache-airflow-20-a-practical-jump-start?edition=6763
     Discord               ODBC                                         SSH
     Docker                OpenFaaS                                     Tableau
                                                                        Telegram
+
+- See also:
+  · https://github.com/BasPH/data-pipelines-with-apache-airflow
 </pre>
 
-<pre zoom labels="SQL,tool,data_management,TODO">
+<pre zoom labels="SQL,tool,data.management,TODO">
 <span title>Jailer SQL "Explorer"</span>
 @[https://github.com/Wisser/Jailer]
 • Jailer Database:  tool for database subsetting and relational data browsing.
@@ -5703,7 +5773,7 @@ FEATURES
    impression without any configuration effort.
 </pre>
 
-<pre zoom labels="storage,performance,TODO">
+<pre zoom labels="storage.*,performance,TODO">
 <span title>zstd fast lossless compression </span>
 Storage: Release Zstandard v1.4.7
 https://github.com/facebook/zstd/releases/tag/v1.4.7 
@@ -5731,27 +5801,51 @@ https://www.infoq.com/podcasts/kafka-zookeeper-removing-dependency/
 • Venafi CMSZero Trust Concept, B2B Guest Concept
 </pre>
 
-<pre zoom labels="graph_db,TODO">
+<pre zoom labels="db_engine.graph_db,TODO">
 <span title>Dual graph</span>
  - Wikipedia
 https://en.m.wikipedia.org/wiki/Dual_graph
 https://en.m.wikipedia.org/wiki/Glossary_of_graph_theory_terms 
 </pre>
 
+<pre zoom labels="standards,TODO">
+<span title>eDelivery Message exchange protocol</span>
+- ISO approves eDelivery Message exchange protocol as International Standard
+@[https://ec.europa.eu/cefdigital/wiki/display/CEFDIGITAL/2020/07/24/ISO+approves+eDelivery+message+exchange+protocol+as+International+Standard]
+</pre>
+
+<pre zoom labels="standards,year.2019,standards,TODO">
+<span title>CAI: standard to protect images</span>
+- Content Authenticity Initiative
+- Today, at Adobe MAX 2019, in collaboration with The New York Times 
+  Company and Twitter, we announced the Content Authenticity Initiative 
+  (CAI) to develop an industry standard for digital content attribution.
+</pre>
+
+<pre zoom labels="computing.IoT,standards,TODO">
+<span title>Eclipse APP4MC</span>
+@[https://www.eclipse.org/app4mc/]
+Eclipse APP4MC is a platform for engineering embedded multi- and 
+many-core software systems. The platform enables the creation and 
+management of complex tool chains including simulation and 
+validation. As an open platform, proven in the automotive sector by 
+Bosch and their partners, it supports interoperability and 
+extensibility and unifies data exchange in cross-organizational 
+projects. Multi- and Many-Core Development Process Support The 
+Amalthea platform allows users to distribute data and tasks to the 
+target hardware platforms, with the focus on optimization of timing 
+and scheduling. It addresses the need for new tools and techniques to 
+make effective use of the level of parallelism in this environment.
+</pre>
+
+
+
 </div><!-- non ordered -->
 </body>
 </html>
 <!--
-Adobe prepara un nuevo estándar de metadatos para proteger y atribuir imágenes: CAI apunta a ser la evolución de EXIF
-https://www.xataka.com/fotografia-y-video/adobe-prepara-nuevo-estandar-metadatos-para-proteger-atribuir-imagenes-cai-apunta-a-ser-evolucion-exif 
-###################
 
-ISO approves eDelivery message exchange protocol as International Standard
-https://ec.europa.eu/cefdigital/wiki/display/CEFDIGITAL/2020/07/24/ISO+approves+eDelivery+message+exchange+protocol+as+International+Standard 
 
-######################
-https://www.eclipse.org/app4mc/ 
-Eclipse APP4MC is a platform for engineering embedded multi- and many-core software systems. The platform enables the creation and management of complex tool chains including simulation and validation. As an open platform, proven in the automotive sector by Bosch and their partners, it supports interoperability and extensibility and unifies data exchange in cross-organizational projects. Multi- and Many-Core Development Process SupportThe Amalthea platform allows users to distribute data and tasks to the target hardware platforms, with the focus on optimization of timing and scheduling. It addresses the need for new tools and techniques to make effective use of the level of parallelism in this environment.
 ######################
 Architecture, RavenDB: Pioneering Data Management with an Innovative Open-Sourcehttps://linuxsecurity.com/features/features/ravendb-pioneering-data-management-with-an-innovative-open-source-approach 
 The release of version 5.0.2 introduced two key features: time series support  and document compression. Time series support enables users to track time series data such as stock price, heart rate or location and document compression analyzes documents to identify commonalities between them, creating a dictionary that is used to compress data efficiently between documents. The new document compression feature has cut cloud storage costs in version 5.0.2 by an impressive 50%. 
@@ -5916,7 +6010,7 @@ https://dzone.com/articles/using-apache-spark-and-spring-batch-for-processing?ed
 Authentication Service Auth0:
 https://www.youtube.com/channel/UCUlQ5VoIzE_kFbYjzUwHTKA
 ####################
-<pre zoom labels="data_management,low_code,radarradar,,TODO">
+<pre zoom labels="data.management,low_code,radarradar,,TODO">
 <span title>REST-driven data mng.</span>
 @[https://slime.aitnologies.es]
 • Manage your data following the REST principles. Data first
@@ -6020,5 +6114,89 @@ example, becomes far easier this way.
 File format comparative: Avro, JSON, ORC , Parquet 
 @[https://www.slideshare.net/HadoopSummit/file-format-benchmark-avro-json-orc-parquet]
 
+######################
+<pre zoom labels="graph_networks,low_code,sql,comparative,TODO">
+<span title>TypeDB</span>
+@[https://github.com/graknlabs/grakn]
+· previously known as Grakn?
+· Growing interest in Google Trends [2021]
+ @[https://trends.google.com/trends/explore?date=all&q=grakn]
+· strongly-typed database with a rich and logical type system
+  empowering to tackle complex problems with higher level of expressivity.
+· TypeQL used as query language.
+· It allows to model your domain based on logical and object-oriented principles
+  introducing [Entity, relationship, attribute types, type hierarchies, roles, rules]
+  as opossed to low-level join-tables, columns, documents, vertices, edges, and properties.
+Used among others by Bayer, Roche, IBM, Capgemini, AstraZeneca, Rolls-Royce, ...
+@[https://github.com/bayer-science-for-a-better-life/grami]
 
-- ->
+- TypeDB strict type-checking errors validates inserts and queries data as well as
+  logical validations of meaningless queries.
+- TypeDB optimises alse the query's execution.
+- reasoning engine enables type-inference and rule-inference
+  that creates logical abstractions of data allowing the
+  discovery of facts and patterns that would otherwise be
+  too hard to find; and complex queries become much simpler.
+
+
+
+   person     sub entity,         ← Entity
+     owns name,
+     plays employment:employee;
+   
+   company    sub entity,         ← Entity
+     owns name,
+     plays employment:employer;
+   
+   employment sub relation,       ← Entity-Relationship
+     relates employee,
+     relates employer;
+   
+   name sub attribute,
+     value string;
+
+   student   sub person;   ← Type Hierarchy
+   undergrad sub student;  ← Type Hierarchy
+   postgrad  sub student;  ← Type Hierarchy
+   teacher   sub person;
+   supervisr sub teacher;
+   professor sub teacher;
+
+   $person    isa person   , has name "Leonardo";
+   $character isa character, has name "Jack";
+   $movie     isa movie;
+   (actor: $person, character: $character, movie: $movie)  ← N-ary relations (vs just binary ones)
+              isa cast;
+
+
+    $alice              isa person, has name "Alice"; ← Nested Relations
+    $bob                isa person, has name "Bob";
+    $mar ($alice, $bob) isa marriage;
+    $city               isa city;
+    ($mar, $city)       isa located;
+    ... 
+    $city isa city, has name "London";
+
+   
+- TypeDB's API is provided through a gRPC client providing stateful objects,
+  Sessions and Transactions.
+  Java Example: (Similar code for Python and NodeJS)
+  try (TypeDBClient client = TypeDB.coreClient("localhost:1729")) {
+      try (TypeDBSession session = client.session("my-typedb", DATA)) {
+          try (TypeDBTransaction tx = session.transaction(WRITE)) {
+              tx.query().insert(TypeQL.insert(var().isa("person")));
+              tx.commit();
+          }
+          try (TypeDBTransaction tx = session.transaction(READ)) {
+              Stream<ConceptMap> answers = tx.query().match(TypeQL.match(var("x").isa("person")));
+          }
+      }
+  }
+
+- ACID guarantees up to Snapshot Isolation.
+</pre>
+
+##########################
+
+
+-->

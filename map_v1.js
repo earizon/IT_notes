@@ -147,7 +147,7 @@ const ZW = { /* ZOOM Window */
     const dom1 = document.createElement('div');
         dom1.setAttribute("id", "zoomDiv")
     dom1.innerHTML = ""
-       + "<div id='zoomDivControls' style='margin-bottom:0.5rem'>" 
+       + "<div class='noprint' id='zoomDivControls' style='margin-bottom:0.5rem'>" 
        + " <div id='divClose2'>✕ </div>" 
        + ' <pre id="switchMaximize" >╔╗</pre>'
        + " <div id='historyBackFor' style='display:inline; '>"
@@ -519,6 +519,7 @@ const MB = { // Menu Bar
   renderMenuBar : function (){
     const searchDiv = document.createElement('div');
         searchDiv.setAttribute("id", "upper_bar")
+        searchDiv.classList.add("noprint")
         searchDiv.innerHTML = ''
      + '<img id="idLabelsFilter" class="noprint" src="/labelIcon.svg" />'
      + '<a href="../help.html" class="noprint" style="cursor:help" target="_blank" >❓</a>'

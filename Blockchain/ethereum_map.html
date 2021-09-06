@@ -3121,174 +3121,113 @@ RºWARNº:
 </div>
 <div groupv>
 <span title>Storage</span>
-<pre zoom bgorange  labels="101,persistence.contract_state,qa,dev_languaje.solidity">
+<pre zoom bgorange  labels="101,persistence.data_structure,qa,dev_languaje.solidity" id="solidity_storage_patterns">
 <span xsmall>storage patterns</span>
 @[https://ethereum.stackexchange.com/questions/13167/are-there-well-solved-and-simple-storage-patterns-for-solidity]
-Q: Simple and appropriate data organization can challenge Solidity newcomers.
-  It wants us to organize everything in ways many of us aren’t accustomed to.
-  Are there well-solved general patterns for routine on-chain data organization?
+Context:
+   Simple and appropriate data organization can challenge Solidity newcomers.
+   It wants us to organize everything in ways many of us aren’t accustomed to.
+Q: Are there well-solved general patterns for routine on-chain data 
+   organization?
 
 A: Here are some simple and useful patterns in increasing order of utility.
-ºEvent logs are omitted for brevity. In practice, it's desirable to emit events for every important state change.º
+RºWARNº:
+   Event logs omitted for brevity in example code.
+ BºIn real code they MUST be emitted for any state change.º
 
-ºSIMPLE LIST USING ARRAYº                                                                ºMAPPING WITH STRUCTº
- STRENGTHS                    | EXAMPLE:                                              │   STRENGTHS                    | EXAMPLE:
- Reliably chronological order | pragma solidity ^0.4.6;                               │   Random access by unique Id   | contract mappingWithStruct {
- Provides a count             | contract simpleList {                                 │   Assurance of Id Uniqueness   |   struct EntityStruct {
- Random access by Row Number  |   struct EntityStruct {                               │   Enclose arrays, mappings,    |     uint entityData;
- (not Id)                     |     address entityAddress;                            │   structs within each "record" |     bool isEntity;
-                              |        uint entityData;                               │                                |   }
-                              |      }                                                │   WEAKNESSES                   |
- WEAKNESSES                   |                                                       │  -Unable to enumerate keys     |   ºmapping (address =˃ EntityStruct)º
- No random access by Id       |      ºEntityStruct[]º public entityStructs;           │  -Unable to count the keys     |     public entityStructs;
- No assurance of unique-      |                                                       │  -Needs a manual check to      |   function isEntity(address entityAddress)
- ness.                        |      function newEntity                               │  -distinguish a default        |      public constant returns(bool isIndeed) {
- No check for duplicates      |        (address entityAddress, uint entityData)       │   from an explicitly           |      return entityStructs[entityAddress].isEntity;
- Uncontrolled growth of       |          public returns(uint rowNumber) {             │   "all 0" record               |   }
- the list                     |        EntityStruct memory newEntity;                 │                                |
-                              |        newEntity.entityAddress = entityAddress;       │                                |   function newEntity
-                              |        newEntity.entityData    = entityData;          │                                |       (address entityAddress, uint entityData)
-                              |        return entityStructs.push(newEntity)-1;        │                                |       public returns(bool success) {
-                              |      }                                                │                                |     if(isEntity(entityAddress)) throw;
-                              |                                                       │                                |     entityStructs[entityAddress].entityData
-                              |      function getEntityCount()                        │                                |        = entityData;
-                              |          public constant returns(uint entityCount) {  │                                |     entityStructs[entityAddress].isEntity
-                              |        return entityStructs.length;                   │                                |        = true;
-                              |      }                                                │                                |     return true;
-                              |    }                                                  │                                |   }
-                                                                                      │                                |
-                                                                                      │                                |   function deleteEntity(address entityAddress)
-                                                                                      │                                |     public returns(bool success) {
-                                                                                      │                                |     if(!isEntity(entityAddress)) throw;
-                                                                                      │                                |     entityStructs[entityAddress].isEntity = false;
-                                                                                      │                                |     return true;
-                                                                                      │                                |   }
-                                                                                      │                                |
-                                                                                      │                                |   function updateEntity
-                                                                                      │                                |       (address entityAddress, uint entityData)
-                                                                                      │                                |       public returns(bool success) {
-                                                                                      │                                |     if(!isEntity(entityAddress)) throw;
-                                                                                      │                                |     entityStructs[entityAddress].entityData
-                                                                                      │                                |       = entityData;
-                                                                                      │                                |     return true;
-                                                                                      │                                |   }
-                                                                                      │                                | }
-──────────────────────────────────────────────────────────────────────────────────────┼────────────────────────────────────────────────────────────────────────────────
-ºARRAY OF STRUCTS WITH UNIQUE IDSº                                                    │ ºMAPPED STRUCTS WITH INDEXº
-  STRENGTHS                   | EXAMPLE:                                              │   STRENGTHS                   | EXAMPLE:
-- Random access by Row number | contract arrayWithUniqueIds {                         │ - Random access by unique Id  | contract MappedStructsWithIndex {
-- Assurance of Id uniqueness  |                                                       │   or row number               |
-- Enclose arrays, mappings    |   struct EntityStruct {                               │ - Assurance of Id uniqueness  |   struct EntityStruct {
-  and structs with each       |     address entityAddress;                            │ - Enclose arrays, mappings and|     uint entityData;
-  "record"                    |     uint entityData;                                  │   structs within each "record"|     bool isEntity;
-                              |   }                                                   │ - List maintains order of     |   }
- WEAKNESSES                   |                                                       │   declaration                 |
- - No random access by Id     |   EntityStruct[] public entityStructs;                │ - Count the records           |   mapping(address =˃ EntityStruct)
- - Uncontrolled growth of     |   mapping(address =˃ bool) knownEntity;               │ - Enumerate the Ids           |       public entityStructs;
-   the list                   |                                                       │ - "Soft" delete an item by    |   address[] public entityList;
-                              |   function isEntity(address entityAddress)            │   setting a boolean           |
-                              |       public constant returns(bool isIndeed) {        │                               |   function isEntity(address entityAddress)
-                              |     return knownEntity[entityAddress];                │  WEAKNESSES                   |       public constant
-                              |   }                                                   │  - Uncontrolled growth of     |       returns(bool isIndeed) {
-                              |                                                       │    the list                   |     return entityStructs[entityAddress].isEntity;
-                              |   function getEntityCount() public constant           │                               |   }
-                              |        returns(uint entityCount) {                    │                               |
-                              |     return entityStructs.length;                      │                               |   function getEntityCount()
-                              |   }                                                   │                               |       public constant
-                              |                                                       │                               |       returns(uint entityCount) {
-                              |   function newEntity(                                 │                               |     return entityList.length;
-                              |       address entityAddress, uint entityData)         │                               |   }
-                              |       public returns(uint rowNumber) {                │                               |
-                              |     if(isEntity(entityAddress)) throw;                │                               |   function newEntity(
-                              |     EntityStruct memory newEntity;                    │                               |       address entityAddress,
-                              |     newEntity.entityAddress = entityAddress;          │                               |       uint entityData)
-                              |     newEntity.entityData = entityData;                │                               |        public returns(uint rowNumber) {
-                              |     knownEntity[entityAddress] = true;                │                               |     if(isEntity(entityAddress)) throw;
-                              |     return entityStructs.push(newEntity) - 1;         │                               |     entityStructs[entityAddress].entityData
-                              |   }                                                   │                               |        = entityData;
-                              |                                                       │                               |     entityStructs[entityAddress].isEntity
-                              |   function updateEntity(                              │                               |        = true;
-                              |       uint rowNumber,                                 │                               |     return
-                              |       address entityAddress,                          │                               |       entityList.push(entityAddress) - 1;
-                              |       uint entityData) public returns(bool success) { │                               |   }
-                              |     if(!isEntity(entityAddress)) throw;               │                               |
-                              |     if(entityStructs[rowNumber].entityAddress         │                               |   function updateEntity
-                              |       != entityAddress) throw;                        │                               |       (address entityAddress, uint entityData)
-                              |     entityStructs[rowNumber].entityData               │                               |       public returns(bool success) {
-                              |       = entityData;                                   │                               |     if(!isEntity(entityAddress)) throw;
-                              |     return true;                                      │                               |     entityStructs[entityAddress].entityData
-                              |   }                                                   │                               |       = entityData;
-                              | }                                                     │                               |     return true;
-                                                                                      │                               |   }
-                                                                                      │                               | }
+  MAPPING WITH STRUCT            │SIMPLE LIST USING ARRAY      │STRUCT ARRAY WITH UNIQUE IDS   │ ºMAPPED STRUCTS WITH INDEXº    │ºMAPPED STRUCTS WITH DELETE-ENABLED INDEXº º*1º
+  ====================           │=======================      │============================== │ ===========================    │ ==========================================
+ºSTRENGTHS                       │STRENGTHS                    │STRENGTHS                      │ STRENGTHS                      │STRENGTHS º
+  Random access by unique Id     │· Reliably chronological     │· Random access by Row number  │ · Random access by Unique Id   │· Random access by Uniq.Id
+  Assurance of Id Uniqueness     │  order of insertion         │· Assurance of Id uniqueness   │   or row number                │  or row number
+  Enclose arrays, mappings,      │· Provides a count           │· Enclose arrays, mappings     │ · Assurance of Id uniqueness   │· Assurance of Id uniqueness
+  structs within each "record"   │· Random access by Row       │  and structs with each        │ · Enclose arrays, mappings and │· Enclose arrays, mapping and
+                                 │  Number (not Id)            │  "record"                     │   structs within each "record" │  structs within each "record"
+                                 │                             │                               │ · List maintains declaration   │· Count the records
+                                                                                               │   order                        │· Enumerate the ids
+                                                                                               │ · Count the records            │· Logically control the size of
+                                                                                               │ · Enumerate the Ids            │  the active list with delete function
+                                                                                               │ · "Soft" delete                │
+                                                                                               │   (by setting boolean value)   │
 
-ºMAPPED STRUCTS WITH DELETE-ENABLED INDEXº
-<a href="https://medium.com/@robhitchens/solidity-crud-part-2-ed8d8b4f74ec#.ekc22r5lf">REF@Medium Rob Hitchens</a>
-<a href="https://bitbucket.org/rhitchens2/soliditycrud/src/83703dcaf4d0c4b0d6adc0377455c4f257aa29a7/contracts/?at=master">BitBucket Source Code</a>
-  STRENGTHS                    | WEAKNESSES                   | EXAMPLE:
-- Random access by unique Id   | - Marginally increased code  | contract mappedWithUnorderedIndexAndDelete {
-  or row number                |   complexity                 |   struct EntityStruct {
-- Assurance of Id uniqueness   | - Marginally higher storage  |     uint entityData;
-- Enclose arrays, mapping and  |   costs                      |     uint listPointer;
-  structs within each "record" | - Key list is inherently     |   }
-- Count the records            |   unordered                  |
-- Enumerate the ids            |                              |   mapping(address =˃ EntityStruct) public entityStructs;
-- Logically control the size of|                              |   address[] public entityList;
-  the active list with delete  |                              |
-  function                     |                              |   function isEntity(address entityAddress)
-                               |                              |       public constant returns(bool isIndeed) {
-                               |                              |     if(entityList.length == 0) return false;
-                               |                              |     return (
-                               |                              |       entityList[entityStructs[entityAddress].
-                               |                              |          listPointer] == entityAddress);
-                               |                              |   }
-                               |                              |
-                               |                              |   function getEntityCount()
-                               |                              |       public constant
-                               |                              |       returns(uint entityCount) {
-                               |                              |     return entityList.length;
-                               |                              |   }
-                               |                              |
-                               |                              |   function newEntity(
-                               |                              |       address entityAddress,
-                               |                              |       uint entityData)
-                               |                              |       public returns(bool success) {
-                               |                              |     if(isEntity(entityAddress)) throw;
-                               |                              |     entityStructs[entityAddress].entityData
-                               |                              |         = entityData;
-                               |                              |     entityStructs[entityAddress].listPointer
-                               |                              |         = entityList.push(entityAddress) - 1;
-                               |                              |     return true;
-                               |                              |   }
-                               |                              |
-                               |                              |   function updateEntity(
-                               |                              |       address entityAddress,
-                               |                              |       uint entityData)
-                               |                              |       public returns(bool success) {
-                               |                              |     if(!isEntity(entityAddress)) throw;
-                               |                              |     entityStructs[entityAddress]
-                               |                              |        .entityData = entityData;
-                               |                              |     return true;
-                               |                              |   }
-                               |                              |
-                               |                              |   function deleteEntity(address entityAddress)
-                               |                              |       public returns(bool success) {
-                               |                              |     if(!isEntity(entityAddress)) throw;
-                               |                              |     uint rowToDelete
-                               |                              |       = entityStructs[entityAddress].listPointer;
-                               |                              |     address keyToMove
-                               |                              |       = entityList[entityList.length-1];
-                               |                              |     entityList[rowToDelete] = keyToMove;
-                               |                              |     entityStructs[keyToMove].listPointer
-                               |                              |       = rowToDelete;
-                               |                              |     entityList.length--;
-                               |                              |     return true;
-                               |                              |   }
-                               |                              |
-                               |                              | }
+
+ºWEAKNESSES                      │WEAKNESSES                   │WEAKNESSES                     │WEAKNESSES                      │WEAKNESSES º
+ · Unable to enumerate keys      │· No random access by Id     │- No random access by Id       │ · Uncontrolled growth of       │· Marginally increased code complexity
+ · Unable to count the keys      │· No assurance of uniqueness.│- Uncontrolled growth of       │   the list                     │- Marginally higher storage costs
+ · Needs a manual check to       │· No check for duplicates    │  the list                     │                                │- Key list inherently unordered
+   distinguish default from      │· Uncontrolled growth of list│                               │                                │
+   an explicitly "all 0" record  │                             │                               │                                │
+
+
+  EXAMPLE Solidty version:  0.4.6
+º EXAMPLE:                       │EXAMPLE:                     │EXAMPLE:                       │EXAMPLE:                        │EXAMPLE:º
+ contract EntityDDBB {           │contract EntityDDBB {        │contract EntityDDBB {          │contract EntityDDBB {           │contract EntityDDBB {
+   struct EntityStruct {         │  struct EntityStruct {      │ struct EntityStruct {         │  struct EntityStruct {         │  struct EntityStruct {
+     uint data;                  │    address addr;            │   address addr;               │    uint data;                  │    uint data;
+     bool isEntity;              │    uint    data;            │   uint    data;               │    bool exists;                │    uint lstPtr; /*list Pointer*/
+   }                             │  }                          │ }                             │  }                             │  }
+   mapping                       │ ºEntityStruct[]º public     │ EntityStruct[] public ddbb;   │  mapping                       │  mapping(address =˃ EntityStruct)
+    (address =˃ EntityStruct)    │    ddbb;                    │ mapping(address =˃ bool)      │    (address =˃ EntityStruct)   │    public ddbb;
+       public ddbb;              │                             │   knownEntity;                │      public ddbb;              │  address[] public list;
+                                                                                               │  address[] public entityList;  │
+
+
+   function exists(address addr) │                             │ function exists(address addr) │  function exists(address addr )│ function exists(address addr )
+     public constant             │                             │     public constant           │      public constant           │      public constant
+     returns(bool isIndeed) {    │                             │     returns(bool) {           │      returns(bool)          {  │      returns(bool) {
+     return  ddbb[addr].isEntity;│                             │   return knownEntity[addr];   │    return ddbb[addr].exists;   │    if(list.length == 0) return false;
+   }                             │                             │ }                             │  }                             │    return  ddbb[addr].lstPtr] == addr;
+                                                                                                                                │ }
+                                                                                                
+                                 │  function getEntityCount()  │ function getEntityCount()     │  function getEntityCount()     │ function getEntityCount()
+                                 │     public constant         │      public constant          │      public constant           │     public constant
+                                 │     returns (uint) {        │      returns(uint) {          │      returns(uint) {           │     returns(uint entityCount) {
+                                 │    return ddbb.length;      │   return ddbb.length;         │    return entityList.length;   │   return list.length;
+                                 │  }                          │ }                             │  }                             │ }
+                                                                                                
+   function newEntity            │  function newEntity         │ function newEntity(           │  function newEntity(           │ function newEntity(
+       (address addr, uint data) │     (address addr,          │     address addr, uint data)  │     address addr, uint data)   │     address addr, uint data)
+       public returns(bool) {    │      uint data )            │     public                    │     public                     │     public returns(bool success) {
+     if(isEntity(addr)) throw;   │     public                  │     returns(uint rowNum) {    │     returns(uint rowNumber) {  │   if(isEntity(addr)) throw;
+     ddbb[addr].data  = data;    │    returns(uint rowNumber) {│   if(isEntity(addr)) throw;   │    if(isEntity(addr)) throw;   │   ddbb[addr].data = data;
+     ddbb[addr].isEntity = true; │    EntityStruct memory aux; │   EntityStruct memory aux;    │    ddbb[addr].data = data;     │   ddbb[addr].lstPtr =
+   }                             │    aux.addr = addr;         │   aux.addr = addr;            │    ddbb[addr].exists           │     list.push(addr) - 1;
+                                 │    aux.data    = data;      │   aux.data = data;            │       = true;                  │   return true;
+                                 │    return ddbb.push(aux)-1; │   knownEntity[addr] = true;   │    return                      │ }
+                                 │  }                          │   return ddbb.push(aux) - 1;  │    entityList.push(addr) - 1;  │
+                                 │                             │ }                             │  }                             │
+                                                                                                
+   function updateEntity         │                             │ function updateEntity         │  function updateEntity         │ function updateEntity(
+      (address addr, uint data)  │                             │    uint rowNum, address addr, │      (address addr, uint data) │     address addr,
+      public {                   │                             │    uint data                  │      public {                  │     uint data)
+     if(!isEntity(addr)) throw   │                             │    public {                   │    if(!isEntity(addr)) throw;  │     public returns(bool success) {
+     ddbb[addr].data = data      │                             │   if(!isEntity(addr)) throw;  │    ddbb[addr].data = data;     │   if(!isEntity(addr)) throw;
+   }                             │                             │   if(ddbb[rowNum].addr!=addr) │  }                             │   ddbb[addr].data = data;
+                                 │                             │      trhow;                   │                                │   return true;
+                                 │                             │   ddbb[rowNumber].data = data;│                                │ }
+                                 │                             │ }                             │                                │
+                                                                                                
+   function delete(address addr) │                             │                               │                                │ function delete      (address addr)
+     public {                    │                             │                               │                                │     public returns(bool success) {
+     if(!isEntity(addr)) throw   │                             │                               │                                │   if(!isEntity(addr)) throw;
+     ddbb[addr].isEntity = false │                             │                               │                                │   uint rowToDelete = ddbb[addr].lstPtr;
+   }                             │                             │                               │                                │   address keyToMove = list[list.length-1];
+                                 │                             │                               │                                │   list[rowToDelete] = keyToMove;
+                                 │                             │                               │                                │   ddbb[keyToMove].lstPtr
+                                 │                             │                               │                                │     = rowToDelete;
+                                 │                             │                               │                                │   list.length--;
+                                 │                             │                               │                                │   return true;
+                                 │                             │                               │                                │ }
+                                 │                             │                               │                                │
+ }                               │}                            │}                              │}                               │}
+
+  º*1º REF:
+   Rob Hitchens@Medium  @[https://medium.com/@robhitchens/solidity-crud-part-2-ed8d8b4f74ec#.ekc22r5lf]
+   Source Code          @[https://bitbucket.org/rhitchens2/soliditycrud/src/83703dcaf4d0c4b0d6adc0377455c4f257aa29a7/contracts/?at=master]
+
 </pre>
 
-<pre zoom bgorange  labels="101,persistence.contract_state,qa,dev_languaje.solidity">
+<pre zoom bgorange  labels="101,persistence.data_structure,qa,dev_languaje.solidity">
 <span xsmall>Multikey map how-to:</span>
 @[https://ethereum.stackexchange.com/questions/69727/map-multikey-how-to]
 
@@ -3410,7 +3349,7 @@ Hope it helps.
 </pre>
 
 
-<pre zoom  labels="101,persistence.contract_state,qa,dev_languaje.solidity">
+<pre zoom  labels="101,persistence.data_structure,qa,dev_languaje.solidity">
 <span xsmall>STRUCTS</span>
 @[https://solidity.readthedocs.io/en/latest/structure-of-a-contract.html#struct-types]
 
@@ -3455,7 +3394,7 @@ Hope it helps.
  }                                                                │
 </pre>
 
-<pre zoom  labels="101,persistence.contract_state,qa,dev_languaje.solidity">
+<pre zoom  labels="101,persistence.data_structure,qa,dev_languaje.solidity">
 <span xsmall>enums</span>
 @[https://solidity.readthedocs.io/en/latest/structure-of-a-contract.html#enum-types]
 enum State { Created, Locked, Inactive } // ← Definition
@@ -3467,17 +3406,13 @@ State  s2 = State(u1)                    // ← uintXX to enum using enum constr
                                               u1 is outside the State bounds.
 </pre>
 
-<pre zoom  labels="101,persistence.contract_state,qa,dev_languaje.solidity">
+<pre zoom  labels="101,persistence.data_structure,qa,dev_languaje.solidity">
 <span TODO xsmall>Linked List</span>
 @[https://github.com/vittominacori/solidity-linked-list]
-</pre>
 
-<pre zoom  labels="101,persistence.contract_state,qa,dev_languaje.solidity">
 <span xsmall>EnumerableSet</span>
 @[https://docs.openzeppelin.com/contracts/2.x/api/utils#EnumerableSet]
-</pre>
 
-<pre zoom  labels="101,persistence.contract_state,qa,dev_languaje.solidity">
 <span xsmall>Arrays</span>
 @[https://solidity.readthedocs.io/en/v0.4.24/types.html#arrays
 Syntax:
@@ -3542,7 +3477,7 @@ for (uint i = 0; i ˂ namesInUse.length; i++) {
    require(namesInUse[i] != username);
 }
 </pre>
-<pre zoom  labels="101,persistence.contract_state,qa,dev_languaje.solidity">
+<pre zoom  labels="101,persistence.data_structure,qa,dev_languaje.solidity">
 <span xsmall>Mappings</span>
 @[https://solidity.readthedocs.io/en/v0.4.24/types.html#mappings]
 Syntax:
@@ -3662,7 +3597,7 @@ Syntax:
 
 </pre>
 
-<pre zoom  labels="101,persistence.contract_state,qa,dev_languaje.solidity">
+<pre zoom  labels="101,persistence.data_structure,qa,dev_languaje.solidity">
 <span xsmall>Iterable map (arachnid gist)</span>
 @[https://gist.github.com/ethers/7e6d443818cbc9ad2c38efa7c0f363d1]
 library itmap {
@@ -3738,7 +3673,7 @@ contract Test {
 }
 </pre>
 
-<pre zoom  labels="101,persistence.contract_state,qa,dev_languaje.solidity,diagram,TODO">
+<pre zoom  labels="101,persistence.data_structure,qa,dev_languaje.solidity,diagram,TODO">
 <span xsmall TODO>SandCastle_SQL</span>
 @[https://pegasys.tech/sandcastle-brings-sql-to-ethereum-smart-contracts/]
 RºWARNº: Doesn't look to be continued.
@@ -4595,6 +4530,19 @@ backwards compatibility.
 
 <span title>Identity+Governance</span>
 <pre zoom labels="use_case.identity,standards.EIP/ERC,standards.W3C_DID,TODO">
+<span xsmall>EIP 1056: Lightweight Identity</span>
+WARN: Unstable, likely to change.
+""" ...As we have been developing identity systems for the last couple of 
+  years at uPort it has become apparent that the cost of identity 
+  creation is a large issue. The previous Identity proposal ERC-725 
+  faces this exact issue. Our requirements when creating this ERC is 
+  that identity creation should be free, and should be possible to do 
+  in an offline environment (e.g. refugee scenario). However it must 
+  also be possible to rotate keys without changing the primary 
+  identifier of the identity. The identity system should be fit to use 
+  off-chain as well as on-chain..."""
+
+<hr/>
 <span xsmall>ERC725 Identity</span>
 
 Note: Current Identity Systems in Ethereum include
@@ -4699,6 +4647,13 @@ contract multiowned {
 }
 </pre>
 
+<pre zoom labels="dev_languaje.solidity,use_case.identity,standards.eip/erc,TODO">
+<span xsmall>ERC 780: Ethereum Claims Registry </span>
+- proposal toallows persons, smart contracts, and machines to issue 
+  claims about each other, as well as self issued claims with the aim 
+  of providing a central point of reference for on-chain claims on 
+  Ethereum.
+</pre>
 
 <pre zoom labels="dev_languaje.solidity,TODO">
 <span xsmall>EIP 820: universal registry</span>
@@ -5221,19 +5176,18 @@ function onGUIButtonCliced (miniToken) {
 
 </pre>
 
-<pre zoom labels="wallet.metamask,security,UX,qa.usability,TODO" bgorange>
+<pre zoom labels="security,UX,qa.usability,wallet.metamask,standards.eip/erc,persistence.data_structure," bgorange>
 <span xsmall>EIP712 (Typed human-friendly signing)</span>
+- EIP-712: Ethereum typed structured data hashing and signing 
+@[https://eips.ethereum.org/EIPS/eip-712]
+- Introduction by Koh Wei Jie:
 @[https://medium.com/metamask/eip712-is-coming-what-to-expect-and-how-to-use-it-bb92fd1a7a26]
-EIP712 is coming: What to expect and how to use it
-Koh Wei Jie
-
   Ethereum wallets like MetaMask will soon introduce the EIP712
   standard for typed message signing Bºallowing wallets to º
 Bºdisplay data in signing prompts in a structured and readable format.º
 BºEIP712 is a great step forward for security and usability because º  [qa][usability]
 Bºusers will no longer need to sign off on inscrutable hexadecimal  º  [security]
 Bºstrings, which is a practice that can be confusing and insecure.  º
-
 
 - Related:
   - Lattice 1 GridPlus Hardware Wallet:
@@ -12456,6 +12410,20 @@ SKALE: Standard Kit for Asyncronous LEdgers.
   and 3) new provably correct optimisations of the algorithm.
 </pre>
 
+<pre zoom labels="devops,standards.eip/erc,dev_languaje.solidity,architecture,qa.usability," bgorange>
+<span title>EIP-165: Standard Interface</span>
+Creates a standard method to publish and detect what interfaces a smart contract implements.
+Abstract
+
+Herein, we standardize the following:
+
+    How interfaces are identified
+        How a contract will publish the interfaces it implements
+            How to detect if a contract implements ERC-165
+                How to detect if a contract implements any given interface
+
+
+</pre>
 
 </div><!-- Non Classified -->
 </body>
@@ -12847,3 +12815,5 @@ A Buidler Plugin For Replicable Deployments And Tests
   an author of the ERC-1155 standard
 · Supports the diamon standard.
 https://www.npmjs.com/package/buidler-deploy
+###############
+

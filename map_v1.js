@@ -737,9 +737,11 @@ const SE = { // (S)earch (E)ngine
         ZW.doOpenZoom(lastElementFound);
     }
     let sMatchText = "<span red>no matches</span>"
-    if (numberOfMatches > 0) sMatchText = numberOfMatches + " found"
-    document.getElementById("searchForm").setAttribute("resultFound","true")
-      setTimeout(()=>{ document.getElementById("searchForm").removeAttribute("resultFound") } , 4500 )
+    if (numberOfMatches > 0) {
+        sMatchText = numberOfMatches + " found"
+        document.getElementById("searchForm").setAttribute("resultFound","true")
+        setTimeout(()=>{ document.getElementById("searchForm").removeAttribute("resultFound") } , 4500 )
+    }
     document.getElementById("matchNumber").innerHTML = sMatchText
     unhideButton.removeAttribute("hidden","");
     return false // avoid event propagation

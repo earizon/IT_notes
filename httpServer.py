@@ -1,8 +1,14 @@
 #!/usr/bin/python3
 
-from os import chdir,fork
+from os import chdir,fork,environ
 
 from http.server import HTTPServer, SimpleHTTPRequestHandler
+
+if 'HOST' in environ :
+    HOST=environ['HOST']
+else:
+    HOST='127.0.0.1'
+print(HOST)
 
 newpid = fork()
 if newpid != 0:
@@ -10,5 +16,5 @@ if newpid != 0:
    port = 8001
 else:
    port = 8000
-httpd = HTTPServer( ('127.0.0.1',port), SimpleHTTPRequestHandler )
+httpd = HTTPServer( (HOST,port), SimpleHTTPRequestHandler )
 httpd.serve_forever()

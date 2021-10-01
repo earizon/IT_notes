@@ -21,6 +21,7 @@ const SF = {  /* search Form */
   switchANDORSearch : function() {
     SF.labelANDMode=!SF.labelANDMode  
     document.getElementById("idLabelSearchAndMode").innerHTML = SF.labelAndOrText[SF.labelANDMode]
+    SE.executeSearch()
   },
   onRegexInputChanged : function () {
         if (SF.regexInputTimer !== null) {
@@ -159,8 +160,8 @@ const ZW = { /* ZOOM Window */
        + ' <div id="butSwitchLectureMode" >?</div>'
        + ' <input id="textSizeSlider" type="range" '
        + '   style="width:100px" value="100" min="30" max="250">'
-       + " <div id='divElementLabels' class='noprint'></div>" 
        + "</div>"
+       + " <div id='divElementLabels' class='noprint'></div>" 
        + "<div id='zoomHTMLContent'/>"
     ZW.dom = dom1
     document.body.insertBefore(dom1,document.body.children[0])

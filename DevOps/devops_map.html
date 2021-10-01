@@ -734,12 +734,37 @@ BºClient-Side Hooksº
 ºupdate hookº:
  - similar to pre-receive hook.but ºrun once for each branch theº
   ºpush is trying to updateº (ussually just one branch is updated)
- - INPUT: this script takes three arguments:
+
+ - INPUT arguments: 
    - reference name (for branch),
-   - SHA-1 reference pointed to before the push, 
-   - SHA-1 reference user is trying to push.
- - Rollback a given reference on non-zero exit
-   (others will be updated).
+   - SHA-1 
+   - SHA-1 
+     refname= ARGV[0] ← ref.name for current branch 
+     oldrev = ARGV[1] ← º(SHA-1)  original (current-in-server)      ref. *1
+     newrev = ARGV[2] ← º(SHA-1)  new      (intention to)      push ref. *1
+     user   = $USER   ← "Injected" by git when using ssh.
+    
+     *1: We can run over all commit from $oldrev to $newrev like
+         git rev-list \                        ← display a (sha1)commit per line to STDOUT
+             oldrev..$newrev \                 ← from $oldrev to $newrev
+             while read SHA_COMMIT ; do   
+            git cat-file commit $SHA_COMMIT \  ← *1 
+            | sed '1,/^$/d'                    ← Delete from line 1 to first match of 
+                                                 empty-line (^$).
+ 
+
+
+  *1 output format is similar to:
+  | tree      ...
+  | parent    ...
+  | committer ...
+  |
+  | My commit Message
+  | tree      ...
+
+  - user-name (if accesing through ssh) based on ssh public-key.
+ - Exit  0: Update
+   Exit !0: Rollback reference, continue with next one.
 
 ºpost-receiveº
  - can be used to update other services or notify users.
@@ -5089,20 +5114,6 @@ https://blog.sonatype.com/using-nexus-3-as-your-repository-part-3-docker-images
 </pre>
 
 <span title>Dockerfile</span>
-<pre zoom labels="101,containerization.dockerfile,TODO">
-<span title>Dockerfile ARG vs ENV</span>
-@[https://vsupalov.com/docker-arg-vs-env/]
-ARG : Vaules are consumed/used at build time. Not available at runtime.
-ENV : Values are consumed/used at runtime by final app.
-
-ARG and ENV can be combined to provide default ENV (Runtime) values to apps like:
-
-ARG buildAppParam1=default_value
-ENV appParam1=$buildAppParam1
-</pre>
-
-
-
 <span title>Container Standars</span>
 <pre zoom labels="containerization.runtime,standards,1_doc_type.comparative">
 <span xsmall>OCI Spec.</span>
@@ -6296,43 +6307,6 @@ $ docker container prune
 <span xsmall>container help:</span>
 $ docker container
 </pre>
-<pre zoom labels="containerization.dockerfile,101,">
-<span xsmall>ENTRYPOINT vs COMMAND</span>
-Extracted from:
-https://stackoverflow.com/questions/21553353/what-is-the-difference-between-cmd-and-entrypoint-in-a-dockerfile
-
-- Docker default entrypoint is /bin/sh -c.
-  - ENTRYPOINT allows to override the default.
-    - $ docker --entrypoint allows to override effective entrypoint.
-    (ºENTRYPOINT is (purposely) more difficult to overrideº)
-    - ENTRYPOINT is similar to the "init" process in Linux. It is the
-      first command to be executed. Command are the params passed to
-      the ENTRYPOINT.
-
-- There is no default command (to be executed by the entrypoint).
-  It must be indicated either as:
-   $ docker run -i -t ubuntu bash 
-                             └─┬─┘ 
-                        /bin/sh -c bash will be executed.
-                        └───┬─────┘ 
-                        Or non-default entrypoint 
-
-BºAs everything is passed to the entrypoint, very nice behavior
-  appearsº: They will act as binary executables:
-  Ex. If using ENTRYPOINT ["/bin/cat"] then 
-      $ ALIAS CAT="docker run myImage"
-      $ CAT  /etc/passwd 
-        └┬┘ 
-       will effectively execute next command on container image:
-        ┌──┴────┐ 
-      $ /bin/cat  /etc/passwd 
-
-  Ex. If using ENTRYPOINT ["redis", "-H", "something", "-u", "toto"]
-      will be equivalent to executing redis with default params 
-
-      $ docker run redisimg get key
-</pre>
-
 <span title>Monitoring running containers</span>
 
 <pre zoom labels="containerization.monitoring">
@@ -6580,91 +6554,177 @@ Tag image:
   performance," he said.
 </pre>
 
-<span title>Advanced Image creation</span>
-<pre zoom labels="containerization.image.build">
-<span xsmall>ONBUILD</span>
+<span title>Dockerfile (Image creation)</span>
+<pre zoom labels="containerization.dockerfile,containerization.image.build,101,">
+<span title>Dockerfile ARG vs ENV</span>
+@[https://vsupalov.com/docker-arg-vs-env/]
+ARG : Vaules are consumed/used at build time. Not available at runtime.
+ENV : Values are consumed/used at runtime by final app.
 
-Modify base image adding "ONBUILD" in places that are executed just during build
-in the image extending base image:
-| Dockerfile.base                | Dockerfile
-| FROM node:7.10-alpine          | FROM node-base
-|                                |
-| RUN mkdir /src                 | EXPOSE 8000
-| WORKDIR /src
-|
-| ONBUILD ARG NODE_ENV
-| ONBUILD ENV NODE_ENV $NODE_ENV
-|
-| COPY package.json /src
-|
-| RUN npm install
-|
-| COPY . /src
-|
-| CMD [ "npm", "start" ]
+ARG and ENV can be combined to provide default ENV (Runtime) values to apps like:
 
-  $ docker build -t node-base -f Dockerfile.base . # STEP 1: Compile base image
-  $ docker build -t node -f Dockerfile .           # STEP 2: Compile image
-  $ docker run -p 8000:8000 -d node
+ARG buildAppParam1=default_value
+ENV appParam1=$buildAppParam1
+
+<span xsmall>ENTRYPOINT vs COMMAND</span>
+Extracted from:
+https://stackoverflow.com/questions/21553353/what-is-the-difference-between-cmd-and-entrypoint-in-a-dockerfile
+
+- Docker default entrypoint is /bin/sh -c.
+  - ENTRYPOINT allows to override the default.
+    - $ docker --entrypoint allows to override effective entrypoint.
+    (ºENTRYPOINT is (purposely) more difficult to overrideº)
+    - ENTRYPOINT is similar to the "init" process in Linux. It is the
+      first command to be executed. Command are the params passed to
+      the ENTRYPOINT.
+
+- There is no default command (to be executed by the entrypoint).
+  It must be indicated either as:
+   $ docker run -i -t ubuntu bash 
+                             └─┬─┘ 
+                        /bin/sh -c bash will be executed.
+                        └───┬─────┘ 
+                        Or non-default entrypoint 
+
+BºAs everything is passed to the entrypoint, very nice behavior
+  appearsº: They will act as binary executables:
+  Ex. If using ENTRYPOINT ["/bin/cat"] then 
+      $ ALIAS CAT="docker run myImage"
+      $ CAT  /etc/passwd 
+        └┬┘ 
+       will effectively execute next command on container image:
+        ┌──┴────┐ 
+      $ /bin/cat  /etc/passwd 
+
+  Ex. If using ENTRYPOINT ["redis", "-H", "something", "-u", "toto"]
+      will be equivalent to executing redis with default params 
+
+      $ docker run redisimg get key
+
+<span xsmall>101</span>
+  ┌ Dockerfile.base ──────────────────┐       
+  │ FROM node:7.10-alpine             │       
+  │                                   │       
+  │ RUN mkdir /src                    │       
+  │ WORKDIR /src                      │       
+  │ COPY package.json /src            ← *1
+  │ RUN npm install                   ← *2   
+  │                                   │       ┌ Dockerfile.child ─┐
+  │ ONBUILD ARG NODE_ENV              ← *4    │ FROM node-base    │
+  │ ONBUILD ENV NODE_ENV $NODE_ENV    │       │                   │
+  │                                   │       │ EXPOSE 8000       │
+  │ CMD [ "npm", "start" ]            │       │ COPY . /src       ← *3
+  └───────────────────────────────────┘       └───────────────────┘
+  # STEP 1: Compile base image                # STEP 2: Compile child image   ←º*4º
+  $º$ docker build -t node-base  \ º          $º$ docker build -t node-child \ º
+  $º  -f Dockerfile.base .         º          $º  -f Dockerfile.child \        º 
+                                              $º    --build-arg NODE_ENV=... . º 
+                                                                                          
+                                              # STEP 3: Test
+                                              $º$ docker run -p 8000:8000 -d node-child º
 
 
+ º*1º Modifications in package.json will force rebuild from there 
+      triggering a new npm install on next step. 
+    RºWARN:ºIf the package.json is put after npm install then no npm 
+            install will be executed since Docker will not detect any change.
+
+ º*2º slow process that doesn't change put before "moving parts" to 
+      avoid (but after copying any file that indicates that a new npm 
+      install must be triggered - package.json, package-lock.json, maybe 
+      "other")
+
+ º*3º source code, images, CSS, ...  will change frequently during development.
+      Put in last position (top layer in image) so that new modification triggers
+      just rebuild of last layer.
+
+ º*4º Modify base image adding "ONBUILD" in places that are executed just during
+      build in the image extending base image
 </pre>
-</pre>
 
-<pre zoom labels="containerization.image.build,qa,performance">
-<span xsmall>Multi-Stage</span>
-- Multi-Stage allows for final "clean" images that will
-  contain just the application binaries, with no building
-  or compilation intermediate tools needed during the build.
-  This allow for much lighter final images.
-              ┌───────────────────────────────┬─────────────────────────────────────────┐
-              │ "STANDARD" BUILD              │ multi─stage BUILD                       │
-┌─────────────┼───────────────────────────────┼─────────────────────────────────────────┤
-│Dockerfile   │ Dockerfile                    │ Dockerfile.ms                           │
-│             │ FROMºgolang:alpineº           │ FROM ºgolang:alpineº AS Oºbuild─envº    │
-│             │ WORKDIR /app                  │ ADD . /src                              │
-│             │ ADD . /app                    │ RUN cd /src ; go build ─o app           │
-│             │ RUN cd /app ; go build ─o app │                                         │
-│             │ ENTRYPOINT ./app              │ FROMºalpineº                            │
-│             │                               │ WORKDIR /app                            │
-│             │                               │ COPY --from=Oºbuild─envº /src/app /app/ │
-│             │                               │ ENTRYPOINT ./app                        │
-├─────────────┼───────────────────────────────┼─────────────────────────────────────────┤
-│ Compile     │ $ docker build . ─t hello─go  │ $ docker build . ─f Dockerfile.ms       │
-│ image       │                               │   ─t hello─goms                         │
-├─────────────┼───────────────────────────────┼─────────────────────────────────────────┤
-│ Exec        │ $ docker run hello─go         │ $ docker run hello─goms                 │
-├─────────────┼───────────────────────────────┼─────────────────────────────────────────┤
-│ Check image │ $ docker images               │ $ docker images                         │
-│ size        │                               │                                         │
-└─────────────┴───────────────────────────────┴─────────────────────────────────────────┘
+<pre zoom labels="containerization.dockerfile,containerization.image.build,qa,performance">
+<span xsmall>MultiStage </span>
+@[https://docs.docker.com/develop/develop-images/multistage-build/]
 
- Ex 2: Multi-stage NodeJS Build
+- Example 1: Go multistage build:
 
-    FROM node:12-alpine
-    
-    ADD . / app01_src/
-    RUN cd app01_src/ ⅋⅋\            ←ºSTAGE 1: Compileº
-        npm set unsafe-perm true ⅋⅋\ ← By default npm changes uid to the one specified 
-                                       in user config or 'nobody' by default.
-                                       Set to true to exec as root. Needed for
-                                       installs.
-        npm cache clean --force ⅋⅋\
-        npm install ⅋⅋                 npm link in a package folder will create
-        npm run build ⅋⅋ \             a symlink in the global folder 
-        npm link                     ← {prefix}/lib/node_modules/$package
-                                       linking to the package where the npm
-                                       link command was executed.
-                                        It will also link any bins in the package
-                                       to {prefix}/bin/{name}.
-    
-    FROM node:12-alpine              ←ºSTAGE 2º
-    RUN mkdir /opt/app01_src
-    WORKDIR /opt/app01_src
-    COPYº--from=0º/app01_src/dist  /opt/app01_src/dist
-    COPYº--from=0º/app01_src/node_modules  /opt/app01_src/node_modules
-    
-    ENTRYPOINT ["node", "/opt/app01_src/dist/cli.js"]
+   ┌─ Dockerfile.multistage ───────────────┐ Stage 1: 
+   │ FROM ºgolang-1.14:alpineº AS ºbuildº  ← Base Image with compiler, utility libs, ...
+   │ ADD . /src                            │ ( Maybe "hundreds" of MBs)
+   │ RUN cd /src ; go build Oº-o appº      ←  Let's Build final Oºexecutableº 
+   │                                       │      
+   │                                       │ Stage 2: 
+   │ FROM ºalpine:1.14º                    ← Clean minimal image (maybe just ~4MB).
+   │ WORKDIR /app                          │ 
+   │ COPYº--from=buildº Oº/src/appº /app/  ← Copy Oºexecutableº to final image 
+   │ ENTRYPOINT ./app                      │  
+   └───────────────────────────────────────┘
+                                            
+ $º$ docker build . -f Dockerfile.multistage \ º  Build image from multistage Dockerfile
+ $º  -t ${IMAGE_TAG}                           º
+
+ $º$ docker run --rm -ti ${IMAGE_TAG}          º  Finally Test it.
+
+
+
+- Ex 2: Multi-stage NodeJS Build
+  • PRESETUP: 
+    - Check with $º$ npm list --depth 3 º duplicated or similar dependencies.
+      Try to fix manually in package.json
+    - npm audit (See also online services like https://snyk.io,...)
+    - Avoid leaking dev ENV.VARs/secrets/...:
+     
+        Alt 1:                     Alt 2: (Safer)
+      ┌─ .dockerignore ────────┐   ┌─ .dockerignore ────────┐
+      │ + node_modules/        │   │ # ignore by default    │
+      │ + .npmrc         ← º*1º│   │ *                      ← Now it's safe to just:
+      │ + .env                 │   │                        │ COPY . /my/workDir
+      │ + ....                 │   │ !/docker-entrypoint.sh ← Explicetely mark what we want to copy.
+      └────────────────────────┘   │ !/another/file.txt     ← 
+                                   └────────────────────────┘
+
+
+  ┌─────────────────────────────────────────┐   STAGE 1:  
+  │ FROM node:14.2.0-alpine3.11 AS build    ← DONT's undeterministic version (e.g: node, node:14-alpine,...) 
+  │                                         │ sha256 can also be use to lock to precise version.
+  │                                         │ node:lts-alpine@sha256:aFc342a...
+  │                                         │
+  │ ADD . / app01_src/                      │ 
+  │                                         │ @[https://docs.npmjs.com/cli/v7/commands/npm-ci]
+  │ RUN npm ci --only=production            ← ci: Similar to npm install by optimized for Continuous Integrations
+  │                                         │     Significantly faster when:
+  │                                         │     - There is a  package-lock.json | npm-shrinkwrap.json file.
+  │                                         │     - node_modules/ folder is missing|empty.
+  │                                         │ --only=production: Skip non production dependencies (testing,..)
+  │                                         │ WARN: Avoid npm install (yarn install)
+  │                                         │
+  │ FROM node:16.10.0-alpine3.13            ← We can not just use FROM:alpine:3.13. In node we still need the 
+  │                                         │ "big" image, since output artifacts are not self executables. 
+  │ RUN mkdir /app                          │
+  │ WORKDIR /app                            │ We can still save some space removing un-needed sources.
+  │ USER node                               ← Avoid root
+  │ COPY º--from=buildº --chown=node:node \ ← Forget source, ... Keep only Oº"dist/"º executable and
+  │      /app01_src/dist  /app              │ (unfortunatelly) keep also the big (tens/hundreds of MBs)
+  │ COPY º--from=buildº --chown=node:node \ │ node_modules/ folder, still needed in production.
+  │      /app01_src/node_modules \          │
+  │      /app/node_modules                  │ 
+  │                                         │
+  │ ENV NODE_ENV production                 ← Some libs only enable production optimization with the var. is set
+  │                                         │
+  │                                         │
+  │ ENTRYPOINT ["node", "/app/dist/cli.js"] ← TODO: Check "dumb-init" alternative.
+  └─────────────────────────────────────────┘  
+
+  NOTE: to handle with OS signals add some code like:
+  async function handleSigInt(signal) {
+      await fastify.close()
+      process.exit()
+  }
+  process.on('SIGINT', handleSigInt)
+
+ Sometimes npmrc can contain secrets. 
+
+
 </pre>
 <pre zoom labels="containerization.image.build,qa">
   <a xsmall href="https://github.com/GoogleContainerTools/distroless">Distroless</a>
@@ -8065,6 +8125,16 @@ See also QAWolf:
 
 
 
+<pre zoom labels="TODO">
+<span title></span>
+https://stackoverflow.com/questions/13043344/search-and-replace-in-bash-using-regular-expressions
+hello=ho02123ware38384you443d34o3434ingtod38384day
+re='(.*)[0-9]+(.*)'
+while [[ $hello =~ $re ]]; do
+  hello=${BASH_REMATCH[1]}${BASH_REMATCH[2]}
+  done
+  echo "$hello"
+</pre>
 
 
 

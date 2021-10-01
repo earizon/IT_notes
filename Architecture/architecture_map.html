@@ -315,10 +315,50 @@ http://www.graphviz.org/gallery/
 </pre>
 
 <pre zoom labels="db_engine.graph_db,distributed,TODO">
-<span xsmall TODO>Distributed Graph DB</span>
-<span xsmall>Query</span>
+<span xsmall TODO>Query Distributed Graph DB</span>
 @[https://www.infoq.com/presentations/graph-query-distributed-execution/]
 </pre>
+
+<pre zoom labels="db_engine.graph_db,distributed,TODO">
+<span title>Dragon dist.GraphDB@FB</span>
+@[https://engineering.fb.com/2016/03/18/data-infrastructure/dragon-a-distributed-graph-query-engine/]
+- Facebook Graph load: 
+Bºmillions of writes and billions of reads per secondº.
+Bºthe information you see can’t be prepared in advance.º
+
+- Facebook graph DB evolution:
+  memcached → MySQL → TAO → Dragon + TAO. 
+                      └┬┘
+              (T)he (A)ssociation (O)bjects Server
+              "RAM cache" of MySQL ,...
+
+- A typical photo upload creates ~20(edges) writes to MySQL cached in RAM via TAO.
+
+- Inverted indexing is a popular technique also used at Facebook.  e.g.:
+
+      123 : Likes : Shakira     Shakira: LikedBy: 123
+      222 : Likes : Shakira     Shakira: LikedBy: 222
+      333 : Likes : Shakira     Shakira: LikedBy: 333
+            └─┬─┘                        └──┬──┘
+           Direct                       Inverted
+            Index                        Index
+
+
+- indexing imply faster reads, slower writes, not used for small sets.
+  Dragon optimies using partial indexing (skip indexing for small sets).
+BºThe combination of partial indexing techniques and a richer query language º
+Bºsupporting filter/orderby operator allows us to index a system roughly 150x º
+Bºlarger while serving 90 percent of queries from the cache.º
+
+- Dragon isºbacked by a demand-filled, in-process key-value storeº, updated in 
+  real time and eventually consistent. 
+- It uses a number of optimization techniques to conserve storage, improve 
+  locality, and execute queries in 1/2ms with high availability and consistency.
+- Dragon push down many complex queries closer to storage by profitting from
+  knowledge about the social graph data and user's behaviour.
+
+</pre>
+
 
 <pre zoom labels="TODO">
 <span xsmall>OWL</span>
@@ -510,12 +550,38 @@ https://www.cognitum.eu/Semantics/FluentEditor/
   outstanding efficiency and tiny footprint.
 </pre>
 
-<pre zoom labels="db_engine.rdbm,qa,sql,tool">
+<pre zoom labels="db_engine.rdbm,qa.documentation,sql,tool,comparative">
 <span xsmall>SchemaSpy</span>
 @[http://schemaspy.org/]
-- SchemaSpy is generates database to HTML documentation, including Entity Relationship diagrams.
-</pre>
+• SchemaSpy is generates database to HTML documentation,
+  including Entity Relationship diagrams. 
 
+• Basic ussage:
+
+  INPUT       PROCESSING          OUTPUT
+  =========   =============       =================
+  running  →  schemaspy         → html report with:
+  ddbb        (+graphviz)         - table/view/columns 
+              └────┬────┘         - constrains/routines summary and stats.
+                   ·              -ºE/R diagram.º
+                   ·              - Orphan tables.
+                   ·              -ºanomalies.º
+                   · 
+    ┌──────────────┴─────────────────────┐
+      (JDK and graphviz pre-installed)
+   $º $ java -jar schemaspy-6.1.0.jar   \ º
+   $º       -t pgsql                    \ º
+   $º       -dp postgresjdb.jar         \ º
+   $º       -h $DDBB_HOST               \ º
+   $º       -p $DDBB_PORT               \ º
+   $º       -u $DDBB_USER               \ º
+   $º       -p $PASS                    \ º
+   $º       -o $OUTPUT_HTML_REPORT_DIR    º
+
+<hr/>
+<span xsmall>SchemaCrawler (TODO)</span>
+- "Unix friendly" generating mermaid diagram output.
+</pre>
 </div>
 
 <div groupv>
@@ -603,7 +669,7 @@ https://www.cognitum.eu/Semantics/FluentEditor/
   - Used by Geth/Besu/... and other Ethereum clients ...
 </pre>
 
-<pre zoom labels="db_engine.key_value">
+<pre zoom labels="db_engine.key_value,scalability.distributed,storage.distributed">
 <span xsmall>RocksDB</span>
 @[https://raw.githubusercontent.com/facebook/rocksdb/gh-pages-old/intro.pdf]
 
@@ -639,7 +705,40 @@ Rº- Not highly available. data lost if machine breaks.º
 - Data Checksuming to detect corruptions for each SST file block.
 BºA block, once written to storage, is never modified.º
 
+
+- Use cases:
+  - "Many". Amongst others, it is used as core storage engine for Facebook's 
+    Dragon, probably one of the biggest Graph DB in production.
+
+<hr/>
+
+<span title>ZippyDB</span>
+@[https://www.infoq.com/news/2021/09/facebook-zippydb/]
+@[https://engineering.fb.com/2021/08/06/-data/zippydb/]
+- By Facebook Engineering.
+- Internally it uses RocksDB on each node as "storage engine".
+- general-purpose biggest key-value store @ Facebook.
+- in production for more than six years.
+- It offers flexibility to applications in terms tunable durability/consistency/availability/latency.
+- Use cases:
+  - metadata for distributed filesystems.
+  - counting events.
+  - app and/or product data.
+
+- A ZippyDB deployment (named "tier") consists of compute and storage resources
+ ºspread across several regions worldwide.º
+- Each deployment hosts multiple use cases in aºmulti-tenant fashionº.
+- ZippyDB splits the data belonging to a use case into shards.
+  - Depending on configuration, it replicates each shard across 
+    multiple regions for fault tolerance, Bºusing either Paxos or async replication.º
+     - A subset of replicas per shard is part of a quorum group, where data
+       is synchronously replicated  (high durability and availability).
+     - The remaining replicas, if any, are configured as followers using
+       asynchronous replication, allow applications to have many in-region replicas
+       to support low-latency reads with relaxed consistency while keeping the
+       quorum size small for lower write latency.
 </pre>
+
 
 </div>
 
@@ -1780,6 +1879,43 @@ REFS:
 
 - Nifi "vs" Cammel: [comparative]
 @[https://stackoverflow.com/questions/65625166/apache-camel-vs-apache-nifi]
+</pre>
+
+<pre zoom labels="db_engine.*,analytics,BI,low_code,TODO">
+<span title>Redash:  </span>
+- "Make your company Data Driven"
+- Redash is designed to enable anyone, regardless of the level of 
+  technical sophistication, to harness the power of data big and small. 
+  SQL users leverage Redash to explore, query, visualize, and share 
+  data from any data sources. Their work in turn enables anybody in 
+  their organization to use the data. Every day, millions of users at 
+  thousands of organizations around the world use Redash to develop 
+  insights and make data-driven decisions.
+- Supported DDBBs:
+  Amazon Athena                     MemSQL
+  Amazon DynamoDB                   Microsoft Azure Data Warehouse / Synapse
+  Amazon Redshift                   Microsoft Azure SQL Database
+  Axibase Time Series Database      Microsoft SQL Server
+  Cassandra                         MongoDB
+  ClickHouse                        MySQL
+  CockroachDB                       Oracle
+  CSV                               PostgreSQL
+  Databricks (Apache Spark)         Presto
+  DB2 by IBM                        Prometheus
+  Druid                             Python
+  Elasticsearch                     Qubole
+  Google Analytics                  Rockset
+  Google BigQuery                   Salesforce
+  Google Spreadsheets               ScyllaDB
+  Graphite                          Shell Scripts
+  Greenplum                         Snowflake
+  Hive                              SQLite
+  Impala                            TiDB
+  InfluxDB                          TreasureData
+  JIRA                              Vertica
+  JSON                              Yandex AppMetrrica
+  Apache Kylin                      Yandex Metrica
+  OmniSciDB (Formerly MapD)
 </pre>
 
 <pre zoom labels="enterprise_patterns,101">
@@ -6196,6 +6332,115 @@ Used among others by Bayer, Roche, IBM, Capgemini, AstraZeneca, Rolls-Royce, ...
 </pre>
 
 ##########################
+https://github.com/authorjapps/zerocode  @ma
+Zerocode Open Source makes it easy to create, change, orchestrate and 
+maintain automated tests with the absolute minimum overhead for REST, 
+SOAP, Kafka Real Time Data Streams and much more. Tests created in 
+Zerocode Open Source can be easily shared between teams for 
+reviewing, editing, and versioning. The platform incorporates the 
+best feedback and suggestions from the community to make it 
+incredibly powerful, and we’re seeing rapid adoption across the 
+developer/tester community
+
+
+Smart Projects Using Zerocode
+- Vocalink (A Mastercard company) - REST API testing for 
+  virtualization software
+- HSBC Bank - MuleSoft application REST API Contract testing, E2E 
+  Integration Testing, Oracle DB API testing, SOAP testing and 
+  Load/Stress aka Performance testing
+- Barclays Bank - Micro-Services API Contract Validation for System 
+  APIs build using Spring Boot
+- Home Office(GOV.UK) - Micro-Services REST API Contract testing, 
+  HDFS/HBase REST end point testing, Kafka Data-pipeline testing, 
+  Authentication testing
+- Deloitte(Australia) - Kafka data pipeline end to end validations
+- Yandex Search Engine(Russia) - Load and Stress Testing aka 
+  Performance Testing
+#########################
+https://github.com/vitessio/vitess 11.500 Starts in Github !!!
+Vitess is a database clustering system for horizontal scaling of 
+MySQL through generalized sharding.
+
+By encapsulating shard-routing logic, Vitess allows application code 
+and database queries to remain agnostic to the distribution of data 
+onto multiple shards. With Vitess, you can even split and merge 
+shards as your needs grow, with an atomic cutover step that takes 
+only a few seconds.
+
+Vitess has been a core component of YouTube's database infrastructure 
+since 2011, and has grown to encompass tens of thousands of MySQL 
+nodes.
+
+For more about Vitess, please visit vitess.io.
+
+Vitess has a growing community. You can view the list of adopters 
+here.
+######################
+https://www.xaprb.com/blog/citus/
+Citus: Scale-Out Clustering and Sharding for PostgresSQL
+I wrote yesterday about Vitess, a scale-out sharding solution for 
+MySQL. Another similar product is Citus, which is a scale-out 
+sharding solution for PostgreSQL. Similar to Vitess, Citus is 
+successfully being used to solve problems of scale and performance 
+that have previously required a lot of custom-built middleware.
+
+Citus solves the following problems for users:
+- Sharding. Citus handles all of the sharding, so applications do not 
+  need to be shard-aware.
+- Multi-tenancy. Applications built to colocate multiple customers’ 
+  databases on a shared cluster—like most SaaS applications—are 
+  called multi-tenant. Sharding, scaling, resharding, rebalancing, and 
+  so on are common pain points in modern SaaS platforms, all of which 
+  Citus solves.
+- Analytics. Citus is not exclusively an analytical database, but it 
+  certainly is deployed for distributed, massively parallel analytics 
+  workloads a lot. Part of this is because Citus supports complex 
+  queries, building upon Postgres’s own very robust SQL support. 
+  Citus can shard queries that do combinations of things like 
+  distributed GROUP BY and JOIN together.
+
+· Citus is not middleware: it’s an extension to Postgres that 
+  turns a collection of nodes into a clustered database. This means 
+  that all of the query rewriting, scatter-gather MPP processing, etc 
+  happens within the PostgreSQL server process, so it can take 
+  advantage of lots of PostgreSQL’s existing codebase and 
+  functionality.
+
+· Citus runs on standard, unpatched PostgreSQL servers. The only 
+  modification is installing the extensions into the server. This is a 
+  unique and extremely important advantage: most clustered databases 
+  that are derived from another database inevitably lag behind and get 
+  stuck on an old version of the original database, unable to keep up 
+  with the grueling workload of constantly refactoring to build on new 
+  releases. Not so for Citus, which doesn’t fork Postgres—it 
+  extends it with Postgres’s own extension mechanisms. This means 
+  that Citus is positioned to continue innovating on its own software, 
+  while continuing to benefit from the strong progress that the 
+  PostgreSQL community is delivering on a regular cadence too.
+
+############################
+Facebook developed Akkio, a new data placement service (DPS) that 
+operates on trillions of small entities to determine how and when to 
+move information in order to optimize retrieval speed for people 
+across the globe, using the minimum required number of copies. 
+Developed over the last three-plus years and leveraging Facebook’s 
+unique software stack, Akkio is now in limited production and 
+delivering on its promise with a 40 percent smaller footprint, which 
+resulted in a 50 percent reduction of the corresponding WAN traffic 
+and an approximately 50 percent reduction in perceived latency.
+########################
+<pre zoom labels="radar,async/reactive.101,standards.openapi,qa.*,TODO">
+<span xsmall>AsyncAPI.org</span>
+@[https://www.asyncapi.org/]
+- Building the future of event-driven architectures.
+- Open source tools to easily build and maintain your event-driven architecture.
+- All powered by the AsyncAPI specification, the industry standard for defining
+  asynchronous APIs.
+</pre>
+########################
+
+
 
 
 -->

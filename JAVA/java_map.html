@@ -54,19 +54,41 @@ https://hg.openjdk.java.net/jdk/jdk
    ISBN-13: 978-1449358457
 </pre>
 
-<pre zoom labels="resource,101,TODO">
-<span xsmall>TOP Mistakes/Classes/FAQs/...</span>
-https://www.programcreek.com/2014/05/top-10-mistakes-java-developers-make/
-https://www.programcreek.com/2015/12/top-10-java-utility-classes/
-https://www.programcreek.com/2013/09/top-9-questions-for-java-map/
-https://www.programcreek.com/2013/09/top-10-questions-for-java-collections/
-https://www.programcreek.com/2013/09/top-8-diagrams-for-understanding-java/
-https://www.programcreek.com/2013/09/top-10-faqs-of-java-strings/
-https://www.programcreek.com/2013/09/top-10-methods-for-java-arrays/
-https://www.programcreek.com/2013/09/top-10-websites-for-advanced-level-java-developers/
-https://www.programcreek.com/2013/08/top-books-for-advanced-level-java-developers/
-</pre>
+<pre zoom labels="java_lang.101,resource,scalability.101,qa.101,TODO" id="java_donts">
+<span xsmall>JAVA DONT's</span>
+• Avoid Nulls, prefer final:
+RºWRONG:º
+  ========================         
+  int myValue = null; 
+  if (condition1) {   ← Initialization depends on runtime checks (condition1/2/...).
+      myValue = val1;   We can forget to add some condition wrongly leaving
+  }                     myValue to a false null. (Probably in a later
+  if (condition2) {   ← interaction, weeks or months after first implementatio
+      myValue = val2;   when myValue is not fresh in our memory) 
+  }                    
+  ...
 
+BºRIGHT:º
+  ========================
+ ºfinalºint myValue;  ← "final" keywords force compiler to check every possible execution
+  if (condition1) {     condition and fail to compile is some branch does not initiliaze
+      myValue = val1;   myValue properly.
+  }                     - Final values are safer (to and developer mistakes concurent code).
+  if (condition2) {     
+      myValue = val2;   - Final values makes JIT happier.
+  }
+  ...
+ 
+  See also:
+  - Inmmutable Objects are faster (and safer)
+  @[https://docs.oracle.com/javase/tutorial/essential/concurrency/immutable.html]
+   (A final variable is the simplest example of an immutable object)
+
+• Avoid Strings as much as possible. You are converting an strongly typed 
+  language in a weak runtime one.
+  If forced to use strings, try to protect them with (Checkers framework) @Fenum("country")
+  @[#checker_framework_summary]
+</pre>
 
 <pre zoom labels="resource,TODO">
 <span TODO xsmall>Who-is-Who</span>
@@ -124,7 +146,65 @@ https://www.programcreek.com/2013/08/top-books-for-advanced-level-java-developer
 </pre>
 
 <span title>What's new</span>
-<pre zoom labels="101,containers,async/reactive,debugging,TODO" bgorange>
+<pre zoom labels="resource,devops.containarization,async/reactive.*,debugging,security.cryptography,troubleshooting" bgorange>
+<span xsmall>v.17 2021-09-14</span>
+- 1st long-term support (LTS) release after JDK 11 (2018).
+- 14 JEPs includes:
+  - 409:ºSealed Classesº
+         package com.example.geometry;
+         
+         public abstract sealed class Shape           ← Syntax 1: Permitted classes in
+             permits com.example.polar.Circle,                    different file
+                     com.example.quad.Rectangle,
+                     com.example.quad.simple.Square { ... }
+
+
+         abstract sealed class Root { ...             ← Syntax 2: Permitted classed inside
+             final class A extends Root { ... }                   parent class.
+             final class B extends Root { ... }
+             final class C extends Root { ... }
+         }
+
+  - 412: Foreign Function⅋ Memory API (Incubator)
+         API by which Java programs can interoperate with code and 
+         data outside of the Java runtime. By efficiently invoking foreign 
+         functions (i.e., code outside the JVM), and by safely accessing 
+         foreign memory (i.e., memory not managed by the JVM),ºthe API enables º
+       º Java programs to call native libraries and process native data º
+       º without the brittleness and danger of JNI.º
+         - Goals:
+           - Ease of use, replacing JNI with better, pure-Java development model.
+           - Performance: comparable or better than JNI and sun.misc.Unsafe.
+           - Generality : operate on different kinds of foreign memory 
+                          (e.g., native memory, persistent memory, and managed 
+                          heap memory) and, over time, to accommodate other platforms 
+                          (e.g., 32-bit x86) and foreign functions written in languages
+                          other than C (e.g., C++, Fortran).
+           - Safety     : 
+
+
+  - 306: Restore Always-Strict Floating-Point Semantics
+         Goals:
+         - Ease development of numerically-sensitive libraries, including 
+           java.lang.Math and java.lang.StrictMath.
+
+    Provide more regularity in a tricky aspect of the platform.
+
+  - 356: Enhanced Pseudo-Random Number Generators            [cryptography]
+  - 403: Strongly Encapsulate JDK Internals
+         it will no longer be possible to bypass strong encapsulation
+         via --illegal-access flag.
+  - 406: Pattern Matching for switch (Preview)
+  - 407: Remove RMI Activation
+  - 410: Remove the Experimental AOT and JIT Compiler
+  - 411: Deprecate the Security Manager for Removal
+  - 414: Vector API (Second Incubator)
+  - 415: Context-Specific Deserialization Filters
+
+  - 382: New macOS Rendering Pipeline
+  - 391: macOS/AArch64 Port
+  - 398: Deprecate the Applet API for Removal
+<hr/>
 <span xsmall>v.15 2020-09-15</span>
 @[https://www.itprotoday.com/programming-languages/java-15-gains-garbage-collection-text-block-features]
 
@@ -161,7 +241,7 @@ https://www.programcreek.com/2013/08/top-books-for-advanced-level-java-developer
 - JEP 383: Foreign Memory Access API: (Preview)
   - access "foreign"(outside Java HEAP) memory.
     Part of Project Panama, trying a better connection with native  (C/Assembler) code.
-
+<hr/>
 <span xsmall>v.14 2020-03-??</span>
 https://www.infoq.com/news/2019/12/java14-feature-freeze/
  └ More container awareness...
@@ -357,6 +437,7 @@ New major features:
     -XX:+UseGroupMemoryLimitFoHeap
     - set -XX:MaxRAMFraction to 2 (default is 4) 
 
+
 - Java Platform Module System:
   - based on Project Jigsaw
   - divides the JDK into a set of modules for
@@ -424,13 +505,19 @@ New major features:
 (TODO)
 @[https://www.oracle.com/technetwork/java/javase/8-whats-new-2157071.html]
 @[https://www.qwant.com/?q=what+new+java+8]
+
+  - TLS enh. Backported to 1.8 (HTTP2)
+  @[https://www.infoq.com/news/2020/04/tls-alpn-java8/]
+</pre>
+
+
 </pre>
 
 
 </div>
 <div groupv >
 <span title>JVM internals</span>
-<pre zoom labels="jvm,monitoring,containers,troubleshooting,TODO">
+<pre zoom labels="jvm.*,monitoring.jvm,devops.containarization,troubleshooting,TODO">
 <span xsmall>JVM Troubleshooting and Monitoring</span>
 - Flight Recoder:
 
@@ -454,7 +541,7 @@ New major features:
 
 </pre>
 
-<pre zoom labels="JVM,profiling,real-time," id="JVM_safepoints">
+<pre zoom labels="JVM.*,profiling,architecture.real-time," id="JVM_safepoints">
 <span xsmall>JVM Safepoints</span>
 - @[http://psy-lob-saw.blogspot.com/2015/12/safepoints.html]    [TODO]
    - Definition: Mutator threads: threads which manipulate the JVM heap.
@@ -530,7 +617,7 @@ BºProblems with (most) Sampling Profilersº:
 </pre>
  
 
-<pre zoom labels="jvm,micrometer,monitoring,troubleshooting,low_code,TODO" id="micrometer_summry">
+<pre zoom labels="jvm.monitoring.micrometer,architecture.distributed,monitoring.distributed,troubleshooting,low_code,TODO" id="micrometer_summry">
 <span xsmall>Micrometer</span> <!-- @ma -->
 - simple facade to instrumentation clients for 
 - instrument JVM-based apps without vendor lock-in.
@@ -564,7 +651,7 @@ Guides: [TODO]
 </pre>
 
 
-<pre zoom labels="jvm,TODO">
+<pre zoom labels="jvm.101,TODO">
 <span TODO xsmall>Inside the JVM</span>
 - @[https://www.artima.com/insidejvm/ed2/index.html]
 
@@ -599,7 +686,7 @@ BºJIT compiler optimization levels:º
   CPU and memory.  See also @[#jvm_app_checkpoint]
 </pre>
 
-<pre zoom labels="jvm,TODO">
+<pre zoom labels="jvm.*,TODO">
 <span xsmall>JVM Implementations</span>
 @[https://blog.joda.org/2018/09/time-to-look-beyond-oracles-jdk.html]
 
@@ -642,7 +729,7 @@ In practical terms, there is only one set of source code for the JDK.
 
 
 <span title>Memory</span>
-<pre zoom labels="jvm,101,performance,monitoring">
+<pre zoom labels="jvm.101,scalability.jvm,monitoring.jvm">
   <span xsmall>JVM MEMORY</span>
 (<a href="https://dzone.com/articles/java-memory-management">REF</a>)
 JAVA MEMORY MODEL:
@@ -689,7 +776,7 @@ Reference Types regarding how the object on the heap is eligible for garbage col
 └─────────┴───────────────────────────────────────────────────────────────────────────
 </pre>
 
-<pre zoom labels="jvm,performance,strings">
+<pre zoom labels="jvm.memory,scalability.jvm,java_lang.strings">
 <span xsmall>Force string pool reuse</span>
 - Strings are immutable.
 - Stored on the heap
@@ -697,17 +784,19 @@ Reference Types regarding how the object on the heap is eligible for garbage col
   reusing strings whenever possible.
 
 String string01 = "297",                                string01 == string02 : true
-       string02 = "297",                                string01 == string03 : Rºfalseº *1
-       string03 = new Integer(297).toString(),          string01 == string04 : true  *2
-       string04 = new Integer(297).toString()º.intern()º; *2
+       string02 = "297",                                string01 == string03 : Rºfalseº 
+       string03 = new Integer(297).toString(),          string01 == string04 : true 
+       string04 = new Integer(297).toString()º          string05 == string01 : Rºfalseº  
+                 º.intern()º;
+       string05 = new String("297")
 
-º1: RºPool reuse does not work for dynamically created strings*
+º1: RºPool reuse does not work for dynamically created stringsº
 *2: If we consider that the computed String will be used quite often,
     we can force the JVM to add it to the string pool by adding the
-    .intern() method at the end of computed string:
+    .intern() method at the end of computed string.
 </pre>
 
-<pre zoom labels="jvm,cache,performance">
+<pre zoom labels="jvm.memory,scalability.cache,performance">
 <span xsmall>"MARK&amp;SWEEP"</span>
 JVM analyzes the variables from the stack and "marks" all the objects that need to be kept alive.
 Then, all the unused objects are cleaned up.
@@ -742,7 +831,7 @@ To optimize even more heap memory actually consists of multiple parts (Java 8+):
   │   pool   │
   └──────────┴─────────────────────────────────────
 </pre>
-<pre zoom labels="jvm">
+<pre zoom labels="jvm.memory">
 <span xsmall>GC Types</span>
 - default GC type is based on the underlying hardware
 - programmer can choose which one should be used
@@ -774,7 +863,7 @@ See also:
 @[https://docs.oracle.com/javase/8/docs/technotes/guides/vm/gctuning/sizing.html]
 </pre>
 
-<pre zoom  labels="jvm,performance,troubleshooting,">
+<pre zoom  labels="jvm.101,performance,troubleshooting,">
 <span xsmall>Optimization Tips</span>
 - To minimize the memory footprint, limit the scope of the variables as much as possible.
 
@@ -845,7 +934,7 @@ Rºthe web application, such as within the Application Server.º
         this.getClass().getClassLoader()  );
 </pre>
 
-<pre zoom  labels="jvm,memory_leaks,qa,troubleshooting,">
+<pre zoom  labels="jvm.101,qa.101,troubleshooting,">
 <span xsmall>˂˂AutoClosable˃˃ (1.7+)</span>
 - The java garbage collector can not automatically clean any
   other resource appart from memory. All resources related to
@@ -902,7 +991,7 @@ Rºthe web application, such as within the Application Server.º
 
 <div groupv>
 <span title>Java lang. 101</span>
-<pre zoom labels="strings,101,TODO">
+<pre zoom labels="java_lang.strings,java_lang.101,TODO">
 <span xsmall>Strings</span>
   final String 
      output1 = Stringº.formatº("%s = %d", "joe", 35), ← Format string
@@ -930,9 +1019,17 @@ Bºjava.util.StringJoinerº (1.8+) Concatenate Strings
   String commaSeparatedNumbers = numbers.stream()
       .map(i -˃ i.toString())
       .collect(ºCollectors.joining(", ")º);
+
+<span xsmall>StringBuffer/StringBuilder</span>
+• Concatenating strings is very slow when compared to StringBuffer/StringBuilder.
+  - StringBuffer   is thread-safe.
+  - StringBuilder  is faster. (when thread-safety is not needed) 
+@[https://stackoverflow.com/questions/355089/difference-between-stringbuilder-and-stringbuffer]
+    for (int i = 0; i ˂ 0 ; i++) { sbuffer.append(""); } // ← 2241 millisec 
+    for (int i = 0; i ˂ 0 ; i++) { sbuildr.append(""); } // ←  753 millisec º~3.0x faster!!!º
 </pre>
 
-<pre zoom labels="io,persistence,fs,101">
+<pre zoom labels="java_lang.101,persistence.FS,">
 <span xsmall>Reading file</span>
 BºReading as lines of textº
   final File input = new File("input.txt"); 
@@ -941,7 +1038,7 @@ BºReading as lines of textº
                                                      RºWARN:ºOnly for small sizesº
 
   final File input = new File("input.txt");
-  final List<String> result =
+  final List˂String˃ result =
        Files.readLines(input, Charsets.UTF_8);   // ← Alt 2.(Guava) Read to List
              ^^^^^^^^^                              RºWARN:ºOnly for small sizesº
              readFirstLine() can be useful sometimes
@@ -1010,7 +1107,6 @@ while (it.hasNext()) {
    } finally {
 LineIterator.closeQuietly(it);                ← Close resources
    }
-
 <hr/>
 <span xsmall>Unix4j</span>
 @[https://github.com/tools4j/unix4j]
@@ -1027,10 +1123,35 @@ LineIterator.closeQuietly(it);                ← Close resources
 """
   Allows for things like:
   - Unix4j.cat("test.txt").grep("Tuesday").sed("s/kilogram/kg/g").sort();
+
+
+- java.nio.file.Files.writeString/readString (Java 11+ "utility" classes)
+  java.nio.file.Path fileName = Path.of("demo.txt");
+  String content  = "hello world !!";
+ ºjava.nio.file.Files.writeString(fileName, content);º       ← String    to text-file
+   
+  String actual =ºjava.nio.file.Files.readString(fileName);º ← text-file to String
+  System.out.println(actual);
+
+- java.nio.files.Files.lines: (Java 8+)
+    private static String readLineByLine(String filePath)
+    {
+        final StringBuilder contentBuilder = new StringBuilder();
+        try (
+          final java.util.stream.Stream˂String˃ stream =   ← stream resource must be closed
+              java.nio.file.Files.lines(                      (with a try-with in this example)
+                  java.nio.file.Paths.get(filePath), 
+                  java.nio.charset.StandardCharsets.UTF_8)
+         ) {
+            stream.forEach(
+                s -˃ contentBuilder.append(s).append("\n")
+            );
+        } catch(java.io.IOException e) { ...  }
+        return contentBuilder.toString();
+    }
 </pre>
 
-
-<pre zoom labels="101,concurrency">
+<pre zoom labels="java_lang.101,concurrency.*">
 <span xsmall>java.time</span>
 java.time.*
 - JDK 1.8+
@@ -1204,7 +1325,7 @@ Enums: DAYS HOURS MICROSECONDS MILLISECONDS MINUTES NANOSECONDS SECONDS
 </pre>
 
 
-<pre zoom  labels="101,qa" >
+<pre zoom  labels="java_lang.101,qa" >
 <a xsmall href="http://docs.oracle.com/javase/tutorial/java/annotations/">ANNOTATIONS</a>
 ºpredefined annotation types in java.lang:º
 - @Deprecated
@@ -1248,7 +1369,7 @@ void myMethod() { ... }
 void myMethod() { ... }
 </pre>
 
-<pre zoom labels="qa,">
+<pre zoom labels="java_lang.101,qa.*">
 <span xsmall>META-ANNOTATTONS</span>
 (Annotations applying to other annotations)
 
@@ -1283,7 +1404,7 @@ RetentionPolicy.RUNTIME:retained by JVM, can be queried at Runtime
   - ElementType.TYPE (1.8+)
 </pre>
 
-<pre zoom labels="monitoring,troubleshooting">
+<pre zoom labels="monitoring.logging,troubleshooting">
 <a xsmall href="https://www.slf4j.org/">SLF4j Logging</a>
 Simple Log Facade or abstraction for various logging frameworks
 (e.g. java.util.logging, logback, log4j) allowing the end user
@@ -1457,7 +1578,7 @@ BºMDC How To:º
       ...
 </pre>
 
-<pre zoom labels="security,101,low_code,spring,jvm" id="security_101">
+<pre zoom labels="security.101,low_code,spring.*,security.jvm" id="security_101">
 <span title>Security 101</span>
 @[https://snyk.io/blog/10-java-security-best-practices/]
 1. Make code immutable:
@@ -1586,7 +1707,7 @@ BºMDC How To:º
 9. Use strong encryption and hashing algorithms.
    TIP: Prefer Google Tink  (vs Low Level Java crypto libraries)
 
-10. Enable the Java Security Manager                                       [jvm]
+10. Enable the Java Security Manager                                       [security.jvm]
    · By default, JVM imposes no restrictions to running apps.
      (file system, network, ..)
      · Ex. By default the Attach API is active allowing to easely
@@ -1617,7 +1738,7 @@ BºMDC How To:º
 </pre>
 
 <span title>Functional</span>
-<pre zoom labels="101,functional,TODO">
+<pre zoom labels="java_lang.101,java_lang.functional,TODO">
 <span xsmall>Lambdas</span>
 Sytnax:
 (parameters) -˃ expression
@@ -1647,7 +1768,7 @@ map ( e -˃ e.hashCode())...
 collect(Collectors.toCollection(TreeSet::new))
 </pre>
 
-<pre zoom labels="101,qa,async/reactive,functional,TODO">
+<pre zoom labels="java_lang.functional,qa.*,async/reactive.*,TODO">
 <span xsmall>java.utility.function</span>
 @[https://docs.oracle.com/javase/8/docs/api/java/util/function/package-summary.html]
 @[https://docs.oracle.com/javase/8/docs/api/java/lang/FunctionalInterface.html]
@@ -1693,8 +1814,7 @@ Obj(Double|Int|Long)Consumer‹T›             │opt. accepting an object-valu
 
 <div groupv>
 <span title>Collections</span>
-<pre zoom labels="data_structures,performance,101,diagram,qa,library,guava,graphs" >
-UUID: 78f67bbf-3150-4c06-a48c-9b61ff350aea
+<pre zoom labels="java_lang.101,data_structures.101,data_structures.graphs,performance,diagram,qa.data,library,java_lang.guava," >
 <span xsmall bgorange>Collection Decission Tree</span>
                                   ┌──────────┐
                                   │  Allows  │
@@ -1733,6 +1853,11 @@ Standard Rºnon-concurrentº SDK:
 ├──────┼───────────────────┼───────────────────┼──────────────┼─────────────┼─────────────────────
 │˂Map˃ │ HashMap,Hashtable │                   │  TreeMap     │             │ LinkedHashMap
 └──────┴───────────────────┴───────────────────┴──────────────┴─────────────┴─────────────────────
+
+RºWARNº: There is a huge performance difference LinkedList and ArrayList.
+         - when there is a large number of add/remove operations LinkedList is much faster.
+         - When there is a lot of random access operations ArrayList is much faster.
+
 ºINTERFACESº
 @[http://download.oracle.com/javase/6/docs/api/java/util/HashSet.html]
 @[http://download.oracle.com/javase/6/docs/api/java/util/TreeSet.html]
@@ -1821,7 +1946,7 @@ ValueGraph˂N,V˃         An interface for graph- structured data, whose edges h
 
 
 </pre>
-<pre zoom labels="data_structures,101" >
+<pre zoom labels="data_structures.101" >
 <span xsmall>Initialization</span>
 ºINITIALIZING A LISTº
 final List˂String˃ myList =                  ← final forbid re-asigning the list,
@@ -1830,6 +1955,17 @@ final List˂String˃ myList =                  ← final forbid re-asigning the 
 
 final List˂String˃ myInmmutableList =        ← inmutable version (thread safe)
       Collections.unmodifiableList(myList);
+
+
+String[] array01 = ...;
+final      List˂String˃ readOnlyList  ← Inmutable ArrayList (static class inside Arrays),
+       = Arrays.asList(arr);            lacks set(), get(), contains() or "adding" methods
+                                        providing for a read-only view.
+
+final ArrayList˂String˃ mutableList   ← Mutable list.
+       = new ArrayList˂String˃(
+         Arrays.asList(arr));
+
 
 ºINITIALIZING A MAPº
 final Map˂String,String˃ myMap =             ← Mutable map (even if 'final' used)
@@ -1861,7 +1997,7 @@ final Map˂String, String˃ test =             ← Guava ImmutableMap alternativ
       .build();
 </pre>
 
-<pre zoom labels="data_structures,101">
+<pre zoom labels="data_structures.101">
 <span xsmall>Walk-over/iterate</span>
 ºfor collection walkº
  │for (
@@ -1923,7 +2059,7 @@ final Map˂String, String˃ test =             ← Guava ImmutableMap alternativ
 | );                              | )
 </pre>
 
-<pre zoom  labels="data_structures,101">
+<pre zoom  labels="data_structures.101">
 <span xsmall>java.util.Collections</span>
 <span xsmall>Utility class</span>
 @[https://docs.oracle.com/javase/7/docs/api/java/util/Collections.html]
@@ -2000,7 +2136,7 @@ SortedMap    Collections.unmodifiableSortedMap(SortedMap m)            Returns a
 SortedSet    Collections.unmodifiableSortedSet(SortedSet s)            Returns an unmodifiable view of the specified sorted set.
 </pre>
 
-<pre zoom labels="data_structures,TODO">
+<pre zoom labels="data_structures.*,TODO">
 <a xsmall href="http://fastutil.di.unimi.it/">Fastutil</a>
 - Fast and compact type-specific collections for Java
   Great default choice for collections of primitive types,
@@ -2008,7 +2144,7 @@ SortedSet    Collections.unmodifiableSortedSet(SortedSet s)            Returns a
   31 elements well.
 </pre>
 
-<pre zoom labels="data_structures,TODO">
+<pre zoom labels="data_structures.*,TODO">
 <a xsmall href="https://www.eclipse.org/collections/">Eclipse Collections</a>
 (Originated from Goldman Sachs gs-collection:
  @[https://github.com/goldmansachs/gs-collections])
@@ -2019,7 +2155,7 @@ SortedSet    Collections.unmodifiableSortedSet(SortedSet s)            Returns a
   bidirectional maps and so on.
 </pre>
 
-<pre zoom labels="data_structures,qa,TODO">
+<pre zoom labels="data_structures.*,qa.data,TODO">
 <a xsmall href="https://github.com/google/guava">Guava Collections</a>
 - Google Core Libraries for Java 6+
   Perhaps the default collection library for Java
@@ -2028,7 +2164,7 @@ SortedSet    Collections.unmodifiableSortedSet(SortedSet s)            Returns a
   builders, as well as advanced collection types
 </pre>
 
-<pre zoom  labels="101,data_structures,performance">
+<pre zoom  labels="data_structures.101,performance">
 <span xsmall>˂˂Enumeration˃˃(1.0) vs ˂˂Iterator˃˃(1.7)</span>
 @[https://stackoverflow.com/questions/948194/difference-between-java-enumeration-and-iterator]
 
@@ -2067,7 +2203,7 @@ SortedSet    Collections.unmodifiableSortedSet(SortedSet s)            Returns a
 <div group>
 <div groupv>
 <span title>NIO</span>
-<pre zoom  labels="async/reactive,io">
+<pre zoom  labels="async/reactive.io">
 <a xsmall href="http://tutorials.jenkov.com/java-nio/buffers.html">NIO (1.4+)</a>
 - Replaced OLD blocking IO based on [ byte/char, read-or-write streams ]
 ┌──────────┐     ┌──────────────┐                                  
@@ -2192,7 +2328,7 @@ BºCHANNEL-TO-CHANNELº
    └─────────────────────────────────────────────┴─────────────────────────────────────────────┘
 </pre>
 
-<pre zoom labels="async/reactive,io,network,persistence,resource">
+<pre zoom labels="async/reactive.io,java_lang.io,network,persistence.fs,resource">
 <span xsmall>API tree</span>
 JDK 8
 ./java/nio/
@@ -2247,7 +2383,7 @@ JDK 8
                     FileTypeDetector
 </pre>
 
-<pre zoom labels="concurrency,io,async/reactive,network" >
+<pre zoom labels="async/reactive.io,network" >
 <span xsmall>SELECTORS</span>
 @[https://docs.oracle.com/javase/7/docs/api/java/nio/channels/Selector.html]
 
@@ -2314,7 +2450,7 @@ JDK 8
        will "wake up" immediately.
 </pre>
 
-<pre zoom labels="async/reactive,io,FS,persistence," >
+<pre zoom labels="async/reactive.io,java_lang.io,persistence.FS," >
 <span xsmall>FileChannel</span>
 - Java NIO FileChannel: channel connected to a file allowing to
       read data from  and write data to a file.
@@ -2384,7 +2520,7 @@ JDK 8
   | channel.force(true /* flush also file meta-data like permissions....*/);
 </pre>
 
-<pre zoom labels="async/reactive,functional,">
+<pre zoom labels="async/reactive.io,java_lang.functional,">
 <span xsmall>Pipe</span>
 - Pipe: one-way data connection between two threads
   └"=="  source channel   ← One threads writes to sink
@@ -2407,7 +2543,7 @@ JDK 8
     int ºbytesReadº = BºinChannelº.read(buf2);
 </pre>
 
-<pre zoom labels="async/reactive,io,network,">
+<pre zoom labels="async/reactive.io,java_lang.io,network,">
 <span xsmall>SocketChannel</span>
   There are two ways a SocketChannel can be created:
   
@@ -2431,7 +2567,7 @@ JDK 8
 </pre>
 </div>
 <div groupv>
-<pre zoom labels="async/reactive,network," >
+<pre zoom labels="async/reactive.io,network," >
 <span xsmall>Non-blocking Mode</span>
 - socketChannelº.configureBlocking(false)º;
 - Calls to connect(), read() and write() will not block
@@ -2451,7 +2587,7 @@ JDK 8
 NOTE: non-blocking works much better with Selector's
 </pre>
 
-<pre zoom labels="async/reactive,io,network,">
+<pre zoom labels="async/reactive.io,java_lang.io,network,">
 <span xsmall>ServerSocketChannel</span>
 ServerSocketChannel serverSocketChannel = ServerSocketChannel.open();
 
@@ -2471,7 +2607,7 @@ while(true){
 serverSocketChannel.close()
 </pre>
 
-<pre zoom labels="async/reactive,io,network">
+<pre zoom labels="async/reactive.io,java_lang.io,network">
 <span xsmall>Datagram Channel</span>
 - Since UDP is a connection-less network protocol, you cannot just
   by default read and write to a DatagramChannel like you do from
@@ -2503,7 +2639,7 @@ serverSocketChannel.close()
   | int bytesSent = channel.write(Oºbufº);
 </pre>
 
-<pre zoom labels="async/reactive,io,network,">
+<pre zoom labels="async/reactive.io,java_lang.io,network,">
 <span xsmall>NonBlocking Server</span>
 REF:
 - @[http://tutorials.jenkov.com/java-nio/non-blocking-server.html]
@@ -2586,7 +2722,7 @@ Oº    └───← STEP 2: ready channels ←───┘         └─→ 
     messages to any of the open connections
 </pre>
 
-<pre zoom labels="FS,persistence">
+<pre zoom labels="java_lang.101,persistence.FS">
 <span xsmall>Path (1.7+)</span>
 - Represents a file/directory path in the FS
 - Similar to java.io.File but with some minor differences.
@@ -2598,7 +2734,7 @@ Path path = Paths.get("/var/lib/myAppData/myfile.txt");
 System.out.println("Current dir:"+Paths.get(".").toAbsolutePath());
 </pre>
 
-<pre zoom labels="FS,async/reactive,persistence" >
+<pre zoom labels="persistence.FS,async/reactive.*,java_lang.101" >
 <span xsmall>Files</span>
 - java.nio.file.Files provides several methods for manipulating FS files/directories:
 - uses Path instances:
@@ -2634,7 +2770,7 @@ Files.walkFileTree(Paths.get("data"), new FileVisitor<Path>() {
 });
 </pre>
 
-<pre zoom  labels="persistence,async/reactive">
+<pre zoom  labels="persistence.fs,async/reactive.io">
 <span xsmall>Asyncrhonous FileChannel 1.7+</span>
 read/write data from/to files asynchronously
 
@@ -2687,7 +2823,7 @@ AsynchronousFileChannel fileChannel =
   });
 </pre>
 
-<pre zoom labels="async/reactive,101,network,io,low_code,comparative,qa,TODO">
+<pre zoom labels="async/reactive.io,network,java_lang.io,low_code,comparative,qa.*,TODO">
 <span xsmall>java.net.http.HTTPClient</span>
 API REF: @[https://docs.oracle.com/en/java/javase/11/docs/api/java.net.http/java/net/http/package-summary.html]
 JEP: @[https://openjdk.java.net/jeps/321]
@@ -2786,7 +2922,7 @@ BºThis is necessary for IPv4+IPv6 and for services hosted in redundant data cen
 
 - Recipes: https://square.github.io/okhttp/recipes/ 
 </pre>
-<pre zoom labels="async/reactive,network,io,qa" >
+<pre zoom labels="async/reactive.io,network,java_lang.io,qa.*" >
 <span TODO xsmall>okIO</span>
 <span xsmall>complements java.nio</span>
 @[https://github.com/square/okio]
@@ -2799,7 +2935,7 @@ BºThis is necessary for IPv4+IPv6 and for services hosted in redundant data cen
 
 <div groupv>
 <span title>Debug&amp;Profile</span>
-<pre zoom labels="debugging,containers,jvm,">
+<pre zoom labels="debugging,devops.containarization,jvm.monitoring,monitoring.jvm">
 <span title>Debug remote (container) JVM</span>
 • STEP 1: inject next ENV.VAR into app JVM:
   JAVA_TOOL_OPTIONS=""
@@ -2815,7 +2951,7 @@ BºThis is necessary for IPv4+IPv6 and for services hosted in redundant data cen
 </pre>
 
 
-<pre zoom labels="JVM,performance,troubleshooting,tool,TODO">
+<pre zoom labels="JVM.monitoring,performance,troubleshooting,TODO">
 <span xsmall>jcmd</span>
 man 1 jcmd
 
@@ -2888,7 +3024,7 @@ launch the JVM.
 </pre>
 
 
-<pre zoom labels="101,profiling,troubleshooting,performance,comparative">
+<pre zoom labels="101.*,profiling,troubleshooting,performance,comparative">
 <span xsmall bgorange>Flight Recorder</span>
 @[https://www.youtube.com/watch?v=azshjd5Vsv0]
 - Free of use starting with Java 11+ and backported to OpenJDK 8u272+
@@ -2961,7 +3097,7 @@ BºWHAT'S NEWº
   - JFR Writer is introduced as a new core module.
 </pre>
 
-<pre zoom labels="monitoring,debugging,troubleshooting,tool,low_code,TODO">
+<pre zoom labels="monitoring.101,debugging,troubleshooting,low_code,TODO">
 <span xsmall>CRaSH shell</span>
 Features:
 - Connect to any JVM running CRaSH through SSH, telnet or web.
@@ -2973,7 +3109,7 @@ Features:
 
 </pre>
 
-<pre zoom labels="tool,performance,troubleshooting,TODO" >
+<pre zoom labels="performance,troubleshooting,TODO" >
 <span TODO xsmall>Eclipse Mem.Analizer</span>
 @[https://www.eclipse.org/mat/]
 """he Eclipse Memory Analyzer is a fast and feature-rich Java heap
@@ -2993,7 +3129,7 @@ RºThe memory is accumulated in one instanceº of
   java.util.LinkedList$Entry loaded by 'system class loader'
 </pre>
 
-<pre zoom labels="dynamic_instrumentation,profiling,troubleshooting,TODO">
+<pre zoom labels="jvm.dynamic_instrumentation,profiling,troubleshooting,TODO">
 <span xsmall TODO>SystemTap+Java</span>
 @[https://laurent-leturgez.com/2017/12/22/profiling-java-application-with-systemtap/]
 [root@spark ~]# yum install systemtap systemtap-runtime-java
@@ -3044,7 +3180,7 @@ class Example {                                     timespent=0
 }
 </pre>
 
-<pre zoom labels="tool,debugging,troubleshooting,TODO">
+<pre zoom labels="debugging,troubleshooting,TODO">
 <span xsmall>Fast Thread</span>
 @[https://fastthread.io/]
 - Java Thread Dump Analyzer
@@ -3055,7 +3191,7 @@ class Example {                                     timespent=0
 Free Service
 </pre>
 
-<pre zoom labels="jvm,troubleshooting,debugging,qa,TODO">
+<pre zoom labels="jvm.memory,troubleshooting,debugging,qa.*,TODO">
 <span xsmall>gceasy.io</span>
 @[https://gceasy.io/]
 - machine learning guided Garbage collection log analysis tool.
@@ -3070,7 +3206,7 @@ Free Service
     Made by the developers, for the developers
 </pre>
 
-<pre zoom labels="profiling,lock,TODO">
+<pre zoom labels="profiling,concurrency.lock,TODO">
 <span title>libperfagent (perf agent)</span>
 Extracted from:
   "Apache Spark @Scale: A  production use case"
@@ -3086,7 +3222,7 @@ Extracted from:
   Bºinternal metrics collection framework.                              º
 </pre>
 
-<pre zoom labels="cluster,profiling,TODO">
+<pre zoom labels="architecture.distributed,monitoring.distributed,profiling,TODO">
 <span xsmall>Uber JVM Profiler: Tracing at scale</span>
 @[https://eng.uber.com/jvm-profiler/]
 Our JVM Profiler supports a variety of use cases, most notably making 
@@ -3133,12 +3269,12 @@ could be used for any JVM process as well.
 <div group>
     <span title>Concurrent Programming</span><br/>
 <div groupv>
-<pre zoom labels="jvm,101,concurrency">
+<pre zoom labels="concurrency.101">
 <span xsmall>External Links</span>
 - Youtube Concurrency Classes: 
 @[https://www.youtube.com/watch?v=8yD0hHAz3cs&list=PLw8RQJQ8K1ySGcb3ZP66peK4Za0LKf728&index=4] [RºES langº]
 </pre>
-<pre zoom labels="concurrency,performance,101,low_code">
+<pre zoom labels="concurrency.101,performance,low_code">
 <span xsmall bgorange>1uSec Thread sync</span>
 REF:
 @[https://software.rajivprab.com/2018/04/29/myths-programmers-believe-about-cpu-caches/]
@@ -3164,9 +3300,19 @@ REF:
   to the same variable, they are all kept in sync with one another. And this is
   how you can achieve inter-thread coordination in as little as 1ns.
 """
+
+
+See also: fast Inter-thread communication:
+@[https://www.infoq.com/articles/High-Performance-Java-Inter-Thread-Communications]
+- The story begins with a simple idea: create a developer friendly, 
+  simple and lightweight inter-thread communication framework without 
+  using any locks, synchronizers, semaphores, waits, notifies; and no 
+  queues, messages, events or any other concurrency specific words or 
+  tools.
+  Just get POJOs communicating behind plain old Java interfaces.
 </pre>
 
-<pre zoom labels="concurrency,101">
+<pre zoom labels="concurrency.101">
 <span xsmall>Concurrency Basics</span>
 - Concurrency problems arise from the desire to use CPU resources more efficiently. Non concurrent
   applications (single threaded/single process) are complete Touring machines that can potentially
@@ -3210,7 +3356,7 @@ REF:
 -  ºMonitors wrap mutex-locks with condition variables (container of threads waitingº
    ºfor certain condition)º. They are implemented as thread-safe classes
 </pre>
-<pre zoom labels="concurrency,101" >
+<pre zoom labels="concurrency.101" >
 <span xsmall>monitors</span>
 -ºObject providing Mutual exclusion of threads to shared resourcesº
 - simplest form of synchronization:
@@ -3273,7 +3419,7 @@ TODO Concurrent
      http://winterbe.com/posts/2015/04/07/java8-concurrency-tutorial-thread-executor-examples/
 -->
 </pre>
-<pre zoom labels="concurrency,barrier">
+<pre zoom labels="concurrency.barrier">
 <span xsmall>CountDownLatch</span>
 [java.util.concurrent]
 
@@ -3385,7 +3531,7 @@ TODO Concurrent
 @[https://liakh-aliaksandr.medium.com/java-barrier-synchronizers-countdownlatch-cyclicbarrier-phaser-50eb69724d67]
 </pre>
 
-<pre zoom labels="concurrency,">
+<pre zoom labels="concurrency.scheduling">
 <span xsmall>Scheduling: Runnables|Callables Executors</span>
 @[https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/ExecutorService.html]
  ┌────────────┐ │ ┌───────────────┐  │
@@ -3461,7 +3607,7 @@ BºExamplesº:
 </pre>
 </div>
 <div groupv>
-<pre zoom labels="concurrency,101,diagram,">
+<pre zoom labels="concurrency.101,diagram,">
 <span xsmall>ForkJoinPool (1.7+)</span>
 REF: @[http://tutorials.jenkov.com/java-util-concurrent/java-fork-and-join-forkjoinpool.html]
 - java.util.concurrent.ForkJoinPool  Scheduler is similar to "ExecutorService"
@@ -3553,7 +3699,7 @@ BºforkJoinPoolºOº.invoke(myRecursiveAction);º     │BºforkJoinPoolºOº.in
   - @[http://coopsoft.com/ar/CalamityArticle.html]
 </pre>
 
-<pre zoom labels="concurrency,101,diagram">
+<pre zoom labels="async/reactive.101,diagram">
 <span xsmall>Completable Future</span>
 @[https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/CompletableFuture.html]
 (Java 8+)
@@ -3770,7 +3916,7 @@ Alt:
     Java?).  This allows to parallelize your computation even more and 
     use system resources more efficiently.
 </pre>
-<pre zoom labels="concurrency,comparative,async/reactive,qa">
+<pre zoom labels="async/reactive.101,comparative,qa">
 <span xsmall>Guava ListenableFuture</span>
 @[https://github.com/google/guava/wiki/ListenableFutureExplained]
 - Concurrency is a hard problem, but it is significantly simplified by
@@ -3784,9 +3930,7 @@ Alt:
   - Providers of utility methods won't need to provide Future and ListenableFuture
       variants of their methods.
 
-<span xsmall></span>
-<span xsmall>Listenable vs</span>
-<span xsmall>CompletableFutures</span>
+<span xsmall>Listenable vs CompletableFutures</span>
 @[https://stackoverflow.com/questions/38744943/listenablefuture-vs-completablefuture]
           ListenableFuture                           │               CompletableFuture
 ─────────────────────────────────────────────────────┼───────────────────────────────────────────────────
@@ -3815,7 +3959,7 @@ ListenableFuture listenable = service.submit(...);   │ CompletableFuture compl
      it something meaningful like ChainableFuture "
 </pre>
 
-<pre zoom labels="concurrency,performance,comparative,resource">
+<pre zoom labels="concurrency.*,performance,comparative,resource">
 <span xsmall  bgorange>DragonWell JDK with Coroutine Support</span>
 REF: @[https://www.infoq.com/news/2021/01/adoptopenjdk-welcomes-dragonwell/]
 - AdoptOpenJDK and Alibaba announced that the Dragonwell JDK will be 
@@ -3899,23 +4043,13 @@ project Loom which should bring "native" Fiber/lightweight continuation
 support directly into JVM without the need of auxiliary library like Quasar.
 </pre>
 
-<pre zoom labels="performance,concurrency,TODO">
-<span xsmall TODO>fast Inter-thread communication</span>
-@[https://www.infoq.com/articles/High-Performance-Java-Inter-Thread-Communications]
-- The story begins with a simple idea: create a developer friendly, 
-  simple and lightweight inter-thread communication framework without 
-  using any locks, synchronizers, semaphores, waits, notifies; and no 
-  queues, messages, events or any other concurrency specific words or 
-  tools.
-  Just get POJOs communicating behind plain old Java interfaces.
-</pre>
 </div>
 </div>
 
 <div group> <!-- spring start {{{ -->
     <span title>Spring</span><br/>
 <div groupv>
-<pre zoom labels="spring,resources,">
+<pre zoom labels="spring.*,resource,">
 <span xsmall>External Links</span>
 https://spring.io/projects/
 @[https://docs.spring.io/spring/docs/5.0.0.RELEASE/spring-framework-reference/]
@@ -3929,7 +4063,7 @@ https://spring.io/projects/
 @[https://github.com/spring-projects/spring-framework/wiki/What%27s-New-in-the-Spring-Framework]
 </pre>
 
-<pre zoom labels="spring,101">
+<pre zoom labels="spring.101">
 <span xsmall>Spring DONT's!!!</span>
 - If a interface has a single implementation and is going
   to be instantiated just once in a single line of code,
@@ -3945,7 +4079,7 @@ https://spring.io/projects/
 
 </pre>
 
-<pre zoom labels="spring,resource" bgorange>
+<pre zoom labels="spring.101,resource" bgorange>
 <span xsmall>Annotations Quick Sheet</span>
 REF:
 @[https://www.javagists.com/spring-boot-cheatsheet]  ← TODO: Testing annotations,
@@ -4031,7 +4165,7 @@ BºSPRING FRAMEWORK ANNOTATIONSº
    º@PathVariableº|bind placeholder from URI to method.param   |
 </pre>
 
-<pre zoom labels="spring,101,">
+<pre zoom labels="spring.101,">
 <span xsmall>IoC Summary</span>
 BºBASE PACKAGES of Spring IoC:º
   - org.springframework.beans
@@ -4151,7 +4285,7 @@ BºMethod injectionº
       on the fly.
 </pre>
 
-<pre zoom labels="spring,101,billion_dolar_mistake">
+<pre zoom labels="spring.101,qa.billion_dolar_mistake">
 <span xsmall>Nullability</span> 
   - º@NonNullº       ← forces param|return value|field to be NON-null
   - º@Nullableº      ← allows param|return value|field to be     null
@@ -4165,12 +4299,9 @@ BºMethod injectionº
     - ˂null/˃ element handles null values. Ex
       ˂property name="email"˃ ˂null/˃ ˂/property˃ ← email = null
       ˂property name="email"˃         ˂/property˃ ← email = ""
-
-
-
 </pre>
 
-<pre zoom labels="spring,jpa,configuration,persistence,aaa,oauth,qa,error_control,devops,cryptography,api_management,openapi,troubleshooting" id="spring_summary">
+<pre zoom labels="spring.101,persistence.jpa,spring.configuration,security.aaa,security.oauth,qa.error_control,devops,security.cryptography,architecture.api_management,standards.openapi,troubleshooting,standards.oauth" id="spring_summary">
 <span xsmall>Spring+JPA+JWT summary</span>
 BºSwagger (OpenAPI) º [config] {{
 - file: com/myComp/openApi/SwaggerConfig.java  {{
@@ -4576,11 +4707,6 @@ BºJWT (OAuth2)Support:º {{{                                    [aaa], [oauth],
 
 - com/myComp/security/JWTAuthorizationFilter.java
 
- ºimport javax.servlet.FilterChain;º
-  import javax.servlet.ServletException;
-  import javax.servlet.http.HttpServletRequest;
-  import javax.servlet.http.HttpServletResponse;
-  import javax.xml.bind.DatatypeConverter;
   
   import org.springframework.security.authentication.AuthenticationManager;
   import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -4592,15 +4718,16 @@ BºJWT (OAuth2)Support:º {{{                                    [aaa], [oauth],
   
   public class JWTAuthorizationFilter 
   extends BasicAuthenticationFilter {                                      ← Implemented as Filter
-    
        public JWTAuthorizationFilter(AuthenticationManager authManager) {
       super(authManager);
     }
   
     @Override
     protected void doFilterInternal(
-        HttpServletRequest req, HttpServletResponse res, FilterChain chain)
-        throws IOException, ServletException {
+        javax.servlet.http.HttpServletRequest req, 
+        javax.servlet.http.HttpServletResponse res, 
+        javax.servlet.FilterChain chain)
+        throws IOException, javax.servlet.ServletException {
       String header = req.getHeader(HEADER_AUTH_KEY);
       if (header == null || !header.startsWith(TOKEN_BEARER_PREFIX)) {
         chain.doFilter(req, res);
@@ -4614,12 +4741,12 @@ BºJWT (OAuth2)Support:º {{{                                    [aaa], [oauth],
   
     private 
     UsernamePasswordAuthenticationToken
-        _getAuth(HttpServletRequest request) {
+        _getAuth(javax.servlet.http.HttpServletRequest request) {
       final String token = request.getHeader(HEADER_AUTH_KEY);
       if (token == null) { return null; }                                 ← Do not throw to allow next Filters
       String user = Jwts.parser()
             .setSigningKey(
-               DatatypeConverter
+               javax.xml.bind.DatatypeConverter
               .parseBase64Binary("32bytes/64hex dig.secret key")))
             .parseClaimsJws(token.replace(TOKEN_BEARER_PREFIX, ""))
             .getBody()
@@ -4846,9 +4973,9 @@ BºMAIN (entry point to Spring Boot app)º
                                              //            e.g: If project depends on Springspring-boot-starter-web
                                              //            Spring Boot will initialize an embedded Tomcat server
                                              //            with minimal configuration required. 
-  @ComponentScan({ "com.myComp"})            //  ← [configuration] Package to scan. 
-  public class App {                         //    for Spring components
-    public static void main(String[] args) {
+  @ComponentScan({ "com.myComp"})            //  ← [configuration] Package to scan for Spring components
+  public class App {                         //    (use along with Spring @Configuration and/or 
+    public static void main(String[] args) {        @SpringBootApplication)
       SpringApplication.run(App.class, args);
     }
   }
@@ -5103,7 +5230,7 @@ BºMAIN (entry point to Spring Boot app)º
 <div groupv>
 <span title>Spring Boot/Cloud Summary</span>
 
-<pre zoom labels="spring.cloud,cloud,service_discovery">
+<pre zoom labels="spring.cloud,cloud.*,architecture.distributed.service_discovery">
 <span xsmall>Spring Cloud Configuration</span>
 • CONTEXT: 
   2+ APIs running independently have been developed.
@@ -5406,7 +5533,7 @@ Bº####################
   }
 </pre>
 
-<pre zoom labels="spring,spring.cloud,cloud,service_discovery,TODO">
+<pre zoom labels="spring.cloud,cloud.spring,architecture.distributed.service_discovery,TODO">
 <span xsmall>"Cloudify"</span>
 @[http://files.zeroturnaround.com/pdf/zt_spring_annotations_cheat_sheet.pdf]
   ┌────────→ @SpringBootApplication      HTTP Request                        ºCLOUDº
@@ -5449,7 +5576,7 @@ beans to      ┌──like─  ─┐
 
 <div groupv>
 <span title>Spring: Non classified</span><br/>
-<pre zoom labels="spring,batch_processing,TODO">
+<pre zoom labels="spring.batch,architecture.batch,TODO">
 <span xsmall>Spring Batch</span> <!-- @ma -->
   FROM https://stackoverflow.com/questions/33188368/spring-batch-vs-quartz-jobs
   Quartz is a scheduling framework. Like "execute something every hour 
@@ -5466,17 +5593,7 @@ beans to      ┌──like─  ─┐
 </pre>
 
 
-<pre zoom labels="spring,101,TODO">
-<span xsmall>scan config auto-detection</span>
-</pre>
-
-<pre zoom labels="spring,guice,comparative,TODO">
-<span xsmall>Spring vs Guice</span>
-@[https://www.baeldung.com/guice-spring-dependency-injection]
-</pre>
-
-
-<pre zoom labels="spring,async/reactive,TODO">
+<pre zoom labels="spring.async/reactive,async/reactive.spring,TODO">
 <span xsmall>Reactive (5.0+)</span>
 @[https://docs.spring.io/spring/docs/5.0.0.RELEASE/spring-framework-reference/web-reactive.html#webflux]
 - Note: Servlet 3.1+ API for non-blocking I/O leads away from
@@ -5664,8 +5781,8 @@ Jetty           │ org.eclipse.jetty      │ etty-server        │ HttpHandle
 
 </pre>
 
-<pre zoom labels="spring,graalvm,TODO">
-<span xsmall>GrallVM issues</span>
+<pre zoom labels="spring.graalvm,jvm.graalvm,TODO">
+<span xsmall>GraalVM issues</span>
 REF:
 @[https://github.com/spring-projects/spring-framework/wiki/GraalVM-native-image-support]
 Working toward GraalVM native image support without requiring additional
@@ -5677,12 +5794,12 @@ used in the dependency mechanism or Spring factories, see the related issue #
 22968 for more details.
 </pre>
 
-<pre zoom labels="spring,TODO">
+<pre zoom labels="spring.*,TODO">
 <span xsmall>STOMP: WebSockets</span>
 @[https://www.toptal.com/java/stomp-spring-boot-websocket]
 </pre>
 
-<pre zoom labels="spring,angular,low_code,TODO">
+<pre zoom labels="spring.101,low_code,frontend,TODO">
 <span xsmall>JHipster</span>
 @[https://www.jhipster.tech/]
 • JHipster is a development platform to generate, develop and deploy 
@@ -5698,7 +5815,7 @@ used in the dependency mechanism or Spring factories, see the related issue #
 <div group>
 <span title>Async/Reactive Programming</span><br/>
 <div groupv>
-<pre zoom labels="async/reactive,performance,functional" >
+<pre zoom labels="async/reactive.*,performance,java_lang.functional,java_lang.101" >
 <span xsmall>Labmdas Intro</span>
 - addition of lambda expressions in Java 8 provides for functional APIs in Java
   and simplifies development of non-blocking style APIs
@@ -5756,7 +5873,7 @@ used in the dependency mechanism or Spring factories, see the related issue #
   object (not just file text).
 </pre>
 
-<pre zoom labels="async/reactive,">
+<pre zoom labels="async/reactive.io,async/reactive.101,">
 <span xsmall>java.util.concurrent.Flow(1.9+)</span>
 @[https://docs.oracle.com/javase/9/docs/api/java/util/concurrent/Flow.html]
 - JDK 1.9+
@@ -5772,7 +5889,7 @@ used in the dependency mechanism or Spring factories, see the related issue #
 - (See also <a href="http://www.eclipse.org/community/eclipse_newsletter/2018/may/reactivestreams-ee4j.php">What can Reactive Streams offer to EE4J</a>)
 </pre>
 
-<pre zoom labels="rxjava,async/reactive,qa,performance,101,library" bgorange id="rxjava_summary">
+<pre zoom labels="async/reactive.rxjava,qa.*,performance,library" bgorange id="rxjava_summary">
 <span xsmall>RxJava</span>
 @[https://github.com/ReactiveX/RxJava]
 
@@ -6183,7 +6300,7 @@ Specialty Observables that have more precisely-controlled subscription dynamics
 @[http://reactivex.io/documentation/implement-operator.html]
 </pre>
 
-<pre zoom labels="rxjava,async/reactive,qa,troubleshooting,TODO">
+<pre zoom labels="async/reactive.rxjava,qa.*,troubleshooting,TODO">
 <span xsmall>5 Not So Obvious Things About RxJava</span>
 @[https://medium.com/@jagsaund/5-not-so-obvious-things-about-rxjava-c388bd19efbc]
 
@@ -6196,7 +6313,7 @@ Specialty Observables that have more precisely-controlled subscription dynamics
 
 
 
-<pre zoom labels="qa,async/reactive,testing,TODO">
+<pre zoom labels="async/reactive.testing,qa.testing.async/reactive,TODO">
 <span TODO xsmall>Awaitility(Async→Sync) Tests</span>
 @[https://github.com/awaitility/awaitility]
 - Awaitility: DSL allowing to express async results (test expectations) easely. 
@@ -6213,28 +6330,11 @@ Specialty Observables that have more precisely-controlled subscription dynamics
   }
 </pre>
 
-<pre zoom labels="async/reactive,TODO" >
-<span xsmall>Spring Reactor</span>
-<span xsmall>Spring-Async</span>
-@[https://ordina-jworks.github.io/reactive/2016/12/12/Reactive-Programming-Spring-Reactor.html]
-@[https://spring.io/blog/2013/05/13/reactor-a-foundation-for-asynchronous-applications-on-the-jvm]
-@[https://spring.io/guides/gs/async-method/]
-"""Why Reactor when there's already RxJava2?
-   RxJava2 is java 6 while for Reactor the Spring team decided to go all in
-   and focus only on Java 8. This means that you can make use of all the new
-   and fancy Java 8 features.
-
-   If you are going to use Spring 5, Reactor might be the better option.
-
-   But if you are happy with your RxJava2, there is no direct need to migrate to Reactor."""
-</pre>
-
-
 </div>
 
 <div groupv>
 <span title>VertX</span>
-<pre zoom labels="vertx,async/reactive">
+<pre zoom labels="vertx.*,resource">
 <span xsmall>Who-is-Who</span>
 (Forcibly incomplete but still quite pertinent list of core developers and companies)
 Tim Fox     :  Initiated VertX in 2012
@@ -6248,7 +6348,7 @@ Julien Ponge:@[https://julien.ponge.org/]
 Many others :@[https://github.com/eclipse-vertx/vert.x/graphs/contributors]
 </pre>
 
-<pre zoom labels="vertx,101,async/reactive,performance,diagram">
+<pre zoom labels="vertx.101,async/reactive.*,performance,diagram">
 <span xsmall>Vert.X Summary</span>
 REF:
 - Vert.X guide for java devs @[https://github.com/vert-x3/vertx-guide-for-java-devs]
@@ -6394,7 +6494,7 @@ lots of concurrent networked requests.
 </pre>
 
 
-<pre zoom  labels="vertx,async/reactive">
+<pre zoom  labels="vertx.testing.*">
 <span xsmall>Testing</span>
 @[https://github.com/vert-x3/vertx-guide-for-java-devs/blob/3.8/step-4/README.adoc]
 @[https://github.com/vert-x3/vertx-guide-for-java-devs/blob/3.8/step-4/src/test/java/io/vertx/guides/wiki/http/SampleHttpServerTest.java]
@@ -6485,12 +6585,12 @@ lots of concurrent networked requests.
   }
 </pre>
 
-<pre zoom labels="vertx,aaa,async/reactive,TODO" >
+<pre zoom labels="vertx.*,security.aaa,TODO" >
 <span xsmall>HTTPS AAA</span>
 @[https://github.com/vert-x3/vertx-guide-for-java-devs/blob/3.8/step-7/README.adoc]
 </pre>
 
-<pre zoom  labels="vertx,async/reactive">
+<pre zoom  labels="vertx.101,devops">
 <span xsmall>Maven Bootstrap</span>
 @[https://github.com/vert-x3/vertx-guide-for-java-devs/blob/3.8/step-1/README.adoc]
 @[https://github.com/vert-x3/vertx-guide-for-java-devs/tree/3.8/step-1]
@@ -6537,7 +6637,7 @@ $ mvn clean package
 $ java -jar target/project01-SNAPSHOT-fat.jar
 </pre>
 
-<pre zoom labels="vertx,async/reactive">
+<pre zoom labels="vertx.101">
 <span xsmall>Create HttpServer</span>
 REF:@[https://github.com/vert-x3/vertx-guide-for-java-devs/blob/3.8/step-1/src/main/java/io/vertx/guides/wiki/MainVerticle.java]
 
@@ -6582,7 +6682,7 @@ REF:@[https://github.com/vert-x3/vertx-guide-for-java-devs/blob/3.8/step-1/src/m
     }
 </pre>
 
-<pre zoom  labels="vertx,async/reactive">
+<pre zoom  labels="vertx.101">
 <span xsmall>Reusable Verticles</span>
 @[https://github.com/vert-x3/vertx-guide-for-java-devs/blob/3.8/step-2/README.adoc]
 
@@ -6627,25 +6727,20 @@ REF:@[https://github.com/vert-x3/vertx-guide-for-java-devs/blob/3.8/step-1/src/m
 
 <div groupv>
 <span title>VertX Cont</span>
-<pre zoom  labels="vertx,rxjava,async/reactive,TODO">
+<pre zoom  labels="vertx.*,async/reactive.rxjava,TODO">
 <span xsmall>RxJava Integration</span>
 @[https://github.com/vert-x3/vertx-guide-for-java-devs/blob/3.8/step-7/README.adoc]
   <!-- Refactoring some code to use reactive programming with the
         popular RxJava library and its Vert.x integration -->
 </pre>
 
-<pre zoom labels="vertx,sql,persistence,async/reactive,TODO">
-<span xsmall>Vertx+Jooq</span>
-@[https://github.com/jklingsporn/vertx-jooq]
-</pre>
-
-<pre zoom labels="vertx,k8s,async/reactive,TODO">
+<pre zoom labels="vertx.*,cloud.k8s,TODO">
 <span xsmall>Vertx+k8s</span>
 @[http://escoffier.me/vertx-kubernetes/]
 </pre>
-<span title>Client-Side</span>
 
-<pre zoom labels="vertx,async/reactive,TODO">
+<span title>Client-Side</span>
+<pre zoom labels="vertx.101,frontend,TODO">
 <span xsmall>SockJS</span>
 @[https://github.com/vert-x3/vertx-guide-for-java-devs/blob/3.8/step-10/README.adoc]
 - SockJS:
@@ -6683,7 +6778,7 @@ There are many features and modules that we haven’t covered in this guide, suc
 """
 -->
 
-<pre zoom labels="vertx,async/reactive,TODO">
+<pre zoom labels="vertx.*,resource,TODO">
 <span xsmall>What's new</span>
 BºVert.X 4.0: (2020-12-09)º:
 @[https://github.com/vert-x3/wiki/wiki/4.0.0-Release-Notes]
@@ -6693,7 +6788,7 @@ BºVert.X 4.0: (2020-12-09)º:
 
 <div groupv>
 <span title>Other frameworks</span>
-<pre zoom labels="async/reactive,low_code,code_snippet,jms,activemq" bgorange>
+<pre zoom labels="async/reactive.*,low_code,messaging.jms,messaging.activemq,architecture.batch,architecture.distributed" bgorange>
 <span xsmall>JavaLite</span>
 - lightweight system for processing asynchronous jobs. 
 - Use Cases:
@@ -6797,8 +6892,9 @@ Bº(Artemis) Config APIº
   Queue to DDBBs.
 </pre>
 
-<pre zoom labels="async/reactive,low_code,code_snippet,jms,activemq" bgorange id="fileQueue_summary">
-<span xsmall>FileQueue</span>
+<pre zoom labels="async/reactive.*,low_code,messaging.jms,messaging.activemq,scalability.101"
+   id="fileQueue_summary">
+<span bgorange xsmall>FileQueue</span>
 @[https://github.com/stimulussoft/filequeue]
 - KISS alternative using MVStore
 @[http://www.h2database.com/html/mvstore.html]
@@ -6901,7 +6997,7 @@ BºExample Implementation:º
 <div group>
 <span title>QA</span><br/>
 <div groupv>
-<pre zoom labels="qa,billion_dolar_mistake">
+<pre zoom labels="qa.billion_dolar_mistake">
 <span xsmall>Cost of software failures</span>
 $312 billion per year: global cost of software bug (2013)
 $300 billion dealing with the Y2K problem
@@ -6914,9 +7010,8 @@ $500 million Arian 5 maiden flight in 1996; 64-bit to 16-bit conversion bug
 2011: Software caused 25% of all medical device recalls.
 </pre>
 
-<pre zoom labels="qa,billion_dolar_mistake" >
-<span xsmall>Checker framework</span>
-<span xsmall>Java 8+</span>
+<pre zoom labels="qa.101,qa.error_control,qa.billion_dolar_mistake" id="checker_framework_summary">
+<span xsmall>Checker framework (Java 8+)</span>
 ºfix errors at compile timeº (vs later on at execution/runtime)
 @[https://github.com/typetools/checker-framework]
 @[https://checkerframework.org/manual/]
@@ -7224,18 +7319,35 @@ RºPROBLEM:º                                          │BºSOLUTION:º
    ProcessBuilder processBuilder = new ProcessBuilder(command);
    Process process = processBuilder.start();
   }
-
-
-<span xsmall TODO>SPARTA (anti-malware)</span>
-- Aimed at preventing malware from appearing in an app store.
-- provides an information-flow type-checker customized to Android
-  but can also be applied to other domains.
-@[https://checkerframework.org/sparta/]
-  The paper "Collaborative verification of information flow for a
-  high-assurance app store" appeared in CCS 2014.
 </pre>
 
-<pre zoom labels="qa,101">
+<pre zoom labels="qa.101,qa.error_control,qa.billion_dolar_mistake" id="spot_bugs">
+<span xsmall>SpotBugs</span>
+@[https://spotbugs.github.io/]
+
+- SpotBugs is a program which uses static analysis to look for bugs in 
+  Java code. It is free software, distributed under the terms of the 
+  GNU Lesser General Public License.
+
+- SpotBugs is the spiritual successor of FindBugs, carrying on from the 
+ point where it left off with support of its community. Please check 
+ official manual site for details.
+
+- SpotBugs requires JRE (or JDK) 1.8.0 or later to run. However, it 
+  can analyze programs compiled for any version of Java, from 1.0 to 
+  1.9.
+
+
+- SpotBugs checks for more than 400 bug patterns. 
+
+SpotBugs can be used standalone and through several integrations, including:
+- Ant
+- Maven
+- Gradle
+- Eclipse
+</pre>
+
+<pre zoom labels="qa.101">
 <span xsmall>JavaDoc</span>
 -----------------------+-------------------------------------+-------------------------+-------   Example
 Tag⅋ Parameter         | Usage                               | Applies to              | Since    /**
@@ -7279,9 +7391,13 @@ Tag⅋ Parameter         | Usage                               | Applies to     
                        | containing HTML markup or nested    |                         |
                        | javadoc tags.                       |                         |
 -----------------------+-------------------------------------+-------------------------+-------
-</pre }>
+</pre>
 
-<pre zoom labels="qa,tool,TODO">
+
+
+
+
+<pre zoom labels="qa.101,TODO">
 <span TODO xsmall>SonarQube</span>
 
 <span xsmall>Alternatives</span>
@@ -7311,22 +7427,10 @@ Tag⅋ Parameter         | Usage                               | Applies to     
       x Treat above errors like fatal compile erros (make compiled code not executable)
 </pre>
 
-<pre zoom  labels="qa,tool,devops,TODO">
-UUID: bdf38754-3114-4343-a768-e8d24027f91b
-<span TODO xsmall>JDepend</span>
-@[https://github.com/clarkware/jdepend]
-https://htmlpreview.github.io/?https://github.com/clarkware/jdepend/blob/master/docs/JDepend.html
-
- What Is It?
-  -----------
-  JDepend traverses Java class and source file directories and
-  generatesºdesign-quality-metrics for each Java packageº
- ºin terms of its extensibility, reusability, and maintainabilityº
- ºto effectively manage and control package dependencies.º
-</pre>
-
-<pre zoom labels="qa,testing,TODO">
+<pre zoom labels="qa.testing.101,TODO">
 <span xsmall TODO>Junit</span>
+- TODO:
+- See also:
 @[https://www.infoq.com/news/2018/01/VSCodeJunit]
 <hr/>
 <span xsmall TODO>AsserJ (Fluent Assertions)</span>
@@ -7396,7 +7500,7 @@ AssertJ is composed of several modules:
   // iterable, stream, array, map, dates, path, file, numbers, predicate, optional ...
 </pre>
 
-<pre zoom labels="qa,aws,testing,devops,TODO">
+<pre zoom labels="qa.testing.*,cloud.aws,devops,TODO">
 <span xsmall>Amazon CodeGuru</span>
 - Powered by IA.
 - CodeGuru consists of two components
@@ -7433,7 +7537,7 @@ Java code stored in GitHub, AWS CodeCommit, or Bitbucket.
 </div>
 
 <div groupv>
-<pre zoom labels="qa,error_control,101,debugging,billion_dolar_mistake">
+<pre zoom labels="java_lang.101,qa.error_control,debugging,qa.billion_dolar_mistake">
 <span xsmall bgorange>Exceptions</span>
 - (compiler) checked vs unchecked (Error, RuntimeException and their subclasses).
 - Checked: All except Error, RuntimeException and their subclasses
@@ -7481,13 +7585,12 @@ optional.orElse("Hello world!");                     // ← Alt 2: get the value
 optional.filter( s -˃ s.startsWith("RebelLabs"));    // ← return empty Optional if not satisfied
 </pre>
 
-<pre zoom labels="qa,billion_dolar_mistake" >
-<span xsmall>JSR Annotations</span>
-<span xsmall> foRºDefect Detectionº</span>
+<pre zoom labels="qa.error_control,qa.billion_dolar_mistake" >
+<span xsmall>JSR Annotations forºDefect Detectionº</span>
 @[https://stackoverflow.com/questions/1476757/jsr305-vs-jsr308-java-type-anotations-which-is-going-to-be-the-standard]
 </pre>
 
-<pre zoom labels="qa,billion_dolar_mistake,TODO">
+<pre zoom labels="qa.billion_dolar_mistake,TODO">
 <a xsmall href='https://blogs.oracle.com/java-platform-group/entry/java_8_s_new_type'>Type Annotations</a>
 TODO: Compare how it compares/overlaps CheckerFramework
 
@@ -7526,29 +7629,7 @@ TODO: Compare how it compares/overlaps CheckerFramework
   }
 </pre>
 
-<pre zoom TODO labels="qa,library,TODO">
-<span xsmall>Annotation processors(Data Binding,Lombok,...)</span>
-See JSR 269 
-</pre>
-
-<pre zoom TODO labels="qa,library,comparative,Dagger,Spring,">
-<span xsmall>Dependency injection</span>
-See JSR 330
-@[http://www.theserverside.com/feature/Spring-vs-Guice-The-Clash-of-the-IOC-Containers]
-A: t's important to realize that Dagger was created after Guice, by one
-of Guice's creators ("Crazy Bob" Lee) after his move to Square:
-- Spring was originally released in October 2002.
-- Google originally publicly released Guice in March 2007.
-- JSR-330 formalized javax.inject annotations in October 2009,
-with heavy input from Google (Bob Lee), Spring, and other industry
-players.
-- Square originally released Dagger 1 publicly in May 2013.
-- Google originally released Dagger 2 publicly in April 2015.
-- Square marked Dagger 1 as deprecated 10 days ago,
-on September 15, 2016.
-</pre>
-
-<pre zoom labels="qa,testing,TODO">
+<pre zoom labels="qa.testing.bdd,TODO">
 <span xsmall>JBehave</span>
  JBehave is a framework for Behaviour-Driven Development (BDD). BDD 
 is an evolution of test-driven development (TDD) and acceptance-test 
@@ -7572,18 +7653,16 @@ positions itself as a design philosophy.
 4 Run Stories
 </pre>
 
-<pre zoom labels="qa,testing,TODO">
-<span xsmall>Mockito</span>
-</pre>
-<pre zoom labels="qa,static_src_analysis,TODO">
+<pre zoom labels="qa.101,concurrency.101,troubleshooting,scalability.profiling,TODO">
 <span xsmall>Lint4j</span>
-http://www.jutils.com/
- Lint4j ("Lint for Java") is a static Java source and byte code
-analyzer that detects locking and threading issues, performance and
-scalability problems, and checks complex contracts such as Java
-serialization by performing type, data flow, and lock graph analysis.
+@[http://www.jutils.com/]
+• Lint4j ("Lint for Java") is a static Java source and byte code
+  analyzer that detects locking and threading issues, performance and
+  scalability problems, and checks complex contracts such as Java
+  serialization by performing type, data flow, and lock graph analysis.
 </pre>
-<pre zoom labels="openapi,api_management,vertx,low_code,qa,standards,documentation,TODO">
+
+<pre zoom labels="standards.openapi,architecture.api_management,vertx.*,low_code,qa.documentation,TODO">
 <span xsmall>OpenAPI: contract-driven Dev</span>
 @[https://developers.redhat.com/devnation/tech-talks/develop-openapi-vertx]
 - "Contract Driven Development" (or API Design First approach) is a methodology
@@ -7600,7 +7679,7 @@ serialization by performing type, data flow, and lock graph analysis.
 <span title>Maven</span><br/>
 <div groupv>
 
-<pre zoom labels="maven,tool,devops,101">
+<pre zoom labels="maven.101,devops,">
 <span xsmall>External Links</span>
 - PUBLIC REPOSITORY:      @[https://mvnrepository.com/]
 - Artifact Search Engine: @[http://search.maven.org/]
@@ -7701,7 +7780,7 @@ help:describe groupId artifactId: Describes plugin attributes
 $ mvn  -Dexec.args="arg0 ..." ºexec:javaº -Dexec.mainClass="com.example.Main"
 </pre>
 
-<pre zoom labels="maven,tool,devops,101">
+<pre zoom labels="maven.101,devops.101,">
 <a xsmall href="https://maven.apache.org/pom.html">pom.xml</a>
 ºReuse constants:º
 ${project.groupId}         ← Reuse project groupId in POM
@@ -7831,59 +7910,56 @@ re-start from the last failed module with the '--resume-from' option like:
 $ mvn --resume-from=com.myCompany.myModule:MyArtifact clean install -P myProfile -DskipTests=true
 </pre>
 
-<pre zoom  labels="maven,tool,devops,qa" >
-<span xsmall>Dependency Management</span>
-<span xsmall>mvn dependency:analyze</span>
-list two things:
-Dependencies used but not declared.
-If found in the parent pom, there is no
-problem when compiling, but must be
-included at runtime on the server.
+<pre zoom  labels="qa.101,java_lang.*,maven,devops,qa.*,TODO" id="dependency_management_summary" >
+<span xsmall>Package Dependency Management</span>
+$º$ mvn dependency:analyze º  º  ← Inform about:
+                                   - Dependencies used but not declared.
+                                     If found in the parent pom, there is no problem when compiling, 
+                                     but must be included at runtime on the server.
+                                   
+                                   - Dependencies declared but not used for the scope provided
+                                     (compile, provided…).  They can be in the parent pom too.
+                                     Noneless, can be needed at runtime.
 
-Dependencies declared but not used for
-the scope provided (compile, provided…).
-They can be in the parent pom too.
-Noneless, can be needed at runtime.
+$º$ mvn dependency:tree -Dscope=compile º 
+                         ^^^^^^^^^^^^^^
+                         skip/ignore test/provided/... dependencies
+  → ...
+  → [INFO] --- maven-dependency-plugin:2.8:tree (default-cli) @ tamperproof ---
+  → [INFO]ºcom.myCompany:myProject:jar:1.0-SNAPSHOTº
+  → [INFO] +- org.web3j:core:jar:4.3.0:compile
+  → [INFO] |  +- org.web3j:abi:jar:4.3.0:compile
+  → [INFO] |  |  \- org.web3j:utils:jar:4.3.0:compile
+  → [INFO] |  |     \- org.bouncycastle:bcprov-jdk15on:jar:1.60:compile
+  → [INFO] |  +- org.web3j:crypto:jar:4.3.0:compile
+  → [INFO] |  |  \- org.web3j:rlp:jar:4.3.0:compile
+  → [INFO] |  +- org.web3j:tuples:jar:4.3.0:compile
+  → [INFO] |  +- com.github.jnr:jnr-unixsocket:jar:0.21:compile
+  → [INFO] |  |  +- com.github.jnr:jnr-ffi:jar:2.1.9:compile
+  → [INFO] |  |  |  +- com.github.jnr:jffi:jar:1.2.17:compile
+  → [INFO] |  |  |  +- org.ow2.asm:asm:jar:5.0.3:compile
+  → [INFO] |  |  |  +- org.ow2.asm:asm-commons:jar:5.0.3:compile
+  → [INFO] |  |  |  +- org.ow2.asm:asm-analysis:jar:5.0.3:compile
+  → [INFO] |  |  |  +- org.ow2.asm:asm-tree:jar:5.0.3:compile
+  → [INFO] |  |  |  +- org.ow2.asm:asm-util:jar:5.0.3:compile
+  → [INFO] |  |  |  +- com.github.jnr:jnr-a64asm:jar:1.0.0:compile
+  → [INFO] |  |  |  \- com.github.jnr:jnr-x86asm:jar:1.0.2:compile
+  → [INFO] |  |  +- com.github.jnr:jnr-constants:jar:0.9.11:compile
+  → [INFO] |  |  +- com.github.jnr:jnr-enxio:jar:0.19:compile
+  → [INFO] |  |  \- com.github.jnr:jnr-posix:jar:3.0.47:compile
+  → ...
 
-<span xsmall>mvn dependency:tree</span>
-Ex. Ussage:
-$ mvn dependency:tree -Dscope=compile
-                     ^^^^^^^^^^^^^^
-                     do not show test/provided/... dependencies
-→ ...
-→ [INFO] --- maven-dependency-plugin:2.8:tree (default-cli) @ tamperproof ---
-→ [INFO]ºcom.myCompany:myProject:jar:1.0-SNAPSHOTº
-→ [INFO] +- org.web3j:core:jar:4.3.0:compile
-→ [INFO] |  +- org.web3j:abi:jar:4.3.0:compile
-→ [INFO] |  |  \- org.web3j:utils:jar:4.3.0:compile
-→ [INFO] |  |     \- org.bouncycastle:bcprov-jdk15on:jar:1.60:compile
-→ [INFO] |  +- org.web3j:crypto:jar:4.3.0:compile
-→ [INFO] |  |  \- org.web3j:rlp:jar:4.3.0:compile
-→ [INFO] |  +- org.web3j:tuples:jar:4.3.0:compile
-→ [INFO] |  +- com.github.jnr:jnr-unixsocket:jar:0.21:compile
-→ [INFO] |  |  +- com.github.jnr:jnr-ffi:jar:2.1.9:compile
-→ [INFO] |  |  |  +- com.github.jnr:jffi:jar:1.2.17:compile
-→ [INFO] |  |  |  +- org.ow2.asm:asm:jar:5.0.3:compile
-→ [INFO] |  |  |  +- org.ow2.asm:asm-commons:jar:5.0.3:compile
-→ [INFO] |  |  |  +- org.ow2.asm:asm-analysis:jar:5.0.3:compile
-→ [INFO] |  |  |  +- org.ow2.asm:asm-tree:jar:5.0.3:compile
-→ [INFO] |  |  |  +- org.ow2.asm:asm-util:jar:5.0.3:compile
-→ [INFO] |  |  |  +- com.github.jnr:jnr-a64asm:jar:1.0.0:compile
-→ [INFO] |  |  |  \- com.github.jnr:jnr-x86asm:jar:1.0.2:compile
-→ [INFO] |  |  +- com.github.jnr:jnr-constants:jar:0.9.11:compile
-→ [INFO] |  |  +- com.github.jnr:jnr-enxio:jar:0.19:compile
-→ [INFO] |  |  \- com.github.jnr:jnr-posix:jar:3.0.47:compile
-→ ...
-
-Related:
-
+<hr/>
+<span TODO xsmall>JDepend</span>
+@[https://github.com/clarkware/jdepend]
+@[https://htmlpreview.github.io/?https://github.com/clarkware/jdepend/blob/master/docs/JDepend.html]
 - JDepend traverses Java class and source file directories and
-generatesºdesign-quality-metrics for each Java packageº
-ºin terms of its extensibility, reusability, and maintainabilityº
-ºto effectively manage and control package dependencies.º
-[[bdf38754-3114-4343-a768-e8d24027f91b?]]
+  generatesºdesign-quality-metrics for each Java packageº
+ ºin terms of its extensibility, reusability, and maintainabilityº
+ ºto effectively manage and control package dependencies.º
 </pre>
-<pre zoom labels="maven,qa,devops" >
+
+<pre zoom labels="maven.101,qa.*,devops" >
 <span xsmall>POM BEST PRACTICES:</span>
   REF: @[http://geertschuring.wordpress.com/2011/02/23/maven-best-practices/]
 
@@ -7941,7 +8017,7 @@ $º$ mvn dependency:analyze  º
 
 
 <div groupv>
-<pre zoom labels="101,maven" >
+<pre zoom labels="maven.101," >
 <span title>Recipies</span>
 BºNEW SKELETON:º
 $º$ mvn archetype:generate -DgroupId=my.groupId \        º
@@ -8034,7 +8110,7 @@ BºGENERATE FAT JAR (jar with all dependencies included)º
                                                        active profile
 </pre>
 
-<pre zoom labels="maven,advanced">
+<pre zoom labels="maven">
 <span xsmall>set Parent+Child poms</span>
 - Allows to inherit project dependency in children projects
 
@@ -8073,7 +8149,7 @@ $º  -DartifactId=˂artifactId˃ -Dversion=˂version˃ -Dpackaging=˂packaging˃
 </div>
 <div groupv>
 <span title>Maven Central</span>
-<pre id="mvn_pub2central" zoom labels="maven,devops">
+<pre id="mvn_pub2central" zoom labels="maven.*,devops">
 <span xsmall>Publish artifacts to MVN Central</span>
 REF: 
   - @[http://maven.apache.org/repository/guide-central-repository-upload.html]
@@ -8214,14 +8290,15 @@ mvn release:prepare # creates new tag in SVN, automatically checking in.
 mvn release:perform
 # release will be automatically inserted in a temp staging dir
 </pre>
-<pre zoom labels="maven,qa,tool,troubleshooting,performance,TODO">
+<pre zoom labels="maven.*,qa.*,troubleshooting,performance,TODO">
 <span TODO xsmall>Troubleshooting</span>
 @[https://www.apache.org/dev/publishing-maven-artifacts.html#troubleshooting]
 
-<span xsmall>pom utils</span>
+<hr/>
+<span xsmall>pom utils </span> 
 @[https://github.com/kdgregory/pomutil]
 
-Utilities to clean, organize, and restructure Maven POMs.
+Utilities to clean, organize, and restructure Maven POMs.                   [qa]
 
 BºPOM Cleanerº:
   "Cleans up" a single POM, normalizing plugin and dependency specifications,
@@ -8238,7 +8315,7 @@ BºDependency Check:º
   those that are used but unspecified (ie, transitive dependencies that
   should be direct).
 
-BºMVND(aemon)º    [performance][TODO]
+BºMVND(aemon)º                                               [performance][TODO]
 @[https://www.infoq.com/news/2020/12/mvnd-mavens-speed-daemon/]
 - Study driven by Gradle shows Maven as being 
 Rºup to 100 times slower than gradle buildsº. 
@@ -8257,7 +8334,7 @@ Rºup to 100 times slower than gradle buildsº.
   - Peter Palaga:main contributor
 </pre>
 
-<pre zoom bgorange labels="containers,maven,devops,k8s,diagram,TODO">
+<pre zoom bgorange labels="devops.containarization,maven,cloud.k8s,diagram,TODO">
 <span xsmall>Dockerfile "pipeline": mvn to Container</span>
 FROM maven:3.6-jdk-12-alpine as build
 WORKDIR /builder
@@ -8421,7 +8498,7 @@ See also: jKube
 
 <div groupv><!-- gradle -->
 <span title>Gradle</span>
-<pre zoom labels="gradle,devops">
+<pre zoom labels="devops.gradle,">
 @[https://github.com/tldr-pages/tldr/blob/master/pages/common/gradle.md]
 <span xsmall>Wrapper</span>
 REF: @[https://docs.gradle.org/current/userguide/gradle_wrapper.html]
@@ -8492,7 +8569,7 @@ The SHA256 hash sum used for verifying the downloaded Gradle distribution.
 
 </pre>
 
-<pre zoom labels="gradle,devops,TODO">
+<pre zoom labels="devops.gradle,TODO">
 <span xsmall>Multi-module Deployer</span>
 @[https://github.com/FlamingTuri/multi-module-deployer]
   (Java Example project available in github)
@@ -8557,7 +8634,7 @@ The SHA256 hash sum used for verifying the downloaded Gradle distribution.
   }
 </pre>
 
-<pre zoom labels="gradle,resource,TODO">
+<pre zoom labels="devops.gradle,resource,TODO">
 <span xsmall TODO>What's New</span>
 - Gradle v6: 
 @[https://www.infoq.com/news/2020/01/gradle-releases-version-6/]
@@ -8568,7 +8645,7 @@ The SHA256 hash sum used for verifying the downloaded Gradle distribution.
 
 <div groupv>
 <span title>DDBB/persistence</span>
-<pre zoom labels="sql,qa,persistence,cloud,spring,jpa,TODO">
+<pre zoom labels="persistence.sql,qa.data,cloud.*,spring.*,persistence.jpa,TODO">
 <span xsmall>Flyway: SQL schema versioning</span>
 • tool providing version control for database (SQL) schemas
   and automated schema (tables, columns, sequences), data, views, procedures
@@ -8613,17 +8690,19 @@ Bº##########º
 </pre>
 
 
-<pre zoom labels="sql,low_code,persistence,qa,vertx,TODO">
+<pre zoom labels="persistence.sql,vertx.*,async/reactive.*,low_code,qa.data,TODO">
 <span xsmall>Jooq: SQL made simple</span>
 @[https://www.jooq.org/]
 
-- vertx-jooq
+<span xsmall>Vertx+Jooq</span>
+@[https://github.com/jklingsporn/vertx-jooq]
   jOOQ-CodeGenerator to create vertxified DAOs and POJOs.
   Now with JDBC, async and reactive support!
 @[https://github.com/jklingsporn/vertx-jooq]
+
 </pre>
 
-<pre zoom labels="persistence,jpa,troubleshooting,TODO">
+<pre zoom labels="persistence.jpa,troubleshooting,TODO">
 <span xsmall TODO>Hibernate/JPA Summary</span>
 @[https://quarkus.io/guides/hibernate-orm-panache-guide]
 
@@ -8636,10 +8715,9 @@ Bº##########º
   https://thorben-janssen.com/hibernate-exceptions/
 </pre>
 
-<pre zoom labels="sql,persistence,low_code,qa,">
+<pre zoom labels="persistence.sql,low_code,qa.data,java_lang.functional">
 <span xsmall>speedment: SQL as Streams</span>
 @[https://github.com/speedment/speedment]
-
 - Stream ORM toolkit and runtime. 
 - The toolkit analyzes the metadata of an existing SQL database and 
   automatically creates a Java representation of the data model. 
@@ -8688,7 +8766,7 @@ BºSQL                                    JAVA 8 Stream Equivalentº
       (`length` ˃ 120)
 </pre>
 
-<pre zoom labels="sql,persistence,low_code,TODO" >
+<pre zoom labels="persistence.sql,low_code,TODO" >
 <span xsmall TODO>reladomo</span>
 (by Goldman Sachs)
 @[https://github.com/goldmansachs/reladomo]
@@ -8701,48 +8779,43 @@ the following enterprise features:
 - Full support for unit-testable code
 </pre>
 
-<pre zoom labels="persistence,sql,qa,performance,TODO">
+<pre zoom labels="persistence.sql,qa.*,scalability.persistence,TODO">
 <span xsmall>c3p0</span>
 @[https://www.mchange.com/projects/c3p0/#what_is]
-
-c3p0 is an easy-to-use library for making traditional JDBC drivers
-"enterprise-ready" by augmenting them with functionality defined by the jdbc3
-spec and the optional extensions to jdbc2. As of version 0.9.5, c3p0 fully
-supports the jdbc4 spec.
-
-In particular, c3p0 provides several useful services:
-
-- A class whichs adapt traditional DriverManager-based JDBC drivers to the
-  newer javax.sql.DataSource scheme for acquiring database Connections.
-- Transparent pooling of Connection and PreparedStatements behind DataSources
-  which can "wrap" around traditional drivers or arbitrary unpooled DataSources.
-
-The library tries hard to get the details right:
-- c3p0 DataSources are both Referenceable and Serializable, and are thus
-  suitable for binding to a wide-variety of JNDI-based naming services.
-- Statement and ResultSets are carefully cleaned up when pooled Connections
-  and Statements are checked in, to prevent resource- exhaustion when clients use
-  the lazy but common resource-management strategy of only cleaning up their
-  Connections. (Don't be naughty.)
-- The library adopts the approach defined by the JDBC 2 and 3 specification
-  (even where these conflict with the library author's preferences). DataSources
-  are written in the JavaBean style, offering all the required and most of the
-  optional properties (as well as some non-standard ones), and no-arg
-  constructors. All JDBC-defined internal interfaces are implemented
-  (ConnectionPoolDataSource, PooledConnection, ConnectionEvent-generating
-  Connections, etc.) You can mix c3p0 classes with compliant third-party
-  implementations (although not all c3p0 features will work with external
-  implementations of ConnectionPoolDataSource).
+• c3p0: easy-to-use library for making traditional JDBC drivers
+        "enterprise-ready" augmenting them with jdbc3 functionality,
+        , optional jdbc2 extensions and jdbc4 (v 0.9.5+).
+• It provides for:
+  - A class which adapt traditional DriverManager-based JDBC drivers to the
+    newer javax.sql.DataSource scheme for acquiring database Connections.
+  - Transparent pooling of Connection and PreparedStatements behind DataSources
+    which can "wrap" around traditional drivers or arbitrary unpooled DataSources.
+• The library tries hard to get the details right:
+  - c3p0 DataSources are both Referenceable and Serializable, and are thus
+    suitable for binding to a wide-variety of JNDI-based naming services.
+  - Statement and ResultSets are carefully cleaned up when pooled Connections
+    and Statements are checked in, to prevent resource- exhaustion when clients use
+    the lazy but common resource-management strategy of only cleaning up their
+    Connections. (Don't be naughty.)
+  - The library adopts the approach defined by the JDBC 2 and 3 specification
+    (even where these conflict with the library author's preferences). DataSources
+    are written in the JavaBean style, offering all the required and most of the
+    optional properties (as well as some non-standard ones), and no-arg
+    constructors. All JDBC-defined internal interfaces are implemented
+    (ConnectionPoolDataSource, PooledConnection, ConnectionEvent-generating
+    Connections, etc.) You can mix c3p0 classes with compliant third-party
+    implementations (although not all c3p0 features will work with external
+    implementations of ConnectionPoolDataSource).
 </pre>
 
-<pre zoom labels="persistence,performance,TODO" >
+<pre zoom labels="persistence.fs,scalability.persistence,TODO" >
 <span xsmall>Snappy Fast de/compressor</span>
 @[https://github.com/xerial/snappy-java]
-- Java port of the snappy http://code.google.com/p/snappy/
+- Java port of the snappy @[http://code.google.com/p/snappy/]
 </pre>
 
 <span title>Cache</span>
-<pre zoom labels="cache,performance,TODO">
+<pre zoom labels="scalability.cache,TODO">
 <span xsmall>JCache</span>
 - Map-Like API optimized for caching.
 - 1.0 drawbacks:
@@ -8751,7 +8824,7 @@ The library tries hard to get the details right:
 </pre>
 
 <span title>JSON</span>
-<pre TODO zoom labels="JSON,persistence,TLS/X509,aaa,">
+<pre TODO zoom labels="persistence.JSON,security.TLS/X509,security.aaa,">
 <span xsmall>JSON</span>
 - TODO: Patterns of JSON Matching:
   Streaming based, binding based, expression based.
@@ -8769,11 +8842,14 @@ Public review of JSR 374:
     - JSON Merge Patch
     - Query and transformation operations
     - Java 8 streams and lambdas
-- JSON-P was introduced in 2013 with the release of J2EE 7, as
-  an alternative to Gson and Jackson. It was designed to parse, generate,
-  and query standard JSON documents.
-  SR-367: Java API for JSON Binding (JSON-B), will also be included in the 
-  release of J2EE 8.
+- JSON-P (J2EE7+, 2013):
+  - alternative to Gson and Jackson.
+  - Designed to parse/generate/query standard JSON documents.
+- JSON-B (J2EE8+, SR-367):
+  - B: stands for  "Binding". Standard binding layer for converting
+    Java objects to/from JSON messages,ºdefining a default mapping algorithmº
+    for converting existing Java classes to JSON, while enabling developers
+    to customize it through annotations. 
 
 - Example:
   package com.mycomp.project1;
@@ -8793,13 +8869,21 @@ Public review of JSR 374:
   import javax.net.ssl.HostnameVerifier;
   import javax.net.ssl.SSLSession;
   import javax.net.ssl.TrustManager;
-  import javax.net.ssl.X509TrustManager;
-  
-  import org.json.JSONObject;
-  
+  import javax.net.ssl.X509TrustManager;                    [security.aaa]
   import java.security.cert.X509Certificate;
-  import java.util.Date;
   
+  import org.json.JSONObject; ←··············· https://github.com/stleary/JSON-java/
+                                               - reference implementation demonstrating:
+                                                 - how to parse    JSON docs to Java objects
+                                                 - how to generate JSON documents from the Java objects.
+                                               - Project goals include:
+                                                 - Adherence to the JSON spec.
+                                               Bº- No external dependenciesº
+                                               Bº- Fast execution and low memory footprintº
+                                               - It can also convert to/from:
+                                                 JSON, XML, HTTP headers, Cookies, Comma Delimited Text 
+                                                 (org.json.CDT or CSV).
+  import java.util.Date;
   import java.util.Scanner;
   
   public class TestAPI˂JSONArray˃ {
@@ -8882,7 +8966,7 @@ Public review of JSR 374:
   }
 </pre>
 
-<pre zoom labels="qa,testing,json,">
+<pre zoom labels="qa.testing.REST_API,persistence.json,">
 <span xsmall>RESTAssured: REST API testing</span>
 ºFULL JOURNEY == Simulate full (REST) API in expected orderº
 └ Pre-Setup:
@@ -9032,7 +9116,7 @@ Public review of JSR 374:
   }
 </pre>
 
-<pre zoom labels="qa,bdd,testing,TODO">
+<pre zoom labels="qa.testing.bdd,TODO">
 <span xsmall>BDD Serenity Testing</span>
 @[https://serenity-bdd.github.io/theserenitybook/latest/index.html]
 
@@ -9062,9 +9146,8 @@ Public review of JSR 374:
   requirements stored in an external source (such as JIRA or any other test cases
   management tool), or just use a simple directory-based approach to organise
   your requirements.
-</pre>
 
-<pre zoom labels="qa,bdd,testing,TODO">
+<hr/>
 <span xsmall>JBehave</span>
 - framework for Behaviour-Driven Development (BDD). BDD is an 
   evolution of test-driven development (TDD) and acceptance-test driven 
@@ -9073,28 +9156,27 @@ Public review of JSR 374:
   from being test-based to behaviour-based, and positions itself as a 
   design philosophy.
 
-1 Write story
-Scenario: A trader is alerted of status
-Given a stock and a threshold of 15.0
-When stock is traded at 5.0
-Then the alert status should be OFF
-When stock is traded at 16.0
-Then the alert status should be ON
-
-2 Map to java
-
-3 Configure Stories
-
-4 Run Stories
+  STEP 1) Write story
+    Scenario: A trader is alerted of status
+    Given a stock and a threshold of 15.0
+    When stock is traded at 5.0
+    Then the alert status should be OFF
+    When stock is traded at 16.0
+    Then the alert status should be ON
+  
+  STEP 2) Map to java
+  
+  STEP 3) Configure Stories
+  
+  STEP 4) Run Stories
 </pre>
-
 
 </div>
 </div>
 
 <div groupv>
 <span title>GraalVM</span>
-<pre zoom labels="graalvm,jvm,k8s,performance,TODO">
+<pre zoom labels="jvm.graalvm,cloud.k8s,scalability.jvm,TODO">
 <span TODO xsmall>GraalVM Summary</span>
 @[http://www.graalvm.org/]
 @[https://technology.amis.nl/2018/11/23/comparing-jvm-performance-zulu-openjdk-openjdk-oracle-jdk-graalvm-ce/]
@@ -9130,7 +9212,7 @@ Ex Ussage:
      --enable-https \
      --enable-http
 </pre>
-<pre zoom labels="graalvm,jvm,k8s,performance,TODO">
+<pre zoom labels="jvm.graalvm,cloud.k8s,scalability.jvm,TODO">
 <span xsmall>Quarkus (GraalVM) Framework</span>
 @[https://quarkus.io/guides/]
 @[https://quarkus.io/guides/kogito-guide]
@@ -9172,7 +9254,7 @@ Panache focuses on making your entities trivial and fun to write in Quarkus.
 <div group>
 <span title>Tech Radar</span><br/>
 <div groupv>
-<pre zoom  labels="radar,concurrency,TODO">
+<pre zoom  labels="radar,concurrency.*,TODO">
 <span xsmall>LMAX Disruptor: High Perf Inter-Thread Messaging Library</span>
 @[https://lmax-exchange.github.io/disruptor/]
 
@@ -9185,38 +9267,13 @@ Interesting points about GC tunning.
 </pre>
 
 
-<pre zoom  labels="radar,qa,TODO">
-<span TODO xsmall>Java Value Types proposal</span>
-@[https://www.infoq.com/news/2017/11/ValueTypesNov10]
-            ┌────────────────────────────┬───────────────────────────────────────
-            │ "NOW" (2019─12)            │ "FUTURE"
-            │ + primitive types          │ + primitive types
-            │ + object references:       │ + object references:
-            │ ─ NO low─level mem.control │ + Value types
-            │   (deliberately)           │
-────────────┼────────────────────────────┼───────────────────────────────────────
-PROS:       │ ─ Great simplicity         │ ─ Memory layout efficiency
-            │                            │ ─ removes the need for
-            │                            │   a full object header
-            │                            │   for each item of composite data.
-            │                            │ ─ header removal
-            │                            │   =→ instance metadata removal
-────────────┼────────────────────────────┼───────────────────────────────────────
-CONS:       │ performance penalties      │ ─ Higher complexity
-            │ ─ indirections in arrays   │ ─ object's identity is lost
-            │ ─ cache misses.            │ ─ new bytecodes needs to be introduced
-────────────┴────────────────────────────┴───────────────────────────────────────
-</pre>
-
-<pre zoom  labels="radar,qa,network,low_code,TODO">
+<pre zoom labels="radar,java_lang.io,network,architecture.distributed,scalability.distributed,network,comparative,qa.*,low_code,TODO" >
 <span xsmall>Tribe: reliable multicast</span>
 REF: @[http://tribe.ow2.org/]
 - Unlike JGroups, Tribe only targets reliable multicast
  (no probabilistic delivery) and is optimized for cluster
  communications.
-</pre>
-
-<pre zoom labels="radar,async/reactive,io,network,cluster,comparative,TODO" >
+<hr/>
 <span xsmall>JGroups multicast</span>
 @[http://www.jgroups.org/]
 - toolkit for reliable multicast communication.
@@ -9251,7 +9308,7 @@ Apache MINA comes with many subprojects :
 - Vysper : An XMPP server
 </pre>
 
-<pre zoom labels="radar,performance,security,devops,TODO">
+<pre zoom labels="radar,scalability.unikernel,security.*,devops,TODO">
 <span xsmall>OSV.io</span>
 - @[http://osv.io/]
   versatile modular unikernel designed to run unmodified Linux
@@ -9259,7 +9316,7 @@ Apache MINA comes with many subprojects :
   effortless deployment and management of micro-services and serverless apps,
   with superior performance. (Includes CRaSH shell)
 </pre>
-<pre zoom labels="radar,async/reactive,qa,TODO">
+<pre zoom labels="radar,async/reactive.101,standards.openapi,qa.*,TODO">
 <span xsmall>AsyncAPI.org</span>
 @[https://www.asyncapi.org/]
 - Building the future of event-driven architectures.
@@ -9277,13 +9334,10 @@ Apache MINA comes with many subprojects :
 <div group>
 <span title>Non-Classiffied</span><br/>
 
-<pre zoom labels="qa,data_structures,concurrency,library,testing,TODO">
-<span xsmall>Google Guava</span>
-<hr/>
-<span xsmall>VisibleForTesting[qa]</span>
+<pre zoom labels="data_structures.*,concurrency.*,library,qa.testing.*,TODO">
+<span xsmall>Guava VisibleForTesting[qa]</span>
 REF: @[https://stackoverflow.com/questions/6913325/annotation-to-make-a-private-method-public-only-for-test-classes]
 @[https://guava.dev/releases/19.0/api/docs/com/google/common/annotations/VisibleForTesting.html]
-Documentation
 </pre>
 
 <pre zoom labels="network,TODO">
@@ -9313,7 +9367,7 @@ Documentation
   | }).start(port);
 </pre>
 
-<pre zoom labels="tool,performance" >
+<pre zoom labels="scalability.native_code" >
 <span xsmall>JNR(JNI/UNIX friendly)</span>
 ( used by Netty and others...)
 -@[https://github.com/jnr/jnr-ffi]
@@ -9331,7 +9385,7 @@ Documentation
 -...
 </pre>
 
-<pre zoom  labels="101,">
+<pre zoom  labels="java_lang.101,">
 <span xsmall> Java Platform Module System (JPMS) (1.9+)</span> <!-- @ma -->
 Related:
 - JEP 200: THE MODULAR JDK
@@ -9396,21 +9450,35 @@ $º$ cat module-info.java º
 
      transitive
   }
+
+
+º--release $version compiler flag:º                                           [troubleshooting]
+  @[https://stackoverflow.com/questions/43102787/what-is-the-release-flag-in-the-java-9-compiler/]
+   """ ... --release X is more than just a shortcut to -source X 
+       -target X because -source and -target are not sufficient to safely 
+       compile to an older release. You also need to set a -bootclasspath 
+       flag which must correspond to the older release (and this flag is 
+       often forgotten). So, in Java 9 they made a single --release flag 
+       which is a replacement for three flags: -source, -target and 
+       -bootclasspath.
 </pre>
 
-<pre zoom labels="jvm,TODO,">
+<pre zoom labels="jvm.*,TODO,">
 <span xsmall>Java Erasure</span>
 - Type Erasure is a technique employed the Java compiler to support the use of Generics.
 @[https://developer.ibm.com/recipes/tutorials/java-language-type-erasure/]
 </pre>
 
-<pre zoom labels="aaa,TODO">
+<pre zoom labels="security.aaa,TODO">
 <span xsmall TODO>JAAS</span>
 @[https://en.wikipedia.org/wiki/Java_Authentication_and_Authorization_Service]
-- Sort of Plugable Authentication similar to the UNIX PAM.
+- In UNIX, by default we authenticate against /etc/passwd, but the 
+  (P)lugable (A)uthentication (M)odule (PAM), allows to check against other sources.
+  JAAS is similar to PAM for Java, allowing to offer a common AAA front-end to
+  file/ddbb/LDAP/... backends.
 </pre>
 
-<pre zoom labels="microprofile,TODO">
+<pre zoom labels="standards.jee.microprofile,TODO">
 <span xsmall>Eclipse Microprofile</span>
 @[https://dzone.com/articles/microprofile-5-things-you-need-to-know]
 
@@ -9464,12 +9532,12 @@ $º$ cat module-info.java º
       that can be leveraged system-wide.
 </pre>
 
-<pre zoom labels="concurrency,TODO">
+<pre zoom labels="concurrency.101,TODO">
 <span xsmall>Concurrency Classes Video</span>
 @[https://www.youtube.com/watch?v=8yD0hHAz3cs&list=PLw8RQJQ8K1ySGcb3ZP66peK4Za0LKf728&index=4]
 </pre>
 
-<pre zoom labels="tool,compiler,TODO">
+<pre zoom labels="java_lang.*,TODO">
 <span xsmall>JavaPoet</span>
 @[https://github.com/square/javapoet]
 - Library/API for generating .java source files.
@@ -9509,7 +9577,7 @@ https://blog.plan99.net/kotlin-native-310ffac94af2
 
 </pre>
 
-<pre zoom labels="async/reactive,sql,TODO">
+<pre zoom labels="async/reactive.*,persistence.sql,TODO">
 <span xsmall>R2DBC API</span>
 @[https://www.infoq.com/news/2018/10/springone-r2dbc]
 • Project initiated by Pivotal to provide an async/reactive alternative to JDBC.
@@ -9542,14 +9610,7 @@ RºWARNº: Since Spring Data R2dbc evolved very quickly, thre are plenty
         max-size: 10                             those used for JDBC.
 </pre>
 
-<pre zoom labels="jvm,TODO">
-<span xsmall>Panama</span>
-- Non-Java foreign-function and data interfaces, including 
-  native function calling from JVM (C, C++), and native data access 
-  from JVM or inside JVM heap
-</pre>
-
-<pre zoom labels="containers,jvm,performance,troubleshooting,devops,TODO">
+<pre zoom labels="devops.containarization,scalability.jvm,troubleshooting,TODO">
 <span xsmall>Nailgun</span>
 - Nailgun is a client, protocol, and server for running Java programs
   from the command line without incurring the JVM startup overhead.
@@ -9560,21 +9621,12 @@ RºWARNº: Since Spring Data R2dbc evolved very quickly, thre are plenty
 @[https://github.com/facebook/nailgun]
 </pre>
 
-<pre zoom labels="qa,async/reactive,troubleshooting,tool,TODO">
-<span xsmall>Lint4j</span>
-@[http://www.jutils.com/]
-- static Java source and byte code analyzer that detects locking and 
-threading issues, performance and scalability problems, and checks 
-complex contracts such as Java serialization by performing type, data 
-flow, and lock graph analysis.
-</pre>
-
 <pre zoom labels="profiling,troubleshooting,TODO">
 <span xsmall>9 Profiling tools</span>
 @[https://blog.idrsolutions.com/2014/06/java-performance-tuning-tools/]
 </pre>
 
-<pre zoom labels="cli,repl,ui,low_code,TODO" bgorange>
+<pre zoom labels="java_lang.repl,java_lang.101,low_code,TODO" bgorange>
 <span xsmall>jLine</span>
 jLine: GNU/readline alike library for JAVA:
 @[https://github.com/jline/jline3]
@@ -9583,13 +9635,17 @@ jLine: GNU/readline alike library for JAVA:
 - Language REPL Support
 <hr/>
 <span xsmall>PicoCli</span>
+@[https://github.com/remkop/picocli]
 @[https://picocli.info/]
-  Picocli is a one-file framework for creating Java command line 
+  Picocli is a one-file framework for creating Java user-friendly
+ (autocompletion, subcommands, ...)  command line  , GraalVM-enabled
   applications with almost zero code. It supports a variety of command 
   line syntax styles including POSIX, GNU, MS-DOS and more. It 
   generates highly customizable usage help messages that use ANSI 
   colors and styles to contrast important elements and reduce the 
   cognitive load on the user.
+  - 1 source file so apps can include as source and avoid adding a dependency!!!
+
 
 <hr/>
 <span title>Clig.Dev</span>
@@ -9633,7 +9689,7 @@ Java API for generating .java source files.
   Avoid boilerplate while also keeping a ºsingle source of truthº.
 </pre>
 
-<pre zoom labels="jvm,TODO">
+<pre zoom labels="jvm.*,TODO">
 <span xsmall>Aviam:Light Weight JVM</span>
 https://readytalk.github.io/avian/  ("Embedded java")
 Avian is a lightweight virtual machine and class library designed to 
@@ -9661,18 +9717,11 @@ From Mike's blog: https://blog.plan99.net/kotlin-native-310ffac94af2
   | collector and a JIT compiler.
 </pre>
 
-<pre zoom labels="sql,radar,TODO">
+<pre zoom labels="persistence.sql,async/reactive.*,radar,TODO">
 <span xsmall>R2DBC</span>
 https://www.infoq.com/news/2018/10/springone-r2dbc
   Experimental Reactive Relational Database Connectivity Driver, R2DBC, Announced at SpringOne
 </pre>
-<pre zoom labels="performance,TODO">
-<span xsmall>Nailgun</span>
-- Nailgun is a client, protocol, and server for running Java programs
-  from the command line without incurring the JVM startup overhead.
-  https://github.com/facebook/nailgun
-</pre>
-
 <pre zoom labels="devops,TODO">
 <span xsmall>jEnv</span>
 @[http://www.jenv.be/]
@@ -9698,41 +9747,59 @@ BºUssage:º
   $ jenv shell oracle64-1.6.0.39 Configure shell instance version
 </pre>
 
-<pre zoom labels="async/reactive,reactrx,comparative,TODO">
-<span xsmall>SmallRye Mutiny</span>
+<pre zoom labels="async/reactive.rxjava,async/reactive.comparative,qa.*,TODO">
+<span xsmall bgorange>SmallRye Mutiny</span>
 @[https://smallrye.io/smallrye-mutiny/]
 
-SmallRye Mutiny is a reactive programming library. Wait? Another one?  Yes!
-
-Mutiny is designed after having experienced many issues with other 
-Reactive programming libraries and having seen many developers lost 
-in an endless sequence of flatMap. Mutiny takes a different approach. 
-First, Mutiny does not provide as many operators as the other famous 
-libraries, focusing instead on the most used operators. Furthermore, 
-Mutiny provides a more guided API, which avoids having classes with 
-hundreds of methods that cause trouble for even the smartest IDE. 
-Finally, Mutiny has built-in converters from and to other reactive 
-programing libraries, so you can always pivot.
+• SmallRye Mutiny is a reactive programming library. Wait? Another one?  Yes!
+• Mutiny is designed after having experienced many issues with other 
+  Reactive programming libraries and having seen many developers lost 
+  in an endless sequence of flatMap. Mutiny takes a different approach. 
+  First, Mutiny does not provide as many operators as the other famous 
+  libraries, focusing instead on the most used operators. Furthermore, 
+  Mutiny provides a more guided API, which avoids having classes with 
+  hundreds of methods that cause trouble for even the smartest IDE. 
+  Finally, Mutiny has built-in converters from and to other reactive 
+  programing libraries, so you can always pivot.
 </pre>
 
-<pre zoom labels="sql,qa,tool,persistence,low_code,TODO">
-<span xsmall>Obevo</span>
-https://github.com/goldmansachs/obevo
-Obevo: ddbb deployment tool handling enterprise scale schemas and complexity.
+<pre zoom labels="persistence.sql,qa.data,low_code,TODO" id="obevo">
+<span xsmall>Obevo: DDBB change manager</span>
+@[https://github.com/goldmansachs/obevo]
+- Obevo: ddbb deployment tool handling enterprise scale schemas and complexity.
+- By Goldman Sachs.
+- Obevo is a database deployment tool that helps teams manage database 
+  changes in their Software Development Life Cycle (SDLC) process. In 
+  addition to handling production deployments, Obevo aids the 
+  development phase by defining a clean structure to maintain DB object 
+  code, and helps the testing phase with features such as in-memory 
+  database conversion. Notably, Obevo was designed for systems of 
+  enterprise scale and complexity and can manage hundreds of DB objects 
+  in a schema, while still handling new schemas in a simple manner. 
+  “We feel our ability to onboard a large and long-lived system to a 
+  clean SDLC process is a key differentiator in the open source 
+  space,” said Shant, a vice president in the Technology Division. 
+  “By publishing this to the open source community, we hope to aid 
+  others in their own DB deployment estates while growing a strong 
+  community around the tool.”
 
-""" Deploying tables for a new application?
-  Or looking to improve the DB Deployment of a years-old system with 
-  hundreds (or thousands) of tables, views, stored procedures, and 
-  other objects?
 
-  Obevo has your use case covered.
-
-  Supported platforms: DB2, H2, HSQLDB, Microsoft SQL Server, MongoDB, 
-  Oracle, PostgreSQL, Redshift (from Amazon), Sybase ASE, Sybase IQ
-"""
+  """ Deploying tables for a new application?
+    Or looking to improve the DB Deployment of a years-old system with 
+    hundreds (or thousands) of tables, views, stored procedures, and 
+    other objects?
+  
+    Obevo has your use case covered.
+  
+    Supported platforms: DB2, H2, HSQLDB, Microsoft SQL Server, MongoDB, 
+    Oracle, PostgreSQL, Redshift (from Amazon), Sybase ASE, Sybase IQ
+  """
 </pre>
 
-<pre zoom labels="101,qa,TODO">
+
+</pre>
+
+<pre zoom labels="java_lang.101,qa.*,TODO">
 <span xsmall>Inmmutable Objects are faster</span>
 https://docs.oracle.com/javase/tutorial/essential/concurrency/immutable.html
 </pre>
@@ -9743,7 +9810,7 @@ https://docs.oracle.com/javase/tutorial/essential/concurrency/immutable.html
 @[https://www.youtube.com/watch?v=DKJ0w30M0vg]
 </pre>
 
-<pre zoom labels="performance,cache,persistence,jpa,low_code,TODO">
+<pre zoom labels="scalability.distributed,scalability.cache,persistence.jpa,low_code,TODO">
 <span xsmall>SwarmCache</span>
 SwarmCache is a simple but effective distributed cache. It uses IP 
 multicast to efficiently communicate with any number of hosts on a 
@@ -9758,12 +9825,6 @@ Wrappers have been written that allow SwarmCache to be used with the
 Hibernate and JPOX persistence engines.
 </pre>
 
-<pre zoom labels="qa,TODO">
-<span xsmall>Strong Typing in Java</span>
-http://blog.jessitron.com/2012/03/strong-typing-in-java-religious.html
- Strong Typing in Java: a religious argument
-</pre>
-
 <pre zoom labels="library,TODO">
 <span xsmall>bytes java</span>
 @[https://github.com/patrickfav/bytes-java]
@@ -9771,12 +9832,7 @@ http://blog.jessitron.com/2012/03/strong-typing-in-java-religious.html
   validate and convert byte arrays in Java
 </pre>
 
-<pre zoom labels="101,strings,TODO">
-<span xsmall>String.valueOf(Object) vs....</span>
-https://dzone.com/articles/stringvalueofobject-versus-objectstostringobject
-</pre>
-
-<pre zoom labels="101,async/reactive,persistence,io,TODO">
+<pre zoom labels="async/reactive.io,persistence.fs,TODO">
 <span xsmall>3 NIO ways to read files </span>
 @[https://howtodoinjava.com/java7/nio/3-ways-to-read-files-using-java-nio/]
 - read small file using ByteBuffer and RandomAccessFile
@@ -9784,13 +9840,7 @@ https://dzone.com/articles/stringvalueofobject-versus-objectstostringobject
 - Example 3: Reading a file using memory-mapped files in Java
 </pre>
 
-<pre zoom labels="qa,testing,persistence,data_structures,low_code,junit,TODO">
-<span xsmall>Tablasco</span>
-@[https://github.com/goldmansachs/tablasco]
-- JUnit rule for comparing tables and Spark module for comparing large data sets
-</pre>
-
-<pre zoom labels="containers,devops,tool,TODO">
+<pre zoom labels="devops.containarization,TODO">
 <span xsmall>JLink</span>
 @[https://docs.oracle.com/javase/9/tools/jlink.htm]
 - You can use the jlink tool to assemble and optimize a set of modules 
@@ -9800,9 +9850,25 @@ TODO:
 @[https://medium.com/azulsystems/using-jlink-to-build-java-runtimes-for-non-modular-applications-9568c5e70ef4]
 </pre>
 
-<pre zoom labels="configuration,TODO">
+<pre zoom TODO labels="java_lang.configuration,standards.JSR330,qa.*,library,comparative,Spring.*,standards.JSR330">
+<span xsmall>Spring vs Google Guice</span>
+@[https://www.baeldung.com/guice-spring-dependency-injection]
+<hr/>
+<span xsmall>Dependency injection</span>
+@[http://www.theserverside.com/feature/Spring-vs-Guice-The-Clash-of-the-IOC-Containers]
+A: t's important to realize that Dagger was created after Guice, by one
+of Guice's creators ("Crazy Bob" Lee) after his move to Square:
+- Spring was originally released in October 2002.
+- Google originally publicly released Guice in March 2007.
+- JSR-330 formalized javax.inject annotations in October 2009,
+  with heavy input from Google (Bob Lee), Spring, and other industry
+  players.
+- Square originally released Dagger 1 publicly in May 2013.
+- Google originally released Dagger 2 publicly in April 2015.
+- Square marked Dagger 1 as deprecated 10 days ago,
+  on September 15, 2016.
 <span xsmall>JSR-330: Provider˂MyTargetBean˃</span>
-http://javax-inject.github.io/javax-inject/
+@[http://javax-inject.github.io/javax-inject/]
 
 FROM https://github.com/google/guice/wiki/JSR330
 - JSR-330 standardizes annotations like @Inject and the Provider 
@@ -9816,12 +9882,7 @@ FROM https://github.com/google/guice/wiki/JSR330
   https://www.reddit.com/r/linux/comments/ajkfs0/github_trimstraythepracticallinuxhardeningguide/
 </pre>
 
-<pre zoom labels="devops,101" TODO>
-<span xsmall>Running *.java (11)</span>
-@[https://www.infoq.com/articles/single-file-execution-java11/]
-</pre>
-
-<pre zoom labels="security,aaa,secret_mng,TODO">
+<pre zoom labels="security.cryptography,security.secret_mng,security.aaa,TODO">
 <span xsmall TODO>Crypto.API(JCA)</span> [TODO]
 RºWARNº: Prefer a high level cryptographic API like Google Tink 
          when possible.
@@ -9838,7 +9899,7 @@ RºWARNº: Prefer a high level cryptographic API like Google Tink
   About PCKS#11: @[http:./../General/cryptography_map.html?topics=pkcs]
 </pre>
 
-<pre zoom labels="configuration,low_code,TODO">
+<pre zoom labels="java_lang.configuration,low_code,TODO">
 <span xsmall>Loading properties</span>
 NOTE: Probably is better to use ENV.VARs to simplify compatibility
       with container deployments.
@@ -9854,7 +9915,7 @@ is.close();
   https://www.tutorialspoint.com/how-to-read-write-data-from-to-properties-file-in-java
 </pre>
 
-<pre zoom labels="xml,TODO">
+<pre zoom labels="persistence.xml,TODO">
 <span xsmall>XML Stream parsing</span>
 [TODO]: Write summary of best XML libraries.
 @[https://github.com/FasterXML/aalto-xml]
@@ -9865,10 +9926,10 @@ is.close();
 @[https://gist.github.com/shvalb/38cc8f454ee84a2032d2b341a9b8aeae]
 </pre>
 
-<pre zoom labels="JVM,TODO">
+<pre zoom labels="JVM.101,TODO">
 <span xsmall>CGLIB library</span>
 - CGLIB library: Used for bytecode generation/method injection (Used by 
-  Spring Framework for example)
+  Spring Framework for example).
 </pre>
 
 <pre zoom labels="debugging,troubleshooting,TODO">
@@ -9878,19 +9939,31 @@ https://en.wikipedia.org/wiki/Java_Platform_Debugger_Architecture
 https://www.baeldung.com/spring-debugging
 </pre>
 
-<pre zoom labels="async/reactive,TODO">
+<pre zoom labels="async/reactive.rxjava,async/reactive.comparative,TODO">
+<span xsmall>Spring Reactor/Spring-Async</span>
+@[https://ordina-jworks.github.io/reactive/2016/12/12/Reactive-Programming-Spring-Reactor.html]
+@[https://spring.io/blog/2013/05/13/reactor-a-foundation-for-asynchronous-applications-on-the-jvm]
+@[https://spring.io/guides/gs/async-method/]
+• Q:"Why Reactor when there's already RxJava2?"
+   - RxJava2 is java 6 while for Reactor the Spring team decided to go all in
+     and focus only on Java 8. This means that you can make use of all the new
+     and fancy Java 8 features.
+     - If you are going to use Spring 5, Reactor might be the better option.
+     - But if you are happy with your RxJava2, there is no direct need to migrate to Reactor."""
+<hr/>
 <span xsmall>Reactive Spring with Vert.x</span>
 @[https://developers.redhat.com/blog/2019/08/21/reactive-spring-boot-programming-with-vert-x/]
-Reactive Spring Boot programming with Vert.x
-The latest bundle of Red Hat supported Spring Boot starters was recently
-released. In addition to supporting the popular Red Hat products for our Spring
-Boot customers, the Red Hat Spring Boot team was also busy creating new ones.
-The most recent technical preview added is a group of Eclipse Vert.x Spring
-Boot starters, which provide a Spring-native vocabulary for the popular JVM
-reactive toolkit.
+- Reactive Spring Boot programming with Vert.x
+  The latest bundle of Red Hat supported Spring Boot starters was recently
+  released. In addition to supporting the popular Red Hat products for our Spring
+  Boot customers, the Red Hat Spring Boot team was also busy creating new ones.
+  The most recent technical preview added is a group of Eclipse Vert.x Spring
+  Boot starters, which provide a Spring-native vocabulary for the popular JVM
+  reactive toolkit.
+
 </pre>
 
-<pre zoom labels="jvm,performance,TODO">
+<pre zoom labels="jvm.*,scalability.jvm,TODO">
 <span xsmall>Example JVM config.</span>
 Server version:        Apache Tomcat/8.x
 Server built:          unknown
@@ -9941,48 +10014,41 @@ Command line argument: -Dcatalina.home=...
 Command line argument: -Djava.io.tmpdir=.../temp
 </pre>
 
-<pre zoom labels="maven,TODO">
+<pre zoom labels="maven.*,TODO">
 <span xsmall>mvn: Default Wrapper in 3.7</span>
 https://www.infoq.com/news/2020/04/maven-wrapper/
-</pre>
-
-<pre zoom labels="http2,TODO">
-<span xsmall>TLS enh. Backported to 1.8</span>
-https://www.infoq.com/news/2020/04/tls-alpn-java8/ 
-</pre>
-
-<pre zoom labels="maven,TODO">
+<hr/>
 <span xsmall>Java on VC.Studio</span>
 https://devblogs.microsoft.com/java/java-on-visual-studio-code-update-february-2020/?WT.mc_id=social-reddit-marouill 
 </pre>
 
-<pre zoom labels="vertx,TODO">
+<pre zoom labels="vertx.*,TODO">
 <span xsmall>Vert.x 3.9 Fluent API Query</span>
 https://developers.redhat.com/blog/2020/05/25/red-hat-build-of-eclipse-vert-x-3-9-brings-fluent-api-query/
 Red Hat build of Eclipse Vert.x 3.9 brings Fluent API Query
 </pre>
 
-<pre zoom labels="debugging,forensic,TODO">
+<pre zoom labels="debugging,monitoring.forensic,TODO">
 <span xsmall>JHSDB</span>
 https://docs.oracle.com/en/java/javase/12/tools/jhsdb.html
-You use the jhsdb tool to attach to a Java process or to a core dump 
-from a crashed Java Virtual Machine (JVM).
+- You use the jhsdb tool to attach to a Java process or to a core dump 
+  from a crashed Java Virtual Machine (JVM).
 
-jhsdb is a Serviceability Agent (SA) tool. Serviceability Agent (SA) 
-is a JDK component used to provide snapshot debugging, performance 
-analysis and to get an in-depth understanding of the Hotspot JVM and 
-the Java application executed by the Hotspot JVM.
+- jhsdb is a Serviceability Agent (SA) tool. Serviceability Agent (SA) 
+  is a JDK component used to provide snapshot debugging, performance 
+  analysis and to get an in-depth understanding of the Hotspot JVM and 
+  the Java application executed by the Hotspot JVM.
 
-Even though native debuggers like gdb are available for examining the 
-JVM, unlike jhsdb, these native debuggers do not have an inbuilt 
-understanding of the data structures in Hotspot and hence, are not 
-able to throw insights on the Java application being executed. jhsdb 
-knows about the locations and address ranges of crucial components of 
-the JVM like the Java heap, heap generations, regions, code cache, 
-etc.
+- Even though native debuggers like gdb are available for examining the 
+  JVM, unlike jhsdb, these native debuggers do not have an inbuilt 
+  understanding of the data structures in Hotspot and hence, are not 
+  able to throw insights on the Java application being executed. jhsdb 
+  knows about the locations and address ranges of crucial components of 
+  the JVM like the Java heap, heap generations, regions, code cache, 
+  etc.
 </pre>
 
-<pre zoom labels="containers,performance,serverless,TODO">
+<pre zoom labels="devops.containarization,scalability.jvm.graalvm,cloud.serverless,TODO">
 <span xsmall>GraalVM Native Image</span>
 @[https://jamesward.com/2020/05/07/graalvm-native-image-tips-tricks/]
 
@@ -10053,32 +10119,6 @@ etc.
      how to add your own reflection config files.
 </pre>
 
-<pre zoom labels="qa,TODO">
-<span xsmall>SpotBugs</span>
-@[https://spotbugs.github.io/]
-
-- SpotBugs is a program which uses static analysis to look for bugs in 
-  Java code. It is free software, distributed under the terms of the 
-  GNU Lesser General Public License.
-
-- SpotBugs is the spiritual successor of FindBugs, carrying on from the 
- point where it left off with support of its community. Please check 
- official manual site for details.
-
-- SpotBugs requires JRE (or JDK) 1.8.0 or later to run. However, it 
-  can analyze programs compiled for any version of Java, from 1.0 to 
-  1.9.
-
-
-- SpotBugs checks for more than 400 bug patterns. 
-
-SpotBugs can be used standalone and through several integrations, including:
-- Ant
-- Maven
-- Gradle
-- Eclipse
-</pre>
-
 <pre zoom labels="TODO">
 <span xsmall>Kryo serialization lib</span>
 - Object graph serialization library:
@@ -10094,63 +10134,45 @@ This is direct copying from object to object, not object to bytes to
 object.
 </pre>
 
-<pre zoom labels="101,TODO">
-<span xsmall>Text file to String</span>
-_ https://howtodoinjava.com/java/io/java-read-file-to-string-examples/
-</pre>
-
-<pre zoom labels="async/reactive,TODO">
+<pre zoom labels="async/reactive.servlets,standards.jee.servlets,TODO">
 <span xsmall>Async Servlets 3.0+:</span>
 https://www.infoworld.com/article/2077995/java-concurrency-asynchronous-processing-support-in-servlet-3-0.html
 </pre>
 
-<pre zoom labels="101,TODO">
+<pre zoom labels="TODO,async/reactive.101,java_lang.flow_api,java_lang.101">
 <span xsmall>Real-World Java 9</span>
-https://www.infoq.com/presentations/java9-flow-stream-api/?utm_source=oficina24x7.com
+@[https://www.infoq.com/presentations/java9-flow-stream-api/?utm_source=oficina24x7.com]
 
-Real-World Java 9:
-
-Trisha Gee shows via live coding how we can use the new Flow API to 
-utilize Reactive Programming, how the improvements to the Streams API 
-make it easier to control real-time streaming data and how the 
-Collections convenience methods simplify code. She talks about other 
-Java 9 features, including some of the additions to interfaces and 
-changes to deprecation.
+• Real-World Java 9:
+  Trisha Gee shows via live coding how we can use the new Flow API to 
+  utilize Reactive Programming, how the improvements to the Streams API 
+  make it easier to control real-time streaming data and how the 
+  Collections convenience methods simplify code. She talks about other 
+  Java 9 features, including some of the additions to interfaces and 
+  changes to deprecation.
 </pre>
 
-<pre zoom labels="TODO">
-<span xsmall>Collectors (1.8+)</span>
-</pre>
-<pre zoom labels="qa,TODO">
-<span xsmall>Optional (1.8+)</span>
-</pre>
-<pre zoom labels="TODO">
+<pre zoom labels="java_lang.functional,TODO">
 <span xsmall>SummaryStatistics(1.8+)</span>
 - Three of the new classes introduced in JDK 8 are 
-DoubleSummaryStatistics, IntSummaryStatistics, 
-andLongSummaryStatistics of the java.util package. These classes make 
-quick and easy work of calculating total number of elements, minimum 
-value of elements, maximum value of elements, average value of 
-elements, and the sum of elements in a collection of doubles, 
-integers, or longs. Each class's class-level Javadoc documentation 
-begins with the same single sentence that succinctly articulates 
-this, describing each as "A state object for collecting statistics 
-such as count, min, max, sum, and average."
+  DoubleSummaryStatistics, IntSummaryStatistics, 
+  andLongSummaryStatistics of the java.util package. These classes make 
+  quick and easy work of calculating total number of elements, minimum 
+  value of elements, maximum value of elements, average value of 
+  elements, and the sum of elements in a collection of doubles, 
+  integers, or longs. Each class's class-level Javadoc documentation 
+  begins with the same single sentence that succinctly articulates 
+  this, describing each as "A state object for collecting statistics 
+  such as count, min, max, sum, and average."
 </pre>
 
-<pre zoom labels="TODO">
+<pre zoom labels="java_lang.*,TODO">
 <span xsmall>Netty: One FW to rule them all </span>
  by Norman Maurer
 https://www.youtube.com/watch?v=DKJ0w30M0vg
 </pre>
 
-<pre zoom labels="qa,performance,TODO">
-<span xsmall>Inmmutable Objects are faster</span>
-(and safer)
-https://docs.oracle.com/javase/tutorial/essential/concurrency/immutable.html
-</pre>
-
-<pre zoom labels="containers,war,k8s">
+<pre zoom labels="devops.containarization,standards.jee.war,cloud.k8s">
 <span xsmall>JKube: WARs in containers cloud</span>
 @[https://developers.redhat.com/blog/2020/07/27/deploy-your-java-web-application-into-the-cloud-using-eclipse-jkube/]
 
@@ -10238,21 +10260,54 @@ example project contains three Java classes:
     $ mvn k8s:log          ← Retrieve app Logs
 </pre>
 
-<pre zoom labels="101,configuration,low_code,TODO" bgorange>
-<span xsmall>JBang: Simplified Java</span>
+<pre zoom labels="java_lang.101,java_lang.configuration,low_code,TODO" bgorange>
+<span xsmall>Running *.java (java 11+)</span>
+@[https://www.infoq.com/articles/single-file-execution-java11/] by Mohamed Taman
+  public class HelloUniverse{
+      public static void main(String[] args){
+        if ( args == null || args.length != 1 ){
+           throw RuntimeException("Name required");
+        }
+        System.out.printf("Hello, %s to InfoQ Universe!! %n", args[0]);
+      }
+  }
+                                    Before Java 11:
+  $º$ javac ./HelloUniverse.java   º  ← compile (./HelloUniverse.class generated)
+  $º$ java  ./HelloUniverse  arg1  º  ← start up JVM, load class, execute code
+  
+                                    After Java 11 (JEP 330)
+  $º$ java HelloUniverse.java arg1 º  ← compile, start up JVM, load class, execute code
+                                        (no ./*.class generated on disk)
+                                        Use $ºjava HelloUniverse.java --source $version º
+                                        when .java extension is not available or to 
+                                        specify the language version of the source code.
+                                      - By default compiled code is part of an unnamed module.
+                                        Add flag --add-modules=ALL-DEFAULT to have access to
+                                        standard modules in JDK.
+
+                                      
+
+  - Run *.class file         ← Java launcher 1.0+
+  - Run JAR's    main class  ← Java launcher 1.0+
+  - Run Module's main class  ← Java launcher 9+
+  - Run class in source.java ← Java launcher 11+
+  
+  - Integrate with UNIX scripting using the old beloved Shebang notation:
+  $º$ cat script.java º
+    #!/path/to/java --source $version
+    public class HelloUniverse{
+        public static void main(String[] args){
+          ...
+        }
+    }
+ 
+<hr/>
+
+<span xsmall bgorange>JBang: Simplified Java</span>
 @[https://www.youtube.com/watch?v=X4x2jM3Y0uE]
 </pre>
 
-<pre zoom labels="101,qa,error_control,TODO">
-<span xsmall>CalledFunctionException</span>
-TODO: Recipient exceptions Add CalledFunctionException _
-"CalledFunctionException" is an exception that is supposed to be
-handled by the calling function. Its actually a CheckedException but more pedagogic.
-Actually is not really an Exception and must be used just for long-lasting
-(I/O or CPU intensive) functions.
-</pre>
-
-<pre zoom labels="secret_mng,aaa,security,TODO">
+<pre zoom labels="security.secret_mng,TODO">
 <span xsmall>Conclave</span>
 https://medium.com/corda/conclave-beta-3-graalvm-mail-more-5038bd6d50da
 Today we’re announcing a new beta release of Conclave, a platform 
@@ -10266,7 +10321,7 @@ use enclaves to:
 - Upgrade privacy on distributed ledger platforms like Corda.
 </pre>
 
-<pre zoom labels="JVM,DevOps,performance,TODO" id="jvm_app_checkpoint">
+<pre zoom labels="scalability.JVM,DevOps,TODO" id="jvm_app_checkpoint">
 <span xsmall>Checkpointing outside the JVM</span>
 @[https://developers.redhat.com/blog/2020/10/15/checkpointing-java-from-outside-of-java/]
 When OpenJDK‘s Java virtual machine (JVM) runs a Java application, 
@@ -10293,12 +10348,12 @@ BºCheckpoint Outside JVM HOW-TO:º
                                          $º   -d -vvv -o restore.log   º
 </pre>
 
-<pre zoom labels="qa,testing,performance,TODO">
+<pre zoom labels="qa.testing.*,scalability.profiling,TODO">
 <span xsmall>JfrUnit</span>
 @[https://github.com/moditect/jfrunit]
-- JUnit extension for asserting JDK Flight Recorder events
-  emitted by an application  identifying performance regressions
-  (e.g. increased latencies, reduced throughput).
+- JUnit extension forºasserting JDK Flight Recorder eventsº
+ ºemitted by an application identifying performance regressionsº
+ º(e.g. increased latencies, reduced throughput).º
 
 - JfrUnit supports assertions not on metrics like latency/throughput
   themselves, but on indirect metrics which may impact those.
@@ -10312,8 +10367,8 @@ BºCheckpoint Outside JVM HOW-TO:º
   before they manifest as performance regressions in production.
 </pre>
 
-<pre zoom labels="rmi,distributed,servlet,low_code,TODO">
-<span xsmall>Jrpip: Low code RMI</span>
+<pre zoom labels="architecture.distributed,low_code,TODO" id="jrpip">
+<span bgorance xsmall>Jrpip: Low code RMI</span>
 BºLet developers concentrate on logic vs network plumbing and TCP errors.º
 - Jrpip mplements remote interface method invocation which allows different 
   Java processes to interact with one another.
@@ -10322,32 +10377,18 @@ BºLet developers concentrate on logic vs network plumbing and TCP errors.º
   implementation that doesn’t require RemoteException and automatic 
   retries with once-execute semantics. 
 - efficient binary protocol that is streamed, reducing memory 
-  consumption and garbage collector issues. 
+  consumption and garbage collector issues.
+
+- See also notes on gRPC:
+  @[./java_map.html?query=grpc]
+  @[../WebTechnologies/map.html?topics=grpc&showSearchMenu=false]
 </pre>
 
-<pre zoom labels="persistence,sql,qa,TODO">
-<span xsmall>Obevo: DDBB change manager</span>
-- (Goldman Sachs)
-  Obevo is a database deployment tool that helps teams manage database 
-  changes in their Software Development Life Cycle (SDLC) process. In 
-  addition to handling production deployments, Obevo aids the 
-  development phase by defining a clean structure to maintain DB object 
-  code, and helps the testing phase with features such as in-memory 
-  database conversion. Notably, Obevo was designed for systems of 
-  enterprise scale and complexity and can manage hundreds of DB objects 
-  in a schema, while still handling new schemas in a simple manner. 
-  “We feel our ability to onboard a large and long-lived system to a 
-  clean SDLC process is a key differentiator in the open source 
-  space,” said Shant, a vice president in the Technology Division. 
-  “By publishing this to the open source community, we hope to aid 
-  others in their own DB deployment estates while growing a strong 
-  community around the tool.”
-</pre>
-
-<pre zoom labels="testing,persistence,big_data,TODO">
+<pre zoom labels="qa.testing.data,architecture.batch,low_code,TODO">
+@[https://github.com/goldmansachs/tablasco]
 <span xsmall>Tablasco</span>
 - (By Goldman Sasch) JUnit rule that adds table verification to unit 
-  tests. For software products that produce large amounts of data, this 
+  tests.ºFor software products that produce large amounts of data,ºthis 
   tool can help to create automated tests that are both comprehensive 
   and easy to maintain. Users only need to adapt their existing data to 
   a table format that Tablasco understands. “Every test produces a 
@@ -10355,10 +10396,15 @@ BºLet developers concentrate on logic vs network plumbing and TCP errors.º
   issue,” said Barry, a vice president in the Technology Division. 
   Furthermore, Tablasco features automated baseline management, 
   allowing users to easily update the baseline file of a failing test.
+
+- JUnit rule for comparing tables and Spark module for comparing large data sets.
 </pre>
 
 
-<pre zoom labels="mail,notifications,smtp,">
+</pre>
+
+
+<pre zoom labels="messaging.mail.smtp,security.notifications,">
 <span xsmall>SMTP: Sending mail</span>
 - Based on AWS guide @[https://docs.aws.amazon.com/ses/latest/DeveloperGuide/send-using-smtp-java.html]
   but applies to any standard SMTP e-mail server.
@@ -10438,7 +10484,7 @@ BºLet developers concentrate on logic vs network plumbing and TCP errors.º
         SMTP username credential is 20-chars (letters and numbers)
 </pre>
 
-<pre zoom labels="performance,persistence,sql,TODO">
+<pre zoom labels="scalability.persistence,persistence.jpa,persistence.sql,TODO">
 <span title>jFleet</span>
 @[https://github.com/jerolba/jfleet]
 · JFleet is a Java library whichºpersist in database large collections º
@@ -10453,13 +10499,13 @@ BºLet developers concentrate on logic vs network plumbing and TCP errors.º
   tables and columns,ºJFleet is not an ORM.º
 </pre>
 
-<pre zoom labels="jvm,TODO">
+<pre zoom labels="jvm.101,TODO">
 <span xsmall>JVM Anatomy</span>
 https://shipilev.net/jvm-anatomy-park/
 https://shipilev.net/jvm-anatomy-park/22-safepoint-polls/
 </pre>
 
-<pre zoom labels="jvm,TODO">
+<pre zoom labels="java_lang.101,TODO">
 <span xsmall>Java Class Library (JCL, rt.jar)</span>
 rt.jar contains the Java Class Library (JCL)</span>
 https://en.wikipedia.org/wiki/Java_Class_Library
@@ -10488,7 +10534,7 @@ Bºmonolithic "rt.jar" JAR file and modularized the JCL itself inº
 Bºseveral modules with specified dependencies.º
 </pre>
 
-<pre zoom labels="concurrency,resource,TODO">
+<pre zoom labels="concurrency.*,resource,TODO">
 <span xsmall>Java Threading resources</span>
 @[https://avaldes.com/?s=java+thread]
 
@@ -10620,7 +10666,7 @@ https://www.baeldung.com/java-curl
 spring.boot,cli:
 https://docs.spring.io/spring-cloud-cli/docs/current/reference/html/
 ####################
-SQL,qa,maven,gradle,JPA?
+SQL,qa.data,maven,gradle,JPA?
 Flywai Schema database migrations
 https://www.baeldung.com/database-migrations-with-flyway
 
@@ -10718,4 +10764,38 @@ TODO: Spring SecurityContext*
 ######################1
 jvm,security,
 https://blog.frankel.ch/jvm-security/4/
+######################1
+Sprint Tools 4 (Integration with Visual Studio Code, Eclipse, Theia IDE)
+https://spring.io/tools/ 
+######################
+https://github.com/vert-x3/vertx-4-migration-guide
+#####################
+testing: Mockito
+#####################
+@[https://www.programcreek.com/2013/03/hashmap-vs-treemap-vs-hashtable-vs-linkedhashmap/]
+@[https://www.programcreek.com/2015/12/top-10-java-utility-classes/]      @ma
+@[https://www.programcreek.com/2013/09/top-9-questions-for-java-map/]
+@[https://www.programcreek.com/2013/09/top-10-questions-for-java-collections/]
+@[https://www.programcreek.com/2013/09/top-8-diagrams-for-understanding-java/]
+@[https://www.programcreek.com/2013/09/top-10-faqs-of-java-strings/]
+@[https://www.programcreek.com/2013/09/top-10-methods-for-java-arrays/]
+@[https://www.programcreek.com/2013/09/top-10-websites-for-advanced-level-java-developers/]
+@[https://www.programcreek.com/2013/08/top-books-for-advanced-level-java-developers/]
+#########################
+<span xsmall TODO>SPARTA (anti-malware)</span>
+- Aimed at preventing malware from appearing in an app store.
+- provides an information-flow type-checker customized to Android
+  but can also be applied to other domains.
+@[https://checkerframework.org/sparta/]
+  The paper "Collaborative verification of information flow for a
+  high-assurance app store" appeared in CCS 2014.
+
+##########################
+java_lang.101,java_lang.functional:
+- Collectors (1.8+)
+java_lang.101,qa.billion_dolar_mistake:
+- Optional (1.8+)
+###########################
+Java 9 to 13 in a Nutshell!!!: @ma
+https://bentolor.github.io/java9to13/#/_preview_features_preview_12
 

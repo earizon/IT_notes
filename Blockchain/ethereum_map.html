@@ -347,9 +347,10 @@ CHAIN_ID    Chain(s)
 
 </pre>
 <span title>Related Taxonomies</span>
-<pre zoom>
+<pre zoom labels="standards.tokens">
 <span xsmall TODO>TokenTaxonomyFramework</span>
 @[https://github.com/InterWorkAlliance/TokenTaxonomyFramework]
+@[https://interwork.org/real-world-tokens-a-seven-step-journey-into-the-ttf/]
 
 <span xsmall TODO>Laws Taxo.</span>
 @[https://law.stackexchange.com/tags]
@@ -1542,12 +1543,12 @@ called Diamond Setter that is a contract manager for diamonds. Here
 is his blog post about it: Diamond Setter, Ethereum smart contract
 manager
 
-Ronan Sandford (wighawag), a prominent smart contract developer and
-an author of the ERC-1155 standard, announced he is working on adding
-support for diamonds to buidler-deploy to make it very easy to
-deploy/cut diamonds. buidler-deploy is a mechanism to deploy
-contracts to any network, keeping track of them and replicating the
-same environment for testing.
+- Ronan Sandford (wighawag), a prominent smart contract developer and
+  an author of the ERC-1155 standard, announced he is working on adding
+  support for diamonds to buidler-deploy to make it very easy to
+  deploy/cut diamonds. buidler-deploy is a mechanism to deploy
+  contracts to any network, keeping track of them and replicating the
+  same environment for testing.
 
 Nayms is using diamonds in production. Ram wrote a blog post about
 their implementation: Upgradeable smart contracts using the Diamond
@@ -3003,12 +3004,16 @@ RºWARNº: low level ops return false, no assert/require/revert exception is rai
     were a call to a function Error(string). Ex:
     revert("Not enough Ether provided.");
     └───────────────┬───────────────────┘
-    The following hexadecimal data will be set as error return data:
+    The following string of hexadecimal digits data  (vs byte array) will be 
+    set as error return data:
+    (NOTE: no carry-return exists in real output. Fake layout just for clarity)
 
-    0x08c379a0                                                         // Function selector for Error(string)
-    0x0000000000000000000000000000000000000000000000000000000000000020 // Data offset
-    0x000000000000000000000000000000000000000000000000000000000000001a // String length
-    0x4e6f7420656e6f7567682045746865722070726f76696465642e000000000000 // String data
+    0x08c379a0                                                       ← Function selector for Error(string)
+    0000000000000000000000000000000000000000000000000000000000000020 ← String offset  ┐
+    000000000000000000000000000000000000000000000000000000000000001a ← String length  │ String 
+    4e6f7420656e6f7567682045746865722070726f76696465642e............ ┐                ├─ABI encoding
+    ................................................................ ├ String payload │
+    ................................................................ ┘ (utf8 hex enc) ┘
 
 Bºrevert reasonº
   Since Solidity 0.4.22 the require() and revert() operation optionally
@@ -3210,7 +3215,7 @@ RºWARNº:
    function delete(address addr) │                             │                               │                                │ function delete      (address addr)
      public {                    │                             │                               │                                │     public returns(bool success) {
      if(!isEntity(addr)) throw   │                             │                               │                                │   if(!isEntity(addr)) throw;
-     ddbb[addr].isEntity = false │                             │                               │                                │   uint rowToDelete = ddbb[addr].lstPtr;
+     delete ddbb[addr];          │                             │                               │                                │   uint rowToDelete = ddbb[addr].lstPtr;
    }                             │                             │                               │                                │   address keyToMove = list[list.length-1];
                                  │                             │                               │                                │   list[rowToDelete] = keyToMove;
                                  │                             │                               │                                │   ddbb[keyToMove].lstPtr
@@ -3422,12 +3427,20 @@ uint[100] memory fixedArray;     ← Fixed   Size Array declaration
           fixedArray[1] = 2;
           fixedArray.push(3);    ← RºError. Not allowed for fixed size arrayº
           ...
-uint[ ] memory  dynArray1 = unit[] ← Dynamic Size Array declaration
-          dynArray1.push(1)        ← RºError. Not allowed for memory arrayº
-          ...
-uint[ ] storage dynArray2 = unit[] ← Dynamic Size Array declaration
+uint[] memory dynArray1 = uint[](3) ← Dynamics arrays in memory are NOT really 
+                                      dynamics. An given size must be defined at 
+                                      initialization to avoid memory overflows.
+                                      The only difference with fixed size array is
+                                      that they can be used as parameters in functions
+                                      receiving an array of undefined size.
+dynArray1[0] = ...;                 ← By default. values is "Zero".
+dynArray1[1] = ...;
+dynArray1[2] = ...;
+
+uint[]  storage dynArray2 = uint[] ← Dynamic Size Array declaration
           dynArray2.push(1 )       ← GºOKº
           ...
+
 var x          = uint[][5]      ← Fixed-(5)size-array of
                                   dynamic-uint-arrays  (var for type inference)
     x[2][1]                     ← second uint in third dyn-array
@@ -4348,162 +4361,211 @@ Bºor deactivated depending on use case. It is compatible with ERC20 and º
 BºERC1400, and was inspired by ERC2020 and Hash Time Locked Contract    º
 Bº(HTLC) implementations.                                               º
 
-<span xsmall>ERC20 Fungible Token</span>
-- REF:
-  -@[https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20-token-standard.md]
-  -@[https://theethereum.wiki/w/index.php/ERC20_Token_Standard]
-  - Problems with the Standard:
-  @[https://edcon.io/ppt/two/Dmitry%20Khovratovich_Secure%20Token%20Development%20and%20Deployment_EDCON.pdf]
-- Standard interface to Fungible Assets Contracts that
- ºdifferent walletsº will understand out-of-the-box. A list of
-  ERC20 compliant wallets can be found at:
-@[https://tokenmarket.net/what-is/ethereum-token-wallets/]
-<hr/>
+Bº####################º
+Bº# FUNGIBLE TOKENS: #º
+Bº####################º
+  └ºERC-20 Fungible Tokenº:
+    - REF:
+      -@[https://github.com/ethereum/EIPs/blob/master/EIPS/eip-20-token-standard.md]
+      -@[https://theethereum.wiki/w/index.php/ERC20_Token_Standard]
+      - Problems with the Standard:
+      @[https://edcon.io/ppt/two/Dmitry%20Khovratovich_Secure%20Token%20Development%20and%20Deployment_EDCON.pdf]
+    - Standard interface to Fungible Assets Contracts that
+     ºdifferent walletsº will understand out-of-the-box. A list of
+      ERC20 compliant wallets can be found at:
+    @[https://tokenmarket.net/what-is/ethereum-token-wallets/]
 
-<span xsmall>ERC-777</span>
-- This standard defines a new way to interact with a token contract
-  while remaining backward compatible with ERC20.
+    └ºERC-777 Fungible Token (ERC-20 Extension)º:
+      - extension backward compatible with ERC-20 including:
+        - operators to send tokens on behalf of another contract|external acct.
+        - send/receive hooks to offer token holders extended control.
+      - It takes advantage of ERC-1820 to find out whether and where to
+        notify contracts|external-acct when they receive tokens as
+        well as to allow compatibility with already-deployed contracts.
 
-- It defines advanced features to interact with tokens. Namely,
-  operators to send tokens on behalf of another address—contract or
-  regular account—and send/receive hooks to offer token holders more
-  control over their tokens.
+    └ºERC-223 (ERC-20 Extension)º:
+      - REF: @[https://github.com/ethereum/EIPs/issues/223]
+      - "...ERC20 token standard is leading to money losses for end users.
+         The main problem is lack of possibility to handle incoming ERC20 transactions,
+         that were performed via transfer function of ERC20 token..."
+      
+         "A" SENDING     CONTRACT send  1 Ether      , 1   Token       to "B"
+         "B" DESTINATION CONTRACT is  NON-Ether aware, NON-Token aware.
+         Result:
+         A  →  B: 1ETH   ← GºOKº, rejected
+         A  →  B: 1TOKEN ← RºKOº, possibly accepted since "B" can NOT recognize
+                                  incoming TX.
+                                Rºtokens stuck at the "B" balanceº
 
-- It takes advantage of ERC1820 to find out whether and where to
-  notify contracts and regular addresses when they receive tokens as
-  well as to allow compatibility with already-deployed contracts.
+    └ºERC-621 (ERC-20 Extension)º:
+      - REF @[https://github.com/ethereum/EIPs/blob/master/EIPS/eip-621.md]
+      - ERC-20 extension.
+      - Two additional functions added to increase/decrease liquidity:
+        -ºincreaseSupplyº
+        -ºdecreaseSupplyº
+        ( ERC-20 allows a single token issuance event)
 
-<span xsmall>ERC-1400</span>
-- library of standards for security tokens on Ethereum.
+    └ºERC-827 (ERC-20 Extension)º:
+    @[https://github.com/ethereum/EIPs/blob/master/EIPS/eip-827.md]
+      - ERC-20 extension for tokens with methods that allows the
+        execution of calls inside transfer and approvals.
 
-  In aggregate provides a suite of standard interfaces for issuing /
-  redeeming security tokens, managing their ownership and transfer
-  restrictions and providing transparency to token holders on how
-  different subsets of their token balance behave with Bºrespect to º
-Bºtransfer restrictions, rights and obligations.º
+Bº########################º
+Bº# NON-FUNGIBLE TOKENS: #º
+Bº########################º
+  └ºERC-721º:
+  @[https://github.com/ethereum/EIPs/blob/master/EIPS/eip-721.md]
+    - Standard interface for non-fungible ("deed") tokens,
+      represent the ownership right/obligation over digital or
+      physical assets. Ex:
+      - house ownership rights.
+      - loans obligations.
+    
+    - ERC-721 rights/obligations can be consigned to third party
+      brokers/wallets/auctioneers ("operators").
+    
+    - Genobank.io Example:
+      """ Daniel Uribe from Genobank.io will talk about their mission of
+          building a secure and decentralized P2P Genomic Network on the
+          Ethereum blockchain.
+           He will describe how they are using ERC721 and ERC1155 to record
+          unique genomic variants along with the use of IPFS and proxy
+          re-encryption to allow for private and secure sharing of DNA data.
+          - ERC721 and ERC1155 for recording and transmitting genomic data
+          - Proxy re-encryption to secure data and protect privacy
+          - The Ethereum blockchain to keep track of the informed consents
+      """
 
-  - Standards should be backwards compatible with ERC-20 (#20) and
-    easily extended to be compatible with ERC-777 (#777).
+Bº#################º
+Bº# MULTI-TOKENS: #º
+Bº#################º
+  └ºERC-1155º:
+  @[https://blog.enjincoin.io/erc-1155-the-crypto-item-standard-ac9cf1c5a226]
+  - Standard interface for contracts managing multiple token types.
 
-  - Depends on:
-    - ERC-1410: differentiated ownership / transparent restrictions
-    - ERC-1594: on-chain restriction checking with error
-                signalling, off-chain data injection for transfer restrictions and
-                issuance / redemption semantics
-    - ERC-1643: document / legend management
-    - ERC-1644: controller operations (force transfer)
+                      ┌─·· N →     fungible─token
+    Contract   1 ←···─┤
+                      ├─·· M → non─fungible─token
+                      │
+                      ├─·· K → ...2
+                      ...
 
-<span xsmall>ERC-223</span>
-- REF:
-  - @[https://github.com/ethereum/EIPs/issues/223]
-  "...ERC20 token standard is leading to money losses for end users.
-   The main problem is lack of possibility to handle incoming ERC20 transactions,
-   that were performed via transfer function of ERC20 token..."
+    (for example, semi-fungible tokens)
+  
+  - In economics, fungibility is the property of a good or a commodity
+    whose individual units are essentially interchangeable.
+  
+  - Some new blockchain games are now also using the more recent
+    ERC-721 Non-Fungible Token standard which allows each unit to be
+    a unique collectible item with its own serial number.
+    These have become popular in some early blockchain games because
+    of the success of CryptoKitties.
+  
+  - Evolved Token for Mainstream Games
+    - Multiplayer Games Have LOTS of Items
+      - Runescape has 35,000
+      - World of Warcraft has over 100,000 different items!
+      - Shooters like Overwatch and Team Fortress 2 each
+        have thousands of skins and items.
+  
+  -ºThe biggest problem with existing token designs is that they    º
+   ºrequire deploying a separate contract to the blockchain for eachº
+   ºand every item type!                                            º
+    - EnjinX, our upcoming blockchain explorer, has logged transfers
+      from over 74,000 different tokens deployed on Ethereum since 2015.
+  
+  - ERC-1155 takes a new approach to defining tokens. Items are now
+    stored in a single contract with the minimum possible amount of
+    data needed to distinguish the token from other ones.
+    The contract state contains configuration data per Token ID and
+    all the behavior governing the collection with
+   ºAtomic Swaps amongst different itemsº
+  
+    Atomic Swap ussage examples:
+    - Multi-Transfers
+      Imagine checking out your groceries at the store and having
+      to buy each item in your cart separately.
+      This is how ERC-20 and ERC-721 token transfers work,
+      it’s just not efficient.
+    - In ERC-1155, you can send any number of items to one or
+      multiple recipients in a single transaction. This reduces gas
+      and congestion on the Ethereum transaction pool
+  
+    - The transfer, approve, melt, and trade functions all take
+      arrays as parameters, which let you perform between 100–200
+      such operations in a single transaction.
+  
+  - ERC-20 is limited to fungibles, ERC-721 is limited to contracts
+    with individual unique copies of items. The two token types are
+    not very compatible or mixable.
+  
+    ERC-1155 Crypto Items improve on this by combining the benefits
+    of both.
 
-   "A" SENDING     CONTRACT send  1 Ether      , 1   Token       to "B"
-   "B" DESTINATION CONTRACT is  NON-Ether aware, NON-Token aware.
-   Resulst:
-   A  →  B: 1ETH   ← GºOKº, rejected
-   A  →  B: 1TOKEN ← RºKOº, possibly accepted since "B" can NOT recognize
-                            incoming TX.
-                          Rºtokens stuck at the "B" balanceº
-<hr/>
-<span xsmall>ERC-621</span>
-@[https://github.com/ethereum/EIPs/blob/master/EIPS/eip-621.md]
-- ERC-20 extension.
-- Two additional functions added to increase/decrease liquidity:
-  -ºincreaseSupplyº
-  -ºdecreaseSupplyº
-  ( ERC-20 allows a single token issuance event)
 
-<hr/>
+   - The _id argument contained in each function’s argument set indicates a 
+     specific token or token type in a transaction.
 
-<span xsmall>ERC-827</span>
-@[https://github.com/ethereum/EIPs/blob/master/EIPS/eip-827.md]
-- ERC-20 extension for tokens with methods that allows the
-  execution of calls inside transfer and approvals.
+   - Trading (escrow / atomic swaps) of multiple tokens can be built on top
+     of this standard and it removes the need to “approve” individual token
+     contracts separately. 
 
-<hr/>
 
-<span xsmall>ERC-721 Non fungible</span>
-@[https://github.com/ethereum/EIPs/blob/master/EIPS/eip-721.md]
-- Standard interface for non-fungible ("deed") tokens,
-  represent the ownership right/obligation over digital or
-  physical assets. Ex:
-  - house ownership rights.
-  - loans obligations.
+   - Smart contracts implementing the ERC-1155 standard MUST 
+     implement the ERC-165 supportsInterface function and MUST return the 
+     constant value true if 0xd9b67a26 is passed through the interfaceID 
+     argument.
 
-- ERC-721 rights/obligations can be  consigned to third party
-  brokers/wallets/auctioneers ("operators").
+     pragma solidity ^0.5.9;
+     
+     interface ERC1155 /* is ERC165 */ {
+         event TransferSingle(address indexed _operator, address indexed _from, address indexed _to, uint256 _id, uint256 _value);
+         event TransferBatch(address indexed _operator, address indexed _from, address indexed _to, uint256[] _ids, uint256[] _values);
+     
+         event ApprovalForAll(address indexed _owner, address indexed _operator, bool _approved);
+         event URI(string _value, uint256 indexed _id);
+         function safeTransferFrom(address _from, address _to, uint256 _id, uint256 _value, bytes calldata _data) external;
+         function safeBatchTransferFrom(address _from, address _to, uint256[] calldata _ids, uint256[] calldata _values, bytes calldata _data) external;
+         function balanceOf(address _owner, uint256 _id) external view returns (uint256);
+         function balanceOfBatch(address[] calldata _owners, uint256[] calldata _ids) external view returns (uint256[] memory);
+         function setApprovalForAll(address _operator, bool _approved) external;
+         function isApprovedForAll(address _owner, address _operator) external view returns (bool);
+     }
 
-- Genobank.io Example:
-  """ Daniel Uribe from Genobank.io will talk about their mission of
-      building a secure and decentralized P2P Genomic Network on the
-      Ethereum blockchain.
-      He will describe how they are using ERC721 and ERC1155 to record
-      unique genomic variants along with the use of IPFS and proxy
-      re-encryption to allow for private and secure sharing of DNA data.
-      - ERC721 and ERC1155 for recording and transmitting genomic data
-      - Proxy re-encryption to secure data and protect privacy
-      - The Ethereum blockchain to keep track of the informed consents
-  """
+     ERC-1155 Token Receiver 
 
-<span xsmall>ERC-1155</span>
-@[https://blog.enjincoin.io/erc-1155-the-crypto-item-standard-ac9cf1c5a226]
-- Standard interface for contracts managing multiple token types.
-  A single deployed contract may include any combination of
-  fungible tokens, non-fungible tokens, or other configurations
-  (for example, semi-fungible tokens)
+     pragma solidity ^0.5.9;
 
-- In economics, fungibility is the property of a good or a commodity
-  whose individual units are essentially interchangeable.
+     interface ERC1155TokenReceiver { // SC. hook list accepting transfers, ERC-165 identifier: 0x4e2312e0.
+         function onERC1155Received(address _operator, address _from, uint256 _id, uint256 _value, bytes calldata _data) external returns(bytes4);
+         function onERC1155BatchReceived(address _operator, address _from, uint256[] calldata _ids, uint256[] calldata _values, bytes calldata _data) external returns(bytes4);       
+     }
 
-- Some new blockchain games are now also using the more recent
-  ERC-721 Non-Fungible Token standard which allows each unit to be
-  a unique collectible item with its own serial number.
-  These have become popular in some early blockchain games because
-  of the success of CryptoKitties.
 
-- Evolved Token for Mainstream Games
-  - Multiplayer Games Have LOTS of Items
-    - Runescape has 35,000
-    - World of Warcraft has over 100,000 different items!
-    - Shooters like Overwatch and Team Fortress 2 each
-      have thousands of skins and items.
+Bº#############################º
+Bº# SECURITY TOKENS: ERC-1400 #º
+Bº#############################º
+  - library of standards for security tokens on Ethereum.
+  
+    In aggregate provides a suite of standard interfaces for issuing /
+    redeeming security tokens, managing their ownership and transfer
+    restrictions and providing transparency to token holders on how
+    different subsets of their token balance behave with Bºrespect to º
+  Bºtransfer restrictions, rights and obligations.º
+  
+    - Standards should be backwards compatible with ERC-20 (#20) and
+      easily extended to be compatible with ERC-777 (#777).
+  
+    - Depends on:
+      - ERC-1410: differentiated ownership / transparent restrictions
+      - ERC-1594: on-chain restriction checking with error
+                  signalling, off-chain data injection for transfer restrictions and
+                  issuance / redemption semantics
+      - ERC-1643: document / legend management
+      - ERC-1644: controller operations (force transfer)
 
--ºThe biggest problem with existing token designs is that they    º
- ºrequire deploying a separate contract to the blockchain for eachº
- ºand every item type!                                            º
-  - EnjinX, our upcoming blockchain explorer, has logged transfers
-    from over 74,000 different tokens deployed on Ethereum since 2015.
 
-- ERC-1155 takes a new approach to defining tokens. Items are now
-  stored in a single contract with the minimum possible amount of
-  data needed to distinguish the token from other ones.
-  The contract state contains configuration data per Token ID and
-  all the behavior governing the collection with
- ºAtomic Swaps amongst different itemsº
 
-  Atomic Swap ussage examples:
-  - Multi-Transfers
-    Imagine checking out your groceries at the store and having
-    to buy each item in your cart separately.
-    This is how ERC-20 and ERC-721 token transfers work,
-    it’s just not efficient.
-  - In ERC-1155, you can send any number of items to one or
-    multiple recipients in a single transaction. This reduces gas
-    and congestion on the Ethereum transaction pool
-
-  - The transfer, approve, melt, and trade functions all take
-    arrays as parameters, which let you perform between 100–200
-    such operations in a single transaction.
-
-- ERC-20 is limited to fungibles, ERC-721 is limited to contracts
-  with individual unique copies of items. The two token types are
-  not very compatible or mixable.
-
-  ERC-1155 Crypto Items improve on this by combining the benefits
-  of both.
 </pre>
 
 <pre zoom labels="dev_languaje.solidity,token,TODO">
@@ -6798,6 +6860,13 @@ ________________________________________________________________________________
                   |ON|CHAIN|     |PRIVATE|TRANSACTIONS|   |OFF+CHAIN          |
                   +--------+     +--------------------+   |(TRUSTED EXECUTION)|
                                                           +-------------------+
+
+NOTE: private (node-to-node) eea TX can NOT be used to prevent double-spending:
+      only for notarization like (ballots, ...) use-case scenarios were there will 
+      probably be a "controller node" to wich all information arrives, (even if it's
+      just partially visible to other nodes):
+    @[https://stackoverflow.com/questions/56906115/private-transaction-validation-in-quorum]
+      To prevese privacy and double-spending, Zero Knowledge Proofs must be used.
 ____________________________________________________________________________________________
 
 ºSCALINGº
@@ -12816,4 +12885,110 @@ A Buidler Plugin For Replicable Deployments And Tests
 · Supports the diamon standard.
 https://www.npmjs.com/package/buidler-deploy
 ###############
+Billion dolar mistake, inmutable code, qa:
+https://docs.soliditylang.org/en/latest/contracts.html#constants
+###############
+ERC-820: Central registry of SC allowing to verify funct and ops (public exposed Interface )
+    backward compatible with 165.
+ERC-2309: Standarized event emitted when creating/tranferring 1+ NFTs using consecutive tokens ids.
+EC-2981: Standari.  to retrieve royalty payment info from NFT to enable Un.Suport for royalty payments across NFT maketpla
+#########################
+standards,wallets,js,
+https://eips.ethereum.org/EIPS/eip-1193 
+
+Summary: A JavaScript Ethereum Provider API for consistency across clients and applications.
+
+Abstract
+A common convention in the Ethereum web application (“dapp”) 
+ecosystem is for key management software (“wallets”) to expose 
+their API via a JavaScript object in the web page. This object is 
+called “the Provider”.
+
+Historically, Provider implementations have exhibited conflicting 
+interfaces and behaviors between wallets. This EIP formalizes an 
+Ethereum Provider API to promote wallet interoperability. The API is 
+designed to be minimal, event-driven, and agnostic of transport and 
+RPC protocols. Its functionality is easily extended by defining new 
+RPC methods and message event types.
+
+Historically, Providers have been made available as window.ethereum 
+in web browsers, but this convention is not part of the specification.
+
+Ej: from https://github.com/trufflesuite/ganache 
+    (EIP-1193 vs "alternatives")
+    - Ganache As an EIP-1193 provider only:
+      const ganache = require("ganache");
+      
+      const options = {};
+      const provider = ganache.provider(options);
+      const accounts = await provider.request({ method: "eth_accounts", params: [] });
+    
+    - Ganache As an EIP-1193 provider and JSON-RPC web server:
+      const ganache = require("ganache");
+      
+      const options = {};
+      const server = ganache.server(options);
+      const PORT = 8545;
+      server.listen(PORT, err =˃ {
+        if (err) throw err;
+      
+        console.log(`ganache listening on port ${PORT}...`);
+        const provider = server.provider;
+        const accounts = await provider.request({ method: "eth_accounts", params:[] });
+      });
+    
+    - Ganache As a web3.js provider:
+      const Web3 = require("web3");
+      const ganache = require("ganache");
+      const web3 = new Web3(ganache.provider());           ←  alt 1: depending on web3 version
+      const web3 = new Web3(ganache.provider(),            ←- alt 2: depending on web3 version
+                           null,
+                   { transactionConfirmationBlocks: 1 });
+    
+    - Ganache As an ethers.js provider:
+      const ganache = require("ganache");
+      const provider = new ethers.providers.
+                         Web3Provider(ganache.provider());
+    
+##########################
+https://kalis.me/assert-reverts-solidity-smart-contract-test-truffle/
+
+######################
+https://hardhat.org/  (Remix alternative)
+########################
+Solidity:
+https://jeancvllr.medium.com/solidity-tutorial-all-about-bytes-9d88fdb22676 
+######################
+Solidity:
+https://blog.polymath.network/try-catch-in-solidity-handling-the-revert-exception-f53718f76047
+######################
+https://entethalliance.github.io/client-spec/spec.html
+https://medium.com/l4-media/making-sense-of-ethereums-layer-2-scaling-solutions-state-channels-plasma-and-truebit-22cb40dcc2f4
+######################
+privacy: (Solution comparative between EEA, Fabric, Corda)
+https://www.linkedin.com/pulse/blockchain-myths-data-visibility-conor-svensson/
+#########################
+Los nombres de dominio basados en Ethereum se vuelven mainstream con la integración de Cloudflare  @ma
+https://es.cointelegraph.com/news/ethereum-based-domain-names-go-mainstream-with-cloudflare-integration 
+######################
+Dns over ethereum: Unstoppable Domains
+https://unstoppabledomains.com/ 
+######################
+Ethereum, scalability: Developer Documentation - Avalanche
+https://docs.avax.network/
+
+Avalanche is an open-source platform for launching decentralized applications and enterprise blockchain deployments in one interoperable, highly scalable ecosystem. Avalanche is the first smart contracts platform that processes 4,500+ transactions/second and instantly confirms transactions. Ethereum developers can quickly build on Avalanche as Solidity works out-of-the-box.
+###################
+ethereum,web3j,integración: web3j_openapi @ma
+http://docs.web3j.io/latest/web3j_openapi/
+######################
+https://www.linkedin.com/pulse/blockchain-myths-data-visibility-conor-svensson/
+######################
+Ethereum Tally = Start(Precision)/EVM: arbitrary precision arithmetic library on the Ethereum Virtual Machine" en YouTube
+https://youtu.be/N8Es2iPLGzY 
+######################
+Hyperledger Besu: Understanding and Applying the Options and 
+Subcommands | Product Guide | ConsenSys
+https://consensys.net/blog/quorum/understanding-and-applying-the-options-and-subcommands-with-hyperledger-besu/
+
 

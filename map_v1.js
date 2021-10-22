@@ -317,12 +317,19 @@ const NAV = { // Navigation
 const LM = { // Lavel management
   labelMapSelected : { /* label : isSelected true|false */ },
   labelMap : { /* label : dom_list*/ },
-  labelMap_key_list : [], // @ma
+  labelMap_key_list : [],
   isAnyLabelSelected : function() {
     return Object.keys(LM.labelMapSelected).length > 0
   },
   getLabelsKeysOrdereded : function() {
     return Object.keys(LM.labelMap).map((l)=>l.toLowerCase()).sort( SF.compareTopic )
+  },
+  setLabelSelectedOnOff : function( labelKey, bOnOff ) { // @ma
+    if (bOnOff) { 
+      LM.labelMapSelected[labelKey] = bOnOff
+    } else {
+      delete LM.labelMapSelected[labelKey]
+    }
   },
   onLabelClicked : function (e) {
     const dom = e.target
@@ -332,11 +339,11 @@ const LM = { // Lavel management
          dom.attributes = { selected : { value : "false" } }
     }
     if (dom.attributes.selected.value == "false") {
-        dom.attributes.selected.value = "true"
-        LM.labelMapSelected[labelKey] = true
+        dom.attributes.selected.value = "true"      // @ma
+        LM.setLabelSelectedOnOff( labelKey, true)   // @ma
     } else {
-        dom.attributes.selected.value = "false"
-        delete LM.labelMapSelected[labelKey]
+        dom.attributes.selected.value = "false"     // @ma
+        LM.setLabelSelectedOnOff( labelKey, false)  // @ma
     }
     if (LM.isAnyLabelSelected()){
       document.getElementById("idLabelsFilter").setAttribute("active","true"); 
@@ -353,10 +360,10 @@ const LM = { // Lavel management
       if (idxPrefix>0) { sLabel = sLabel.substr(idxPrefix) }
     }
     let cssAtribute    = (sLabelKey.indexOf("todo")>=0) ? " red"  : ""
-    return "<div "+cssAtribute+" class='labelButton' selected="+(!!LM.labelMapSelected[sLabelKey])+ // @ma
+    return "<div "+cssAtribute+" class='labelButton' selected="+(!!LM.labelMapSelected[sLabelKey])+ 
            " type='button' value='"+sLabelKey+"' />"+sLabel+"</div><span labelcount>"+LM.labelMap[sLabelKey].length+"</span>" ;
   },
-  getDomListForLabel: function (labelKey) { // @ma
+  getDomListForLabel: function (labelKey) {
       const matchingKeys = LM.labelMap_key_list
             .filter((k) => k.startsWith(labelKey.replace(".*","")) )
       var result = []
@@ -383,10 +390,10 @@ const LM = { // Lavel management
           labelKey = labelKey.toLowerCase()
           let list = LM.getDomListForLabel(labelKey)
               list.push(node)
-          LM.labelMap[labelKey] = list // @ma
+          LM.labelMap[labelKey] = list
           labelCount++
       })
-      LM.labelMap_key_list = Object.keys(LM.labelMap) // @ma
+      LM.labelMap_key_list = Object.keys(LM.labelMap)
       if (labelCount>0) {
         const countEl = document.createElement('div');
             countEl.setAttribute("tagCount", "")
@@ -708,7 +715,7 @@ const SE = { // (S)earch (E)ngine
     })
     var innerZoom_l = []
     if (LM.isAnyLabelSelected()) {
-        let label_l=Object.keys(LM.labelMapSelected) // @ma
+        let label_l=Object.keys(LM.labelMapSelected)
         innerZoom_l = LM.getDomListForLabel(label_l[0]);
         for (let idx=0; idx<label_l.length; idx++) {
             innerZoom_l = SF.labelANDMode 

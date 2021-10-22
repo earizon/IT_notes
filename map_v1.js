@@ -536,7 +536,7 @@ const MB = { // Menu Bar
      + '<span blue id="printButton">Print</span>'
      + '<span id="loupe"  blue>🔍︎</span>'
      + '<input id="zoomSlider" type="range" '
-     + '  style="width:100px" value="70.0" min="30.0" max="190">'
+     + '  style="width:100px" value="70.0" min="30.0" max="250">'
      + '<br/>'
     document.body.insertBefore(searchDiv,document.body.children[0])
     document.getElementById("idLabelsFilter").addEventListener("click", SF.showSearchForm)

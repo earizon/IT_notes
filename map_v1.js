@@ -89,7 +89,7 @@ const SF = {  /* search Form */
   },
   regexInputTimer : null,
   
-  compareTopic: function (a , b) { // TODO:(0) Fix
+  compareTopic: function (a , b) { 
     const idxA = a.indexOf(".")
     const idxB = b.indexOf(".")
     let result = 0
@@ -317,6 +317,7 @@ const NAV = { // Navigation
 const LM = { // Lavel management
   labelMapSelected : { /* label : isSelected true|false */ },
   labelMap : { /* label : dom_list*/ },
+  labelMap_key_list : [], // @ma
   isAnyLabelSelected : function() {
     return Object.keys(LM.labelMapSelected).length > 0
   },
@@ -352,12 +353,19 @@ const LM = { // Lavel management
       if (idxPrefix>0) { sLabel = sLabel.substr(idxPrefix) }
     }
     let cssAtribute    = (sLabelKey.indexOf("todo")>=0) ? " red"  : ""
-    return "<div "+cssAtribute+" class='labelButton' selected="+(!!LM.labelMapSelected[sLabelKey])+
+    return "<div "+cssAtribute+" class='labelButton' selected="+(!!LM.labelMapSelected[sLabelKey])+ // @ma
            " type='button' value='"+sLabelKey+"' />"+sLabel+"</div><span labelcount>"+LM.labelMap[sLabelKey].length+"</span>" ;
   },
-  getDomListForLabel: function (labelKey) {
-      if (!!!LM.labelMap[labelKey]) return [];
-      else return LM.labelMap[labelKey];
+  getDomListForLabel: function (labelKey) { // @ma
+      const matchingKeys = LM.labelMap_key_list
+            .filter((k) => k.startsWith(labelKey.replace(".*","")) )
+      var result = []
+      for (let idx=0; idx<matchingKeys.length; idx++) {
+          const key = matchingKeys[idx]
+          if (!!!LM.labelMap[key]) continue
+          result = result.union( LM.labelMap[key] )
+      }
+      return result
   },
   labelMapSelectedToCSV: function() {
     return Object.keys(LM.labelMapSelected).sort().join(",")
@@ -375,9 +383,10 @@ const LM = { // Lavel management
           labelKey = labelKey.toLowerCase()
           let list = LM.getDomListForLabel(labelKey)
               list.push(node)
-          LM.labelMap[labelKey] = list
+          LM.labelMap[labelKey] = list // @ma
           labelCount++
       })
+      LM.labelMap_key_list = Object.keys(LM.labelMap) // @ma
       if (labelCount>0) {
         const countEl = document.createElement('div');
             countEl.setAttribute("tagCount", "")

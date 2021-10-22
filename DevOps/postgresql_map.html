@@ -2063,6 +2063,215 @@ Bºworking python script  @ Github:º
 - performance dashboard for Postgres
 </pre>
 
+<pre zoom labels="performance,TODO">
+<span title>What are these slow COMMIT in my PostgreSQL logs?</span>
+https://yhuelf.github.io/2021/09/30/pg_stat_statements_bottleneck.html
+Linux, perf flame: What are these slow COMMIT in my PostgreSQL logs? | Frédéric Yhuel, PostgreSQL DBA
+https://yhuelf.github.io/2021/09/30/pg_stat_statements_bottleneck.html
+</pre>
+
+<pre zoom labels="performance,TODO">
+<span title>Parallel queries</span>
+@[https://www.percona.com/blog/2019/02/21/parallel-queries-in-postgresql/]
+</pre>
+
+<pre zoom labels="performance,TODO">
+<span title>SQL Optimizations: IN vs EXISTS vs ANY/ALL vs JOIN</span>
+https://www.percona.com/blog/2020/04/16/sql-optimizations-in-postgresql-in-vs-exists-vs-any-all-vs-join/
+
+There are multiple ways in which a sub select or lookup can be framed 
+in a SQL statement. PostgreSQL optimizer is very smart at optimizing 
+queries, and many of the queries can be rewritten/transformed for 
+better performance.
+
+In general, I used to suggest to developers that the key to writing a 
+good SQL statement is to follow step by step process.
+
+- First, make a list of tables from which the data should be retrieved.
+- Then think about how to JOIN those tables.
+- Think about how to have the minimum records participating in the join condition.
+
+</pre>
+
+<pre zoom labels="scalability,performance,TODO">
+<span title>Citus: Scale-Out Clustering and Sharding</span>
+@[https://www.xaprb.com/blog/citus/]
+
+I wrote yesterday about Vitess, a scale-out sharding solution for 
+MySQL. Another similar product is Citus, which is a scale-out 
+sharding solution for PostgreSQL. Similar to Vitess, Citus is 
+successfully being used to solve problems of scale and performance 
+that have previously required a lot of custom-built middleware.
+
+Citus solves the following problems for users:
+- Sharding. Citus handles all of the sharding, so applications do not 
+  need to be shard-aware.
+- Multi-tenancy. Applications built to colocate multiple customers’ 
+  databases on a shared cluster—like most SaaS applications—are 
+  called multi-tenant. Sharding, scaling, resharding, rebalancing, and 
+  so on are common pain points in modern SaaS platforms, all of which 
+  Citus solves.
+- Analytics. Citus is not exclusively an analytical database, but it 
+  certainly is deployed for distributed, massively parallel analytics 
+  workloads a lot. Part of this is because Citus supports complex 
+  queries, building upon Postgres’s own very robust SQL support. 
+  Citus can shard queries that do combinations of things like 
+  distributed GROUP BY and JOIN together.
+
+· Citus is not middleware: it’s an extension to Postgres that 
+  turns a collection of nodes into a clustered database. This means 
+  that all of the query rewriting, scatter-gather MPP processing, etc 
+  happens within the PostgreSQL server process, so it can take 
+  advantage of lots of PostgreSQL’s existing codebase and 
+  functionality.
+
+· Citus runs on standard, unpatched PostgreSQL servers. The only 
+  modification is installing the extensions into the server. This is a 
+  unique and extremely important advantage: most clustered databases 
+  that are derived from another database inevitably lag behind and get 
+  stuck on an old version of the original database, unable to keep up 
+  with the grueling workload of constantly refactoring to build on new 
+  releases. Not so for Citus, which doesn’t fork Postgres—it 
+  extends it with Postgres’s own extension mechanisms. This means 
+  that Citus is positioned to continue innovating on its own software, 
+  while continuing to benefit from the strong progress that the 
+  PostgreSQL community is delivering on a regular cadence too.
+
+</pre>
+
+<pre zoom labels="performance,profiling,TODO">
+<span title>Execution plans explained</span>
+Ex:
+=˃ EXPLAIN ANALYZE SELECT * FROM some_view WHERE nspname not in ('pg_catalog', 'information_schema') order by 1, 2, 3;
+                                                        QUERY PLAN
+---------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=146.63..148.65 rows=808 width=138) (actual time=55.009..55.012 rows=71 loops=1)
+   Sort Key: n.nspname, p.proname, (pg_get_function_arguments(p.oid))
+   Sort Method: quicksort  Memory: 43kB
+   →  Hash Join  (cost=1.14..107.61 rows=808 width=138) (actual time=42.495..54.854 rows=71 loops=1)
+         Hash Cond: (p.pronamespace = n.oid)
+         →  Seq Scan on pg_proc p  (cost=0.00..89.30 rows=808 width=78) (actual time=0.052..53.465 rows=2402 loops=1)
+               Filter: pg_function_is_visible(oid)
+         →  Hash  (cost=1.09..1.09 rows=4 width=68) (actual time=0.011..0.011 rows=4 loops=1)
+               Buckets: 1024  Batches: 1  Memory Usage: 1kB
+               →  Seq Scan on pg_namespace n  (cost=0.00..1.09 rows=4 width=68) (actual time=0.005..0.007 rows=4 loops=1)
+                     Filter: ((nspname <> 'pg_catalog'::name) AND (nspname <> 'information_schema'::name))
+https://github.com/dalibo/pev2
+A VueJS component to show a graphical vizualization of a PostgreSQL execution plan.
+
+https://explain.depesz.com/
+</pre>
+
+<pre zoom labels="performance,101,TODO">
+<span title>Speed up queries 100x times using UNION</span> 
+<!-- @ma -->
+https://www.foxhound.systems/blog/sql-performance-with-union/
+
+One of the most common cases where SQL query performance can degrade 
+significantly is in a diamond shaped schema, where there are multiple 
+ways of joining two tables together. In such a schema, a query is 
+likely to use OR to join tables in more than one way, which 
+eliminates the optimizer’s ability to create an efficient query 
+plan. This scenario is best illustrated through an example.
+
+
+                                stores
+                                +---------+------+
+     customers            +----→| id      | int  |←----------------+
+     +----------+------+  |     | address | text |                 |
++---→| id       | int  |  |     +---------+------+                 |
+|    | name     | text |  |                                        |
+|    | store_id | int  +--+                   employees            |
+|    +----------+------+                      +----------+------+  |
+|                                      +-----→| id       | int  |  |
+|                                      |      | name     | text |  |
+|  customer_orders                     |      | role     | text |  |
+|  +-------------+-----------+         |      | store_id | int  +--+
+|  | id          | int       |←--+     |      +----------+------+
++--+ customer_id | int       |   |     |
+   | created     | timestamp |   |     |
+   +-------------+-----------+   |     |  employee_markouts
+                                 |     |  +--------------+-----------+
+                                 |     |  | id           | int       |
+    customer_order_items         |     +--+ employee_id  | int       |
+    +-------------------+-----+  |        | meal_item_id | int       +--+
+    | id                | int |  |        | created      | timestamp |  |
+    | customer_order_id | int +--+        +--------------+-----------+  |
+ +--+ meal_item_id      | int |                                         |
+ |  +-------------------+-----+                                         |
+ |                                 meal_items                           |
+ |                                 +-------+------+                     |
+ +--------------------------------→| id    | int  |←--------------------+
+                                   | label | text |
+                                   | price | int  |
+                                   +-------+------+
+</pre>
+
+<pre zoom labels="performance,TODO">
+<span title>performance tips and tricks</span>
+@[https://marmelab.com/blog/2019/02/13/how-to-improve-postgres-performances.html]
+
+- Investigating on database performance is a long journey, but to sum up, you should:
+  - Track your database to gather logs
+  - Extract the most relevant information
+  - Identify the issues
+  - Address them one by one
+</pre>
+
+<pre zoom labels="performance,101,TODO" id="understanding_performance">
+<span title>Understanding PSQL performance</span>
+@[https://www.craigkerstiens.com/2012/10/01/understanding-postgres-performance/]
+
+• Generally you want your database to have a cache hit rate of 
+  about 99%. You can find your cache hit rate with:
+
+  SELECT 
+    sum(heap_blks_read) as heap_read,
+    sum(heap_blks_hit)  as heap_hit,
+    sum(heap_blks_hit) / (sum(heap_blks_hit) + sum(heap_blks_read)) as ratio
+  FROM 
+    pg_statio_user_tables;
+
+  If you find yourself with a ratio significantly lower than 99% then 
+  you likely want to consider increasing the cache available to your 
+  database.
+
+• The other primary piece for improving performance is indexes. 
+   To generate a list of your tables in your database with the largest 
+  ones first and the percentage of time which they use an index you can 
+  run:
+  
+  SELECT 
+    relname, 
+    100 * idx_scan / (seq_scan + idx_scan) percent_of_times_index_used, 
+    n_live_tup rows_in_table
+  FROM 
+    pg_stat_user_tables
+  WHERE 
+      seq_scan + idx_scan ˃ 0 
+  ORDER BY 
+    n_live_tup DESC;
+
+     While there is no perfect answer, if you’re not somewhere around 
+  99% on any table over 10,000 rows you may want to consider adding an 
+  index.
+
+• Index Cache Hit Rate
+  Finally to combine the two if you’re interested in how many of 
+  your indexes are within your cache you can run:
+
+  SELECT 
+    sum(idx_blks_read) as idx_read,
+    sum(idx_blks_hit)  as idx_hit,
+    (sum(idx_blks_hit) - sum(idx_blks_read)) / sum(idx_blks_hit) as ratio
+  FROM 
+    pg_statio_user_indexes;
+
+  Generally, you should also expect this to be in the 99% similar to 
+  your regular cache hit rate.
+</pre>
+
+
 </div>
 </body>
 </html>
@@ -2178,7 +2387,6 @@ keep a rollback log. This is ideal for our goal of building a blockchain that
 maintains all versions of data. For each row, a snapshot checks xmin and xmax
 to see which of these transactions’ ID are included in the snapshot to
 determine row visibility
-
 </pre>
 
 <pre zoom labels="TODO">
@@ -2187,42 +2395,31 @@ Peter Zaitsev, Percona Founder.
  Driving Success with MySQL, MariaDB, MongoDB & PostgreSQL
 </pre>
 
-<pre zoom labels="performance,101,TODO">
-<span title>Speeding up SQL queries by orders of magnitude using UNION</span> @ma
-https://www.foxhound.systems/blog/sql-performance-with-union/
-</pre>
-
-https://marmelab.com/blog/2019/02/13/how-to-improve-postgres-performances.html
-
-
-<pre zoom labels="TODO">
-<span title>Execution plans explained</span>
-Ex:
-=˃ EXPLAIN ANALYZE SELECT * FROM some_view WHERE nspname not in ('pg_catalog', 'information_schema') order by 1, 2, 3;
-                                                        QUERY PLAN
----------------------------------------------------------------------------------------------------------------------------
- Sort  (cost=146.63..148.65 rows=808 width=138) (actual time=55.009..55.012 rows=71 loops=1)
-   Sort Key: n.nspname, p.proname, (pg_get_function_arguments(p.oid))
-   Sort Method: quicksort  Memory: 43kB
-   ->  Hash Join  (cost=1.14..107.61 rows=808 width=138) (actual time=42.495..54.854 rows=71 loops=1)
-         Hash Cond: (p.pronamespace = n.oid)
-         ->  Seq Scan on pg_proc p  (cost=0.00..89.30 rows=808 width=78) (actual time=0.052..53.465 rows=2402 loops=1)
-               Filter: pg_function_is_visible(oid)
-         ->  Hash  (cost=1.09..1.09 rows=4 width=68) (actual time=0.011..0.011 rows=4 loops=1)
-               Buckets: 1024  Batches: 1  Memory Usage: 1kB
-               ->  Seq Scan on pg_namespace n  (cost=0.00..1.09 rows=4 width=68) (actual time=0.005..0.007 rows=4 loops=1)
-                     Filter: ((nspname <> 'pg_catalog'::name) AND (nspname <> 'information_schema'::name))
-https://github.com/dalibo/pev2
-A VueJS component to show a graphical vizualization of a PostgreSQL execution plan.
-
-https://explain.depesz.com/
-</pre>
 
 <pre zoom labels="postgresql,low_code,TODO">
 <span xsmall>PostgreSQL pgcrypto</span>
 @[https://www.postgresql.org/docs/8.3/pgcrypto.html]
 - Cryptographic functions for PostgreSQL.  
 </pre>
+
+<pre zoom labels="TODO">
+<span title>alibaba/PolarDB</span>
+https://github.com/alibaba/PolarDB-for-PostgreSQL 
+PolarDB PostgreSQL (hereafter simplified as PolarDB) is a cloud 
+native database service independently developed by Alibaba Cloud. 
+This service is 100% compatible with PostgreSQL and uses a shared 
+storage-based architecture in which computing is decoupled from 
+storage. This service features flexible scalability, 
+millisecond-level latency and hybrid transactional/analytical 
+processing (HTAP) capabilities.
+
+</pre>
+
+<pre zoom labels="TODO">
+<span title>E-Maj 4.0.0 est sorti !</span>
+https://blog.dalibo.com/2021/06/25/e_maj.html 
+</pre>
+
 
 
 -->

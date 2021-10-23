@@ -15,7 +15,7 @@ const SF = {  /* search Form */
   },
   copyLabels : function() {
     var text = "";
-    LM.getLabelsKeysOrdereded().forEach( label_i => { text += label_i + "\n" } )
+    LM.labelMap_key_list.forEach( label_i => { text += label_i + "\n" } )
     alert("select and copy:\n\n" + text)
   },
   switchANDORSearch : function() {
@@ -53,7 +53,7 @@ const SF = {  /* search Form */
       + '  </div>'
       + '  <br/>'
       + '  <div id="copyLabels">Copy Labels</div>'
-      if (Object.keys(LM.labelMap).length > 0) {
+      if (LM.DDBB.labelMap_key_list.length > 0) {
           html += 
            '<input id="searchAndMode" type="checkbox">'
         +  '<span id="idLabelSearchAndMode" mono></span>'
@@ -70,7 +70,7 @@ const SF = {  /* search Form */
           this.setAttribute("hidden","true"); 
       })
       document.getElementById("copyLabels").addEventListener("click",  SF.copyLabels )
-      if (Object.keys(LM.labelMap).length > 0) {
+      if (LM.DDBB.labelMap_key_list.length > 0) {
         document.getElementById("searchAndMode").addEventListener("change",  SF.switchANDORSearch )
       }
       const swithSingleLineDom = document.getElementById("singleLineOnly")
@@ -89,16 +89,6 @@ const SF = {  /* search Form */
   },
   regexInputTimer : null,
   
-  compareTopic: function (a , b) { 
-    const idxA = a.indexOf(".")
-    const idxB = b.indexOf(".")
-    let result = 0
-         if (idxA < 0 && idxB>=0) result = -1
-    else if (idxB < 0 && idxA>=0) result =  1
-    else if ( a < b ) result = -1
-    else if ( a > b ) result =  1
-    return result
-  },
   showSearchForm : function() {
     SF.searchFormDOM.style.display="block";
     document.getElementById("inputQuery").value = SF.regexQuery
@@ -107,21 +97,23 @@ const SF = {  /* search Form */
     document.getElementById("caseSensitive" ).checked = SF.matchCaseMode
     document.getElementById("fullWord" ).checked = SF.fullWordMode
     document.getElementById("idLabelSearchAndMode" ).innerHTML = SF.labelAndOrText[SF.labelANDMode]
- 
     const openDiv = '<div class="labelBlock">'
-    var htmlLabels = openDiv, currentPrefix=""
-    LM.getLabelsKeysOrdereded()
-       .forEach(label_i => {
-        if (label_i.indexOf(".")>0) {
-            const prefixI = label_i.substr(0,label_i.indexOf("."))
-            if (currentPrefix != prefixI) {
-              htmlLabels += "</div>"+openDiv + "<div class='labelBlockTitle'>"+ prefixI +":</div>" 
-              currentPrefix = prefixI
-            }
-        }
-        htmlLabels += LM.renderLabel(label_i)
-    })
+    var htmlLabels = openDiv
+debugger
+    Object.keys(LM.DDBB.topicTree).sort()
+    .filter  ( root_topic => { return LM.DDBB.topicTree[root_topic].length == 1 } )
+    .forEach ( root_topic => { htmlLabels += LM.renderLabel(root_topic, false)} );
     htmlLabels += "</div>"
+  
+    Object.keys(LM.DDBB.topicTree).sort()
+      .filter  ( root_topic => { return LM.DDBB.topicTree[root_topic].length != 1 } )
+      .forEach ( root_topic      => {
+          htmlLabels += openDiv + "<div class='labelBlockTitle'>"+ root_topic +":</div>" 
+          LM.DDBB.topicTree[root_topic].sort().forEach( topic => {
+              htmlLabels += LM.renderLabel(topic, true)
+          })
+          htmlLabels += "</div>"
+    });
     SF.searchForm_labelsDOM.innerHTML = htmlLabels;
     document.querySelectorAll('.labelButton').forEach(
       domElement => {
@@ -214,7 +206,7 @@ const ZW = { /* ZOOM Window */
         .from(
           new Set(e.attributes.labels.value.split(",")))
         .filter(e => !!e)
-        .forEach(label_i => { sLabels += LM.renderLabel(label_i, true /* show prefix */) })
+        .forEach(label_i => { sLabels += LM.renderLabel(label_i, true ) })
     }
     document.getElementById("divElementLabels").innerHTML = sLabels;
     const zoomHTML = document.getElementById("zoomHTMLContent")
@@ -315,20 +307,57 @@ const NAV = { // Navigation
 }
 
 const LM = { // Lavel management
-  labelMapSelected : { /* label : isSelected true|false */ },
-  labelMap : { /* label : dom_list*/ },
-  labelMap_key_list : [],
+  state : {
+      labelMapSelected : { /* label : isSelected true|false */ } 
+  },
+  DDBB : { // immutable once initialized. Convention: Use Upper Case for Immutable Objects
+    flatMap : { /* label : dom_list*/ }, // TODO:(0) rename topic2DOMList
+    topicTree : { /* topic_root_label : child_topics */ }, // TODO:(0) Rename to topicTree /* depth 1 */
+    labelMap_key_list : [], // TODO:(0) rename to labelMap_key_list ordered
+    countPerLabelStat : {}, 
+    endInitialization : function (inputLabelMap) {
+    // STEP 1: create flatMap topic -> [dom_element1, dom_element2, ... ]
+    LM.DDBB.flatMap = inputLabelMap
+
+    // STEP 2: create topic list ordered alphabetically
+    const topic_list = Object.keys(inputLabelMap).sort()
+    topic_list.forEach( (topic) => {LM.DDBB.countPerLabelStat[topic] = inputLabelMap[topic].length } )
+
+
+    // STEP 3.1: create topic tree parent (depth 1)
+    const tree_root_list = topic_list.filter( (topic) => topic.indexOf('.*') == topic.length-2 )
+
+    /* STEP 3.2: Create topic tree children (depth 2)
+     * 
+     * "topic1.*" : [ "topic1.*" ]
+     * "topic2.*" : [ "topic2.*", "topic2.sub1", "topic2.sub2, ... ]
+     * "topic3.*" : ...
+     */
+     tree_root_list.forEach( (root_topic) => {
+       const prefix = root_topic.replace(".*","")
+       const child_topic_content = []
+       topic_list.forEach( (topic) => {
+         if ( topic.indexOf(prefix) >= 0 ) {
+           child_topic_content.push(topic)
+         }
+       })
+       if (child_topic_content.length == 0) {
+           throw new Error("at least root_topic must match its prefix")
+       }
+       LM.DDBB.topicTree[root_topic]  = child_topic_content
+     })
+     LM.DDBB.labelMap_key_list = topic_list 
+     window.LM = LM // deleteme
+    }
+  },
   isAnyLabelSelected : function() {
-    return Object.keys(LM.labelMapSelected).length > 0
+    return Object.keys(LM.state.labelMapSelected).length > 0
   },
-  getLabelsKeysOrdereded : function() {
-    return Object.keys(LM.labelMap).map((l)=>l.toLowerCase()).sort( SF.compareTopic )
-  },
-  setLabelSelectedOnOff : function( labelKey, bOnOff ) { // @ma
+  setLabelSelectedOnOff : function( labelKey, bOnOff ) {
     if (bOnOff) { 
-      LM.labelMapSelected[labelKey] = bOnOff
+      LM.state.labelMapSelected[labelKey] = bOnOff
     } else {
-      delete LM.labelMapSelected[labelKey]
+      delete LM.state.labelMapSelected[labelKey]
     }
   },
   onLabelClicked : function (e) {
@@ -352,48 +381,55 @@ const LM = { // Lavel management
     }
     SE.executeSearch()
   },
-  renderLabel : function(sLabelKey, showPrefix) {
-    sLabelKey = sLabelKey.toLowerCase()
-    var  sLabel = sLabelKey
-    if (!!!showPrefix) {
-      const idxPrefix = sLabel.indexOf(".")+1
-      if (idxPrefix>0) { sLabel = sLabel.substr(idxPrefix) }
-    }
-    let cssAtribute    = (sLabelKey.indexOf("todo")>=0) ? " red"  : ""
-    return "<div "+cssAtribute+" class='labelButton' selected="+(!!LM.labelMapSelected[sLabelKey])+ 
-           " type='button' value='"+sLabelKey+"' />"+sLabel+"</div><span labelcount>"+LM.labelMap[sLabelKey].length+"</span>" ;
+  renderLabel : function(topic, showAsterisk) {
+    const sTopic = showAsterisk ? topic : topic.replace(".*","")
+    let cssAtribute    = (topic.indexOf("todo")>=0) ? " red"  : ""
+    return "<div "+cssAtribute+" class='labelButton' selected="+(!!LM.state.labelMapSelected[topic])+ 
+           " type='button' value='"+topic+"' />"+sTopic+"</div><span labelcount>"+LM.DDBB.countPerLabelStat[topic]+"</span>" ;
   },
   getDomListForLabel: function (labelKey) {
-      const matchingKeys = LM.labelMap_key_list
+      const matchingKeys = LM.DDBB.labelMap_key_list
             .filter((k) => k.startsWith(labelKey.replace(".*","")) )
       var result = []
       for (let idx=0; idx<matchingKeys.length; idx++) {
           const key = matchingKeys[idx]
-          if (!!!LM.labelMap[key]) continue
-          result = result.union( LM.labelMap[key] )
+          if (!!!LM.DDBB.flatMap[key]) continue
+          result = result.union( LM.DDBB.flatMap[key] )
       }
       return result
   },
   labelMapSelectedToCSV: function() {
-    return Object.keys(LM.labelMapSelected).sort().join(",")
+    return Object.keys(LM.state.labelMapSelected).sort().join(",")
   },
-  createLabelIndex : function () {
+  createLabelIndex : function () {  // @ma
     const labeled_dom_l = document.querySelectorAll('*[labels]');
+
+    /*
+     * STEP 1: "Clean labels". 
+     * "topic1" -> "topic1.*"
+     */
+    const inputDDBB = { /* topic: related_node_list */ }
     for (let idx1 in labeled_dom_l) {
       const node = labeled_dom_l[idx1]
-      if (!node.getAttribute    ) continue
-      const csvAttributes = node.getAttribute("labels")
-      if (!csvAttributes || !csvAttributes.trim()) continue;
+      if (!node.getAttribute ) continue
+      const input_labels_csvAttributes = node.getAttribute("labels")
+      if (!input_labels_csvAttributes || !input_labels_csvAttributes.trim()) continue;
+      const inputTopicList = input_labels_csvAttributes.split(",")
+      const effectiveTopicList = []
+      inputTopicList.forEach(inputTopic => {
+          if (inputTopic.trim()=="") return
+          effectiveTopicList.push( (inputTopic.indexOf(".") >= 0) ? inputTopic : inputTopic+".*" )
+      })
+      node.setAttribute("labels",effectiveTopicList.join())
       var labelCount = 0
-      csvAttributes.split(",").forEach( labelKey => {
+      effectiveTopicList.forEach( labelKey => {
           if (!!! labelKey) return
           labelKey = labelKey.toLowerCase()
           let list = LM.getDomListForLabel(labelKey)
               list.push(node)
-          LM.labelMap[labelKey] = list
+          inputDDBB[labelKey] = list
           labelCount++
       })
-      LM.labelMap_key_list = Object.keys(LM.labelMap)
       if (labelCount>0) {
         const countEl = document.createElement('div');
             countEl.setAttribute("tagCount", "")
@@ -401,6 +437,7 @@ const LM = { // Lavel management
         node.insertBefore(countEl,node.children[0])
       }
     }
+    LM.DDBB.endInitialization(inputDDBB)
   }
 }
 
@@ -715,7 +752,7 @@ const SE = { // (S)earch (E)ngine
     })
     var innerZoom_l = []
     if (LM.isAnyLabelSelected()) {
-        let label_l=Object.keys(LM.labelMapSelected)
+        let label_l=Object.keys(LM.state.labelMapSelected)
         innerZoom_l = LM.getDomListForLabel(label_l[0]);
         for (let idx=0; idx<label_l.length; idx++) {
             innerZoom_l = SF.labelANDMode 

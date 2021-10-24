@@ -100,17 +100,19 @@ const SF = {  /* search Form */
     const openDiv = '<div class="labelBlock">'
     var htmlLabels = openDiv
     Object.keys(LM.DDBB.topicTree).sort()
+    // Render topics without children "packed" in one group
     .filter  ( root_topic => { return LM.DDBB.topicTree[root_topic].length == 1 } )
-    .forEach ( root_topic => { htmlLabels += LM.renderLabel(root_topic, false)} );
+    .forEach ( root_topic => { htmlLabels += LM.renderLabel(root_topic, false, true, "prefixIgnoredForTrue" )} );
     htmlLabels += "</div>"
-  
+
+    // Render topics with    children "packed" in their own group
     Object.keys(LM.DDBB.topicTree).sort()
       .filter  ( root_topic => { return LM.DDBB.topicTree[root_topic].length != 1 } )
       .forEach ( root_topic      => {
           const root_topic_prefix = root_topic.replace(".*", "")
           htmlLabels += openDiv + "<div class='labelBlockTitle'>"+ root_topic_prefix +":</div>" 
           LM.DDBB.topicTree[root_topic].sort().forEach( topic => {
-              htmlLabels += LM.renderLabel(topic, true)
+              htmlLabels += LM.renderLabel(topic, true, false, root_topic_prefix  )
           })
           htmlLabels += "</div>"
     });
@@ -206,7 +208,7 @@ const ZW = { /* ZOOM Window */
         .from(
           new Set(e.attributes.labels.value.split(",")))
         .filter(e => !!e)
-        .forEach(label_i => { sLabels += LM.renderLabel(label_i, true ) })
+        .forEach(label_i => { sLabels += LM.renderLabel(label_i, true, true ) })
     }
     document.getElementById("divElementLabels").innerHTML = sLabels;
     const zoomHTML = document.getElementById("zoomHTMLContent")
@@ -393,8 +395,13 @@ const LM = { // Lavel management
     LM.refreshLabelsUI()
     SE.executeSearch()
   },
-  renderLabel : function(topic, showAsterisk) {
-    const sTopic = showAsterisk ? topic : topic.replace(".*","")
+  renderLabel : function(topic, showAsterisk, showPrefix, prefix) {
+    let sTopic = showAsterisk ? topic  : topic.replace(".*","")
+    if (!showPrefix ) { 
+        sTopic = sTopic
+                 .replace(prefix + ".","") // prefix == 101, topic =  101.topic1
+                 .replace("." + prefix,"") // prefix == 101, topic == topic1.101
+    }
     let cssAtribute    = (topic.indexOf("todo")>=0) ? " red"  : ""
     return "<div "+cssAtribute+" class='labelButton' selected="+(!!LM.state.labelMapSelected[topic])+ 
            " type='button' value='"+topic+"' />"+sTopic+"</div><span labelcount>"+LM.DDBB.countPerLabelStat[topic]+"</span>" ;
@@ -421,33 +428,30 @@ const LM = { // Lavel management
     for (let idx1 in labeled_dom_l ) {
       const node = labeled_dom_l[idx1]
       if (!!!node.getAttribute ) continue
-      const input_labels_csvAttributes = node.getAttribute("labels").trim().replace(",,",",")
+      const input_labels_csvAttributes = node.getAttribute("labels")
+                                         .toLowerCase().trim().replace(",,",",")
       if (!!!input_labels_csvAttributes || input_labels_csvAttributes == "") continue;
       if (input_labels_csvAttributes == ",") continue;
       final_dom_l.push(node) // final_dom_l is of type Array (vs DomList in labeled_dom_l)
       const inputTopicList = input_labels_csvAttributes.split(",")
       const effectiveTopicList = []
+      var labelCount = 0
       inputTopicList.forEach(inputTopic => {
-          if (inputTopic.trim()=="") return
-          effectiveTopicList.push( (inputTopic.indexOf(".") >= 0) ? inputTopic : inputTopic+".*" )
+        inputTopic = inputTopic.trim()
+        while (inputTopic.endsWith(".")) { inputTopic = inputTopic.substring(0,inputTopic.length-1) }
+        if (inputTopic=="") return
+        let list = (inputDDBB[inputTopic]) ?  inputDDBB[inputTopic] : []
+        inputTopic = inputTopic.indexOf(".") >= 0 ? inputTopic : inputTopic+".*" 
+        effectiveTopicList.push( inputTopic )
+        list.push(node)
+        inputDDBB[inputTopic] = list
+        const topicPrefixAsterisk = inputTopic.substring(0, inputTopic.indexOf(".") ) + ".*"
+        if (! inputDDBB[topicPrefixAsterisk] /* maybe topic1.sub exists but topic1.* not */ ) { 
+          inputDDBB[topicPrefixAsterisk] = []
+        }
+        labelCount++
       })
       node.setAttribute("labels",effectiveTopicList.join())
-    }
-    // STEP 2: Fill topic DDBB from label input
-    for (let idx2 = 0; idx2<final_dom_l.length; idx2++) {
-      const node = final_dom_l[idx2]
-      if (!!!node.getAttribute )  { debugger }
-      const input_labels_csvAttributes = node.getAttribute("labels")
-      const effectiveTopicList = input_labels_csvAttributes.split(",")
-      var labelCount = 0
-      effectiveTopicList.forEach( labelKey => {
-          if (!!! labelKey) return
-          labelKey = labelKey.toLowerCase()
-          let list = (inputDDBB[labelKey]) ?  inputDDBB[labelKey] : []
-              list.push(node)
-          inputDDBB[labelKey] = list
-          labelCount++
-      })
       if (labelCount>0) {
         const countEl = document.createElement('div');
             countEl.setAttribute("tagCount", "")

@@ -362,25 +362,35 @@ const LM = { // Lavel management
       delete LM.state.labelMapSelected[labelKey]
     }
   },
+  refreshLabelsUI : function() {
+    document.querySelectorAll('.labelButton').forEach( e => {
+          e.addEventListener('click', LM.onLabelClicked) // @ma
+          if (!e.attributes) {
+            e.attributes = { selected : { value : "false" } }
+          }
+          const labelKey = e.getAttribute("value")
+          const isSelected = !! LM.state.labelMapSelected[labelKey]
+          e.attributes.selected.value = ""+isSelected
+        }
+    )
+  },
   onLabelClicked : function (e) {
     const dom = e.target
     const labelKey = dom.value ? dom.value : dom.getAttribute("value")
-
-    if (!dom.attributes) {
+    if (!dom.attributes) { // TODO:(0) Use internal DDBB (vs storing in DOM) @ma
          dom.attributes = { selected : { value : "false" } }
     }
     if (dom.attributes.selected.value == "false") {
-        dom.attributes.selected.value = "true"      // @ma
-        LM.setLabelSelectedOnOff( labelKey, true)   // @ma
+        LM.setLabelSelectedOnOff( labelKey, true)
     } else {
-        dom.attributes.selected.value = "false"     // @ma
-        LM.setLabelSelectedOnOff( labelKey, false)  // @ma
+        LM.setLabelSelectedOnOff( labelKey, false)
     }
     if (LM.isAnyLabelSelected()){
       document.getElementById("idLabelsFilter").setAttribute("active","true"); 
     } else {
       document.getElementById("idLabelsFilter").removeAttribute("active"); 
     }
+    LM.refreshLabelsUI()
     SE.executeSearch()
   },
   renderLabel : function(topic, showAsterisk) {
@@ -403,7 +413,7 @@ const LM = { // Lavel management
   labelMapSelectedToCSV: function() {
     return Object.keys(LM.state.labelMapSelected).sort().join(",")
   },
-  createLabelIndex : function () {  // @ma
+  createLabelIndex : function () {
     const labeled_dom_l = document.querySelectorAll('*[labels]');
     const inputDDBB = { /* topic: related_node_list */ }
     // STEP 1: Clean topics  in html label attributes

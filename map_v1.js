@@ -99,7 +99,6 @@ const SF = {  /* search Form */
     document.getElementById("idLabelSearchAndMode" ).innerHTML = SF.labelAndOrText[SF.labelANDMode]
     const openDiv = '<div class="labelBlock">'
     var htmlLabels = openDiv
-debugger
     Object.keys(LM.DDBB.topicTree).sort()
     .filter  ( root_topic => { return LM.DDBB.topicTree[root_topic].length == 1 } )
     .forEach ( root_topic => { htmlLabels += LM.renderLabel(root_topic, false)} );
@@ -108,7 +107,8 @@ debugger
     Object.keys(LM.DDBB.topicTree).sort()
       .filter  ( root_topic => { return LM.DDBB.topicTree[root_topic].length != 1 } )
       .forEach ( root_topic      => {
-          htmlLabels += openDiv + "<div class='labelBlockTitle'>"+ root_topic +":</div>" 
+          const root_topic_prefix = root_topic.replace(".*", "")
+          htmlLabels += openDiv + "<div class='labelBlockTitle'>"+ root_topic_prefix +":</div>" 
           LM.DDBB.topicTree[root_topic].sort().forEach( topic => {
               htmlLabels += LM.renderLabel(topic, true)
           })
@@ -321,7 +321,9 @@ const LM = { // Lavel management
 
     // STEP 2: create topic list ordered alphabetically
     const topic_list = Object.keys(inputLabelMap).sort()
-    topic_list.forEach( (topic) => {LM.DDBB.countPerLabelStat[topic] = inputLabelMap[topic].length } )
+    topic_list.forEach( (topic) => { 
+        LM.DDBB.countPerLabelStat[topic] = inputLabelMap[topic].length } 
+    )
 
 
     // STEP 3.1: create topic tree parent (depth 1)
@@ -387,7 +389,7 @@ const LM = { // Lavel management
     return "<div "+cssAtribute+" class='labelButton' selected="+(!!LM.state.labelMapSelected[topic])+ 
            " type='button' value='"+topic+"' />"+sTopic+"</div><span labelcount>"+LM.DDBB.countPerLabelStat[topic]+"</span>" ;
   },
-  getDomListForLabel: function (labelKey) {
+  getDomListForLabelPrefix: function (labelKey) {
       const matchingKeys = LM.DDBB.labelMap_key_list
             .filter((k) => k.startsWith(labelKey.replace(".*","")) )
       var result = []
@@ -403,17 +405,16 @@ const LM = { // Lavel management
   },
   createLabelIndex : function () {  // @ma
     const labeled_dom_l = document.querySelectorAll('*[labels]');
-
-    /*
-     * STEP 1: "Clean labels". 
-     * "topic1" -> "topic1.*"
-     */
     const inputDDBB = { /* topic: related_node_list */ }
-    for (let idx1 in labeled_dom_l) {
+    // STEP 1: Clean topics  in html label attributes
+    const final_dom_l = []
+    for (let idx1 in labeled_dom_l ) {
       const node = labeled_dom_l[idx1]
-      if (!node.getAttribute ) continue
-      const input_labels_csvAttributes = node.getAttribute("labels")
-      if (!input_labels_csvAttributes || !input_labels_csvAttributes.trim()) continue;
+      if (!!!node.getAttribute ) continue
+      const input_labels_csvAttributes = node.getAttribute("labels").trim().replace(",,",",")
+      if (!!!input_labels_csvAttributes || input_labels_csvAttributes == "") continue;
+      if (input_labels_csvAttributes == ",") continue;
+      final_dom_l.push(node) // final_dom_l is of type Array (vs DomList in labeled_dom_l)
       const inputTopicList = input_labels_csvAttributes.split(",")
       const effectiveTopicList = []
       inputTopicList.forEach(inputTopic => {
@@ -421,11 +422,18 @@ const LM = { // Lavel management
           effectiveTopicList.push( (inputTopic.indexOf(".") >= 0) ? inputTopic : inputTopic+".*" )
       })
       node.setAttribute("labels",effectiveTopicList.join())
+    }
+    // STEP 2: Fill topic DDBB from label input
+    for (let idx2 = 0; idx2<final_dom_l.length; idx2++) {
+      const node = final_dom_l[idx2]
+      if (!!!node.getAttribute )  { debugger }
+      const input_labels_csvAttributes = node.getAttribute("labels")
+      const effectiveTopicList = input_labels_csvAttributes.split(",")
       var labelCount = 0
       effectiveTopicList.forEach( labelKey => {
           if (!!! labelKey) return
           labelKey = labelKey.toLowerCase()
-          let list = LM.getDomListForLabel(labelKey)
+          let list = (inputDDBB[labelKey]) ?  inputDDBB[labelKey] : []
               list.push(node)
           inputDDBB[labelKey] = list
           labelCount++
@@ -753,11 +761,11 @@ const SE = { // (S)earch (E)ngine
     var innerZoom_l = []
     if (LM.isAnyLabelSelected()) {
         let label_l=Object.keys(LM.state.labelMapSelected)
-        innerZoom_l = LM.getDomListForLabel(label_l[0]);
+        innerZoom_l = LM.getDomListForLabelPrefix(label_l[0]);
         for (let idx=0; idx<label_l.length; idx++) {
             innerZoom_l = SF.labelANDMode 
-                ? innerZoom_l.intersection( LM.getDomListForLabel(label_l[idx]) )
-                : innerZoom_l.union       ( LM.getDomListForLabel(label_l[idx]) )
+                ? innerZoom_l.intersection( LM.getDomListForLabelPrefix(label_l[idx]) )
+                : innerZoom_l.union       ( LM.getDomListForLabelPrefix(label_l[idx]) )
         }
     } else {
         // By default search inside all zoomable elements

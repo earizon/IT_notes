@@ -358,7 +358,9 @@ const LM = { // Lavel management
        const prefix = root_topic.replace(".*","")
        const child_topic_content = []
        topic_list.forEach( (topic) => {
-         if ( topic.indexOf(prefix) >= 0 ) {
+         if ( topic.indexOf(prefix +"." ) == 0 ||
+              topic.indexOf( "."+prefix ) > 0
+         ) {
            child_topic_content.push(topic)
          }
        })

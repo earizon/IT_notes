@@ -88,7 +88,22 @@ const SF = {  /* search Form */
       SF.searchForm_labelsDOM = document.getElementById("searchFormLabels")
   },
   regexInputTimer : null,
-  
+  sorterForRootTopicCache : {},
+  generateSorterForRootTopic : function (root) {
+      let result = SF.sorterForRootTopicCache[root]
+      if (result != null) { return result }
+      result = function(a,b) {
+        const aStartsWithRoot = ( a.indexOf(root) == 0 )
+        const bStartsWithRoot = ( b.indexOf(root) == 0 )
+        if ( aStartsWithRoot && !bStartsWithRoot) return -1
+        if (!aStartsWithRoot &&  bStartsWithRoot) return  1
+        if (a > b) return  1 
+        if (a < b) return -1 
+        return 0 
+      }
+      SF.sorterForRootTopicCache[root] = result
+      return result
+  },
   showSearchForm : function() {
     SF.searchFormDOM.style.display="block";
     document.getElementById("inputQuery").value = SF.regexQuery
@@ -104,14 +119,15 @@ const SF = {  /* search Form */
     .filter  ( root_topic => { return LM.DDBB.topicTree[root_topic].length == 1 } )
     .forEach ( root_topic => { htmlLabels += LM.renderLabel(root_topic, false, true, "prefixIgnoredForTrue" )} );
     htmlLabels += "</div>"
-
     // Render topics with    children "packed" in their own group
     Object.keys(LM.DDBB.topicTree).sort()
       .filter  ( root_topic => { return LM.DDBB.topicTree[root_topic].length != 1 } )
       .forEach ( root_topic      => {
           const root_topic_prefix = root_topic.replace(".*", "")
           htmlLabels += openDiv + "<div class='labelBlockTitle'>"+ root_topic_prefix +":</div>" 
-          LM.DDBB.topicTree[root_topic].sort().forEach( topic => {
+          LM.DDBB.topicTree[root_topic]
+          .sort(SF.generateSorterForRootTopic(root_topic))
+          .forEach( topic => {
               htmlLabels += LM.renderLabel(topic, true, false, root_topic_prefix  )
           })
           htmlLabels += "</div>"
@@ -327,9 +343,10 @@ const LM = { // Lavel management
         LM.DDBB.countPerLabelStat[topic] = inputLabelMap[topic].length } 
     )
 
-
     // STEP 3.1: create topic tree parent (depth 1)
-    const tree_root_list = topic_list.filter( (topic) => topic.indexOf('.*') == topic.length-2 )
+    const tree_root_list = topic_list.filter(
+        (topic) => topic.indexOf('.*') == topic.indexOf('.') &&  /* skip topic.subtopic.* */ 
+                   topic.indexOf('.*') == topic.length-2  )      /* allow only topic.* (vs topic.*....) */
 
     /* STEP 3.2: Create topic tree children (depth 2)
      * 
@@ -366,7 +383,7 @@ const LM = { // Lavel management
   },
   refreshLabelsUI : function() {
     document.querySelectorAll('.labelButton').forEach( e => {
-          e.addEventListener('click', LM.onLabelClicked) // @ma
+          e.addEventListener('click', LM.onLabelClicked)
           if (!e.attributes) {
             e.attributes = { selected : { value : "false" } }
           }
@@ -403,8 +420,10 @@ const LM = { // Lavel management
                  .replace("." + prefix,"") // prefix == 101, topic == topic1.101
     }
     let cssAtribute    = (topic.indexOf("todo")>=0) ? " red"  : ""
-    return "<div "+cssAtribute+" class='labelButton' selected="+(!!LM.state.labelMapSelected[topic])+ 
-           " type='button' value='"+topic+"' />"+sTopic+"</div><span labelcount>"+LM.DDBB.countPerLabelStat[topic]+"</span>" ;
+    let html = "<div "+cssAtribute+" class='labelButton' selected="+(!!LM.state.labelMapSelected[topic])+ 
+           " type='button' value='"+topic+"' />"+sTopic+"</div>"
+    if (sTopic!="*") html += "<span labelcount>"+LM.DDBB.countPerLabelStat[topic]+"</span>" ;
+    return html
   },
   getDomListForLabelPrefix: function (labelKey) {
       const matchingKeys = LM.DDBB.labelMap_key_list
@@ -424,7 +443,6 @@ const LM = { // Lavel management
     const labeled_dom_l = document.querySelectorAll('*[labels]');
     const inputDDBB = { /* topic: related_node_list */ }
     // STEP 1: Clean topics  in html label attributes
-    const final_dom_l = []
     for (let idx1 in labeled_dom_l ) {
       const node = labeled_dom_l[idx1]
       if (!!!node.getAttribute ) continue
@@ -432,7 +450,6 @@ const LM = { // Lavel management
                                          .toLowerCase().trim().replace(",,",",")
       if (!!!input_labels_csvAttributes || input_labels_csvAttributes == "") continue;
       if (input_labels_csvAttributes == ",") continue;
-      final_dom_l.push(node) // final_dom_l is of type Array (vs DomList in labeled_dom_l)
       const inputTopicList = input_labels_csvAttributes.split(",")
       const effectiveTopicList = []
       var labelCount = 0
@@ -561,16 +578,16 @@ const TPP = {  // (T)ext (P)re (P)rocessor
         // Add support for inner links: '@[#internalId]'
         H = H.replace(/@\[#([^\]]*)\]/g,   "<div class='innerLink' value='$1'> [$1]</div>")   
 
-        H = H.replace(/Gº([^º\n]*)º/g, "<b green >  $1 </b>")   
-        H = H.replace(/Rº([^º\n]*)º/g, "<b red   >  $1 </b>")   
-        H = H.replace(/Bº([^º\n]*)º/g, "<b blue  >  $1 </b>")   
-        H = H.replace(/Oº([^º\n]*)º/g, "<b orange>  $1 </b>")   
-        H = H.replace(/Qº([^º\n]*)º/g, "<b brown >  $1 </b>")   
-        H = H.replace(/Yº([^º\n]*)º/g, "<b yellow>  $1 </b>")   
+        H = H.replace(/Gº([^º\n]*)º/g, "  <b green >$1</b> ")   
+        H = H.replace(/Rº([^º\n]*)º/g, "  <b red   >$1</b> ")   
+        H = H.replace(/Bº([^º\n]*)º/g, "  <b blue  >$1</b> ")   
+        H = H.replace(/Oº([^º\n]*)º/g, "  <b orange>$1</b> ")   
+        H = H.replace(/Qº([^º\n]*)º/g, "  <b brown >$1</b> ")   
+        H = H.replace(/Yº([^º\n]*)º/g, "  <b yellow>$1</b> ")   
         H = H.replace(/[$]º([^º\n]*)º/g, "  <span console>$1</span>")   
         H = H.replace(/_º([^º\n]*)º/g, "<span sub>$1   </span>")
         H = H.replace(/^º([^º\n]*)º/g, "<span super>$1 </span>")
-        H = H.replace( /º([^º\n]*)º/g, "<b        > $1 </b>")   
+        H = H.replace( /º([^º\n]*)º/g, " <b        >$1</b> ")   
         H = H.replace( /[˂]/g, "&lt;")
         H = H.replace( /[˃]/g, "&gt;")
         H = H.replace( /[⅋]/g, "&amp;")

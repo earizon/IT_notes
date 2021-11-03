@@ -459,13 +459,14 @@ const LM = { // Lavel management
         inputTopic = inputTopic.trim()
         while (inputTopic.endsWith(".")) { inputTopic = inputTopic.substring(0,inputTopic.length-1) }
         if (inputTopic=="") return
-        let list = (inputDDBB[inputTopic]) ?  inputDDBB[inputTopic] : []
+        if (inputTopic == "aaa") {debugger;}
         inputTopic = inputTopic.indexOf(".") >= 0 ? inputTopic : inputTopic+".*" 
+        let list = (!!inputDDBB[inputTopic]) ?  inputDDBB[inputTopic] : []
         effectiveTopicList.push( inputTopic )
         list.push(node)
         inputDDBB[inputTopic] = list
         const topicPrefixAsterisk = inputTopic.substring(0, inputTopic.indexOf(".") ) + ".*"
-        if (! inputDDBB[topicPrefixAsterisk] /* maybe topic1.sub exists but topic1.* not */ ) { 
+        if (!!! inputDDBB[topicPrefixAsterisk] /* maybe topic1.sub exists but topic1.* not */ ) { 
           inputDDBB[topicPrefixAsterisk] = []
         }
         labelCount++

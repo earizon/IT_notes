@@ -15,8 +15,10 @@
     <div style="text-align:center; text-size: 1.5em; padding:0.5rem;">
      You can also be interested in the <a target="_new" href="../WebTechnologies/map.html">Web Technologies</a> and
     <a target="_new" href="../General/cryptography_map.html">Cryptography</a> maps.☜<br/>
-    </div>
-    <div>You can fund this page sending some Ethers to <code>0xcBC0f430cF5c7c94EBa5eFb715f5d307cC6CBc06</code>
+    Fund and influence the evolution of this page by sending some milliethers to
+    <a href="https://etherscan.io/address/0xcBC0f430cF5c7c94EBa5eFb715f5d307cC6CBc06" target="_new">
+      <code>my Ether Wallet</code>
+    </a>. <br/>
     </div>
 <div group bgblue>
 <span title>About Ethereum</span> <br/>
@@ -999,12 +1001,9 @@ if target == "zero.."
       otherwise, it is not.
 - Note: coinbase: In a mining node indicates the address where rewards will go.
   Must be set to an account owned by miner
-<h/>
-<span xsmall>TX Signing</span>
-REF:
+<hr/>
+<span title>TX Signature</span>
 @[https://medium.com/@angellopozo/ethereum-signing-and-validating-13a2d7cb0ee3]
-@[https://github.com/ethereum/EIPs/issues/191]
-
 - Ethereum uses SECP256K1 (one of the ECDSA supported algorithms) for signature.
   Note:
   - secp256k1 public key is composed of two integers
@@ -1021,19 +1020,23 @@ REF:
     Ethereum makes further adjustments to v in order to prevent replay attack as explained in
     @[https://github.com/ethereum/EIPs/issues/155]]
 
-  - In the SmartContract we can use:
-    ecrecover Solidity Global Crypto Funct:
-    ecrecover (bytes32 hash, uint8 v, bytes32 r, bytes32 s)
-      returns (address): recover the address associated with the public key
-                         from elliptic curve signature or return zero on error
+  - In the SmartContract we can use `ecrecover` Solidity Global Crypto Funct:
+
+    function ecrecover
+    (bytes32 hash, uint8 v, bytes32 r, bytes32 s)
+    view
+  Bºreturns (address)º  ← Original address associated with the public key (zero on error)
+                          Can be used for N/M signatures (See @[#eip-191])
 
   - NOTE: The use of Curve25519 with Schnoor signing scheme (Ed25519) is under discussion
+
+  - NOTE: Only Externally Owned Accounts can sign transactions. EIP-1271 offers a 
+    "abstraction" of signature as described in @[eip-1271].
 
 <span xsmall>Ether TXs in Solidity:</span>
 addressInstance.balance (uint256): balance in Wei
 addressInstance.transfer(uint256 amount):
-    msg.sender →(amount in wei) → addressInstance
-    throws on failure
+    msg.sender →(amount in wei) → addressInstance ( throws on failure )
 
 addressInstance.send(uint256 amount): returns (bool):
     msg.sender → (amount in wei) → addressInstance
@@ -1045,15 +1048,58 @@ addressInstance.send(uint256 amount): returns (bool):
   cannot be prevented.
   If that execution runs out of gas or fails in any way, the Ether transfer will be
   reverted and the current contract will stop with an exception.
+</pre>
+<pre zoom labels="signature.multisignature,use_case.identity,TODO" id="eip-191">
+<span xsmall bgblue>EIP-191: Signed Data Standard (Multisignature TXs)</span>
+- EIP-191: Signed Data Standard 
+@[https://eips.ethereum.org/EIPS/eip-191]
+@[https://github.com/ethereum/EIPs/issues/191]
+- See also @[#eip-712]
+
+  - Several multisignature wallet implementations have been created 
+    which accepts presigned transactions (chunk of binary signed_data, 
+    along with signature (r, s and v) ). 
+    interpretation of the signed_data has not been specified, leading to 
+    several problems.
+    - Standard Ethereum transactions can be submitted as signed_data.
+    - An Ethereum transaction can be unpacked, into:
+      - RLP˂nonce, gasPrice, startGas, to, value, data˃ (called RLPdata),
+      - r, s and v. 
+
+  - Multisignature wallets have also had the problem that a presigned 
+    transaction has not been tied to a particular validator, i.e a specific
+    wallet. Example:
+    · Users A, B and C have the 2/3-wallet X
+    · Users A, B and D have the 2/3-wallet Y
+    · Users A and B submites presigned transaction to X.
+    · Attacker sends presigned transactions to Y (instead of X).
+
+Example code:
+@[https://github.com/0xsequence/erc-1155/blob/master/SPECIFICATIONS.md#meta-transactions]
+
 <hr/>
-<span xsmall TODO>ECRecover</span>
-@[http://coders-errand.com/ecrecover-signature-verification-ethereum/]
-ECRecover and Signature Verification in Ethereum | Coder's Errand
-...As seen in the previous post of this series, a signature scheme
-usually has a verification algorithm that computes directly over the
-public key and the signature to check if the latter is valid.
-Ethereum is different, and uses ECRecover instead. ECDSA allows for
-an alternative approach, where a signature is not verified directly.
+<span xsmall>EIP-4361: Using EIP-191 for Offchain client Auth.</span>
+@[https://github.com/spruceid/EIPs/blob/eip-4361/EIPS/eip-4361.md]
+@[https://ethereum-magicians.org/t/eip-4361-sign-in-with-ethereum/7263/2]
+
+- Scenario:
+  "https://service.org" wants to authenticate user through its Ethereum account:
+    0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2
+
+  ┌─ Example message to be signed ────────────────────────────────────────┐
+  │ I accept the ServiceOrg Terms of Service: https://service.org/tos     │
+  │                                                                       │
+  │ URI: https://service.org/login                                        │
+  │ Version: 1                                                            │
+  │ Chain ID: 1                                                           │
+  │ Nonce: 328917                                                         │
+  │ Issued At: 2021─09─30T16:25:24Z                                       │
+  │ Resources:                                                            │
+  │ ─ ipfs://bafybeiemxf5abjwjbikoz4mc3a3dla6ual3jsgpdr4cjr3oz3evfyavhwq/ │
+  │ ─ https://example.com/my─web2─claim.json                              │
+  └───────────────────────────────────────────────────────────────────────┘
+  - For EOAs              verification method in EIP-191  MUST be used.
+  - For Contract Accounts verification method in EIP-1271 MUST be used.
 </pre>
 
 <pre zoom labels="101,transaction,gas_price,events,evm,privacy.zksnark,scalability.consensus,"
@@ -1393,140 +1439,115 @@ network node.                                 |   (but offline clients can also 
 The signed TX is then sent to the network.    |   hacked)
 </pre>
 
-<pre zoom labels="101,evm,persistence.contract_state,qa,dev_languaje.solidity,soft_life_cycle.troubleshooting,standards.eip/erc,TODO">
-<span title>About 24K: Contract Size</span>
+<pre zoom labels="101,evm,persistence.contract_state,qa.usability,dev_languaje.solidity,soft_life_cycle.troubleshooting,standards.eip/erc,TODO">
+<span title>EIP-2535 Diamons</span>
+Bº#######################################
+Bº# About EIP-170 24K Max Contract Size #
+Bº#######################################
 @[https://ethereum-magicians.org/t/removing-or-increasing-the-contract-size-limit/3045]
+ (See original link for -very- detailed info)
 
-BºNote:º Besu (maybe others) allows to tune max.contract size
-         in consortium / private networks.
+BºNote:º Private chains allow to tune max.contract size in consortium / private networks
+         but the EIP-2535 is compatible with MainNet and provide other features to upgrade
+         contracts through proxies.
 
-RºWARN: I admit that I haven’t kept up with the 2.0 specs and all my statements are º
-       ºbased on eth 1.x. º
+- 24K max. size is used to prevent denial-of-service attacks.
+  ( O(n) for disk-read resources, code-preprocessing, Merkle proof data )
 
-(See original link for -very- detailed info)
+Bº##########################################################
+Bº# Solution 1: Delegate call proxy patterns and Libraries #
+Bº##########################################################
+  - Allows to store S.C. code in different contracts using a "dispatcher"
+    contract to calls delegating calls to real contracts.
+    (REF: ZeppelinOS's upgradability contracts, EIP-#1538) 
 
-- EIP #170 22 establish a max contract size of 24KB to solve the problem:
-  "When a contract is called, even though the call takes a constant amount of gas,
-  the call can trigger O(n) cost in terms of reading the code from disk, preprocessing
-  the code for VM execution, and also adding O(n) data to the Merkle proof for the
-  block’s proof-of-validity".
-
-ºCurrent Solutionº
-- Delegate call proxy patterns and Libraries:
-  Using delegate calls, you can store the code of your smart contract in parts
-  in different contracts and have a "dispatcher" contract that calls the actual
-  contract using delegate calls.
-  - Please refer to ZeppelinOS’s upgradability contracts 8 and EIP #1538 3.
-
-  -ºLimitationsº
+  Rº#############################º
+  Rº# Proxy Pattern Limitations #º
+  Rº#############################º
     - extra unnecessary code.
     - Proxy patterns add another attack vector.
-    - Proxy patterns make calls to contracts a lot more
-      expensive as the Proxy has to copy the parameters make an
-      external delegate call every time.
-    - Proxy patterns like EIP 1538 also make inter-logic contract call
-      a lot more expensive.
+    - Proxy patterns make contracts calls a lot more expensive 
+      ( Proxy must copy parameters, then make external delegate call).
+    - Proxy patterns (e.g.EIP-1538) make inter-logic contract call
+      a lot more expensive:
        external →  proxy    →  contract → contract2
        call        contract    call
-    - hurt readability for the end user:
-      - The actual contract code/ABI of the proxy is different from the one
-        we need to access the contract behind the proxy. Like it or not but
-        most people can barely use the read/write features in etherscan,
-       they can't load a custom ABI and make web3 calls.
-    - Proxies make smart contract development slightly more complex.
-    - Proxies make it harder to verify the actual code and hence reduce trust.
+    -Rºhurt readability for the end user:º
+      - proxy contract code/ABI is different from real delegated code.
+      Rºmost people can barely use the read/write features in etherscan,º
+      Rºthey can't load a custom ABI and make web3 calls.               º
+    - development is slightly more complex.
+    - harder to verify actual code.
     - Loading a large contract will be fast-sequential read while loading
       multiple small ones will be slow-random read.
 
-ºPossible Solutionsº
-- Increase contract size limit to 32,768 (2**15) proposed by @gavofyork in
-  EIP 170 discussion 8. (50% code increase)
-- If required, relevant opcodes like CALL can have their cost increased
-  by a bit through EIP #1838 4.
-- Allow infinite contract size by Implementing paging of contract code
-  as suggested by @SergioDemianLerner in EIP #170 discussion 3.
-  "Make contracts a vector of 24 Kbytes pages".
-  - first page is loaded for free when a CALL is received while jumping
-    or running into another page pays a fee (500 gas) because the page
-    must be fetched from disk.
-- Allow infinite contract size and make the cost of OPCODES like CALL
-  dynamic to allow for this change. Code size will still be limited by
-  block gas limit. This is a moderate difficulty change but makes a lot
-  of sense IMO. More on this later:
-  - In detail:
-    - ethereum account   (array in state trie)
-      ----------------
-       nonce
-       balance
-       storageRoot
-       codeHash
-      ºcodeSize     ←-- New proposed additionº
-       ^^^^^^^^
-      - Whenever a new contract is deployed, its size is stored here
-      - If a contract is destructed, codeSize is reseted.
+   º######################º
+   º# Possible Solutions #º
+   º######################º
+  - Increase contract size limit.
+  - Increase cost of relevant opcodes (CALL, ...)
+  - Allow infinite contract size by Implementing paging of contract code
+    (suggested by @SergioDemianLerner) and "paying" for extra pages:
+    - first page loaded for free 
+    - jumping into another page pays a fee (500 gas) to fetch from disk. 
+  - Allow infinite contract size and make the cost of OPCODES like CALL
+    dynamic to allow for this change. Code size will still be limited by
+    block gas limit. ( moderate difficulty change but makes a lot of sense IMO)
+    - In detail:
+      - ethereum account   (array in state trie)
+        ----------------
+         nonce
+         balance
+         storageRoot     
+         codeHash        New proposed additionº
+        ºcodeSize     ←  · immutable value after deployment 
+                         · reseted at contract destruction. 
 
-    - CALL, DELEGATECALL, CALLCODE , ... opcodes should charge additional
-      X(3?) gas per extra word if the contract code size is greater than 24KB.
-  - Rationale
-    The only reason why the contract size was limited was to prevent people
-    from exploiting the fixed costs. We can overcome this by making the
-    costs variable. The codeSize element will help in calculating call cost
-    before reading the whole contract and eventually throwing OOG.
-    - Merkle proofs will also be generated at a fixed cost as we won't have
-      to load whole contracts from disk first. The codeSize should be enough
-      for generating Merkle proofs of calls that are going to be OOG due
-      to contract size.
-  - Backwards Compatibility
-    - All existing accounts have less than 24KB of code, so no extra cost
-      has to be charged from calls being sent to them.
-
-Tagging @karalabe for his thoughts as he is working on reducing state size.
-
+      - CALL, DELEGATECALL, CALLCODE , ... opcodes should charge additional
+        gas per extra word if contract code size greater than 24KB.
+    - Rationale
+      contract size limit used only to prevent exploiting fixed costs.
+      Can be overcomed by making costs variable.'codeSize' helps in calculating
+      call cost before reading the whole contract failing fast with Out-of-Gas.
+      - Merkle proofs will be generated at a fixed cost as we won't have
+        to load whole contracts from disk first. 'codeSize' should be enough
+        for generating Merkle proofs of calls that will throw OOG.
+    - no extra cost charged to existing contracts ( they are all under 24KB).
 <hr/>
-<span title>Diamon Standard</span>
-- New Diamon Standard for Compiler aware upgradability of contracts using 
-  facets !!!!  by Nick Mudge
 
-- Ethereum's 24KB Maximum Contract Size Limit is Solved with this Standard.
-@[https://dev.to/mudgen/ethereum-s-maximum-contract-size-limit-is-solved-with-the-diamond-standard-2189]
+Bº###########################################################
+Bº# EIP-2535 Diamon Standard (STANDARD FOR PROXY CONTRACTS) #
+Bº###########################################################
+  - COMPILER AWARE UPGRADABILITY OF CONTRACTS USING FACETS !!!!  by Nick Mudge
+  
+  - 24KB Max Size is Solved.
+  @[https://dev.to/mudgen/ethereum-s-maximum-contract-size-limit-is-solved-with-the-diamond-standard-2189]
+  
+  - STATE AND FUNCTIONS ARE KEPT TOGETHER UNDER THE SAME ETHEREUM ADDRESS.
+    MAKING EASIER AND MORE FLEXIBLE TO ACCESS/MODIFY CONTRACT STORAGE.
+  
+  - Proxy Contract == "Stay small by borrowing functions from other
+                      contracts using low level opcode "delegatecall".
 
-  - state and functions are kept together under the same Ethereum address.
-    making easier and more flexible to access/modify contract storage
+  - DIAMON = contract implementing the Standard applying to:
+             - regular contracts.
+             - proxy contracts.
 
-  BºSolution: Proxy contracts:º
-    BºStay small by borrowing functions from other contracts using aº
-    Bºlow level operation called "delegatecall".                    º
-    OºDiamon Standard is about standarizing the way to do it.º
-      It standardizes how you can create a small contract that can
-      utilize the code of any number of other contracts as if it is
-      its own code.
+    - A diamond has sides called "facets", from each of the other
+      contracts that it borrows functions from.
 
-    - A contract implementing the Standard is called a Oºdiamondº,
-      to from regular contracts and also from proxy contracts that
-      can only borrow code from a single contract.
-
-    - A real diamond has sides called facets, from each of the
-      other contracts that it borrows functions from.
-
-    - The Diamond Standard extends the analogy to its "diamondCut"
-      function which is used to add/replace/remove/facets and functions.
-      (analogous with a real diamond new facets by literally
-       cutting it).
+    - "diamondCut" analogy is used to add/replace/remove/facets and functions.
 
     - "The Loupe" : 4 standards functions returning information about
                     what facets and functions exist in a diamond.
 
-    -BºDiamond Standard provides also a flexible and transparent method º
-     Bºfor creating upgradeable diamonds.º
+    - PROVIDES A FLEXIBLE AND TRANSPARENT METHOD TO SUPPOR UPGRADEABLE DIAMONDS.
 
-
-(EIP-2535) for upgrading contracts.
-
-- individuals and companies using diamonds include:
-
-  - Joey Zacherl@VolleyFire (liquidity provider for
-    decentralized exchanges), released "Diamond Setter".
-    A (Python) tool to manage diamonds fo contracts.
+Bº##################º
+Bº# Diamon Tooling #º
+Bº##################º
+  - Joey Zacherl@VolleyFire (liquidity provider for decentralized
+    exchanges), released "Diamond Setter", (Python) tool to manage diamonds.
   @[https://github.com/lampshade9909/DiamondSetter]
 
   - Ronan Sandford (wighawag),  (ERC-1155 author), announced
@@ -1537,18 +1558,17 @@ Tagging @karalabe for his thoughts as he is working on reducing state size.
   - Nayms is using diamonds in production. See blog post:
     " Upgradeable smart contracts using the Diamond Standard"
 
-  - See announment in reddit:
+  - reddit announment:
   @[https://www.reddit.com/r/ethereum/comments/hu3gq1/erc1155_multi_token_standard_updated_to_mention/]
 
+  - Issue open in OpenZepelling to use diamon standard:
+  @[https://github.com/OpenZeppelin/openzeppelin-contracts/issues/2537]
 
- - To learn more about diamonds read the article:
-   "Understanding Diamonds on Ethereum." TODO:
+ - "Understanding Diamonds on Ethereum." TODO: <!-- @ma -->
  @[https://dev.to/mudgen/understanding-diamonds-on-ethereum-1fb]
 </pre>
 
 </div>
-
-
 
 <div groupv>
 <span title>Ether.Addresses</span>
@@ -2745,8 +2765,23 @@ ecrecover
 </pre>
 <pre zoom labels="101,dev_languaje.solidity">
 <span xsmall>Strings</span>
-CAN NOTs:                               |  CANs:
- - Can NOT be concatenated.             |  - Can be used as keys for mappings
+- Can be used as keys for mappings
+- Concatenating strings str01, str02, str03, ...:
+  string memory result = string(abi.encodePacked(str01, str02, str03, ...);
+- uint256 ("Big Number") to string:
+  function uint2str(uint256 _i) public pure returns (string memory _uintAsString) {
+     if (_i == 0) { return "0"; }
+     uint256 strLen;
+     uint256 j;
+     for (j = _i; j != 0; j /= 10 ) { strLen++; }
+     bytes memory bstr = new bytes(strLen);
+     uint256 strPosition = strLen;
+     for (j = _i; j != 0; j /= 10 ) {
+       strPosition -= 1;
+       bstr[strPosition] = bytes1 ( uint8 ( 48 + ( j % 10 ) ) );
+     }
+     return string(bstr);
+   }
 
 ºComparing strings:º
    sha3(      "string1" ) == sha3("string2")  ← sha3("...") translates to sha3(bytes("..."))
@@ -2785,12 +2820,51 @@ bool stringNotEmpty = sha3 (myTestedString) != sha3("")    // alt 2, check sha3
         return string(bstr);
     }
 ºbytes32 ←→ Strings:º
-<a href="https://ethereum.stackexchange.com/questions/2519/how-to-convert-a-bytes32-to-string">code@stackoverflow </a> doesn't look to work
 
-ºSTRING LIBRARIES:º
-@[https://github.com/Arachnid/solidity-stringutils]
+As of feb 2021 you can do
+bytes32 foo = "hello";
+string memory bar = string(abi.encodePacked(foo));
 
-@[https://github.com/blockapps/blockapps-sol/blob/master/util/contracts/Util.sol]
+
+
+-ºSTRING LIBRARIES:º
+RºWARNº: String manipulation inside contracts is discouraged. It wastes lot of 
+         gas and is error-prone. Use them as last-resort.
+
+- @[https://github.com/Arachnid/solidity-stringutils]
+   toSlice     (string self)                           internal returns (slice)
+   copy        (slice self)                            internal returns (slice)
+   toString    (slice self)                            internal returns (string)
+   len         (slice self)                            internal returns (uint)
+   empty       (slice self)                            internal returns (bool)
+   compare     (slice self, slice other)               internal returns (int)
+   equals      (slice self, slice other)               internal returns (bool)
+   nextRune    (slice self, slice rune)                internal returns (slice)
+   nextRune    (slice self)                            internal returns (slice ret)
+   ord         (slice self)                            internal returns (uint ret)
+   keccak      (slice self)                            internal returns (bytes32 ret)
+   startsWith  (slice self, slice needle)              internal returns (bool)
+   beyond      (slice self, slice needle)              internal returns (slice)
+   endsWith    (slice self, slice needle)              internal returns (bool)
+   until       (slice self, slice needle)              internal returns (slice)
+   find        (slice self, slice needle)              internal returns (slice)
+   rfind       (slice self, slice needle)              internal returns (slice)
+   split       (slice self, slice needle, slice token) internal returns (slice)
+   split       (slice self, slice needle)              internal returns (slice token)
+   rsplit      (slice self, slice needle, slice token) internal returns (slice)
+   rsplit      (slice self, slice needle)              internal returns (slice token)
+   count       (slice self, slice needle)              internal returns (uint count)
+   contains    (slice self, slice needle)              internal returns (bool)
+   concat      (slice self, slice other)               internal returns (string)
+   join        (slice self, slice[] parts)             internal returns (string)
+
+- @[https://github.com/blockapps/blockapps-sol/blob/master/util/contracts/Util.sol]
+  stringToBytes32(string memory input) pure returns (bytes32)
+  bytes32ToString(bytes32       input) pure returns (string )
+  b32            (string memory input) pure returns (bytes32)
+  i2b32          (uint          input) pure returns (bytes32)
+  a2b32          (uint[]        input) pure returns (bytes32[])
+  uintToString   (uint          input) pure returns (string str)
 </pre>
 
 <pre zoom  labels="101,dev_languaje.solidity">
@@ -2887,8 +2961,6 @@ function () payable {
 
 <pre bgorange zoom
    labels="101,dev_languaje.solidity,transaction,evm,diagram,soft_life_cycle.debugging,implementation.besu,events,soft_life_cycle.testing,transaction,dev_framework.web3j,qa.error_control" id="revert_reason">
-
-
 <span xsmall>ERROR CONTROL</span>
 @[https://solidity.readthedocs.io/en/v0.4.24/control-structures.html#error-handling-assert-require-revert-and-exceptions]
 
@@ -3096,28 +3168,7 @@ Bº#############################º
     }
 </pre>
 
-<pre zoom labels="aaa,signature.ecdsa_secp256k1,qa.auditing,dev_languaje.js,security,library,">
-<span xsmall>Signature Verif.</span>
-@[https://docs.openzeppelin.com/contracts/2.x/utilities]
-ºChecking Signatures On-Chainº
 
-- ECDSA provides functions for recovering and managing Ethereum account
-  ECDSA signatures. These are often generated via web3.eth.sign, and
-  are a 65 byte array (of type bytes in Solidity) arranged the follwing
-  way: [[v (1)], [r (32)], [s (32)]].
-
-- The data signer can be recovered with ECDSA.recover, and its address
-  compared to verify the signature. Most wallets will hash the data to
-  sign and add the prefix '\x19Ethereum Signed Message:\n', so when
-  attempting to recover the signer of an Ethereum signed message hash,
-  you’ll want to use toEthSignedMessageHash.
-
-RºWARNº:
-- Getting signature verification right is not trivial: make sure you
-  fully read and understand ECDSA's documentation.
-@[https://docs.openzeppelin.com/contracts/2.x/api/cryptography#ECDSA]
-
-</pre>
 
 
 </div>
@@ -4203,7 +4254,7 @@ Current Status (updated: June 22, 2019)
 @[https://consensys.github.io/smart-contract-best-practices/]
 </pre>
 
-<pre zoom labels="101,soft_life_cycle.debugging,dev_languaje.solidity" bgorange>
+<pre zoom labels="101,soft_life_cycle.debugging,dev_languaje.solidity" bgorange id="stack_too_deep_summary">
 <span xsmall>fixing "stack too deep" error</span>
 - In practice:
   Problem: Compiler tries to access a variable var1 that is beyond "16 depth in stack".
@@ -4388,6 +4439,7 @@ Bº####################º
       - It takes advantage of ERC-820 to find out whether and where to
         notify contracts|external-acct when they receive tokens as
         well as to allow compatibility with already-deployed contracts.
+      - Master Tessis @[https://github.com/0xjac/master-thesis]
 
     └ºERC-223 (ERC-20 Extension)º:
       - REF: @[https://github.com/ethereum/EIPs/issues/223]
@@ -4476,33 +4528,26 @@ Bº#############################º
       - ERC-1644: controller operations (force transfer)
 </pre>
 
-<pre zoom labels="dev_languaje.solidity,signature.multisignature,TODO"
+<pre zoom labels="dev_languaje.solidity,signature.multisignature,TODO" >
 <span title>Checking Signatures On-Chain</span>
-@[https://docs.openzeppelin.com/contracts/4.x/utilities]
+- ECDSA provides functions for recovering and managing Ethereum account
+  ECDSA signatures. These are often generated via web3.eth.sign, and
+  are a 65 byte array (of type bytes in Solidity) arranged the following
+  way: [[v (1)], [r (32)], [s (32)]].
 
-- ECDSA provides functions for recovering and managing Ethereum account ECDSA signatures.
-- ECDSA signature format: 65 byte array arranged like [[v (1)], [r (32)], [s (32)]].
-- TIP: Signatures are often generated via web3.eth.sign.
-- data signer can be recovered with ECDSA.recover, and its address then compared to
-  some internal "white-list" to verify the signature. 
+- The data signer can be recovered with ECDSA.recover, and its address
+  compared to verify the signature. Most wallets will hash the data to
+  sign and add the prefix '\x19Ethereum Signed Message:\n', so when
+  attempting to recover the signer of an Ethereum signed message hash,
+  you’ll want to use toEthSignedMessageHash.
 
-- Most wallets will hash the data to sign and add the prefix:
-  - '\x19Ethereum Signed Message:\n', so when attempting to recover the signer of
-     an Ethereum signed message hash, you’ll want to use toEthSignedMessageHash:
-
-     using ECDSA for bytes32;
-     
-     function _verify(bytes32 data, bytes memory signature, address account) internal pure returns (bool) {
-       return data
-         .toEthSignedMessageHash()
-         .recover(signature) == account;
-     }
-
-WARN: Getting signature verification right is not trivial:
-make sure you fully read and understand ECDSA's documentation. 
+RºWARNº:
+- Getting signature verification right is not trivial: make sure you
+  fully read and understand ECDSA's documentation.
+@[https://docs.openzeppelin.com/contracts/2.x/api/cryptography#ECDSA]
 </pre>
 
-<pre zoom labels="signature.*,TODO">
+<pre zoom labels="signature.*," id="eip-1271" >
 <span title>EIP-1271</span>
 @[https://github.com/ethereum/EIPs/issues/1271]
 - External "Dapps" can allow users to sign off-chain messages
@@ -4524,6 +4569,15 @@ make sure you fully read and understand ECDSA's documentation.
 - Realizing that this is more than just validating signatures; we're actually
   asking the question "given this action, does the caller have the ability
   to it, given this proof"?
+
+- The standard defines an interface 'isValidSignature'. Implementations
+  can call arbitrary methods to validate a given signature, which 
+ ºcould be context dependent (e.g. time based, state based), EOA dependentº
+ º(e.g. signers authorization level within smart wallet), signature schemeº 
+  Dependent (e.g. ECDSA, multisig, BLS), etc.
+   It should be implemented by contracts which desire to sign messages
+  ("wallets", DAOs, multisignature wallets, etc.).
+  Applications will can this method if signer is a contract (vs EOA).
 </pre>
 
 
@@ -4531,7 +4585,6 @@ make sure you fully read and understand ECDSA's documentation.
 <pre zoom labels="aaa,token,dev_languaje.solidity" id="ERC_1155_summary">
 <span title>ERC-1155</span>
 @[https://blog.enjincoin.io/erc-1155-the-crypto-item-standard-ac9cf1c5a226]
-@[https://eips.ethereum.org/EIPS/eip-1155]
   - Standard interface for contracts managing multiple token types.
 
                  ┌─ N → fungible-token: 
@@ -4555,51 +4608,24 @@ make sure you fully read and understand ECDSA's documentation.
  
   - Without ERC-1155:
   Rºfor each token and item type we require deploying a separate contractº
-    (more than 74000 different tokens deployed on Ethereum since 2015).
-    Fungible and non-fungible tokens are not very compatible with each 
-    other.
-
-  Rº""" Imagine checking out your groceries at the store and havingº
-  Rºto buy each item in your cart separately.  This is how ERC-20  º
-  Rºand ERC-721 token transfers work, """                          º
+    (74000+ deployed tokens since 2015).
+    Fungible and non-fungible tokens are not very compatible with each other.
 
   - With    ERC-1155:
-
-    - Items are now stored in a single contract.
-
-    - contract state contains:
       - configuration data per Token ID.
-      - defined interfaces to control the collection. 
-      -ºAtomic Swaps and escrow amongst different itemsº can 
-        be built on top of the standard allowing for:
-        - Multi-Transfers:
-        - any number of items can be sent to 1+ recipients 
-          in a single transaction reducing gas/congestion
-          on the Ethereum transaction pool.
-        -ºfunctions 'transfer','approve','melt','trade' take      º
-         ºarrays as parameters allowing for 100 to 200 operations º
-         ºin a single transaction.                                º
-          It also contains an "_id" argument to indicate an
-         a specific token or token type in a transaction.
+      - Atomic Multi-Transfers / Swaps :
+      -ºfunctions 'transfer','approve','melt','trade' take      º
+       ºarrays as parameters allowing for 100 to 200 operations º
+       ºin a single transaction.                                º
 
-   - Smart contracts implementing the ERC-1155 standard MUST 
-     implement the ERC-165 supportsInterface function and MUST
-     return the constant value true if 0xd9b67a26 is passed
-     through the interfaceID argument.
+   - ERC-1155 compliant MUST implement ERC-165 "supports" Interface
+     function and return "true" for 0xd9b67a26 interfaceID argument.
 
-     pragma solidity ^0.5.9;
-     
+   @[https://eips.ethereum.org/EIPS/eip-1155]
+     - NOTE 1: `_operator`: address of an account/contract approved to make the transfer (SHOULD be msg.sender)
      interface ERC1155 /* is ERC165 */ {
-         event TransferSingle(
-           address indexed _operator,
-           address indexed _from, address indexed _to,
-           uint256 _id, uint256 _value
-         );
-         event TransferBatch(
-           address indexed _operator,
-           address indexed _from, address indexed _to,
-           uint256[] _ids, uint256[] _values
-         );
+         event TransferSingle( address indexed _operator, address indexed _from, address indexed _to, uint256 _id   , uint256 _value );
+         event TransferBatch ( address indexed _operator, address indexed _from, address indexed _to, uint256[] _ids, uint256[] _values);
          event ApprovalForAll(
            address indexed _owner,
            address indexed _operator,
@@ -4658,8 +4684,8 @@ make sure you fully read and understand ECDSA's documentation.
        ) external returns(bytes4);       
      }
 
-- ERC-1155 how to:
-
+<hr/>
+<span title>ERC-1155 how to</span>
 -  PRESETUP:
    Get test tokens:
    → https://faucet.rinkeby.io
@@ -5215,10 +5241,13 @@ function onGUIButtonCliced (miniToken) {
 
 </pre>
 
-<pre zoom labels="security,UX,qa.usability,wallet.metamask,standards.eip/erc,persistence.data_structure," bgorange>
-<span xsmall>EIP712 (Typed human-friendly signing)</span>
+<pre zoom
+  labels="security,UX,qa.usability,wallet.standards,wallet.metamask,standards.eip/erc,persistence.data_structure,TODO"
+  bgorange id="eip-712" >
+<span xsmall>EIP-712 (Typed human-friendly signing)</span>
 - EIP-712: Ethereum typed structured data hashing and signing 
 @[https://eips.ethereum.org/EIPS/eip-712]
+- See also @[#eip-191] 
 - Introduction by Koh Wei Jie:
 @[https://medium.com/metamask/eip712-is-coming-what-to-expect-and-how-to-use-it-bb92fd1a7a26]
   Ethereum wallets like MetaMask will soon introduce the EIP712
@@ -5232,8 +5261,7 @@ Bºstrings, which is a practice that can be confusing and insecure.  º
   - Lattice 1 GridPlus Hardware Wallet:
   @[https://blog.gridplus.io/latice1-firmware-v0-10-6-da18ec10f5b]
 
-  - 1st with Native EIP-712 Support for Use with
-    Uniswap V3, Polygon, and More!
+  - 1st with Native EIP-712 Support for Use with Uniswap V3, Polygon, and More!
 
  ... When Uniswap V3 launched, liquidity providers were unable to
   migrate their positions because Uniswap uses a new message type
@@ -6373,15 +6401,6 @@ SOLUTION:
 <a href="https://ethereum.stackexchange.com/questions/9055/cant-broadcast-ethereum-transaction-whats-wrong-with-this-transaction">REF.1</a>, <a href="https://gitter.im/web3j/web3j?at=58d1e9ce5917e26076be161c">REF 2.web3j Gitter</a>
     Solution: This means that the same transaction is sent twice with onley the nonce different.
      Probably it's a client error.
-</pre>
-
-<pre zoom  labels="tool,dev_languaje.js,TODO,0xcert">
-<span xsmall TODO>0xcert.org JS lib</span>
-@[https://docs.0xcert.org/]
-- JavaScript framework library that provides a complete set of
-  tools for building powerful decentralized applications (dapps).
-- It enables management, digital representation, and ownership verification of
-  unique assets such as certificates, artworks, and collectibles.
 </pre>
 
 <pre zoom bgorange labels="dev_framework.IDE,dev_languaje.solidity,qa,TODO">
@@ -12476,6 +12495,11 @@ SKALE: Standard Kit for Asyncronous LEdgers.
 
 <pre zoom labels="devops,standards.eip/erc,dev_languaje.solidity,architecture,qa.usability," bgorange>
 <span title>EIP-165: Standard Interface</span>
+
+• NOTE: EIP-1820 improves over this standard, but EIP-165 is not 
+  deprecated and still in active use (e.g, required by EIP-1155)
+  as of 2021-10
+
 • standard to publish and detect what interfaces a smart contract implements
   by detailing:
 
@@ -12514,6 +12538,7 @@ SKALE: Standard Kit for Asyncronous LEdgers.
   │ }                                                                │
   └──────────────────────────────────────────────────────────────────┘
 
+<span title>EIP-1820: Standard Interface</span>
 
 </pre>
 
@@ -12977,7 +13002,20 @@ Ej: from https://github.com/trufflesuite/ganache
 https://kalis.me/assert-reverts-solidity-smart-contract-test-truffle/
 
 ######################
-https://hardhat.org/  (Remix alternative)
+https://hardhat.org/  (Truffle alternative)
+- """ making your development feedback loop up to 10x faster with Hardhat."""
+- TypeScript Compile time errors vs JS Runtime errors.
+
+- hardhat/console.sol console.log solidity lib.
+- util.format !!!!
+  console.log("Changing owner from %s to %s", currentOwner, newOwner).
+  - emit log entries where it's fully supported ( Hardhat Network, Remix, Tenderly) 
+  - falls back gracefully to a no-op everywhere else 
+#
+
+- Uses Waflle: https://getwaffle.io/   @ma
+  minimalistic Sweet tool for smart contracts testing used in 10.000+ projects.
+
 ########################
 Solidity:
 https://jeancvllr.medium.com/solidity-tutorial-all-about-bytes-9d88fdb22676 
@@ -13095,7 +13133,7 @@ WARN: Upgradeability can NOT be applied to already-deployed contracts.
 $ npm install --global zos      ← ZOS install
 
                                  ºZOS ussageº
-$ mkdir zos-demo ⅋⅋ cd zos-demo
+$ mkdir zos-demo ⅋⅋ cd zos-demo  º==========º
 $ npm init -y
 $ zos init zos-demo             ← create ºzos.jsonº config.file
                                   makes ZOS aware of your smart contract
@@ -13207,5 +13245,7 @@ $ zos update CounterContract --network local  # ← update CounterContract to ne
 </pre>
 
 
-
-
+<pre zoom labels="TODO">
+<span title>awesome-quorum</span>
+https://github.com/ConsenSys/awesome-quorum
+</pre>

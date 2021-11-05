@@ -15,7 +15,7 @@ const SF = {  /* search Form */
   },
   copyLabels : function() {
     var text = "";
-    LM.labelMap_key_list.forEach( label_i => { text += label_i + "\n" } )
+    LM.DDBBB.labelMap_key_list.forEach( label_i => { text += label_i + "\n" } )
     alert("select and copy:\n\n" + text)
   },
   switchANDORSearch : function() {
@@ -373,7 +373,7 @@ const LM = { // Lavel management
        LM.DDBB.treeOfTopics[root_topic]  = child_topic_content
      })
      LM.DDBB.labelMap_key_list = topic_list 
-     window.LM = LM // deleteme
+     window.SPB_DEBUG_LM = LM // Useful for debugging purposes.
     }
   },
   isAnyLabelSelected : function() {
@@ -465,7 +465,6 @@ const LM = { // Lavel management
         inputTopic = inputTopic.trim()
         while (inputTopic.endsWith(".")) { inputTopic = inputTopic.substring(0,inputTopic.length-1) }
         if (inputTopic=="") return
-        if (inputTopic == "aaa") {debugger;}
         inputTopic = inputTopic.indexOf(".") >= 0 ? inputTopic : inputTopic+".*" 
         let list = (!!inputDDBB[inputTopic]) ?  inputDDBB[inputTopic] : []
         effectiveTopicList.push( inputTopic )

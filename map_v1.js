@@ -114,18 +114,18 @@ const SF = {  /* search Form */
     document.getElementById("idLabelSearchAndMode" ).innerHTML = SF.labelAndOrText[SF.labelANDMode]
     const openDiv = '<div class="labelBlock">'
     var htmlLabels = openDiv
-    Object.keys(LM.DDBB.topicTree).sort()
+    Object.keys(LM.DDBB.treeOfTopics).sort()
     // Render topics without children "packed" in one group
-    .filter  ( root_topic => { return LM.DDBB.topicTree[root_topic].length == 1 } )
+    .filter  ( root_topic => { return LM.DDBB.treeOfTopics[root_topic].length == 1 } )
     .forEach ( root_topic => { htmlLabels += LM.renderLabel(root_topic, false, true, "prefixIgnoredForTrue" )} );
     htmlLabels += "</div>"
     // Render topics with    children "packed" in their own group
-    Object.keys(LM.DDBB.topicTree).sort()
-      .filter  ( root_topic => { return LM.DDBB.topicTree[root_topic].length != 1 } )
+    Object.keys(LM.DDBB.treeOfTopics).sort()
+      .filter  ( root_topic => { return LM.DDBB.treeOfTopics[root_topic].length != 1 } )
       .forEach ( root_topic      => {
           const root_topic_prefix = root_topic.replace(".*", "")
           htmlLabels += openDiv + "<div class='labelBlockTitle'>"+ root_topic_prefix +":</div>" 
-          LM.DDBB.topicTree[root_topic]
+          LM.DDBB.treeOfTopics[root_topic]
           .sort(SF.generateSorterForRootTopic(root_topic))
           .forEach( topic => {
               htmlLabels += LM.renderLabel(topic, true, false, root_topic_prefix  )
@@ -330,7 +330,7 @@ const LM = { // Lavel management
   },
   DDBB : { // immutable once initialized. Convention: Use Upper Case for Immutable Objects
     flatMap : { /* label : dom_list*/ }, // TODO:(0) rename topic2DOMList
-    topicTree : { /* topic_root_label : child_topics */ }, // TODO:(0) Rename to topicTree /* depth 1 */
+    treeOfTopics : { /* topic_root_label : child_topics */ }, // TODO:(0) Rename to treeOfTopics /* depth 1 */
     labelMap_key_list : [], // TODO:(0) rename to labelMap_key_list ordered
     countPerLabelStat : {}, 
     endInitialization : function (inputLabelMap) {
@@ -358,8 +358,11 @@ const LM = { // Lavel management
        const prefix = root_topic.replace(".*","")
        const child_topic_content = []
        topic_list.forEach( (topic) => {
+         /* tip1: fix overlapping problems (e.g: "ha" matching . "topicN.(ha)rdaware, ...) 
+          * by forcing to match "ha." or ".ha." */
+         const topicDot = topic +"."        /* tip1. fix problem with end-of-string */
          if ( topic.indexOf(prefix +"." ) == 0 ||
-              topic.indexOf( "."+prefix ) > 0
+              topic.indexOf( "."+prefix+"." /* tip1 */ ) > 0
          ) {
            child_topic_content.push(topic)
          }
@@ -367,7 +370,7 @@ const LM = { // Lavel management
        if (child_topic_content.length == 0) {
            throw new Error("at least root_topic must match its prefix")
        }
-       LM.DDBB.topicTree[root_topic]  = child_topic_content
+       LM.DDBB.treeOfTopics[root_topic]  = child_topic_content
      })
      LM.DDBB.labelMap_key_list = topic_list 
      window.LM = LM // deleteme
@@ -416,10 +419,13 @@ const LM = { // Lavel management
   },
   renderLabel : function(topic, showAsterisk, showPrefix, prefix) {
     let sTopic = showAsterisk ? topic  : topic.replace(".*","")
-    if (!showPrefix ) { 
+    if (!showPrefix ){ 
+        sTopic = sTopic + "." // e.g.: topic1.101 -> topic1.101. 
+        //     ^ fix overlapping problems (eg: 'ha' (high availability) 'hardware' )
         sTopic = sTopic
+                 .replace("." + prefix + ".",".") // prefix == 101, topic == topic1.101.
                  .replace(prefix + ".","") // prefix == 101, topic =  101.topic1
-                 .replace("." + prefix,"") // prefix == 101, topic == topic1.101
+        sTopic = sTopic.substring(0,sTopic.length-1) // remove final "."
     }
     let cssAtribute    = (topic.indexOf("todo")>=0) ? " red"  : ""
     let html = "<div "+cssAtribute+" class='labelButton' selected="+(!!LM.state.labelMapSelected[topic])+ 

@@ -15,7 +15,7 @@ const SF = {  /* search Form */
   },
   copyLabels : function() {
     var text = "";
-    LM.DDBBB.labelMap_key_list.forEach( label_i => { text += label_i + "\n" } )
+    LM.DDBB.labelMap_key_list.forEach( label_i => { text += label_i + "\n" } )
     alert("select and copy:\n\n" + text)
   },
   switchANDORSearch : function() {

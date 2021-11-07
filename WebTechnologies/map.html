@@ -69,7 +69,7 @@
   list01.pop(2/*index*/)// ← returns 3.       list01 after:[1,2,4,1]
   list01.pop()          // ← returns 1.       list01 after:[1,2,4]
   list01.push(5)        // ← add to current a.list01 after:[1,2,4,5]
-  list03 = 
+  list03 =
        list01.concat(5) // ← add object to new array                  [immutable_code]
                              do NOT modify original one
   list01.reverse()      //                     l = [5,4,2,1]
@@ -86,14 +86,14 @@
   list01.toString()
   list01.valueOf()      // TODO:  Returns the primitive value of the array.
 
-•BºWalking over arraysº 
+•BºWalking over arraysº
    const list01 = [1,2,3,...]
    for (var idx = 0; idx ˂ list01.length; idx++) {
       const elementI = list01[idx];
       ...
    }
    for (const elementI of list01) { ... }       // Doesn't look to work properly
-   list01.forEach((elementI, idx) =˃ console.log(elementI)); 
+   list01.forEach((elementI, idx) =˃ console.log(elementI));
 
 •BºLet vs Varº
   let var1 = ...;  // ← Preferred. Variable scope limited to block/statement/expression
@@ -102,7 +102,7 @@
 • BºDATE AND TIMEº
 @[https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date]
   const date1 = new Date('December 17, 1995 03:24:00') ← ºGMTº
-  const date2 = new Date('1995-12-17T03:24:00')        ← ºGMTº 
+  const date2 = new Date('1995-12-17T03:24:00')        ← ºGMTº
   console.log(date1 === date2)                         ← false
   console.log(date1 - date2)                           ← 0
   const date3 = Date.now()
@@ -124,7 +124,7 @@ BºStringsº
 
   slice(start[, end]) //  New string from original string
                           (similar to to Array.slice,...)
-  
+
 
   split(token)  Splits String into string[], using the
                 specified token as the delimiter. TODO
@@ -152,7 +152,6 @@ BºStringsº
 @[http://loredanacirstea.github.io/es6-design-patterns/]
 </pre>
 
-<span title>Introduction++</span>
 <pre zoom labels="101,js">
 <span title>JS "OOP"</span>
     function Message (subject, recipient, content){
@@ -221,32 +220,138 @@ BºStringsº
 </pre>
 
 <pre zoom labels="js,devops,webpack" id="bundlers_summary">
-<span title>JS Package bundlers</span>
-Bº###############################º
-Bº# Rollup vs Webpack vs Parcel #º
-Bº###############################º
- • Package bundler "==" assets bundle +  runtime module "loader" 
+<span title>WebPack Summary</span>
+• Depends on Node.JS 10.13.0+ (2021-11)
+$º$ npm init -y                                       º ← Init new NodeJS proyect (package.json)
+$º$ npm install --development webpack@v...            º ← add webpack dev.dependency
+$º$ npm install --development webpack-dev-server@v....º ← web server enabling page reload on changes.
+$º$ npm install css-loader style-loader --save-dev    º ← css bundler.
+$º$ npm install --save-dev typescript ts-loader       º ← Typescript support. (requires extra tsconfig.json)
+
+┌ Bº webpack.config.js º──────────────────┐ ← NOTE: JS, not JSON file
+│ 'use strict'                            │
+│ const debug = process.env.NODE_ENV !==  │
+│               "production"              │
+│ var ExtractText =                       │
+│  require('extract-text-webpack-plugin') │
+│ const path = require('path'),           │
+│    webpack = require('webpack')         │
+│ module.exports = {                      │
+│   mode: 'production' ←···················· := development, ºproductionº, none
+│   context: __dirname,                   │
+│   devtool: debug ? 'inline-sourcemap' : │
+│   devtool: debug : null                 │
+│                                         │
+│   entry: {   ←···························· Where to start when resolving dependencies.
+│     myApp : './src/app.js',    ←·········· App we are working on (frequent changes) (other examples index.ts , ...)
+│     vendor: './src/vendor.js', ←·········· (jQuery, angular, images,..) modules NOT CHANGING over re-builds, with
+│                                         │  Oºoutput cached after 1st build.º
+│     entry3: {                  ←·········· Example entry showing all options allowed.
+│       dependOn: [...] ←··················· Must be loaded before this.
+│       filename: ...   ←··················· Specifies name of output file. e.g.:
+│                        ···················'[name].[contentHash].bundle.js'
+│       import: ...     ←···················ºruntimeºmods loaded upon startup
+│                        ··················· (afte build and packaging)
+│       library: ...    ←··················· Lib.options to bundle a lib. More info at:
+│                                         │@[https://webpack.js.org/configuration/output/#outputlibrary]
+│       runtime: ...    ←··················· If set, a new runtime chunk will be
+│                                         │  created. (imcompatible with dependOn)
+│       publicPath: ... ←··················· Public external URL address for output files
+│     }                                   │
+│   }                                     │
+│   output: {                             │
+│     path : "./" , filename:"bundle.js" ←··· must match ˂script src="bundle.js" /˃ @ index.html
+│   },                                    │   Or filename: '[name].build.js' where name will be replaced in multi-
+│                                         │   output packages by myApp, vendor, entry3, ....
+│                                         │
+│   module: {      ←························ Extension point. Only JS and JSON input by def.
+│     rules: [     ←························ºOrdered listºof rules for loaders
+│       {                                 │
+│         test: /\.txt$/     ←·············· Apply to files matching regex
+│        ,use : 'raw-loader' ←··············ºLoader (transformer)ºto use for
+│       },                                │  matching file
+│                                         │
+│       { test: /\.css$/,    ←·············· embed output css in bundle.js (discouraged)
+│         loader: 'style!css'             │  alternatively, to output css to styles.css:
+│                                         │  loader: ExtractText.extract('style', 'css')
+│       }                                 │
+│       { test: /\.tsx?$/,    ←············· Add rules for type-script for .ts and .tsx files
+│         use: 'ts-loader',               │  (or 'babel-loader', ...)
+│         exclude: /node_modules/,        │
+│       }                                 │
+│     ]                                   │
+│   },                                    │
+│                                         │
+│   resolve: {               ←·············· type-script support.
+│     extensions: ['.tsx', '.ts', '.js'], │
+│   },                                    │
+│                                         │
+│   plugins: debug ? [] : [   ←············· ºPluginsº allow wider range of tasks than loaders,
+│                                         │  (e.g.: bundle optimization, ENV.VARs injection,...)
+│     new HtmlWebpackPlugin(              │
+│       { template:                       │
+│            '.../tpl.html' }             │┌ inspectpack de─duplicate plugin: *1
+│     )                                   ││ STEP 1) meta─level tips on prioritization and focus:
+│     ,                                   ││ - Look first to identical code sources.
+│     new webpack.optimize.DedupePlugin(),←┘ - Change dependencies in root package.json:
+│     new webpack.optimize                │    (protect yourself by commiting package.json/package-json.lock first)
+│         .OccurenceOrderPlugin(),        │  - Critically examine and scrutinize your dependencies:
+│     new webpack.optimize                │    Do you really need all of the bundled packages?
+│         .UglifyJsPlugin({               │                                                                        
+│          mangle: false,sourcemap: false │  STEP 2) potentially force packages and code sources to collapse
+│     })                                  │  to single entities, even if the normal rules of npm/yarn/webpack 
+│       ],                                │  would prevent it.
+│     , new XXX...Plugin(...)             │  -ºSet resolve.alias in webpack.config.jsº
+│   ],                                    │    Direct webpack to use a single package when resolving dependencies
+│ }                                       │    that would follow normal (multi-package) resolution.
+└─────────────────────────────────────────┘  -ºSet the resolutions field with yarn:º Direct yarn (not available
+                                               on npm) to resolve packages to a single version, overriding what is
+                                               normally considered an allowed resolution and node_modules
+                                               installation. This work better with type-script modules than 
+                                               js modules, due to natural tendency of JS to break even for minor 
+                                               version upgrades. TIP: Don't use JS for module/lib development.
+                                               More info at:
+      @[https://formidable.com/blog/2018/finding-webpack-duplicates-with-inspectpack-plugin/]
+
+Bº############################º
+Bº# USSAGE (once configured) #º
+Bº############################º
+
+$º$ webpack ... \         º   ←  Alt use. package app
+$º  --watch               º      ← monitor changes and rebuild automatically
+$º  --progress --colors \ º             http://localhost:8080/webpack-dev-server/
+$º  -p                    º      ← production optimizations (slower during dev)
+$º  --display-modules     º      ← show intermediate modules using during packing.
+                                 Use --config ..../webpack.config.js  to overload default path
+
+$º$ webpack-dev-server \  º   ← Alt 2. web server that autoreload web page on changes!!!.
+$º  --hot \               º   OºHot Module Replacement (HMR) "magically" keeps the internal state º
+$º  --inline              º   Oºof the Web App (and potentially the UI if tied to the state) º
+
+<hr/>
+<span title>W.pack vs ...</span>
+ • Package bundler "==" assets bundle +  runtime module "loader"
 
   REF: https://x-team.com/blog/rollup-webpack-parcel-comparison/
   •ºWebpackº: Most user/project base
               No config needed (since Webpack v4), but still very customizable.
               "Non official standard" for packaging apps, adopted by most projects.
   •ºRollupº: Best option and similar to webpack
-            out-of-the-box features likes source maps, 
+            out-of-the-box features likes source maps,
             not config-dependencies on .babelrc
   •ºParcelº: zero-conf option.
   • Gulp, Grunt, and Browserify: Old options, still in use in some projects.
   •  SPEED COMPARATIVE: (Time in seconds)
-   
+
                    DEV BUILD          |        PRO BUILD
              ─────────────────────────┼─────────────────────────
                1st run     2nd run    │    1st run     2nd run
              ─────────     ─────────  │  ─────────     ─────────
    RºParcel    14.92        5.22  º   │   738.50       35.36  º
    BºRollup     0.57        0.48  º   │     0.71        0.66  º
-     Webpack    3.60        3.32      │     3.63        3.80  
+     Webpack    3.60        3.32      │     3.63        3.80
 
-  PRE-SETUP: 
+  PRE-SETUP:
   1) Adding Babel (ES6 to ES7) to package.json (using presets, polyfills and shims).
     "babel-loader": "=7.1.4",
     "babel-plugin-external-helpers": "=6.22.0",
@@ -261,8 +366,8 @@ Bº# PARCEL SUMMARY #º
 Bº##################º
   • PRE-SETUP: Add next dependency to package.json:
     "parcel-bundler": "=1.7.1"   (or install OS wide $º$ npm i parcel-bundler:1.7.1 -Dº)
-  • main diff with webpack: 
-    parcel  sets index.js file into       │ webpack sets index.js file into 
+  • main diff with webpack:
+    parcel  sets index.js file into       │ webpack sets index.js file into
     script.scr @ index.html               │ compiled bundle
     ˂script                               │ ˂script src="built/vendor.min.js"˃˂/script˃
         src="../reactAppSrc/index.js"˃    │ ˂script src="built/built.min.js"˃˂/script˃
@@ -270,16 +375,17 @@ Bº##################º
   • Ussage: BºNo human (zero-conf) configuration neededº
   $º$ parcel index.html                    º ← transpile dependencies
   $º$ parcel build public/parcel.index.htmlº ← production builds
-                                               1) builds dependency tree + script 
-                                               2) transpile, minify, and bundle 
+                                               1) builds dependency tree + script
+                                               2) transpile, minify, and bundle
                                                (built cached. very Fast re-builds)
                                                Optionally add next flags to tune build:
-                                                 -d dist/ 
+                                                 -d dist/
                                                  --public-url '.'
   •ºParcel 2, rewritten in Rust, claims to have a 10x Faster Javascript Compiler,º
     modular configuration (while zero-confs remains possible), differential bundling
     and improved JSX and web worker support.
   @[https://www.infoq.com/news/2021/09/parcel-2-rust-faster-javascript/]
+
 Bº##################º
 Bº# ROLLUP SUMMARY #º
 Bº##################º
@@ -296,7 +402,7 @@ Bº##################º
 
     import babel from 'rollup-plugin-babel'        import babel from 'rollup-plugin-babel';
                                                    import uglify from 'rollup-plugin-uglify'
-                                                   
+
     export default {                               export default {
       entry: 'reactAppSrc/rollup.index.js',          entry: 'reactAppSrc/rollup.index.js',
       dest: 'public/built/main.min.js',              dest: 'public/built/main.min.js',
@@ -308,98 +414,15 @@ Bº##################º
           exclude: 'node_modules/**',                    exclude: 'node_modules/**',
           presets: [                                     presets: [
             "react",                                       "react",
-              [ "es2015", { "modules": false } ]             [ "es2015", { "modules": false } ]  
-          ],                                             ], 
+              [ "es2015", { "modules": false } ]             [ "es2015", { "modules": false } ]
+          ],                                             ],
           "plugins": [ "external-helpers" ]              "plugins": [ "external-helpers" ]
         })                                             }),
                                                        uglify()
       ],                                               ],
     }                                                }
 
-Bº###################º
-Bº# WEBPACK SUMMARY #º
-Bº###################º
-  • PRE-SETUP: 
-    GLOBAL INSTALL             LOCAL INSTALL
-    $ npm install -g webpack   $ npm init                       
-                               $ npm install --save webpack
-                                 ^^^^^^^^^^
-                                 alt: manually add dependencies to package.json:
-                                      "webpack": "=4.6.0"
-                                      "webpack-cli": "=2.0.15" 
 
-  • PROJECT CONFIG: edit ºwebpack.config.jsº lik :
-    'use strict'
-
-    const debug = process.env.NODE_ENV !== "production"   
-    const path = require('path'),
-       webpack = require('webpack')
-    
-    module.exports = {
-      mode: 'production',
-      context: __dirname,
-      devtool: debug ? 'inline-sourcemap' : null,
-      entry: './reactAppSrc/index.js',  // or './js/scripts.js', ..
-      output: {
-        path: path.resolve(__dirname, '../public/built/'),
-        filename: '[name].min.js',
-      },
-      resolve: {
-        extensions: ['.js', '.jsx'],
-      },
-      module: {
-        rules: [
-          {
-            test: /\.jsx$/,
-            exclude: /node_modules/,
-            loader: 'babel-loader'
-          },
-          {
-            test: /\.js$/,
-            exclude: /node_modules/,
-            loader: 'babel-loader'
-          }
-        ]
-      },
-      plugins: debug ? [] : [
-          new webpack.optimize.DedupePlugin(),
-          new webpack.optimize.OccurenceOrderPlugin(),
-          new webpack.optimize.UglifyJsPlugin({
-              mangle: false, sourcemap: false
-          })
-        ],
-    }
-
-  • Run/package: generate scripts.min.js
-  $º$ export NODE_ENV=development #  production     º
-  $º$ webpack --config webpack/webpack.config.js  \ º
-  $º          --progress --profile --colors         º
-
-
-  • inspectpack de-duplicate plugin:
-  @[https://formidable.com/blog/2018/finding-webpack-duplicates-with-inspectpack-plugin/]
-
-    Summary from Inspectpack doc introductory guide to fix bundle duplicates:
-    
-    1st step) meta-level tips on prioritization and focus:
-      - Look first to identical code sources.
-      - Change dependencies in root package.json: 
-        WARN: Any change in package.json is likely to have unintended consequences.
-      - Critically examine and scrutinize your dependencies: 
-        Do you really need all of the bundled packages?
-    
-    2nd step) potentially force packages and code sources to collapse
-              to single entities, even if the normal rules of 
-              npm/yarn/webpack would prevent it.
-      -ºSet resolve.alias in your webpack configuration:º
-        Direct webpack to use a single package when resolving dependencies
-        that would follow normal (multi-package) resolution.
-      -ºSet the resolutions field with yarn:º Direct yarn (not available 
-        on npm) to resolve packages to a single version, overriding what is 
-        normally considered an allowed resolution and node_modules 
-        installation.
-
-    
 Bº#################º
 Bº# Vite  SUMMARY #º
 Bº#################º
@@ -407,14 +430,14 @@ Bº#################º
   in mind from the scratch, completely removing the need for "old bundling".
 • Vite divides modules into:
   ·ºDependencies:ºwith little/no-change during development, shipped in various
-    module formats (e.g. ESM or CommonJS). 
+    module formats (e.g. ESM or CommonJS).
   ·ºSource code:ºoften non-plain standard (JSX/Vue/Svelte components) that needs
     transforming, and edited very often.
 
   • Depends onºesbuildºfor fast packaging:
   @[https://www.infoq.com/news/2020/06/esbuild-faster-go-js-bundler/]
     •ºwritten in go and multi-coreº
-    • seeks to bring order-of-magnitude speed improvements in 
+    • seeks to bring order-of-magnitude speed improvements in
       JS bundling+minification. (10x-100x)
     Bº0.37 secs vs 63 secs pf webpack 5!!!!º
       Major features:
@@ -427,7 +450,7 @@ Bº#################º
 @[https://www.infoq.com/news/2020/10/webpack-5/]
 • Webpack 5.0:
   rethinks some core architectural decisions focusing on:
-  ✓ Improved performance (persistent and long-term) caching 
+  ✓ Improved performance (persistent and long-term) caching
   ✓ Improved algorithm defaults
   ✓ Improved bundle sizes (better Tree Shaking and Code generation)
   ✓ Improved compatibility with web platforms
@@ -446,7 +469,7 @@ Bº#######################
 Bº# Waiting N secs.     #
 Bº#######################
 
- await new Promise(callbackFun =˃ setTimeout(callbackFun, 20000)); 
+ await new Promise(callbackFun =˃ setTimeout(callbackFun, 20000));
 
 
 Bº#######################
@@ -461,7 +484,7 @@ Bº#######################
   }
 
   async function start() {
-     for (idx=0; idx˂3; idx++) {  
+     for (idx=0; idx˂3; idx++) {
         await setPromiseTimeout()     ← call sequentially async funct. inside loop
         console.log(idx)                 very-difficult/impossible with Callbacks
      }
@@ -470,53 +493,53 @@ Bº#######################
 
 
   RºWARN!!!º: Promise can not throw since that would force
-              client code calling the promise to use both 
-              try-catch and ".catch(...). 
+              client code calling the promise to use both
+              try-catch and ".catch(...).
 <hr/>
 <span title>async/await explained</span>
 @[https://2ality.com/2016/10/asynchronous-iteration.html]
   by Domenic Denicola and Kevin Smith.
 
-• async/await serve for "Asynchronous Iteration" 
+• async/await serve for "Asynchronous Iteration"
 
 • ECMAScript 6                     ECMAScript 2018
  ✓ support for sync                ✓ support for async
    iteration over data               iteration over incomming data
    (in RAM memory)                   (from remote HTTP/AJAX/... response)
 
-  const iterable                   const asyncIterable 
+  const iterable                   const asyncIterable
     = ['1', '2'];                    = createAsyncIterable(['1', '2']);
 
   const iterator =                 const asyncIterator =
     iterable[Symbol.iterator]();      asyncIterable[Symbol.asyncIterator]();
 
   iterator.next()                  asyncIterator.next()
-  └──────┬──────┘                  .then(iterResult1 =˃ { 
+  └──────┬──────┘                  .then(iterResult1 =˃ {
   return {value:..., done:...}        /* ↖ { value: '1', ... } */
   ^{ value: '1', done: false }         return asyncIterator.next();
                                    })
 
 
   iterator.next()                  asyncIterator.next()
-  └──────┬──────┘                  .then(iterResult1 =˃ { 
+  └──────┬──────┘                  .then(iterResult1 =˃ {
   ^{ value: '2', done: false }        /* ↖ { value: '2', ... } */
                                        return asyncIterator.next();
                                    })
 
   iterator.next()                  asyncIterator.next()
-  └──────┬──────┘                  .then(iterResult1 =˃ { 
+  └──────┬──────┘                  .then(iterResult1 =˃ {
   { value: undefined,ºdone: trueº}    /* ↖ { ...,ºdone: trueº } */
                                        return asyncIterator.next();
   ^ next() doesn't work async      })
                                    └─────────────┬──────────────────┘
                                    ┌─────────────┴──────────────────┐
-                                    Within async functions syntax 
+                                    Within async functions syntax
                                     for managing Promise results
                                     can be simplified as:
                                     async function f() {
                                       const asyncIterable
                                         = createAsyncIterable(['1', '2']);
-                                      const asyncIterator = 
+                                      const asyncIterator =
                                         asyncIterable[Symbol.asyncIterator]();
                                       console.log(await asyncIterator.next());
                                       // { value: '1', done: false }
@@ -530,7 +553,7 @@ Bº#################################º
 Bº# ECMAScript 2018 for-await-of  #º
 Bº#################################º
 • Syntax converts each iterated value via
-  Promise.resolve() to a Promise, which it then awaits. 
+  Promise.resolve() to a Promise, which it then awaits.
 • Can be used with sync/async iterables. e.g:
 
   async function f() {
@@ -540,11 +563,11 @@ Bº#################################º
     }
   }
 
-• for-await-of and rejections  
+• for-await-of and rejections
 
 Similarly to how await works in async functions, the loop throws an exception if next() returns a rejection:
 
- MOCKED asyncIterator                  Mocked code capturing 
+ MOCKED asyncIterator                  Mocked code capturing
  returning an exception                Promise error
  ==============================        ======================
 function createIterableMock() {      Qº(ºasync function () { // (A)
@@ -556,35 +579,35 @@ function createIterableMock() {      Qº(ºasync function () { // (A)
       return Promise.reject( ··········→  º} catch (e) {º
         new Error('Problem!'))         console.error(e);// ← Error: Problem!
     },// ^                                º}º
- º}º  // async code can not throw    }Qº)º() 
+ º}º  // async code can not throw    }Qº)º()
 }     // exceptions. Promise.reject   Qº^º: wrap code: async doesn't work
-      // used as replacement.               at script|module top level 
-          
+      // used as replacement.               at script|module top level
+
 Bº####################º
 Bº# Async generators #º
 Bº####################º
   async function*                        // ← '*' turns fun. into (a)sync generator
-  createAsyncIterable(syncIterable) {    // ← Converts 
+  createAsyncIterable(syncIterable) {    // ← Converts
     for (const elem of syncIterable) {   //   ←  sync iterable to
-        yield elem;                      // ←   async   "     . next(...) will 
+        yield elem;                      // ←   async   "     . next(...) will
     }                                           return Promise for {value:,done:}
   }
   Calling the generator does NOT return a value but a generator object
-  that can be invoqued with .next(...). Then .next(...) returns 
+  that can be invoqued with .next(...). Then .next(...) returns
   {value:...,done:}
   In  Each invocation genObj.next() returns a Promise for
   an object {value,done} that wraps a yielded value.
 
   In the async version JS automatically will queue invocations to next()
-  (think of next(...) are async request to a remote serve). JS will 
+  (think of next(...) are async request to a remote serve). JS will
   call the generator once it becomes ready. There is no need to wait
-  for the Promise before invoquing next(..) again (in the same way that 
+  for the Promise before invoquing next(..) again (in the same way that
   there is no need to wait for a server TCP-ACK to send another TCP-connection).
   In many/most occasion code needs to wait for the Promise and the Promise
   resolution, and then the for-wait-of takes care of it transparently.
    Still Promise.all() can be use to "send" next in parallel, then wait
   for "all" completion like:
-  const [{value:v1},{value:v2}] = await 
+  const [{value:v1},{value:v2}] = await
     Promise.all( [ asyncGenObj.next(), asyncGenObj.next(),..] );
 
 (See original source @[https://2ality.com/2016/10/asynchronous-iteration.html]
@@ -594,25 +617,25 @@ Bº####################º
 Bºcaolan/asyncº                                                       [qa][TODO]
 @[https://github.com/caolan/async]
 @[http://caolan.github.io/async/v3/]
-• Async provides around 70 functions that include the usual 
-  'functional' suspects (map, reduce, filter, each…) as well as some 
-  common patterns for asynchronous control flow (parallel, series, 
-  waterfall…). 
+• Async provides around 70 functions that include the usual
+  'functional' suspects (map, reduce, filter, each…) as well as some
+  common patterns for asynchronous control flow (parallel, series,
+  waterfall…).
 • It works on browsers and (NodeJS) server code.
 </pre>
 
 <span title>Concurrency</span>
-<pre zoom labels="js,pwa,comparative,performance,qa,low_code,devops,TODO" 
+<pre zoom labels="js,pwa,comparative,performance,qa,low_code,devops,TODO"
   id="service_workers_summary">
 <span title>Service Workers</span> <!-- @ma -->
 • Not to be confuse with web workers:                 [comparative]
   ·ºService-Workersº handle net.requests/cache/push notifications,...
-  ·ºWeb-Workerº: Mimics multithreading, allowing intensive scripts 
+  ·ºWeb-Workerº: Mimics multithreading, allowing intensive scripts
     to be run in the background.
 • See also Service Workers in Angular #[angular_service_worker]
 
 • JS module providing web apps reliability and performance on par
-  with natively-installed code. 
+  with natively-installed code.
 • Service workers function as a network proxy managing cache.
 • intercept outgoing HTTP requests (data, HTML, even index.html),
   and choose how to respond to them:
@@ -636,7 +659,7 @@ Bºcaolan/asyncº                                                       [qa][TOD
     - Push Tag: (replace old notifications).
     - Push Quota (experiment with browser limits)
     - Push control-Clients: focus re-open tab
-    - Push Subscription: 
+    - Push Subscription:
     - Immediate Claim: take control of page without waiting for avigation event
     - Cache from ZIP recipe: cache contents from zipfile
     - Message Relay, Fetch Remote Resources, Live Flowchart,
@@ -644,20 +667,20 @@ Bºcaolan/asyncº                                                       [qa][TOD
       Virtual Server, API Analytics, Load balancer, Dependency Injection,
       Request Deferrer, Cache then Network, Render Store
   • @[https://www.infoq.com/news/2019/08/postMessage-performance-study/]
-      Surma, Web Advocate at Google, recently published a study on the 
-    performance of postMessage, the method used by web workers to 
-    communicate. Surma concludes that while postMessage comes with some 
-    overhead, provided the payload is below a given budget, moving non-UI 
-    tasks off the main thread may result in increased overall 
+      Surma, Web Advocate at Google, recently published a study on the
+    performance of postMessage, the method used by web workers to
+    communicate. Surma concludes that while postMessage comes with some
+    overhead, provided the payload is below a given budget, moving non-UI
+    tasks off the main thread may result in increased overall
     user-perceived performance.
 
 BºSUMMARYº                                                                [TODO]
   • probably the most powerful API added to the web platform recently.
-  • allows to do anything with each request/response received by a browser. 
+  • allows to do anything with each request/response received by a browser.
     (cancel requests, re-route, modify/cache responses, ...)
 BºWorkbox libraryº                                                    [low_code]
 @[https://developers.google.com/web/tools/workbox/]
-  • rapidly integrate common Service Worker functionality like 
+  • rapidly integrate common Service Worker functionality like
     precaching, runtime caching, request routing, background sync, and more.
   • Fully async, compatible with XHR and localStorage.
 
@@ -666,7 +689,7 @@ BºWorkbox libraryº                                                    [low_cod
   • @[https://developers.google.com/web/fundamentals/primers/service-workers/]TODO]
 </pre>
 
-<pre zoom labels="js,pwa,comparative,concurrency,performance,qa,TODO" 
+<pre zoom labels="js,pwa,comparative,concurrency,performance,qa,TODO"
      id="web_workers_summary">
 <span title>Web Workers</span>
 • See also #[service_workers]
@@ -735,17 +758,17 @@ OºNodeJS Dump async function chain ("async stack-trace")º         [async]
   • Alternative 1: Node.js 12+. (2019-08-04+)
     Async Stack Traces come out of the box  using flag '--async-stack-traces'
   @[https://medium.com/@nodejs/introducing-node-js-12-76c41a1b3f3f]
-  
+
 
   • Alternative 2:
     const fn2 = async () =˃ {
       try {
           return awaitRºfnThrowingErrorº()
-      } catch(err) {                         // ← STEP 1: try-catch all errors. 
+      } catch(err) {                         // ← STEP 1: try-catch all errors.
                                                           (DON'T return promise directly)
-          err.stack +=                       // ← STEP 2: Add a locally generated stack trace 
-             º(new Error()).stackº                        to the one already existing on 
-          throw err                                       the error object                                     
+          err.stack +=                       // ← STEP 2: Add a locally generated stack trace
+             º(new Error()).stackº                        to the one already existing on
+          throw err                                       the error object
       }
       ...
       return result
@@ -764,28 +787,28 @@ OºNodeJS Dump async function chain ("async stack-trace")º         [async]
 BºDumping "async" stack-trace fn0 → fn1 (async call) → fn2:    [async]
   constºfn1º= async () =˃ {       ← STACK "LEVEL 1"
       try {
-          return awaitºfn2º()     ← RºWARNº:if something more complex than just 
+          return awaitºfn2º()     ← RºWARNº:if something more complex than just
                                     retuning is executed then err can be different
                                     to the fn1 async err and the async stack trace
                                     will be "false"
       } catch(err) {
-          err.stack += 
-            (new Error())º.stackº ← Add locally generated stack trace to existing one 
+          err.stack +=
+            (new Error())º.stackº ← Add locally generated stack trace to existing one
          ºthrow errº
       }
   }
-  
+
   constºfn0º= async () =˃ {       ← STACK "LEVEL 0"
       try {
           return await fn1()
       } catch(err) {
-          err.stack += 
+          err.stack +=
             (new Error())º.stackº ← Add locally generated stack trace to existing one
           throw err
       }
   };
-  
-  fn0().catch(console.error)      ←ºDump stack here !!!º     
+
+  fn0().catch(console.error)      ←ºDump stack here !!!º
 
 • TODO:
   https://stackoverflow.com/questions/7697038/more-than-10-lines-in-a-node-js-stack-error
@@ -795,15 +818,15 @@ Bº# advanced tricks #º
 Bº###################º
 • REF:@[https://raygun.io/blog/2015/06/useful-javascript-debugging-tips-you-didnt-know/]
   console.table(animals);      ← Display object as tables in the console: (Chrome only?)
-  
-  this.funcZ = function(){     
+
+  this.funcZ = function(){
     console.trace('trace car') ← Dump stack trace for function funcZ
   }
-  
+
   debug(car.functY)            ← Quick find a function to debug:  (Chrome only?)
                                  (not the same that console.debug)
-  
-  monitor(funct1)              ← Every time the function is called values pased in will be logged 
+
+  monitor(funct1)              ← Every time the function is called values pased in will be logged
 
   debug(car.functY)            ← Quick find a function to debug.
                                  (not to be confused with console.debug)
@@ -819,7 +842,7 @@ Bº###################º
 
 • SOURCE MAPPING
   REF: @[http://blog.getsentry.com/2015/10/29/debuggable-javascript-with-source-maps.html]
-  • source maps : JS's version of debug symbols: 
+  • source maps : JS's version of debug symbols:
   • Include with:
     //# sourceMappingURL=/path/to/app.min.js.map
   • Generated by modern JS transpilers
@@ -848,13 +871,13 @@ Bº###################º
 <span title>Prog.WApps Summary</span>
 @[https://developer.mozilla.org/en-US/Apps]
 • apps built using standard Web technologies, working in any modern Web browser.
-• Compared to standard web apps/sites: 
+• Compared to standard web apps/sites:
   · Apps are installed by a user, they are self-contained and don't always
     require the chrome of a browser window.
   · can be built to run offline.
 • Example of Progressive web apps include Gmail, Twitter or Etherpad.
 • Integrate within desktop and mobiles OSes, by allowing to access them through
-  "start" or desktop icons and run in background pooling/pushing data from/to 
+  "start" or desktop icons and run in background pooling/pushing data from/to
   remote servers while the browser is "closed".
 
 Bº######################º
@@ -863,9 +886,9 @@ Bº######################º
   SUMMARY FROM
 @[https://medium.com/james-johnson/a-simple-progressive-web-app-tutorial-f9708e5f2605]
   by James Johnson
-• PWA layout: 
+• PWA layout:
   Hello-PWA/
-  ├─ index.html    ← ✓ Hard code initial content to avoid empty-page when offline 
+  ├─ index.html    ← ✓ Hard code initial content to avoid empty-page when offline
   │                    or using old / non-PWA compliant browsers.
   │                ← ✓ PWA UI must display properly on mobile/desktop:
   │                    Add viewport meta tag to index.html like:
@@ -874,17 +897,17 @@ Bº######################º
   │
   ├─ sw.js         ← ✓ Service Worker running in background in charge of
   │                    non-user-interactive tasks (cache dynamic data, ...)
-  │                  
-  ├─ manifest.json ← ✓ json file specifying look and behavior on 
+  │
+  ├─ manifest.json ← ✓ json file specifying look and behavior on
   │                    different devices. (orientation, theme color,...)
-  ├─ css/        
+  ├─ css/
   │  └─ style.css
   │
-  ├─ js/    
+  ├─ js/
   │  └─ main.js  ← ✓ Register service worker here.
   │
   │  favicon.ico   ← 16x16 px
-  └─ images/ 
+  └─ images/
      └─ ...      ← ✓ At least image resolution of 128x128px, 144x144 px,
                      152x152 px, 192x192 px, 256x256 px and 512x512px needed
                      for compliance with Windows, Mac, iPhone and Android.
@@ -897,51 +920,51 @@ Bº######################º
   │   ˂title˃Hello World˂/title˃
   │   ˂link rel="stylesheet" href="css/style.css" ˃
   │   ˂link rel="manifest"   href="/manifest.json"˃
-  │   ˂meta name="viewport" 
+  │   ˂meta name="viewport"
   │      content=
   │        "width=device-width, initial-scale=1.0"˃
   │
-  │ ˂!-- app icon related stuff {{{ ˃  
-  │ ˂link rel="icon" href="favicon.ico" type="image/x-icon" /˃  
-  │ ˂meta name="theme-color" content="white"/˃  
-  │ ˂link rel="apple-touch-icon"                       href="images/app-icon-152.png"˃   
-  │ ˂meta name="msapplication-TileImage"            content="images/app-icon-144.png"˃  
+  │ ˂!-- app icon related stuff {{{ ˃
+  │ ˂link rel="icon" href="favicon.ico" type="image/x-icon" /˃
+  │ ˂meta name="theme-color" content="white"/˃
+  │ ˂link rel="apple-touch-icon"                       href="images/app-icon-152.png"˃
+  │ ˂meta name="msapplication-TileImage"            content="images/app-icon-144.png"˃
   │ ˂!-- }}} ˃
   │
-  │ ˂!-- apple mobile custom config {{{ ˃  
-  │ ˂meta name="apple-mobile-web-app-capable"          content="yes"˃  
-  │ ˂meta name="apple-mobile-web-app-status-bar-style" content="black"˃ 
-  │ ˂meta name="apple-mobile-web-app-title"            content="Hello World"˃ 
+  │ ˂!-- apple mobile custom config {{{ ˃
+  │ ˂meta name="apple-mobile-web-app-capable"          content="yes"˃
+  │ ˂meta name="apple-mobile-web-app-status-bar-style" content="black"˃
+  │ ˂meta name="apple-mobile-web-app-title"            content="Hello World"˃
   │ ˂!-- }}} ˃
   │
   │ ˂body class="fullscreen"˃
   │   ˂div class="container"˃
   │     ˂h1 class="title"˃Hello World!˂/h1˃
   │   ˂/div˃
-  │ ˂script src="js/main.js"˃˂/script˃       ← Load at the bottom of page.  
+  │ ˂script src="js/main.js"˃˂/script˃       ← Load at the bottom of page.
   │ ˂/body˃                                    Really needed?
   │ ˂/html˃
   └────────────────────────────────────────────────
 • ┌─ e.g. Hellow-PWA/css/style.css:────────────────
   │ body { font-family: sans-serif; }
-  │ 
+  │
   │ html,
   │ .fullscreen {
   │    display: flex;
-  │    height: 100%;   ┐ Make content area fill 
+  │    height: 100%;   ┐ Make content area fill
   │    width: 100%;    ├ entire browser window
   │    margin: 0;      │
   │    padding: 0;     ┘
   │ }
-  │ 
+  │
   │ .container {
   │   margin: auto;       ┐ Center the content
   │   text-align: center; ┘ in browser window
   │ }
-  │ 
+  │
   │ .title { font-size: 3rem; }
   └────────────────────────────────────────────────
-  • TIP: Periodically audit tests over the app using some tool 
+  • TIP: Periodically audit tests over the app using some tool
          like (OOSS) Google’s Lighthouse.
 
 
@@ -953,8 +976,8 @@ Bº######################º
   │   '/css/style.css',
   │   '/js/main.js'
   │ ];
-  │ 
-  │ self.addEventListener(              
+  │
+  │ self.addEventListener(
   │   'install', function(e) {               ← PWA standard life-cycle callback
   │     e.waitUntil(                           called automatically when installing
   │       caches                               for the first time.
@@ -965,16 +988,16 @@ Bº######################º
   │       })
   │     );
   │ });
-  │ 
+  │
   │ self.addEventListener(
-  │   'fetch', function(e) {                  ← bind "fetch" event to serve 
+  │   'fetch', function(e) {                  ← bind "fetch" event to serve
   │     e.respondWith(                          cached content when possible
-  │       caches                                
-  │         .match(e.request)                   
-  │         .then(function(response) {          
+  │       caches
+  │         .match(e.request)
+  │         .then(function(response) {
   │           return response                 ← Return cached content if available
   │               || fetch(e.request);        ← try online fetch.
-  │         })                            WARN: demo code will fail if just 
+  │         })                            WARN: demo code will fail if just
   │     );                                      one of the file fetches fails.
   │ });                                         retry strategies needed.
   └────────────────────────────────────────────
@@ -1000,9 +1023,9 @@ Bº######################º
   │   "short_name": "Hello",                 ← Used in app icon
   │   "lang": "en-US",
   │   "start_url": "/index.html",
-  │   "display": "standalone",               ← Treat as standalone without 
+  │   "display": "standalone",               ← Treat as standalone without
   │   "background_color": "white",             browser chrome
-  │   "theme_color": "white"                 ← Must match 
+  │   "theme_color": "white"                 ← Must match
   │ }                                          ˂meta name="theme-color" content="white"/˃
   └─────────────────────────────────────────────
 </pre>
@@ -1032,11 +1055,11 @@ Bº######################º
   $ mocha --watch              ← Run tests once, the on JS file change
   $ mocha --reporter $reporter ← Run tests with specific reporter
 • Test how-to summary:
-  · mkdir test 
+  · mkdir test
   · vim test/test01.js
     iconst request = require('supertest');
     const app = require('../server/app.js');
-    
+
     describe('GET /users', function() {
       it('return list of users', function() {
         return request(app)
@@ -1065,24 +1088,24 @@ Bº######################º
   URL, events ....
 • Oldest and most widely adopted End-to-End automation framework.
 • Can orchestrate tests in any major browser.
-• Example test: 
+• Example test:
   const {Builder, By, Key, until} = require('selenium-webdriver');       [code_snippet]
-  
+
   (async function example() {
       let driver = await new
           Builder().forBrowser('firefox').build();
           try {
       await driver.get('https://www.google.com'); // ← Navigate to Url
-  
+
       await driver
-            .findElement(By.name('q')             // *1 
+            .findElement(By.name('q')             // *1
           ).sendKeys('cheese', Key.ENTER);   // ← Enter "cheese", then "Enter"
-  
+
       let firstResult = await driver.wait(
                 until.elementLocated(
                    By.css('h3')),                 // *1
                 10000);
-  
+
       console.log(await firstResult.getAttribute('textContent'));
           } finally{
       driver.quit();
@@ -1094,7 +1117,7 @@ Bº######################º
      ✓ name                ✓ class name
      ✓ link text           ✓ css
      ✓ partial link text   ✓ xpath
-    
+
 • Selenium IDE: Firefox/Chrome extension to automatically record/save/replay tests
   @[https://examples.javacodegeeks.com/enterprise-java/selenium/selenium-ide-commands-example/]
   @[https://www.youtube.com/watch?v=ZG3VFDMaAlk]
@@ -1105,15 +1128,15 @@ Bº######################º
       Cypress waits automatically for commands and assertions.
     · Tests can make use of Spies, Stubs, and Clocks to verify
       and control the behavior of responses, functions and timers.
-    · Automatic scrolling ensures that elements are visible 
+    · Automatic scrolling ensures that elements are visible
       before performing (testing) any action.
 
   ✓ºPlaywrightº: JS centric
     · Focused on web-scraping (headless browser)
-    · Ex: 
+    · Ex:
       const playwright = require('playwright');                           [code_snippet]
       async function main() {
-         const browser = await 
+         const browser = await
             playwright.chromium.launch({                   ← Use choromium
              headless: false                               ← Disable headless mode (enable view)
          });
@@ -1131,9 +1154,9 @@ Bº######################º
          console.log('scraped_data_list:', scraped_data_list);
          await page.waitForTimeout(5000);                  ← wait for 5 seconds
          await browser.close();
-     } 
-    
-    main();   
+     }
+
+    main();
 </pre>
 <pre zoom labels="testing,qa,graphql,testing,TODO">
 <span title>Mock Service Worker MSW (REST/GraphQL Testing)</span>
@@ -1162,12 +1185,12 @@ Bº######################º
 
   E.g. ussage extracted from
   https://medium.com/james-johnson/a-simple-progressive-web-app-tutorial-f9708e5f2605
-  """... Make sure "Progressive Web App" option is checked. You can 
-  uncheck the others for now. Then click on the “run tests” button. 
-  After a minute or two Lighthouse should give you a score and list of 
-  audits that the app passed or failed. The app should score around 45 
-  at this point. If everything was coded properly, you’ll notice that 
-  most of the tests it passes are related to the requirements we 
+  """... Make sure "Progressive Web App" option is checked. You can
+  uncheck the others for now. Then click on the “run tests” button.
+  After a minute or two Lighthouse should give you a score and list of
+  audits that the app passed or failed. The app should score around 45
+  at this point. If everything was coded properly, you’ll notice that
+  most of the tests it passes are related to the requirements we
   outlined at the beginning..."
 </pre>
 
@@ -1224,7 +1247,7 @@ for React, Angular, Vue, ...
 <span title>Mozilla Perf.Tool</span>
 • REF: @[https://developer.mozilla.org/en-US/docs/Tools/Performance]
 • Performance tool gives insights into a site's general responsiveness,
-  JS and layout performance. 
+  JS and layout performance.
 • It allows to create a recording(profile), of a site over a period of time.
   The tool then shows you an overview of the things the browser was doing
   to render the page/s and a graph of the frame rate over the profile.
@@ -1243,31 +1266,31 @@ for React, Angular, Vue, ...
 • BºSyntax summaryº
 @[https://learnxinyminutes.com/docs/typescript/]
   let isDone: boolean = false   ← 3 basic types
-  let lines : number  = 42 
-  let name  : string = "Anders" 
+  let lines : number  = 42
+  let name  : string = "Anders"
   let   var1 = false            ← Type inference if type ommited
-  
+
   let name  : any = jsObject    ← any: Compatibility with non-typed JS
   const CON1 = false            ← Make constant/immutable (prefered) [qa][billion_dolar_mistake]
-  
-  
+
+
   let   typedArray01: number[]      = [1, 2, 3]
   let genericArray02: Array˂number˃ = [1, 2, 3]
-  
+
   enum Color { Red, Green, Blue }
   let c: Color = Color.Green
-  
+
   BºFunctionsº
     let f1 = function (i: number): number {
       return i * i;                └─┬──┘
     }                              Return type (or void)
                                    (It can also be inferred)
-  
+
     let f2 = (i: number): number =˃  ← Arrow syntax (used also in anonoymous
        { return i * i; }               lamdas)
-  
+
     let f5 = (i: number) =˃ i * i;   ← braceless means void/none return
-  
+
   BºInterfacesº
     interface Person {                 ← Interface declaration
       name: string;
@@ -1276,9 +1299,9 @@ for React, Angular, Vue, ...
     }
     let p: Person = {                  ← Interface implementation
      name: "Bobby",
-     move: () =˃ { } 
+     move: () =˃ { }
     };
-    
+
     interface SearchFn {               ← Interface describing a function type
       (source: string,                   Only param's types are important, names are not
        subString: string): boolean;
@@ -1287,7 +1310,7 @@ for React, Angular, Vue, ...
         (src: string, sub: string) {
           return src.search(sub) != -1
         }
-  
+
   BºClassesº
   class Point {                      ← class definition
     x: number;                       ← Properties public by default
@@ -1295,59 +1318,59 @@ for React, Angular, Vue, ...
     readonly name: string;           ← read-only, only allowed to be                [qa]
                                        writen in constructor.(Typescript 3.1+)
     constructor(
-      _x: number, 
+      _x: number,
       private y: number = 0          ← syntax shortcut 'y' defined as class property as 'x'
       _name : string ) {
-      this.x = _x;                     
-      this.name ) 
+      this.x = _x;
+      this.name )
     }
-    
+
     fn01(): number {  ... }
-  
+
   }
-  
-  class PointPerson 
+
+  class PointPerson
     implements IPerson { ... }       ← Class implementing interface
-  
+
   class Child
     extends ParentClass { ... }      ← Class inheriting from parent class .
                                        RºWARN:º Discouraged. Better use composition
-  
+
   BºModulesº
     module Geometry {                  ← Modules, "." can be used as separator for sub modules
       export class Square { ... }
     }
     import G = Geometry;                 ← Local alias for referencing a module
     let s1 = new Geometry.Square(5);       ← Or just new G.Square(5);
-  
+
   BºGenericsº
     class Tuple˂T1, T2˃ {            | interface Pair˂T˃ { | function ˂T˃(p: Pair˂T˃) {
-      constructor(                   |   item1: T;         |   return 
+      constructor(                   |   item1: T;         |   return
           public item1: T1,          |   item2: T;         |     new
           public item2: T2) { ... }  | }                   |      Tuple(p.item1, p.item2);
       ...                            |                     | };
     }                                |                     |
-  
+
   BºTemplate Stringsº
   let greeting  = `Hi ${name}, how are you?`
   let multiline = `This is an example
   of a multiline string`;
-  
+
   BºInmutable Collectionsº
     const         number_array: Array˂number˃ = [0, 1, 2, 3, 4];    ←          number_array can not be reasigned to other
                                                                       array (const), but current array can be modified
     const inmutable_number_array: ReadonlyArray˂number˃ = numbers;  ← inmutable_number_array can not be reasigned to other
                                                                       array (const), and no modifications allowed either.
-  
+
   BºTagged Union Typesº (model state-machine states easely)        [qa]
     DECLARATION                                USSAGE
     type State =                               declare const state: State;
       | { type: "loading" }                           if (state.type === "success") {
       | { type: "success", value: number }      ... state.value  ...
-      | { type: "error", message: string };    } else if (state.type === "error") {  
+      | { type: "error", message: string };    } else if (state.type === "error") {
                                                 ... state.message ...
                                                }
-  
+
   BºIterators and Generatorsº
     let arrayOfAnyType = [...];                ← Array or list
     for (const val of arrayOfAnyType) { .... } ← Iterate overºvalues in listº
@@ -1361,18 +1384,18 @@ for React, Angular, Vue, ...
 • See also:
 @[https://www.infoq.com/articles/functional-UI-introduction-no-framework/]
 @[https://www.infoq.com/news/2021/10/elm-lessons-learnt-production/]
-  The Elm architecture is the core of Functional UI techniques that 
-have crossed over to non-functional languages. The Elm architecture 
-has been transposed to Rust/Wasm (e.g., yew), JavaScript (e.g., 1KB 
-ferp, AppRun), TypeScript (e.g., elm-ts) and has inspired many other 
-languages and libraries (e.g., Redux, SwitfUI, Dark). The Rakuten 
+  The Elm architecture is the core of Functional UI techniques that
+have crossed over to non-functional languages. The Elm architecture
+has been transposed to Rust/Wasm (e.g., yew), JavaScript (e.g., 1KB
+ferp, AppRun), TypeScript (e.g., elm-ts) and has inspired many other
+languages and libraries (e.g., Redux, SwitfUI, Dark). The Rakuten
 article provides the following illustration of the Elm architecture.
 @[https://elm-lang.org/news/small-assets-without-the-headache¯
-If you use a package with hundreds of functions, like elm/html, it 
-automatically gets trimmed down to the 10 you actually use. The 
-compiler can just figure it out. This works across the entire 
-ecosystem. Using one function from a massive package with tons of 
-dependencies? No problem. You just get that one function in the 
+If you use a package with hundreds of functions, like elm/html, it
+automatically gets trimmed down to the 10 you actually use. The
+compiler can just figure it out. This works across the entire
+ecosystem. Using one function from a massive package with tons of
+dependencies? No problem. You just get that one function in the
 generated code.
 • Why not use Elm:
 @[https://lukeplant.me.uk/blog/posts/why-im-leaving-elm/#technical-limitations]
@@ -1421,7 +1444,7 @@ generated code.
 <span title>Reason</span>
 @[https://reasonml.github.io/]
 • By Facebook
-• " Reason lets you write simple, fast and quality type safe code 
+• " Reason lets you write simple, fast and quality type safe code
     while leveraging both the JavaScript and OCaml ecosystems."
 • See (excellent) comparative Elm vs Reason
 @[https://stackoverflow.com/questions/51015850/reasonml-vs-elm]
@@ -1486,7 +1509,7 @@ Gºthey are much safer than js code.º
 <span title>Web Authentication API</span>
 • This API enables users toºavoid text-based passwords for websitesº
   and insteadºuses a local device with a biometric check or private PINº
-  to generate a secure cryptographic identifier. 
+  to generate a secure cryptographic identifier.
 • Firefox adopted in in 2018
 @[https://www.infoq.com/news/2018/05/firefox-web-authentication-api]
 </pre>
@@ -1495,17 +1518,17 @@ Gºthey are much safer than js code.º
 <span title>W3C DIDs</span>
 • SPEC: @[https://www.w3.org/TR/did-core/]
 • DID stands for Decentralized IDentifier representing any type of subject
-  (person, organization, thing, data model, abstract entity, etc.) 
+  (person, organization, thing, data model, abstract entity, etc.)
   decoupled from any centralized registries (Active Directory, ..),
-  identity providers (Facebook, Google, ...) or certificate authorities.  Eg: 
+  identity providers (Facebook, Google, ...) or certificate authorities.  Eg:
 
-  did:ether:21tDAKCERh95uGgKbJNHYp;foo:bar=high 
-                                       ───┬────   
+  did:ether:21tDAKCERh95uGgKbJNHYp;foo:bar=high
+                                       ───┬────
   ┌───────────────────────────────────────┘
   generic DID parameter names.
   · hl             resource hash of DID document (integrity protection)
-  · service (id)   Identifies a service from the DID document 
-  · version-id     Identifies a specific version of DID document 
+  · service (id)   Identifies a service from the DID document
+  · version-id     Identifies a specific version of DID document
                    (sequential number, UUID, ...).
                    (optional in implementations)
   · version-time   Identifies a certain version timestamp of DID document
@@ -1537,7 +1560,7 @@ BºNOTE:º A single DID document could be related to N DIDs in 1-to-N
   relationship, allowing the same "identity" be represented by different
   implementations/methods (e.g., one DID on top Ethereum , and another
   one on top of github+gpg).
-• DID controller refers to the subject that can prove "ownership" or 
+• DID controller refers to the subject that can prove "ownership" or
   "control" of the DID (in practice through private/pub crypto signature)
   whithout the intervention of permissions of third parties.
   More formaly, it represents the entity/ies authorized to make changes
@@ -1545,11 +1568,11 @@ BºNOTE:º A single DID document could be related to N DIDs in 1-to-N
   · Authorization and Delegation of DID Document's controller is contemplated.
 • Designed to provide Global unique identifier world-wide.
 • DID registries are in charge of storing or recording the DID documents.
-  Such registries can be and many times are virtual ones: 
+  Such registries can be and many times are virtual ones:
   - from the DID the DID Document can be generated using an algorithm.
     E.g.: a DID based on a public key contains all the information needed
           to recreate the DID Document.
-          On the other side, a DID can require some sort of existing 
+          On the other side, a DID can require some sort of existing
           database to recreate the DID Document. In such case this database
           will be the DID registry.
 • Technology neutral but most implementations works on top of public/
@@ -1614,10 +1637,10 @@ BºNOTE:º A single DID document could be related to N DIDs in 1-to-N
   Pods can be self-hosted or provided by Pod's service provider.
 • Compares to W3C DID/VC. WebID is the equivalent to W3C DID.    [comparative]
   As with DIDs, different WebID's can be owned by the same person,
-  e.g., one WebID issued by governments, another self-issued WebID for 
+  e.g., one WebID issued by governments, another self-issued WebID for
   personal uses, ...
 • "Vocabularies" help to interpret Pod's data to any independent
-  service/application/company that has been granted access.  
+  service/application/company that has been granted access.
 • Helps to buildºapplication decoupled from dataº, avoiding to   [low-code]
   maintain a separate back-end.
 • Data is requested directly to users (vs provider's custom API).
@@ -1643,13 +1666,13 @@ BºNOTE:º A single DID document could be related to N DIDs in 1-to-N
   html_tag           p                match all ˂p˃ elements
   sel1,sel2,...      div, p           match ˂div˃ + ˂p˃ elements
   element element    div p            match ˂p˃ elements inside ˂div˃ elements
-  element˃element    div ˃ p          match ˂p˃ elements with parent ˂div˃ 
+  element˃element    div ˃ p          match ˂p˃ elements with parent ˂div˃
   element+element    div + p          match ˂p˃ elements placed immediately
                                       after ˂div˃ elements
   element1~element2  p ~ ul           match every ˂ul˃ element when preceded by ˂p˃s
   [attribute]        [target]         match elements having a "target" attribute
   [attribute=value]  [title=flower]   match all elements when title is     flower
-  [attribute~=value] [title~=flower]  match all elements when title is not flower 
+  [attribute~=value] [title~=flower]  match all elements when title is not flower
   [attribute*=value] [title*=flower]  match all elements when title val. contains "flower"
   [attribute|=value] [lang|=en]       match all elements when lang  val. starts with en
   [attribute^=value] a[href^="http"]  match ˂a˃ elements when href  val. starts with http
@@ -1666,9 +1689,9 @@ BºNOTE:º A single DID document could be related to N DIDs in 1-to-N
   :last-child        p:last-child     match ˂p˃ element  when ˂p˃ is last child of its parent
   :nth-child(n)      p:nth-child(2)   match ˂p˃ element  when ˂p˃ is 2nd  child of its parent
   :nth-last-child(n)                  match ˂p˃ element  when ˂p˃ is "-2" child of its parent
-                     p:nth-last-child(2)  
+                     p:nth-last-child(2)
   :nth-last-of-type(n)                match ˂p˃ element  when ˂p˃ is last-but-2 of ˂p˃'s parent
-                     p:nth-last-of-type(2) 
+                     p:nth-last-of-type(2)
   :nth-of-type(n)    p:nth-of-type(2) match ˂p˃ element  when ˂p˃ is nth of ˂p˃'s parent
  º:only-of-type      p:only-of-type   match ˂p˃ element  when it's the only ˂p˃ of its parentº
  º:only-child        p:only-child     match ˂p˃ element when it's the only child of its parentº
@@ -1697,7 +1720,7 @@ BºNOTE:º A single DID document could be related to N DIDs in 1-to-N
 
 •ºLINKS:º
   ::selection        ::selection     match portion of an element selected by a user
-  :target            #news:target    match current active #news element 
+  :target            #news:target    match current active #news element
                                      (clicked on a URL containing that anchor name)
   :visited           a:visited       match all visited links
   :link              a:link          match all unvisited links
@@ -1709,12 +1732,12 @@ BºNOTE:º A single DID document could be related to N DIDs in 1-to-N
 <hr/>
 <span title>CSS variables</span>
 • CSS variables (also called CSS custom properties) let express dynamic
-  relations among CSS properties. 
-  · Declared by prefixing their names with --. e.g. --background 
+  relations among CSS properties.
+  · Declared by prefixing their names with --. e.g. --background
   · Its value can be reused in other CSS declarations using the var() function.
   ·ºThe variable can be updated either via CSS or JavaScriptº,
    ºautomatically updating all dependent variables reactivelyº
-    and allowing developers to express custom algorithms 
+    and allowing developers to express custom algorithms
    ºcloser to a Turing-complete languageºlike JavaScript.
   · They are scoped to the element(s) they are declared on.
 • CSS becomesºmore maintainable,ºeasier to understand, paremeterize and change.
@@ -1725,27 +1748,27 @@ BºNOTE:º A single DID document could be related to N DIDs in 1-to-N
     --first-color: #16f;
     --second-color: #ff7;
   }
-  
+
   #firstParagraph {
     background-color: var(--first-color);
     color: var(--second-color);
   }
-  
+
   #secondParagraph {
     background-color: var(--second-color);
     color: var(--first-color);
   }
-  
+
   #container {
     --first-color: #290;
   }
-  
+
   #thirdParagraph {
     background-color: var(--first-color);
     color: var(--second-color);
-  } 
-• Extracted from 
-  REF:@[https://www.infoq.com/news/2020/06/css-variables-design-systems/] 
+  }
+• Extracted from
+  REF:@[https://www.infoq.com/news/2020/06/css-variables-design-systems/]
   """ Tolinski concluded with the following advice:
     RºFrameworks require overhead of both kb and onboarding.º
     ... Write only what you need, use variables as the backbone. """
@@ -1759,8 +1782,8 @@ BºNOTE:º A single DID document could be related to N DIDs in 1-to-N
 • box-sizing asºpotential alternative to css calcº:
 @[http://stackoverflow.com/questions/16034397/css-calc-alternative]
 
-  box-sizing     Description 
-  related Prop.      
+  box-sizing     Description
+  related Prop.
   -------------  -----------------------------------------------------
   • content-box  · Default width and height (and min/max) includes
                    only the content.
@@ -1783,38 +1806,38 @@ BºNOTE:º A single DID document could be related to N DIDs in 1-to-N
     · block  layout: lay out boxes (paragraphs,...)
     · inline layout: lay out inline items (text,...).
   · Table layout:
-  · Float layout: cause item to position left|right with 
-                  the rest of the content. 
+  · Float layout: cause item to position left|right with
+                  the rest of the content.
   · Positioned layout: position elements without much interaction
                   with other elements.
   · Multi-column layout: lay out content in columns.
-  · Flexible box layout: lay out complex pages that can be 
+  · Flexible box layout: lay out complex pages that can be
                          resized smoothly.
   · Grid layout: lay out elements relative to a fixed grid.
 
 
 →ºStep 1:ºDefine "display" property
 · @[https://developer.mozilla.org/en-US/docs/Web/CSS/display]
-·   sets 
-·   - outer layout respect siblings (block or inline)                
+·   sets
+·   - outer layout respect siblings (block or inline)
 ·   - inner layout of      children (flow-root,flow,flex,grid,table)
 ·
-·     none: Turns off display of an element 
+·     none: Turns off display of an element
 ·           RºWARNº: use visibility:hidden to replace element with transparent box
-·     contents: don't produce a specific box by themselves. 
+·     contents: don't produce a specific box by themselves.
 ·               Place inner content on parent container.
-·   
+·
 ·   - CSS3 value  syntax  Legacy CSS2
 ·     ------------------  -----------
-·     block  flow-root    
-·     block  flow         
-·     block  flex         
-·     block  grid         
-·     block  table      
+·     block  flow-root
+·     block  flow
+·     block  flex
+·     block  grid
+·     block  table
 ·     inline flow-root    inline-block
-·     inline flow       
-·     inline flex         inline-flex 
-·     inline grid         inline-grid 
+·     inline flow
+·     inline flex         inline-flex
+·     inline grid         inline-grid
 ·     inline table        inline-table
 ·
 └·→ºStep 2:ºDefine float:= left | right | none  | inline-start | inline-end
@@ -1826,7 +1849,7 @@ BºNOTE:º A single DID document could be related to N DIDs in 1-to-N
   └·→ºStep 3:ºDefine clear:= left | right | both | none
       @[https://developer.mozilla.org/en-US/docs/Web/CSS/clear]
         It allows to control vertical placement relative to ºsibling floating elementsº.
-        It defines whether current element must be moved below (cleared) 
+        It defines whether current element must be moved below (cleared)
         sibling floating elements to its right/left.
         (the element itself can be or not floating).
 </pre>
@@ -1838,10 +1861,10 @@ to be used on mobiles and desktops (and TVs, ...)
 •º#################################º
  º# ASPECT 1) USER INPUT HARDWARE #º
  º#################################º
-  · This is the main difference between mobiles and desktops. 
+  · This is the main difference between mobiles and desktops.
   · Desktop users can profit from a mouse with accurate movement
     over the screen, while mobile users must use coarse finger "touchs".
-  · ✓ CSS 4 (º2018+º, support by all major browsers) @media allows to 
+  · ✓ CSS 4 (º2018+º, support by all major browsers) @media allows to
     show/hide/modify (input) elements according to the accuracy of
     system's pointer ("mouse").
     It also allows to show/hide/modify elements according to the
@@ -1856,10 +1879,10 @@ to be used on mobiles and desktops (and TVs, ...)
     PRIMARY INPUT                PRI/SECONDARY INPUT/S          HOVER TYPE
     ==========================   ==========================     ===========================
     @media (hover    : hover )   @media (any-hover    : hover ) easy   hover over elements
-    @media (hover    : none  )   @media (any-hover    : none  ) limited/none hover 
+    @media (hover    : none  )   @media (any-hover    : none  ) limited/none hover
     └───────────┬────────────┘
-    Complementary to those @media filters we can 
-    dynamically use Javascript to detect the 
+    Complementary to those @media filters we can
+    dynamically use Javascript to detect the
     mouse/hover properties and react accordingly
    ºJavascript Media queryº:
     if ( window.matchMedia("(any-hover: none)".matches ) {      [code-snippet]
@@ -1868,32 +1891,32 @@ to be used on mobiles and desktops (and TVs, ...)
 
   · Ussually input elements requiring high accuracy, tooltips "on Hover", ...
     will need to be replaced by ("simpler") alternatives on mobile phones.
-     
-  · mobile "multi-touch" (zoom-in/out) effects probably will require input sliders 
+
+  · mobile "multi-touch" (zoom-in/out) effects probably will require input sliders
     (˂input type="range" ...˃) on desktops.
-     
+
 •º#########################º
  º# ASPECT 2) SCREEN SIZE #º
  º#########################º
   The styling to apply depending on the screen size is more subject to interpretations.
   • meta-header viewport (mobile only):
     ˂meta name="viewport"
-       content="user-scalable=no, 
+       content="user-scalable=no,
                 width=device-width, º*1º
                 initial-scale=1" /˃
 
     º*1º (emulated) width. If physical mobile screen is 6"-diagonal and has a native 1920px
                         screen resolution, then an 192px-diagonal image will display in
-                        just ~0.6" by default. 
+                        just ~0.6" by default.
                         By setting viewport width to 192px virtual pixels, it will display
-                        
-    Initial-scale:1 
-    Minimum-scale: 
-    Maximum-scale: 
+
+    Initial-scale:1
+    Minimum-scale:
+    Maximum-scale:
     User-scalable: yes / no
 
   • Vision angles (vs screen size and resolution) is the key point to consider.
-    There is always an important Rºmissing parameterºto choose the right layout: 
+    There is always an important Rºmissing parameterºto choose the right layout:
     "Distance-from eye-to-screen".
     This implies that we must make assumptions covering standard scenarios:
       · For mobiles eye-to-screen is about   20- 40 cms.
@@ -1905,7 +1928,7 @@ to be used on mobiles and desktops (and TVs, ...)
                (pointer  : coarse)          ← probably mobile at 20-40 cms distance
            and (min-device-width : 320px)   ← low (mobile) resolution
            and (max-device-width : 800px) {
-               (max-width: 800px) {         
+               (max-width: 800px) {
       body { font-size: 1.3em }             ← Increase font-size
       ... 1 column  layout ...              ← e.g.: Render just 1 column of "payload" info
     }
@@ -1937,7 +1960,7 @@ to be used on mobiles and desktops (and TVs, ...)
     @media only screen and
                (pointer  : fine ) and       ← probably desktop at 70-100 cms distance
                                               probably high-screen resolution
-               (max-width: 960px) {         ← probably maximized windows filling 
+               (max-width: 960px) {         ← probably maximized windows filling
                                               desktop with a 1920+px screen resolution
       body { font-size: 10px }              ← Increase font-size
       ... 2 column  layout ...              ← e.g.: Render 2 columns of "payload" info
@@ -1950,31 +1973,31 @@ REF: @[http://flexbox.malven.co/] by @[https://malven.co/]
 BºELEMENT FLEX PROPERTIES RELATIVE TO ***PARENT CONTAINER***º
 
   • display:= how current element behaves with ºsiblingsº
-     · flex       : As box (paragraph,...) 
-     · inline-flex: As line(text     ,...) 
-    
+     · flex       : As box (paragraph,...)
+     · inline-flex: As line(text     ,...)
+
   • flex-direction:=  establishes the main axis for children
       row    row-reverse    column  column-reverse:
       |||⇒      ⇐|||          -         ⇑
                               ⇓         -
-  
+
   • flex-wrap:= What to do when items don't fit in a line/column
       nowrap       wrap         wrap-reverse
       ┌───────┐    ┌───────┐    ┌───────┐
       │|||||||│    │|||||||│    │|||    │
       │       │    │|||    │    │|||||||│
       └───────┘    └───────┘    └───────┘
-     
+
   • justify-content: who to (attempt to) distribute extra space on main axis
-  
-      flex-start       flex-end       center     
-      ┌───────┐        ┌───────┐      ┌───────┐  
-      │|||    │        │    |||│      │  |||  │  
-    
+
+      flex-start       flex-end       center
+      ┌───────┐        ┌───────┐      ┌───────┐
+      │|||    │        │    |||│      │  |||  │
+
       space-between    space-around   space-evenly
-      ┌───────┐        ┌───────┐      ┌───────┐ 
-      │|  |  |│        │ | | | │      │ | | | │  
-  
+      ┌───────┐        ┌───────┐      ┌───────┐
+      │|  |  |│        │ | | | │      │ | | | │
+
   • align-items: Determines how items are laid out on cross (vs main) axis
      flex-start  flex-end   center     baseline   stretch
      ┌───────┐   ┌───────┐  ┌───────┐  ┌───────┐  ┌───────┐
@@ -1982,8 +2005,8 @@ BºELEMENT FLEX PROPERTIES RELATIVE TO ***PARENT CONTAINER***º
      │       │   │       │  │·······│  │       │  │1º2º...│
      │       │   │·······│  │       │  │       │  │1º2º...│
      └───────┘   └───────┘  └───────┘  └───────┘  └───────┘
-     
-     
+
+
   • align-content: Only aplies with 2+ content lines (Ex using flex-wrap)
       flex-start  flex-end   center     space-     space-     stretch
                                         between    around
@@ -1996,11 +2019,11 @@ BºELEMENT FLEX PROPERTIES RELATIVE TO ***PARENT CONTAINER***º
 
 BºFLEX PROPERTIES OF ELEMENT's CHILDRENº
 
-  • order: Allows to explictly set children's order: 
+  • order: Allows to explictly set children's order:
     := integer
 
   • flex-grow: determine how each child is allowed to grow as a part of a whole
-      flex-grow: 1                flex-grow 
+      flex-grow: 1                flex-grow
       ┌────────────┐            ┌────────────┐
       │┌──┐┌──┐┌──┐│            │┌┐┌──┐┌────┐│
       ││  ││  ││  ││            ││││  ││    ││
@@ -2011,20 +2034,20 @@ BºFLEX PROPERTIES OF ELEMENT's CHILDRENº
       ┌────────────┐ ← first item 20%,
       │┌┐┌──┐┌────┐│   second item 40%
       ││││  ││    ││
-      ││││  ││    ││  
+      ││││  ││    ││
 
   • flex-shrink: shrink childrens if necessary. Only really useful with
                  a set size or flex-basis
-      ┌──────────┐  
+      ┌──────────┐
       │┌──┐┌────┐│← Ex: both want to be 100% wide
       ││  ││    ││  2nd item has flex-shrink: 2
       ││  ││    ││
-    
+
   • align-self: Sets alignment for individual item.
       ┌───────┐
       │·· ····│← Ex: 3rd item has align-self:flex-end
-      │       │    
-      │  ·    │    
+      │       │
+      │  ·    │
       └───────┘
 - http://grid.malven.co/     [TODO]
 </pre>
@@ -2070,12 +2093,12 @@ BºELEMENT GRID PROPERTIES RELATIVE TO ***PARENT CONTAINER***º
   • align-items: Aligns content in grid along column axis.
     start | end | center | stretch (default)
 
-  • justify-content: Justifies ALL grid content on row axis 
+  • justify-content: Justifies ALL grid content on row axis
                      when total grid size is smaller than container.
     align-content  : Justifies ALL grid content on column axis
                      when total grid size is smaller than container.
-    := start |  end |  center |  stretch |  space-around | 
-       space-between |  space-evenly 
+    := start |  end |  center |  stretch |  space-around |
+       space-between |  space-evenly
 
   • grid-auto-flow: Algorithm used to automatically place grid items
                     not explictly placed.
@@ -2142,11 +2165,11 @@ BºFLEX PROPERTIES OF ELEMENT's CHILDRENº
 • Animations allows to gradually change an element's CSS properties from
   initial style/value to final one.
 
-@keyframesºanimation01º{            ← STEP 1) Define key frames describing 
+@keyframesºanimation01º{            ← STEP 1) Define key frames describing
                                               element/s styles at certain "times"
 
-  from   {color: red;  left:   0; }   ← from ==   "0%" 
-  10%,90%{color: #AAA; left: 10%; }           
+  from   {color: red;  left:   0; }   ← from ==   "0%"
+  10%,90%{color: #AAA; left: 10%; }
   30%,70%{color: blue; left: 20%; }
   to     {color: green;left: 30%; }   ←   to == "100%"
 }
@@ -2156,20 +2179,20 @@ div {                               ← Animation will apply to all div's
   color              : red;
  ºanimation-name     : animation01;º← STEP 2) Animation ussage
 
-  animation-duration : 4s;            ← (non-Opt) Set transition time 
+  animation-duration : 4s;            ← (non-Opt) Set transition time
 
-  animation-delay    : 2s;            ← Opt. If negative anim. starts as 
+  animation-delay    : 2s;            ← Opt. If negative anim. starts as
                                              if running for "-N" secs.
 
-  animation-direction: normal         ← Opt. normal* | reverse 
-                                                | alternate | alternate-reverse 
+  animation-direction: normal         ← Opt. normal* | reverse
+                                                | alternate | alternate-reverse
 
   animation-iteration-count: 3;       ← Opt. Repeat N times (vs infinite)
 
   animation-timing-function: linear;  ← Opt. :=   linear | ease | ease-in
                                              | ease-out | ease-in-out
 
-  animation-fill-mode: forwards;      ← Opt. Effect CSS before-1st/after-lst.frame 
+  animation-fill-mode: forwards;      ← Opt. Effect CSS before-1st/after-lst.frame
                                         none*    : Keep original CSS
                                         forwards : retain  last keyframe style
                                         backwards: retain first keyframe style
@@ -2178,22 +2201,22 @@ div {                               ← Animation will apply to all div's
 }
 
 • External references:
-  · Advanced CCS3 animations using SVG can be 
+  · Advanced CCS3 animations using SVG can be
   @[http://css3.bradshawenterprises.com/cfimg/]
 <hr/>
 <span title>Profiling</span>
-•ºProblem Contextº: 
-  Performance issue when adding CSS-based animation (dropped frames) 
+•ºProblem Contextº:
+  Performance issue when adding CSS-based animation (dropped frames)
  ºQº: Are there any tools to debug/profile the issue?
  ºAº:
  • Chrome : Timeline tab
             Display stats about restyles, reflows, paint, compositing
-            operations as time goes. 
+            operations as time goes.
             Will be available in Firefox in a future (2014-08)
 
  • Firefox: FirefoxDevTools → "performance" tab → profiler
             STEP 1) Create JS calls record.
-            STEP 2) Inspect ºframerate graphº along with a 
+            STEP 2) Inspect ºframerate graphº along with a
                     bar graph showing the types of activities occurred
                     on each recorded sample
                    (network, JIT, GC, events, styles, graphics, storage).
@@ -2296,9 +2319,9 @@ h1 { font-family: 'MyFontFamilyName'; }
 https://type-scale.com/
 CSS :
 From: @[https://www.infoq.com/news/2020/06/css-variables-design-systems/]
-Typography-wise, Tolinski recommended leveraging existing tools to 
-visualize fonts and their scale ratio. An example of code 
-auto-generated for copy-pasting purposes by type-scale.com is as 
+Typography-wise, Tolinski recommended leveraging existing tools to
+visualize fonts and their scale ratio. An example of code
+auto-generated for copy-pasting purposes by type-scale.com is as
 follows:
 @import url('https://fonts.googleapis.com/css?family=Poppins:400|Poppins:400');
 
@@ -2335,9 +2358,9 @@ Icon Gallery:
 <pre zoom labels="css,accesibility,">
 <span title>Colors-for-all</span>
 @[https://github.com/AmadeusITGroup/Colors-for-All]
-• Tool enabling to easily check color contrasts and WCAG 
-  compliance (AA or AAA levels as defined by W3C) between specific 
-  colors in one shot ! 
+• Tool enabling to easily check color contrasts and WCAG
+  compliance (AA or AAA levels as defined by W3C) between specific
+  colors in one shot !
 • online application available for UX/UI designers or any other
   people involved in digital accessibility.
 </pre>
@@ -2352,12 +2375,12 @@ Icon Gallery:
 <span title>Apply Masks to images</span>
 @[http://www.html5rocks.com/en/tutorials/masking/adobe/]
 
-• Clipping an image: 
+• Clipping an image:
 
   ˂svg˃                           ← STEP 1: Define SVG clip
     ˂defs˃
       ˂/clipPathº id="clipping01"º˃
-        ˂circle 
+        ˂circle
           cx=284 cy=213 r=213 /˃
       ˂/clipPath˃
     ˂/defs˃
@@ -2366,8 +2389,8 @@ Icon Gallery:
   img#img01 {                    ← STEP 2:  Add css to img dom
     clip-path: url(#clipping01º);  ← with a clip-path property
   }
-  
-  
+
+
 • Animated Clipping:
   @keyframes animation01 {       ← STEP 1: Define animation
     0% {
@@ -2377,7 +2400,7 @@ Icon Gallery:
       clip-path: polygon(...);
     }
   }
-  img#img01:hover {              ← STEP 2: Apply clip to image. 
+  img#img01:hover {              ← STEP 2: Apply clip to image.
     clip-path:
       polygon(0px 208px, 146.5px 207px,... ...);
     animate: animation01 3s;     ← STEP 3: Apply animation to CSS
@@ -2512,7 +2535,7 @@ A: For handled exceptions, call responseObserver.onError().
 RPC Ecosystem that complements gRPC
 · grpc-gateway      : gRPC to JSON proxy generator following the gRPC HTTP spec
 · go-grpc-prometheus: Prometheus monitoring for your gRPC Go servers.
-· grpc-health-probe : cli tool to perform health-checks for gRPC apps 
+· grpc-health-probe : cli tool to perform health-checks for gRPC apps
 · ...
 </pre>
 <pre zoom labels="grpc,java,async,TODO" id="grpc_summary_java">
@@ -2589,7 +2612,7 @@ GºJAVA SERVER IMPEMENTATION SUMMARYº
 
 
 GºJAVA CLIENT IMPEMENTATION SUMMARYº
- 
+
             ºInitialization codeº
              function getServer() {                             │  if (require.main === module) {
                var server = new grpc.Server();                  │    var routeServer = getServer();
@@ -2669,7 +2692,7 @@ GºJAVA CLIENT IMPEMENTATION SUMMARYº
  │         │                        ^^^^^^^^^^^^^^^^           │  }
  │         │                        java.util.concurrent.      │
  └─────────┴───────────────────────────────────────────────────┴────────────────────────────────────────────
-                                                                                
+
 BºgRPC ecosystemº:                                                              [TODO]
 -@[https://github.com/grpc-ecosystem]
 
@@ -2823,34 +2846,34 @@ Rsocket authors claim that it's better than gRPC:
     of a selection:
     identify a set ofe lements using simple predicates, then
     apply a series of operators that mutate the selected elements.
-  · For data visualization, document transformers must handle the 
-    cre-ation and deletion of elements, not just the styling of existing 
+  · For data visualization, document transformers must handle the
+    cre-ation and deletion of elements, not just the styling of existing
     nodes.This is impossible with CSS, and tedious with jQuery.
   · D3 alternatives, like Processing and Raphaël are tedious for     [comparative]
     complex tasks (no convenient abstractions).
   •ºselection º: D3's atomic operand:  filter over document's elements.
   •ºOperators º: Act on selections, modifying content.
   •ºData joinsº: bind input data to elements, enabling functional
-                operators that depend on data, and producing 
+                operators that depend on data, and producing
                 enter and exit subselections for the creation and
                 destruction of elements in correspondence with data.
   •ºevent     º: Special operators responding to user input and
    ºhandlers  º  enable interaction.
   •ºhelper    º: simplify common tasks:
-   ºmodules   º  ✓ data-processing utilities such as next/cross operators, 
-                   CSV parser, date/number formating, ...                   
-                 ✓ layouts:                                         
-                 ✓ ...                                              
-                 
+   ºmodules   º  ✓ data-processing utilities such as next/cross operators,
+                   CSV parser, date/number formating, ...
+                 ✓ layouts:
+                 ✓ ...
+
 
   const x = (d, i) =˃ { return i*25 },  ← scale fun. for position encoding
-        y = (d, i) =˃ { return 10 -d }      
+        y = (d, i) =˃ { return 10 -d }
 
-  const svg = d3                              
+  const svg = d3
         .select("body")                 ← Add SVG container to body
-        .append("svg:svg")                  
-        .data([[1, 2, 3, 2, 1, 0.5]])     ← bind data (array of arbitrary values) 
-                                            Data is then passed to functional operators 
+        .append("svg:svg")
+        .data([[1, 2, 3, 2, 1, 0.5]])     ← bind data (array of arbitrary values)
+                                            Data is then passed to functional operators
                                            ºas first argument by conventionºalong with
                                             numeric index (i). By default Nth element
                                             is binded to Nth data (ordered by index).
@@ -2858,30 +2881,30 @@ Rsocket authors claim that it's better than gRPC:
                                            º*1º
                                            data can also be used to reorder(ºsortº)and/or
                                            cull (ºfilterº) DOM elements.
-                                            
+
   svg.append("svg:path")                ← Add path element for the area
      .attr("class", "area")
-     .attr("d",                             
-           d3.svg                           
-             .area().x(x).y0(14).y1(y))     
+     .attr("d",
+           d3.svg
+             .area().x(x).y0(14).y1(y))
 
   svg.append("svg:path")                ← Add path element to emphasize
      .attr("class", "line")                the top line.
      .attr("d" ,
            d3.svg.line().x(x).y(y))
-                                            
+
   const g = svg.selectAll("g")          ← Add containers for reference values.
         .data(d3.range(0,2, .5))          select || selectAll accept CSS selector
         .enter()                          syntax?.
-                                          selects can be chained, 
+                                          selects can be chained,
                                             ex: selectAll("p").select("b")
         .append("svg:g")                ← insert(),append() ops. add new elements to   DOM
                                           remove            ops. del.    elements from DOM
                                           transition(..)  same syntax than style/attr but
-                                             interpolating from current to final value 
+                                             interpolating from current to final value
                                              gradually over time.
 
-  g.append("svg:line")                  ← Add reference lines. 
+  g.append("svg:line")                  ← Add reference lines.
    .attr("class", (d) =˃ {"rule"})        ← operator acting on selection and
    .attr("x2",160)                          wrapping W3C DOM API,
    .attr("y1", y)                           := .attr(...) | .style(...) | .property(...)
@@ -2889,7 +2912,7 @@ Rsocket authors claim that it's better than gRPC:
                                                .each(...) (general extension point operator)
                                             and expressed either as constants or functions.
 
-  g.append("svg:text")                  ← (g) Add reference labels. 
+  g.append("svg:text")                  ← (g) Add reference labels.
    .attr("x",164)
    .attr("y",y)
    .attr("dy", ".3em")
@@ -2901,15 +2924,15 @@ Rsocket authors claim that it's better than gRPC:
        └───────┬──────┘ └──────┬──────┘└──────┬──────┘        no need for .data(...) operator
        entering data    updated data    exit nodes with
        data with no     bounded to      no matching data
-       matching nodes.  matching nodes  allowed to be 
+       matching nodes.  matching nodes  allowed to be
        insert will bind                 removed.
        new nodes to the
        data.
 
-                       
-• used as "kernel" library for other high level ones 
+
+• used as "kernel" library for other high level ones
   e.g.: @[#vega_lite_summary]
-    
+
 • Extracted from @[https://observablehq.com/@d3/learn-d3]
  • D3 stands for "Data Driven Documents".
  • D3 allows to bind arbitrary data to a Document Object Model (DOM),
@@ -2929,14 +2952,14 @@ Rsocket authors claim that it's better than gRPC:
 @[https://vega.github.io/vega-lite/examples/]
 •ºHIGH-LEVEL GRAMMAR OF INTERACTIVE GRAPHICSºwith declarative JSON syntax.
   by University of Washington Interactive Data Lab
-• visualizations for data analysis and presentation. 
+• visualizations for data analysis and presentation.
 • Used by:
   Tableau , Google, Microsoft, Airbnb, Los Angeles Times, CERN,
   Carnegie Mellon University, Berkeley University, ...
 • Extracted from: https://vega.github.io/vega/about/vega-and-d3/
   ... D3 is intentionally a lower-level library (than Vega) ...
   a "visualization kernel" rather than a "toolkit" or "framework"
-  ... intended as a supporting layer for higher-level visualization 
+  ... intended as a supporting layer for higher-level visualization
   tools. Vega is one such tool, and Vega uses D3 heavily within its
   implementation: vega lite → vega → d3.js
 
@@ -2984,7 +3007,7 @@ Rsocket authors claim that it's better than gRPC:
   cate- vs nume-   │  º"data"º: {          ← "data" prop defines data source for chart
 gorical    rical   │     "values" : [         Other data sources type supported
       C ←→ 2  · · ·│· · · {"a": "C", "b": 2}, ┐  e.g: "data": {"url": ".../data/myData.csv"}
-      C ←→ 7  · · ·│· · · {"a": "C", "b": 7}, ┤  ← each value (row) will be rendered 
+      C ←→ 7  · · ·│· · · {"a": "C", "b": 7}, ┤  ← each value (row) will be rendered
       C ←→ 4  · · ·│· · · {"a": "C", "b": 4}, ┤    as a1visual markº
       D ←→ 1  · · ·│· · · {"a": "D", "b": 1}, ┤
       ...
@@ -2993,21 +3016,21 @@ gorical    rical   │     "values" : [         Other data sources type supporte
                    │   },
       vega-lite  ┌ →  º"mark":º"point",    ← mark key indicates how to render data
           chart  │ │                         mark properties := position, size, color
-  visualization ─┤ │                         vega-lite will render one point per "data" object 
-     properties  │ │  
-                 └ →  º"encoding":º{       ← Without encoding output marks will overlap. 
+  visualization ─┤ │                         vega-lite will render one point per "data" object
+     properties  │ │
+                 └ →  º"encoding":º{       ← Without encoding output marks will overlap.
                    │      "x": {               ← encode "x-channel" to ("row") data fields.
-     vega-lite     │        "field": "a",        ("a" in this case) 
+     vega-lite     │        "field": "a",        ("a" in this case)
      chart         │        "type" : "nominal"   := "quantitative" | "temporal" | "ordinal" | "nominal" º*1º
-  visualization    │      },                   
-                   │      "y": {           ← "x" alone will already render "a" distribution. 
+  visualization    │      },
+                   │      "y": {           ← "x" alone will already render "a" distribution.
                    │        "field": "b",    "y" to compare "var a" vs "var b"
-                   │        "type" : "quantitative"  
+                   │        "type" : "quantitative"
                    │        "title": "b's average"   ← optional.
                    │        "aggregate": "average"   ← optional := "aggregate" | "average"
                    │      }                                           ^
                    │   }                                          "mark" : "bar"
-                   │ }                       
+                   │ }
                     º*1º@[https://vega.github.io/vega-lite/docs/encoding.html#type]
                     TIP: Vega-Lite will auto. add axis-with-labels for different-categories + axis title.
 
@@ -3017,7 +3040,7 @@ gorical    rical   │     "values" : [         Other data sources type supporte
   QUANTITATIVE CONTINUOUS            SAME QUANTITATIVE VAR DISCRETIZED
   VAR DISTRIBUTION ALONG X AXIS      AS BAR HISTOGRAM ALONG X/Y AXES
   =============================      ===============================
-  
+
   {                                  {
     "data": ...                        "data": ...
     "mark": "tick",                    "mark": "bar",
@@ -3025,32 +3048,32 @@ gorical    rical   │     "values" : [         Other data sources type supporte
       "x": {                             "x": {
          "field": "precipitation",         "field": "precipitation"
          "type" : "quantitative"          º"bin"  : true,º ← bin == discretize cont.var.
-      }                                  },                 (bin quantitative by default) 
+      }                                  },                 (bin quantitative by default)
                                          "y": {
                                           º"aggregate": "count"º
                                          }
     }                                  }
   }                                  }
 
-  MEAN PRECIPITATION VS (month) DATE                  
-  ==================================         
-  {                             
-    "data": ...                 
-    "mark": "line",             
-    "encoding": {               
-      "x": {                    
-        "field"    : "date"     
+  MEAN PRECIPITATION VS (month) DATE
+  ==================================
+  {
+    "data": ...
+    "mark": "line",
+    "encoding": {
+      "x": {
+        "field"    : "date"
        º"timeUnit" : "month",º ← : yearmonth will compare same month
       },                           in different years
-      "y": {                   
+      "y": {
         "field"    : "precipitation"
-       º"aggregate": "mean",º  
-      }                       
-    }                         
-  }                           
+       º"aggregate": "mean",º
+      }
+    }
+  }
 
-  WEATHER TYPE OVER MONTH STACKED (aggregate) BAR 
-  ==============================================         
+  WEATHER TYPE OVER MONTH STACKED (aggregate) BAR
+  ==============================================
   {
     "data": ...
    º"mark": "bar"º,
@@ -3061,8 +3084,8 @@ gorical    rical   │     "values" : [         Other data sources type supporte
         "type"      : "ordinal"
       },
       "y": {
-       º"aggregate": "count",   ←···· we need to add "color" prop. 
-        "type"     : "quantitative"   to indicate stack visualization 
+       º"aggregate": "count",   ←···· we need to add "color" prop.
+        "type"     : "quantitative"   to indicate stack visualization
       },                                ·
       "color": {                        ·
         "field": "weather",     ←······─┘
@@ -3077,12 +3100,12 @@ gorical    rical   │     "values" : [         Other data sources type supporte
 
 
 •ºCALCULATED FIELD HOW-TOº
-  =======================         
+  =======================
   {
     "data": ...
-    "transform": [ 
+    "transform": [
       {
-        "calculate" : "datum.temp_max - datum.temp_min", 
+        "calculate" : "datum.temp_max - datum.temp_min",
         "as"        :º"temp_range"º
       }
     ],
@@ -3106,7 +3129,7 @@ gorical    rical   │     "values" : [         Other data sources type supporte
 • Builds on D3 primitives, React component model, DOM handling.
 • data visualization solution Bºeasy to learnºwithout sacrificing
   expressiveness.
-  " ...  After 3 years of development, 2.5 years of production use 
+  " ...  After 3 years of development, 2.5 years of production use
     at Airbnb, and a rewrite in TypeScript we are excited to announce
     the official 1.0 release of visx (formerly vx). ..."
 </pre>
@@ -3115,7 +3138,7 @@ gorical    rical   │     "values" : [         Other data sources type supporte
 <span title>JointJS</span>
 @[http://www.jointjs.com/tutorial]
 @[http://www.jointjs.com/demos/umlcd]
-• JointJS 
+• JointJS
 
   INPUT                        PROCESSING              OUTPUT
   =====                        ==========              ======
@@ -3124,7 +3147,7 @@ gorical    rical   │     "values" : [         Other data sources type supporte
       (or descendants)
   · M joint.dia.Link's
       ^^^^^^^^^^^^^^^^
-      cell := Element or Link 
+      cell := Element or Link
 
 - Joint.JS  "Hello World!:
   ˂script src="joint.js"˃˂/script˃
@@ -3145,10 +3168,10 @@ gorical    rical   │     "values" : [         Other data sources type supporte
       function(eventName, cell)              ← Event handling based on the Backbone MVC
       { ... })                                 See all events triggered by any model in the
                                                graph.
-                                               
 
 
-    const rect01 =                           ← Basic shapes in JointJS: 
+
+    const rect01 =                           ← Basic shapes in JointJS:
       new joint.shapes.basic.Rect({            ✓ joint.shapes.basic.Rect
         position: { x: 100, y: 30 })           ✓ joint.shapes.basic.Circle
                                                ✓ joint.shapes.basic.Text
@@ -3164,7 +3187,7 @@ gorical    rical   │     "values" : [         Other data sources type supporte
               'font-size': 18, ... }
     })
 
-    rect01.on('change:position',             ← bind event to shape 
+    rect01.on('change:position',             ← bind event to shape
       (element) =˃ {
         ... element.id
         ... element.get('position')
@@ -3175,7 +3198,7 @@ gorical    rical   │     "values" : [         Other data sources type supporte
         { x: 400, y: 60 },
         { x: 400, y: 20 }
       ])
-  link.set('smooth', true)                   ← Avoid sharp break at vertice 
+  link.set('smooth', true)                   ← Avoid sharp break at vertice
                                                (Use interpolated curve)
 </pre>
 
@@ -3291,7 +3314,7 @@ information is duplicated in every Media Segment.
 @[https://tonejs.github.io/examples/oscillator]
 </pre>
 
-<pre zoom labels="multimedia,webrtc,TODO">
+<pre zoom labels="multimedia.webrtc,TODO">
 <span title>WebRTC: Peer-to-peer media streaming</span>
 @[http://www.html5rocks.com/en/tutorials/getusermedia/intro/]
 @[http://gingertech.net/2014/01/08/use-deck-js-as-a-remote-presentation-tool/]
@@ -3300,14 +3323,14 @@ information is duplicated in every Media Segment.
 <pre zoom labels="multimedia,TODO">
 <span title>Kurento Media Server (KMS)</span>
 @[https://doc-kurento.readthedocs.io/en/latest/]
-• multimedia server  to develop advanced video applications 
+• multimedia server  to develop advanced video applications
   for WebRTC platforms.
-• FaceOverlayFilter is a simple Computer Vision example that 
-  detects people's faces on the video streams, to add an overlay 
+• FaceOverlayFilter is a simple Computer Vision example that
+  detects people's faces on the video streams, to add an overlay
   image on top of them.
 </pre>
 
-<pre zoom labels="media,video.hls,video.dash,TODO">
+<pre zoom labels="multimedia.video.hls,multimedia.video.dash,TODO">
 <span title>shaka-player</span>
 @[https://github.com/google/shaka-player]
 • JS media player library with support for adaptative video streams
@@ -3593,8 +3616,8 @@ information is duplicated in every Media Segment.
 •BºAngular 9º
 @[https://www.infoq.com/news/2020/02/angular-9-ivy-rendering-engine/]
   • Ivy Compiler:
-    Smaller bundle sizes, improved build times, and better debugging 
-    thanks to the release of the much anticipated Ivy rendering engine 
+    Smaller bundle sizes, improved build times, and better debugging
+    thanks to the release of the much anticipated Ivy rendering engine
     that has been in development by Google since 2018.
       Ivy uses tree shaking, allowing it to include only the parts of
     Angular needed for the current application.
@@ -3625,22 +3648,26 @@ information is duplicated in every Media Segment.
     the (root) host view.
 
                         Bº DATA  º
-  ºTEMPLATEº == HTML +  BºBINDINGº  + DIRECTIVES
-                        BºMARKUP º  @[https://angular.io/guide/built-in-directives]
-                          └─┬──┘      └───┬────┘
-               ┌────────────┘             └ There can be:
-               │                   ANGULAR  ├─ Component directives (the most common)
-    DOM        │                  COMPONENT │
-    └┬┘ ┌──────┴─────────────────┐└───┬───┘ ├─ Attribute Directives:
-     │                                │     │  - [ngClass]="JS expression"
- (output)·············Bº{{value}}º·· ←┤     │  - [ngStyle]="JS expression"
-     │                                │     │  - NgModel two way data binding:
- (output)····Bº[property]="value"º·· ←┤     │    PRE-SETUP: add FormsModule to @"X".module.ts
-     │                                │     │    imports:[...,FormsModule]
- ( input)→·Bº(event)="handler"º·······→     │    ˂input [(ngModel)]="model.field01" id="field01"˃
-     │                                │     │
- ( input)←·Bº[(ng-model)]="property"º·→     └─ Structural directives: add/remove elements
-           -----------------------             NgIf, NgFor, NgSwitch:
+  ºTEMPLATEº == HTML +  BºBINDINGº    + DIRECTIVES
+                        BºMARKUP º    @[https://angular.io/guide/built-in-directives]
+                          └─┬──┘        └───┬────┘
+               ┌────────────┘               └ There can be:
+   FRONTEND    │                     ANGULAR  ├─ Component directives (the most common)
+    DOM        │                    COMPONENT │
+    └┬┘ ┌──────┴─────────────────┐  └───┬───┘ ├─ Attribute Directives:
+     │                                  │     │  - [ngClass]="JS expression"
+     ←················Bº{{value}}º···· ←┤     │  - [ngStyle]="JS expression"
+     │                                  │     │  - NgModel two way data binding:
+     │                                  │     │
+     ←·······Bº[property]="value"º···· ←┤     │    PRE-SETUP: add FormsModule to @"X".module.ts
+     │                                  │     │    imports:[...,FormsModule]
+     │                                  │     │
+     ├─··→·Bº(click)="handler"º·········→     │    ˂input [(ngModel)]="model.field01" id="field01"˃
+     │                                  │     │
+     │                                  │     │
+     ←····Bº[(ng-model)]=comp.varNameº··→     └─ Structural directives: add/remove elements
+     │                                  │
+           -----------------------               NgIf, NgFor, NgSwitch:
       Two way binding (forms mainly). Ex:      ˂app-item *ngIf="isActive" [item]="item"˃...
       ˂input [(ngModel)]="hero.name"˃
                                                ˂div *ngFor="let I of items"˃{{I.name}}˂/div˃
@@ -3650,6 +3677,8 @@ information is duplicated in every Media Segment.
                                                  ...
                                                  ˂comp1 *ngSwitchDefault    [item]="ddbb[0]"˃˂/comp1˃
                                                ˂/div˃
+
+  e.g.: ˂input type="text" [(ngModel)]="inputIdentity" (change)="userInputFromUICallback()"˃
 
    ºTEMPLATEº   : template → evaluate   → resolve  → modify
    ºEVALUATIONº   input      directives   binding    HTML DOM
@@ -3971,7 +4000,7 @@ BºObservables and event processingº
   ┌─ Observable Service (EVENT EMITTER) ────  ┌─ Observer Component (EVENT CONSUMER) ─────
   │ import {Subject} from 'rxjs';             │ import { Component } from '@angular/core';
   │ // npm i -s rxjs@v6.5.3                   │ import { ServiceX} from ...
-  │                                           │  
+  │                                           │
   │ @Injectable()                             │ @Component({
   │ export class ServiceX {                   │    selector: ...
   │   ...                                     │    templateUrl: ...
@@ -3979,18 +4008,18 @@ BºObservables and event processingº
   │    ºnew Subject˂string[]˃();º             │    styleUrls: ...
   │                                           │ })
   │   private async refreshInfo() {           │ export class Comp01 implements OnInit {
-  │      ...                                  │  
+  │      ...                                  │
   │      const info = await getRemoteInfo()   │   constructor(
   │      this.infoObservableº.next(info);º    │     private myService : ServiceX ) {
   │   }                                       │     ...
   │ }                                         │   }
-  └─────────────────────────────────────────  │  
+  └─────────────────────────────────────────  │
                                               │   ngOnInit() {
                                               │     this.myService.
                                               │       .infoObservable.subscribe(
                                               │        ( info ) =˃ { /* "consume info */ }
                                               │     )
-                                              │   } 
+                                              │   }
                                               └───────────────────────────────────────────
 </pre>
 
@@ -4005,7 +4034,7 @@ BºObservables and event processingº
  $º$ npm install primeicons --save          º
  $º$ npm install @angular/animations --save º (opt)
          ^
-    Or manually add dependencies to 
+    Or manually add dependencies to
     package.json add like :
     ...
     "dependencies": {
@@ -4045,7 +4074,7 @@ BºObservables and event processingº
     with updates executing in background.
   • NG service will load the PWA manifest file from the server
     describing the resource to cache.  When an update to the
-    PWA is deployed, manifest data changes triggering the 
+    PWA is deployed, manifest data changes triggering the
     background update.
   • TheBºmanifest is generated from "ngsw-config.json"º.                [devops]
 
@@ -4465,7 +4494,7 @@ BºWorkspace, Project Layout
 ·   ·                    app, along with test-specific configuration files.
 ·   └  protractor.conf.js  (test-tool config)
 ·   └  tsconfig.json       (extends tsconfig.json from workspace)
-·   └ src/                 
+·   └ src/
 ·     └  app.e2e-spec.ts   (end-to-end tests for my-app)
 ·     └  app.po.ts
 ·
@@ -4529,39 +4558,39 @@ BºAPPLICATION-SPECIFIC CONFIG FILESº
 <pre zoom labels="angular.*,security.aaa" id="keycloak_angular_openid">
 <span title>NG+Keycloak AAA</span>
 @[https://medium.com/keycloak/secure-angular-app-with-keycloak-63ec934e5093]
-  
+
  • Core principle behind OpenID-Connect:
    Delegation of  Authentication/Authorization
-                                              
-     ┌─────┐          ┌───────┐          ┌────────┐    
-     │Alice│          │NG-App │          │Keycloak│    
-     └──┬──┘          └───┬───┘          └───┬────┘    
-        │  Can I see      │                  │         
-        │   this page?    │  Can Alice see   │         
-        │────────────────˃│   that page?     │         
-        │                 │─────────────────˃│         
-        │ Please, enter (login) credentials? │         
-        │˂───────────────────────────────────│         
-        │ crendentials (password, token, ...)│         
-        │───────────────────────────────────˃│         
-        │                 │   OK, Alice      │         
-        │                 │    can see it    │         
-        │   page content  │˂─────────────────│         
-        │˂────────────────│                  │         
-     ┌──┴──┐          ┌───┴───┐          ┌───┴────┐    
-     │Alice│          │NG-App │          │Keycloak│    
-     └─────┘          └───────┘          └────────┘    
+
+     ┌─────┐          ┌───────┐          ┌────────┐
+     │Alice│          │NG-App │          │Keycloak│
+     └──┬──┘          └───┬───┘          └───┬────┘
+        │  Can I see      │                  │
+        │   this page?    │  Can Alice see   │
+        │────────────────˃│   that page?     │
+        │                 │─────────────────˃│
+        │ Please, enter (login) credentials? │
+        │˂───────────────────────────────────│
+        │ crendentials (password, token, ...)│
+        │───────────────────────────────────˃│
+        │                 │   OK, Alice      │
+        │                 │    can see it    │
+        │   page content  │˂─────────────────│
+        │˂────────────────│                  │
+     ┌──┴──┐          ┌───┴───┐          ┌───┴────┐
+     │Alice│          │NG-App │          │Keycloak│
+     └─────┘          └───────┘          └────────┘
 
 •BºPRESETUPº
-  → Keycloak 
+  → Keycloak
     → Client Config
       → Add Client :
          Client ID      : angular-test-app
          Client protocol: openid-connect
-         Root URL       : https://myapp.mydomain.com ← or dev URL 
+         Root URL       : https://myapp.mydomain.com ← or dev URL
                                                        (http://localhost:4200)
   → Create new angular app if needed:
-    $º$ ng new angular-keycloak  º 
+    $º$ ng new angular-keycloak  º
   → Adding official keycloak js adapter
     $º$ npm i keycloak-js --save º
 
@@ -4571,9 +4600,9 @@ BºAPPLICATION-SPECIFIC CONFIG FILESº
     realm  : 'keycloak-demo',
     clientId: 'angular-test-app'
   }
-  
+
   let keycloak = Keycloak(initOptions);
-  
+
  ºkeycloakº
     .init({ onLoad: "login-required" })        //← page load will redirect to
     .success((auth) =˃ {                       //  keycloak Auth. page
@@ -4582,20 +4611,20 @@ BºAPPLICATION-SPECIFIC CONFIG FILESº
         return
       }
       console.log("successful authentication. Bootstrapping now");
-      
+
       platformBrowserDynamic()
         .bootstrapModule(AppModule)            // ← boostrap module
         .catch(err =˃ console.error(err));
-  
+
       localStorage.setItem
         ( "ang-token"        , ºkeycloakº.token);       // Access token
-      localStorage.setItem                          
+      localStorage.setItem
         ( "ang-refresh-token", ºkeycloakº.refreshToken) // Refresh token
-  
+
       setTimeout( refreshToken, 60000 /* 1 min*/ )      // May just each hour/day
     })
     .error(() =˃ { console.error("Authenticated Failed"); });
-   
+
     function refreshToken = () =˃ {
      ºkeycloakº.updateToken(70)
       .success( (bRefreshed) =˃ {
@@ -4690,7 +4719,7 @@ BºRX Observables:º (TODO:Explain)
 <span title>Summary</span>
 • React as declarative "source-of-trust":
   Summary from: @[https://css-tricks.com/why-javascript-is-eating-html/]
-  • In recent years, JS devs. have realized that by defining 
+  • In recent years, JS devs. have realized that by defining
     a page's structure in JS (vs HTML) using framworks like React,
     development and maintenance of user interaction code is
     simplified:
@@ -5374,7 +5403,7 @@ BºAdvanced Redux use-cases:º
     <span title>Server side Tech</span><br/>
 <div groupv>
 <span title>API Management</span><br/>
-<pre zoom labels="101,api,standards,api_management,crm,erp,aaa,restful,payments,privacy,"
+<pre zoom labels="101,api,standards,api_management,use_case.crm,use_case.erp,aaa,payments,security.privacy,"
   id="openapi_summary">
 <span title>OpenAPI Spec 3.x</span>
 @[https://swagger.io/specification/]
@@ -5413,8 +5442,8 @@ Ex OpenAPi Definition:
    |         $ref: '#/components/requestBodies/entity01'
    |       parameters:
    |         - name: SecuritySchemes
-   |           in  : header       ← :=  header ← HEAD / GET / PUT / POST 
-   |                                  | query  ←        GET / PUT / POST 
+   |           in  : header       ← :=  header ← HEAD / GET / PUT / POST
+   |                                  | query  ←        GET / PUT / POST
    |                                  | body   ←              PUT / POST
    |           description: |
    |             Set Access Token
@@ -5447,7 +5476,7 @@ Ex OpenAPi Definition:
    |               schema:
    |               Oº$ref: '#/components/schemas/entity01'º
    |         ...
-   |           
+   |
    | components:
    |   schemas:
    |     entity01:
@@ -5469,8 +5498,8 @@ Ex OpenAPi Definition:
 <span title bgorange>TOP Open APIs</span>
 REF: @[https://projects.tmforum.org/wiki/display/API/Open+API+Table]
 •ºAccount Management APIº
-     standardized mechanism for management of billing and settlement 
-   accounts, as well as for financial accounting (account receivable) 
+     standardized mechanism for management of billing and settlement
+   accounts, as well as for financial accounting (account receivable)
    either in B2B or B2B2C contexts.
 •ºAppointment APIº
   standardized APIs to book appointment, including:
@@ -5517,7 +5546,7 @@ REF: @[https://projects.tmforum.org/wiki/display/API/Open+API+Table]
   one of the Pre-Ordering Management APIs.
 
 •ºShopping Cart APIº:
-  standardized API for shopping-carts CRUD and events management. 
+  standardized API for shopping-carts CRUD and events management.
   used for the temporary selection and reservation of product
   offerings in e-commerce and retail purchase.
 
@@ -5534,7 +5563,7 @@ REF: @[https://projects.tmforum.org/wiki/display/API/Open+API+Table]
   of partnerships between partners.
 
 •ºCommunication APIº:
-  create+send communications, notifications, and instructions to 
+  create+send communications, notifications, and instructions to
   Parties, Individuals, Organizations or Users.
 
 •ºEntity Catalog Management APIº:
@@ -5548,9 +5577,9 @@ REF: @[https://projects.tmforum.org/wiki/display/API/Open+API+Table]
   access to resources in an open environment which can span across different
   enterprise boundaries. It relies on authentication, authorization and consent
   mechanisms to protect privacy with a simple and easy user experience.
-  Different parties can provide identity services 
+  Different parties can provide identity services
   (operators, social networks, GSMA, …).
-  
+
 •ºGeographic Address Management APIº:
   Standardized client interface to an (worldwide) Address management system,
   validating and searching for geographic address data:
@@ -5575,7 +5604,7 @@ REF: @[https://projects.tmforum.org/wiki/display/API/Open+API+Table]
   involved in an onboarding process.
 
 •ºParty Interaction Management APIº:
-  A User Interaction captures information about past interactions in order to 
+  A User Interaction captures information about past interactions in order to
   reuse it in future ones. This allows agents to serve users better by knowing
   the steps they went through. It also allows customers to see better the
   actions they have performed and how they interacted with us.
@@ -5607,7 +5636,7 @@ REF: @[https://projects.tmforum.org/wiki/display/API/Open+API+Table]
 
 •ºPrivacy Management APIº:                                                      [privacy]
   The Privacy management API provides standardized mechanisms for privacy
-  profile types, privacy profiles and privacy agreements such as creation, 
+  profile types, privacy profiles and privacy agreements such as creation,
   update, retrieval, deletion and notification of events..
 
 •ºProduct Catalog Management APIº:
@@ -5633,7 +5662,7 @@ REF: @[https://projects.tmforum.org/wiki/display/API/Open+API+Table]
 
 •ºResource Catalog Management APIº:
   API spec allowing the management of the entire lifecycle of the
-  Resource Catalog elements and the consultation of resource catalog 
+  Resource Catalog elements and the consultation of resource catalog
   elements during several processes such as ordering process.
 
 •ºResource Function Activation and Configuration APIº:
@@ -5647,7 +5676,7 @@ REF: @[https://projects.tmforum.org/wiki/display/API/Open+API+Table]
   standardized client interface to Trouble Ticket Management Systems
   for creating, tracking and managing trouble tickets among partners as a
   result of an issue or problem identified by a customer or another system.
-  API clients include CRM applications, network management or fault 
+  API clients include CRM applications, network management or fault
   management systems, or other trouble ticket management systems (e.g. B2B).
 
 •ºUsage Consumption Management APIº:                                            [monetization]
@@ -5722,16 +5751,16 @@ REF: @[https://projects.tmforum.org/wiki/display/API/Open+API+Table]
 See comparative with OpenAPI and CloudEvents at:
 @[https://www.asyncapi.com/blog/async_standards_compare]
 
-• Extracted from ebay anouncement to adopt AsyncAPI: 
+• Extracted from ebay anouncement to adopt AsyncAPI:
 @[https://www.infoq.com/news/2021/05/ebay-adopts-asyncapi/]
-    One of the critical AsyncAPI features that eBay's team has found 
+    One of the critical AsyncAPI features that eBay's team has found
   particularly useful is aºclean separation between channels, º
  ºoperations, and servers.º
   · A channel represents an event stream
   · An operation describes a publish or subscribe process.
   · A server facilitates the message transfer (i.e., the message bus).
-  This separation allows a complete representation of producers, consumers, 
-  and message schemas, resulting in a standardized model of a 
+  This separation allows a complete representation of producers, consumers,
+  and message schemas, resulting in a standardized model of a
   message-driven ecosystem.
 </pre>
 
@@ -5785,18 +5814,18 @@ $º$ nodenv which $command   º ← Display location of installed command
  $º$ node                  º ← Start interactive shell (REPL loop)
  $º$ node path_to_file.js  º ← Run JS file
  $º$ node -e "{{js_code}}" º ← Evaluate JS code
- $º$ node -p "{{js_code}}" º ← Evaluate and print result, useful to see 
+ $º$ node -p "{{js_code}}" º ← Evaluate and print result, useful to see
                                node's dependencies versions
                                e.g: $º$ node -p "{{process.versions}}" º
                                { http_parser: '2.8.0',
                                  node: '10.16.3',
                                  v8: '6.8.275.32-node.54',
-                                 ... 
+                                 ...
                                  unicode: '12.1',
                                  ... }
 
  $º$ node --no-lazy      \ º ← Activate inspector, pausing execution until      [debug]
- $º  --inspect-brk file.js º   a debugger is connected once source code is 
+ $º  --inspect-brk file.js º   a debugger is connected once source code is
                                fully parsed
 
 Bº#######º
@@ -5806,18 +5835,18 @@ Bº#######º
 • npm : Node Package Manager manage projects and module dependencies.   [devops]
 • npm project layout
   ./package.json       ← JSON file with dev/pro. package dependendies
-  ./node_modules       ← Installed packages (Add to Rº.gitignoreº, do not commit). 
+  ./node_modules       ← Installed packages (Add to Rº.gitignoreº, do not commit).
   ./package-lock.json  ← npm v5+: It describes the exact tree that was generated,
                         ºsuch that subsequent installs are able to generate º
                         ºidentical treesº, regardless of intermediate dependency updates.
                          Must be kept in git (version control) as any other source file.
 
 
-$º$ npm init              º ← create "package.json" interactively  
+$º$ npm init              º ← create "package.json" interactively
 $º$ npm install           º ← Download dependencies listed in package.json
 $º$ npm install $mod@$ver º ← Download specific package ver. and add it
                               dependencies@package.json
-                              · Use '--save-dev' to add to 
+                              · Use '--save-dev' to add to
                                 dev-dependencies@package.json
                               · Use '--global' to install OS system wide
 
@@ -5856,7 +5885,7 @@ $º$ npm install --global windows-build-tools º
      console.log(adventurer.ºdog?.ºname); ←º?.º Result: undefined (no error)
       console.log(adventurer.dog ⅋⅋       ← manual (non-compact) check (false)
                   adventurer.dog.name);
-  RºWARN:º This operator doesn't fix the billion dolar mistake, 
+  RºWARN:º This operator doesn't fix the billion dolar mistake,
            since check for nulls/undefined is still needed, but
            it makes syntax more compact and clear to read.
   ·BºNullish coalescing logical operator '??'º               [billion_dolar_mistake][qa]
@@ -5867,11 +5896,11 @@ $º$ npm install --global windows-build-tools º
      let safe_name = nullableEntry ?? "n/a" ← Recomended fallback op. (vs || )
 • Node 12: 2019-10 BºLTS version!!!º
 @[https://medium.com/@nodejs/introducing-node-js-12-76c41a1b3f3f]
-• 30% faster startup generating code cache for built-in libraries 
+• 30% faster startup generating code cache for built-in libraries
   in advance at build time, and embed it in the binary.
 • better default heap limits based on available mem vs using defaults.
   Particularly useful when processing large data-sets.     [performance]
-• new features: 
+• new features:
   ✓ diagnostic report                                      [troubleshooting]
     generate report on demand on certain events
     (production crashes, slow performance, memory leaks,
@@ -5881,16 +5910,16 @@ $º$ npm install --global windows-build-tools º
        -with-diagnostic-report-dc82370d8029
   ✓ bundled heap dump capability
     Useful to debug memory problems. More info at:
-    https://github.com/nodejs/node/pull/27133 
+    https://github.com/nodejs/node/pull/27133
     https://github.com/nodejs/node/pull/26501
 • updates to V8(v 7.4) brings:
-  · Async stack traces: 
+  · Async stack traces:
     https://v8.dev/blog/v8-release-72#async-stack-traces
-  · Faster calls with arguments mismatch 
+  · Faster calls with arguments mismatch
     https://v8.dev/blog/v8-release-74#faster-calls-with-arguments-mismatch
-  · Faster await: 
+  · Faster await:
     https://v8.dev/blog/v8-release-73#faster-await
-  · Faster javascript parsing: 
+  · Faster javascript parsing:
     https://v8.dev/blog/v8-release-72#javascript-parsing
 
 • Hello TLS 1.3 introduces and defaults to TLS 1.3        [TLS]
@@ -5965,7 +5994,7 @@ $º$ npm install --global windows-build-tools º
     address what he called "10 things I regret about Node.js".
   • Notable differences for application developers:
     • single binary application (vs Node.js modular binaries).
-    • Avoid complex dependency management solutions like the NPM. 
+    • Avoid complex dependency management solutions like the NPM.
       Developers declare dependencies in source code using direct URLs.
       • Already 500+ third-party Deno modules available.
       (Rº not compatible with NPM packages written for Node.jsº, but
@@ -5986,7 +6015,7 @@ $º$ npm install --global windows-build-tools º
 • JS browser API to allows the creation of a payment
   stream from the user agent to the website.
 
-• Proposed W3C standard at the Web Platform Incubator 
+• Proposed W3C standard at the Web Platform Incubator
   Community Group.
 
 • SETUP HOW-TO:
@@ -5995,7 +6024,7 @@ $º$ npm install --global windows-build-tools º
      services, but a crypto-wallet owned by the user could be
      an alternative solution.
      The wallet must support the Interledger protocol ILP.        [protocol]
-     account. 
+     account.
 
   2) Fetch the ºpayment-pointerº from the ILP wallet. e.g.:
      $wallet.example.com/alice
@@ -6106,7 +6135,7 @@ $º$ git clone https://github.com/petereijgermans11/progressive-web-appº
 <div groupv>
 <span title>SEO</span>
 
-<pre zoom labels="seo,monetization,standards,TODO" id="seo_sitemap_schema.org_summary">
+<pre zoom labels="use_case.seo,monetization,standards,TODO" id="seo_sitemap_schema.org_summary">
 <span title>SEO Summary</span>
 • SEO stands for ºSearch Engine Optimizationº.
 
@@ -6114,22 +6143,22 @@ Bº############################º
 Bº# SEO rules for WHOLE site #º
 Bº############################º
   1) Create 1 or more *sitemap.xml
-                                   
+
   2) Create 1 robot.txt
 
   3) Use HTTPS (vs HTTP)
 
-Bº############################º    
-Bº# SEO rules for html pages #º    
-Bº###########################º     
+Bº############################º
+Bº# SEO rules for html pages #º
+Bº###########################º
   ✓  Use Rich Structured Data to provide indexing metadata.
      For special content (charts, images, media, ...) it is
      specially important. e.g, use schema.org/VideoObject
      to index videos inside pages.
 
-  ✓  Add primary keywords to:       
+  ✓  Add primary keywords to:
      • Title Tag / Meta Description
-     • URL                           
+     • URL
      • H1, H2 Headings.
      •ºanchor text of internal linksº
 
@@ -6150,7 +6179,7 @@ Bº#############################º
   (crawlers and indexers) to inform about URLs metadata
   for a given Web Resource (URL).
   ˂?xml version="1.0" encoding="UTF-8"?˃ ← Max. size: 50MB
-  ˂urlset 
+  ˂urlset
       xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"˃
      ˂url˃                               ← one entry per URL. 50.000 urls per XML
         ˂loc˃http://www.foo.com/˂/loc˃   ← non-optional. All loc in
@@ -6165,9 +6194,9 @@ Bº#############################º
          ˂priority˃0.8˂/priority˃        ← 0.0-to-1.0: relative to other site's URLs
                                            (defaults to 0.5)
      ˂/url˃
-  ˂/urlset˃ 
+  ˂/urlset˃
   NOTE: additional metadata about alternate language versions, video, image,
-        or news-specific pages can be included                            [TODO] 
+        or news-specific pages can be included                            [TODO]
 
 • sitemaps can be "pushed" directly to different search engines         [devops]
   to trigger fast-indexation (vs waiting for hours/days/weeks for passive
@@ -6175,7 +6204,7 @@ Bº#############################º
   manually submit one or more XML sitemaps for a given domain an see
   indexation results. Also via "PUSH" HTTP request like:
 
-  
+
 $º$ curl https://${searchengine}/ping?sitemap=http://www.example.com/sitemap.gzº
   (via curl, wget, ..., returning HTTP 200 if every works "OK")
 
@@ -6187,28 +6216,28 @@ $º$ curl https://${searchengine}/ping?sitemap=http://www.example.com/sitemap.gz
       Alt 1) only for 'owners' Search Console property
              → URL Inspection tool
                → Inspect the URL
-                 → Select "Request indexing".  
-    
-      Alt 2) Submit a sitemap ("many" URLs) 
+                 → Select "Request indexing".
+
+      Alt 2) Submit a sitemap ("many" URLs)
 
 
 • About URL encodings:
   all URLs (including Sitemap hosting URL) must be URL-escaped
   by the web server on which they are located.
-  
-  https.../üm.php⅋q=name 
+
+  https.../üm.php⅋q=name
   https.../%FCm.php⅋q=name         ← Server using ISO-8859-1
   https.../%C3%BCm.php⅋q=name      ← Server using UTF-8
   https.../%C3%BCm.php⅋amp;q=name  ← entity escaped URL
 
 • Sitemapºindexº needed when using more than one Sitemap file.
 
-  ˂?xml version="1.0" encoding="UTF-8"?˃             ← Obligatory when using 2+  
+  ˂?xml version="1.0" encoding="UTF-8"?˃             ← Obligatory when using 2+
   ˂sitemapindex                                        sitemaps
     xmlns=
       "http://www.sitemaps.org/schemas/sitemap/0.9"˃
      ˂sitemap˃
-        ˂loc˃http://foo.com/sitemap1.xml.gz˂/loc˃    ← foo.com must match loc. of 
+        ˂loc˃http://foo.com/sitemap1.xml.gz˂/loc˃    ← foo.com must match loc. of
         ˂lastmod˃2004-10-01T18:23:17+00:00˂/lastmod˃   sitemapindex.
      ˂/sitemap˃
      ˂sitemap˃
@@ -6226,13 +6255,13 @@ Rº# DONT's: #º
 Rº###########º
   • Don't forget a "robots.txt" to skip content, define Sitemaps.
   • Don't block a page in robots.txt and include it in an XML sitemap.
-  
+
 Rº########################################º
 Rº# robots.txt Robots Exclusion Protocol #º
 Rº########################################º
-    TIP: Must be all lower-case, 
+    TIP: Must be all lower-case,
     placed at URL "root"
-   ┌(/var/www/html)/robots.txt ─┐ 
+   ┌(/var/www/html)/robots.txt ─┐
    │User-agent: *               ← "*" is an acronym for "any robot".
    │Disallow: /cgi-bin/         │ Any other globing or regular expression in
    │Disallow: /tmp/             │ User-agent or Dissallow: is NOT allowed.
@@ -6247,15 +6276,15 @@ Rº########################################º
 *2→│Sitemap: sitemap01.xml      ← e.g: URL category sitemap
    │Sitemap: sitemap02.xml      ← e.g: URL subcategory sitemap
    │Sitemap: sitemap.cgi        ← Dinamically generated XML sitemap
-   └────────────────────────────┘ 
+   └────────────────────────────┘
 
-*1: white-lines used to separate different registries. 
+*1: white-lines used to separate different registries.
    (one for "*", another one for BadBot, and a 3rd one
     for Google in our example)
 
 *2: Different search engines "control pannels" allows to push
     the sitemap directly (vs waiting for random crawling)
-  
+
 • NOTE: difference between html ˂meta name=robots˃ and /robots.txt :
   •º/robots.txtº: ignore page, do not even read html headers.
     · /robots.txt file is controlled by web-server/site administrator.
@@ -6264,11 +6293,11 @@ Rº########################################º
     · ignore links inside this page.
     · Can be controlled by page-author, overriding
       defaults in robots.txt.
-  
+
 • External Resources:
   • A curated list of SEO (Search Engine Optimization) links.
    @[https://github.com/teles/awesome-seo]
-    
+
 
 Bº########################
 Bº# Schema.org:          #
@@ -6281,17 +6310,17 @@ Bº########################
 • activity community maintaining and promoting schemasºfor structured dataº.
 • While OpenAPI standard @[#openapi_summary] allows to   [comparative]
   design APIs (requests from client to servers) to  simplify
-  implementation of client mobile/web applications, 
+  implementation of client mobile/web applications,
   schema.org allows toºsimplify the translation, by search engines/indexers,º
   ofºhtml-markup to structure-data , relationships and actionsº.
 • Extensible vocabulary.
 •QºGoogle Search Gallery lists 30 rich snippet categoriesº               [TODO]
-  with their use cases and specific user interface 
+  with their use cases and specific user interface
   (articles, books, how-to, recipes, products, job postings,
    events, ...):
   · Each category has a dedicated user interface designed
     to facilitate the search user’s next steps.
-    e.g: A news article may be featured in "Top stories" 
+    e.g: A news article may be featured in "Top stories"
 
   ˂head˃
     ˂title˃...˂/title˃
@@ -6339,15 +6368,15 @@ Bº########################
 <span title>HTTP/3 </span>
 @[https://www.infoq.com/news/2020/01/http-3-status/]
 • HTTP/2 introduced the concept of first-class streams embedded
-  in the same TCP connection enabling multiplexing simultaneous 
+  in the same TCP connection enabling multiplexing simultaneous
   request-response exchanges.
-• HTTP/2 major flaw: when packet loss increases, performance 
-  degrades due to dependency on TCP packet retransmission 
-  (HOL blocking): 
+• HTTP/2 major flaw: when packet loss increases, performance
+  degrades due to dependency on TCP packet retransmission
+  (HOL blocking):
   RºWhen packet loss surpasses a given threshold it's slower than º
   RºHTTP/1 multiple parallel TCP connections.º
 • QUIC (HTTP/3 or HTTP over UPD) has first-class streams. solving
-  HTTP/2 issues. 
+  HTTP/2 issues.
 </pre>
 
 
@@ -6387,7 +6416,7 @@ trax: state management for typescript projectshttps://github.com/AmadeusITGroup/
 How to Write API Tests (in 7 Easy Steps) | Nordic APIs
 https://nordicapis.com/how-to-write-api-tests-in-7-easy-steps/ 
 ########################
-web tech, Lowcode, preactjs/preact-cli: 😺 
+web tech, Lowcode, preactjs/preact-cli: 😺
 Your next Preact PWA starts in 30 seconds.
 https://github.com/preactjs/preact-cli 
 ####################
@@ -6614,10 +6643,10 @@ FlowType: Find type-inference bugs:
 - https://flowtype.org
   Flow uses type inference to find bugs even without type annotations. It
   precisely tracks the types of variables as they flow through your program.
-  
+
   Flow is designed for JavaScript programmers. It understands common JavaScript
   idioms and very dynamic code.
-  
+
   Flow incrementally rechecks your changes as you work, preserving the fast
   feedback cycle of developing plain JavaScript.
 #############
@@ -6625,7 +6654,7 @@ strings:
 https://github.com/kpdecker/jsdiff
 JS native text diff generator
 ##################
-RºWARN,WARN,WARN!!!: 
+RºWARN,WARN,WARN!!!:
 es5, babel, es6 performance:
 - Some JS constructions can be 2 order of magnitude faster/slower
   according to:
@@ -6634,9 +6663,9 @@ es5, babel, es6 performance:
 ####################
 • Linked Data Proofs 1.0
   @[https://w3c-ccg.github.io/ld-proofs/]
-    This specification describes a mechanism for ensuring the 
-  authenticity and integrity of Linked Data documents using 
-  mathematical proofs. 
+    This specification describes a mechanism for ensuring the
+  authenticity and integrity of Linked Data documents using
+  mathematical proofs.
 #####################
 #######################
 <pre zoom labels="nodejs,TODO" bgorange>
@@ -6701,26 +6730,26 @@ https://blogs.windows.com/buildingapps/2018/05/01/announcing-babylon-js-v3-2/#yD
 </pre>
 
 <pre zoom labels="TODO">
-<span title>Native ES Modules</span> <!-- @ma 
+<span title>Native ES Modules</span> <!-- @ma
 https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules
 </pre>
 
 <pre zoom labels="TODO">
 <span title></span>
 https://developer.mozilla.org/en-US/docs/Web/API/Beacon_API
-The Beacon API is used to send an asynchronous and non-blocking 
-request to a web server. The request does not expect a response. 
-Unlike requests made using XMLHttpRequest or the Fetch API, the 
-browser guarantees to initiate beacon requests before the page is 
+The Beacon API is used to send an asynchronous and non-blocking
+request to a web server. The request does not expect a response.
+Unlike requests made using XMLHttpRequest or the Fetch API, the
+browser guarantees to initiate beacon requests before the page is
 unloaded and to run them to completion.
 
-The main use case for the Beacon API is to send analytics such as 
+The main use case for the Beacon API is to send analytics such as
 client-side events or session data to the server.
 </pre>
 
 ###########
 - Generate new package-lock.json:
-  $ npm i --package-lock-only 
+  $ npm i --package-lock-only
 - Generate package.json from package-lock.json:
 https://stackoverflow.com/questions/50038891/create-package-json-from-package-lock-json
 
@@ -6728,7 +6757,7 @@ https://stackoverflow.com/questions/50038891/create-package-json-from-package-lo
   - Remove/rename node_modules.
   - Remove package-lock.json
   - $ npm install              <- Probably it will update to bugleess free deps.
-  - $ npm i --package-lock-only 
+  - $ npm i --package-lock-only
 ###################
 <pre zoom labels="low_code,qa,TODO">
 <span title></span>
@@ -6738,9 +6767,9 @@ Traffic mirroring: test your APIs automatically, without writing tests
 ##########################
 svelte,mobile
 https://github.com/drannex42/svelte-capacitor
-This is a project template for Svelte + CapacitorJS apps with live 
-reload, granting the ability to quickly build production ready 
-applications for iOS and Android at near-native performance using 
+This is a project template for Svelte + CapacitorJS apps with live
+reload, granting the ability to quickly build production ready
+applications for iOS and Android at near-native performance using
 JavaScript (Svelte).
 #####################
 svelte,seo
@@ -6763,29 +6792,29 @@ npm yarn forcing version resolution:
 https://github.com/npm/rfcs/blob/main/accepted/0036-overrides.md
 
 https://classic.yarnpkg.com/en/docs/selective-version-resolutions/
-- Yarn supports selective version resolutions, which lets you define 
-  custom package versions or ranges inside your dependencies through 
+- Yarn supports selective version resolutions, which lets you define
+  custom package versions or ranges inside your dependencies through
   the resolutions field in your package.json file.ºNormally, this would º
  ºrequire manual edits in the yarn.lock file.º
 #################
 @[https://github.com/lerna/lerna]
-Splitting up large codebases into separate independently versioned 
-packages is extremely useful for code sharing. However, making 
-changes across many repositories is messy and difficult to track, and 
+Splitting up large codebases into separate independently versioned
+packages is extremely useful for code sharing. However, making
+changes across many repositories is messy and difficult to track, and
 testing across repositories becomes complicated very quickly.
 
-To solve these (and many other) problems, some projects will organize 
-their codebases into multi-package repositories (sometimes called 
-monorepos). Projects like Babel, React, Angular, Ember, Meteor, Jest, 
-and many others develop all of their packages within a single 
+To solve these (and many other) problems, some projects will organize
+their codebases into multi-package repositories (sometimes called
+monorepos). Projects like Babel, React, Angular, Ember, Meteor, Jest,
+and many others develop all of their packages within a single
 repository.
 
-Lerna is a tool that optimizes the workflow around managing 
+Lerna is a tool that optimizes the workflow around managing
 multi-package repositories with git and npm.
 
-Lerna can also reduce the time and space requirements for numerous 
-copies of packages in development and build environments - normally a 
-downside of dividing a project into many separate NPM packages. See 
+Lerna can also reduce the time and space requirements for numerous
+copies of packages in development and build environments - normally a
+downside of dividing a project into many separate NPM packages. See
 the hoist documentation for details.
 #########################
 https://github.com/ajv-validator/ajv
@@ -6795,12 +6824,12 @@ https://stackoverflow.com/questions/20764881/why-does-npm-install-say-i-have-unm
 Missing package.json dependencies:
 
 
-I believe it is because the dependency resolution is a bit broken, 
+I believe it is because the dependency resolution is a bit broken,
 see https://github.com/npm/npm/issues/1341#issuecomment-20634338
 
 Following are the possible solution :
 
-    Manually need to install the top-level modules, containing unmet 
+    Manually need to install the top-level modules, containing unmet
 dependencies: npm install findup-sync@0.1.2
 
     Re-structure your package.json. Place all the high-level modules  ←---!!!!!
@@ -6808,10 +6837,10 @@ dependencies: npm install findup-sync@0.1.2
 
     Re-run the npm install command.
 
-The problem could be caused by npm's failure to download all the 
+The problem could be caused by npm's failure to download all the
 package due to timed-out or something else.
 
-Note: You can also install the failed packages manually as well using 
+Note: You can also install the failed packages manually as well using
 npm install findup-sync@0.1.2.
 
 Before running npm install, performing the following steps may help:
@@ -6819,12 +6848,12 @@ Before running npm install, performing the following steps may help:
     remove node_modules using rm -rf node_modules/
     run npm cache clean
 
-Why 'removing node_modules' sometimes is necessary? When a nested 
-module fails to install during npm install, subsequent npm install 
+Why 'removing node_modules' sometimes is necessary? When a nested
+module fails to install during npm install, subsequent npm install
 won't detect those missing nested dependencies.
 
-If that's the case, sometimes it's sufficient to remove the top-level 
-dependency of those missing nested modules, and running npm install 
+If that's the case, sometimes it's sufficient to remove the top-level
+dependency of those missing nested modules, and running npm install
 again. See
 ######################33
 101,
@@ -6864,7 +6893,7 @@ React is the most popular JavaScript framework and React-based apps come with so
 
 #################################
 Monetization: Si el buscador de Ahrefs funciona, es el mayor ataque al modelo de negocio de Google en los últimos 10 años
-https://www.xataka.com/empresas-y-economia/buscador-ahrefs-funciona-mayor-ataque-al-modelo-negocio-google-ultimos-10-anos 
+https://www.xataka.com/empresas-y-economia/buscador-ahrefs-funciona-mayor-ataque-al-modelo-negocio-google-ultimos-10-anos
 #########################
 Código CSS anidado: la W3C aprueba un borrador que introduciría en el lenguaje CSS nativo esta funcionalidad
 https://www.genbeta.com/desarrollo/codigo-css-anidado-w3c-aprueba-borrador-que-introduciria-lenguaje-css-nativo-esta-funcionalidad
@@ -6892,19 +6921,23 @@ WebTech: HTML Tips - Marko Denic - Web Developer
 https://markodenic.com/html-tips/
 ###################
 Angular v12 Released, Transitions to Ivy Rendering Engine
-https://www.infoq.com/news/2021/05/angular-12-ivy-default/ 
+https://www.infoq.com/news/2021/05/angular-12-ivy-default/
 
 ...The Protractor end-to-end test framework will no longer be included in new projects. The team reports working with alternative popular solutions (e.g., Cypress, WebdriverIO, TestCafe)...
 ###################
 https://github.com/topics/snippets-collection
 #######################3333
 Web Tech: webrtc Newbie question about WebRTC (muting audio/video)
-https://groups.google.com/g/discuss-webrtc/c/YG_3TjVQS3Y?pli=1 
+https://groups.google.com/g/discuss-webrtc/c/YG_3TjVQS3Y?pli=1
 ###########################
 Monetization, analytics:
 Motomo. Alternative to Google Analytics:
 https://matomo.org/
 
-
+#########################
+https://squoosh.app/
+Smaller images mean faster load times. Squoosh can reduce file size and maintain high quality.
+https://github.com/bcheidemann/squoosh-webpack-plugin
+from 1.4MB to 80Kbs !!!
 -->
 

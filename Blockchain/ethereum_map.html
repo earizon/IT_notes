@@ -236,7 +236,7 @@ mether                      :   1^6  ethers
 gether                      :   1^9  ethers
 tether                      :   1^12 ethers
 </pre>
-<pre zoom zoom labels="consensus,scalability.evm,scalability.consensus,ethereum2,">
+<pre zoom zoom labels="scalability.evm,scalability.consensus.ethereum2,">
 <span xsmall>Network Versions</span>
 @[https://en.wikipedia.org/wiki/Ethereum#Milestones]
 ºPublic Ethereum Network versionsº
@@ -372,7 +372,16 @@ CHAIN_ID    Chain(s)
 <div group bggreen>
 <span title>EVM</span><br/>
 <div groupv>
-<pre zoom labels="evm,101,persistence.blockchain,infrastructure.storage,infrastructure.network">
+
+<pre zoom labels="evm,resource,">
+<span xsmall>External Refs:</span>
+@[https://github.com/ethereum/yellowpaper]
+@[https://github.com/ethereum/wiki/wiki/Ethereum-Development-Tutorial]
+@[http://ethdocs.org/en/latest/contracts-and-transactions/developer-tools.html#the-evm]
+</pre>
+
+
+<pre zoom labels="evm.101,persistence.blockchain,infrastructure.storage,infrastructure.network">
 <span xsmall>EVM state</span>
 @[https://blog.ethereum.org/2019/12/30/eth1x-files-state-of-stateless-ethereum/]
 - 400 million nodes in the state trie. Of these, about 3,000 (but as
@@ -388,15 +397,7 @@ CHAIN_ID    Chain(s)
   processing state changes is extremely demanding on disk read/writes.
 </pre>
 
-<pre zoom labels="evm,resource,">
-<span xsmall>External Refs:</span>
-@[https://github.com/ethereum/yellowpaper]
-@[https://github.com/ethereum/wiki/wiki/Ethereum-Development-Tutorial]
-@[http://ethdocs.org/en/latest/contracts-and-transactions/developer-tools.html#the-evm]
-</pre>
-
-
-<pre zoom labels="101,evm,diagram">
+<pre zoom labels="dev_language.solidity,evm.101,diagram" id="evm_accounts_summary">
 <span xsmall>Accounts</span>
 @[http://www.ethdocs.org/en/latest/contracts-and-transactions/account-types-gas-and-transactions.html]
  ºAccountº  ← same address space both for contract and normal accounts
@@ -460,7 +461,8 @@ transactions.ºA nonce can only be used once and until a transaction is mined,º
 it is possible to send multiple versions of a transaction with the same nonce,
 however, once mined, any subsequent submissions will be rejected.
 </pre>
-<pre zoom labels="101,evm,qa.error_control,diagram">
+
+<pre zoom labels="evm.101,qa.error_control,diagram" id="evm_message_calls">
 <span xsmall>Message Calls</span>
 (EVM CALL opcode)
 - Contracts can user message calls to call other contracts or send Ether to
@@ -541,8 +543,8 @@ Bº- Cannot recieve Etherº
   preserve msg.sender and msg.value.
 </pre>
 
-<pre zoom labels="101,evm">
-  <span xsmall>EVM Summary</span>
+<pre zoom labels="evm.101,evm.i/o">
+<span xsmall>EVM Summary</span>
 
 - Ethereum Virtual Machine Opcodes low level reference to EVM:
  @[https://ethervm.io/]
@@ -571,37 +573,9 @@ Bº- Cannot recieve Etherº
   - A transaction is like a request
   - ABI is the data-interchange format, like Protocol Buffer
 
-
-ºEVM Events:º
- - In the wild, there are three main uses for event logs:
-   - As ersatz return values, because a transaction does not record a
-     method's return values.
-   - As a kind of cheaper alternative data storage, as long as the
-     contract does not need access to it.
-     According to the Yellow paper:
-     "...There is no size limit to the data: you will be limited by how
-         much Ether you have. (And of course the block gas limit.).The size
-         limit of one event is a function of the block's gas limit, which as
-         of now tends to be around 3,145,192 (i.e., the first seven digits of
-         pi). According to Jonathan Patrick, logging costs 76 gas per byte. So
-         I'd assume you could get in around 41kb per log event...."
-
-   - Events that DApp clients can subscribe to.
- - Event logging map to EVM logging primitives.
-   event Deposit( address indexed _from, bytes32 indexed _id, uint _value);
- -ºEvent limitationsº:
-   - There may be at most 3 indexed parameters.
-   - If the type of an indexed parameter is larger than 32 bytes,
-     only the KECCAK256 digest of the data is stored.
- -  EVM Log Primitives log0, log1, ..., log4 EVM instructions.
-    - The EVM logging facility uses different terminologies than Solidity:
-   "topics": There may be up to 4 topics exactly 32 bytes each
-            Solidity consumes one topic for the event's signature so only 3 are available
-   "data"  : Payload of the event. It may be arbitrary number of bytes
-
- - Bloom filters are used to speed up search-by-topic
-
-*EVM Memory:
+Bº##############º
+Bº# EVM Memory #º
+Bº##############º
 - A contract obtains a freshly cleared instance for each message call
 - Memory is linear and can be addressed at byte level
 - ºReads are limited to a width of 256 bitsº
@@ -612,12 +586,15 @@ Bº- Cannot recieve Etherº
     must be paid. Memory is more costly the larger it grows (it scales
     quadratically)
 - calldata: Separate area of memory whe message call payload is placed
+- See also: @[#solidity_storage_magging]
 
-ºEVM Stack:º
-- EVM memory area list of 256bits up to 1024 elements used for computations
+Bº#############º
+Bº# EVM Stack #º
+Bº#############º
+- EVM memory area list of 256bits up to 1024 elements used for computations.
 - The 16 topmost elements can be moved to the top or swaped wih the top element
 - All other operations take the topmost one (or two, or more) elements and push
-  the result onto the stack
+  the result onto the stack.
 - top elements can be moved to/from storage/memory, but deeper elements can
   be accessed without first removing elements on top of them.
 
@@ -628,6 +605,7 @@ Bº- Cannot recieve Etherº
 - selfdestruct(target): Destructor for contract @ address
   - Remaining Ethers are sent to target
   - storage ⅋ code are removed from the blockchain state
+
 <span xsmall>Instructions</span>
 @[https://github.com/ethereum/go-ethereum/blob/master/core/vm/instructions.go]
 The all take  (in to go VM implementation) next parameters:
@@ -645,15 +623,14 @@ and return ([]byte, error)
 10 opNot        20 opByte    30 opCaller  40 opExtCodeCopy    50 opMload       60 opGas      70 opSuicide
 
 *following functions are used by the instruction jump  table */
-// make log instruction function
-makeLog(size int)
+makeLog(size int) // make log instruction function
 opPush1
 makePush(size uint64, pushByteSize int)
 makeDup(size int64)  // make dup instruction function
 makeSwap(size int64) // make swap instruction function
 </pre>
 
-<pre zoom labels="evm">
+<pre zoom labels="evm.abi">
 <span xsmall TODO>ABI Spec</span>
 Full reference:@[https://solidity.readthedocs.io/en/latest/abi-spec.html]
 
@@ -809,8 +786,49 @@ In effect, a log entry using this ABI is described as:
                         º  fields for full functionallity.                                  º
 </pre>
 
-<pre zoom labels="101,evm,events">
+<pre zoom labels="evm.101,evm.events" id="evm_events_summary">
 <span xsmall bgorange>Events ⅋ LOGS</span>
+ºEVM Events:º
+ • In the wild, there are three main uses for event logs:
+   - As external apps return values, because a transaction does not record a
+     method's return values, only the hash confirming the transaction.
+   - As a kind of cheaper alternative data storage, as long as the
+     contract does not need access to it.
+     According to the Yellow paper:
+     "...There is no size limit to the data: you will be limited by how
+         much Ether you have. (And of course the block gas limit.).The size
+         limit of one event is a function of the block's gas limit, which as
+         of now tends to be around 3,145,192 (i.e., the first seven digits of
+         pi). According to Jonathan Patrick, logging costs 76 gas per byte. So
+         I'd assume you could get in around 41kb per log event...."
+   - Output evm device sending Event data that DApp clients can subscribe to.
+
+ • Emiting an event is a simple EVM logging primitives (log0, log1, ..., log4) 
+   and a single Solidity 
+ 
+    - The EVM logging facility uses different terminologies than Solidity:
+
+   instruction. e.g.:
+   // Solidity event declaration:
+   event accountDeposit( address indexed _from, bytes32 indexed _id, uint _value);
+   ...
+   // Solidity event emission:
+   emit  accountDeposit( _from, _id, _value);
+
+ •ºEvent limitationsº:
+   - There may be at most 3 indexed parameters.
+   - If the type of an indexed parameter is larger than 32 bytes,
+     only the KECCAK256 digest of the data is stored.
+
+   "topics": (event indices). There may be up to 4, exactly 32 bytes each.
+             Solidity consumes one topic for the event's signature so only 3 are available
+
+   "data"  : Payload of the event. It may be arbitrary number of bytes.
+
+ - NOTE: Internally Ethereum nodes use bloom indexes/filters to implement topics and
+         topic search in order to speed up search-by-topic.
+
+
 BEST PATTERNS:
 - External clients must be able to restore current contract state
   by just reading events.
@@ -869,7 +887,8 @@ myEventMonitor.watch(                  // ← Start watching
 myEventMonitor.stopWatching()          // ← Stop watching
 </pre>
 
-<pre zoom labels="evm,persistence.contract_state,dev_languaje.solidity,soft_life_cycle.troubleshooting,soft_life_cycle.debugging,">
+<pre zoom labels="evm,persistence.contract_state,dev_languaje.solidity,soft_life_cycle.troubleshooting,soft_life_cycle.debugging,"
+  id="solidity_storage_magging">
 <span xsmall>Solidity←→storage address</span>
 REF:
 @[https://www.mayowatudonu.com/blockchain/deep-dive-into-evm-memory-and-storage]
@@ -879,16 +898,16 @@ contract BlockVoting {
                                                     - array data allocated at a slot number:
                                                       hash of n(keccak256(n))
     uint public voteThreshold;             ← Index: 0x0000000000000000000000000000000000000000000000000000000000000001
-    mapping(uint8   => bool) public map01; ← Index:º0x0000000000000000000000000000000000000000000000000000000000000002º ←─┐
+    mapping(uint8   =˃ bool) public map01; ← Index:º0x0000000000000000000000000000000000000000000000000000000000000002º ←─┐
                                                     - slots are unused,                                                   │
                                                     - value for each key located at keccak256(n, p)                     ←─┤
                                                                                               ^  ^                        │
                                                                                       left padded to 32 bytes             │
     uint8[] dynArray01;                    ← Index: 0x0000000000000000000000000000000000000000000000000000000000000003    │
     ...                                                                                                                   │
-    constructor () public {                         $ truffle(dev)> compile                                               │
-         voteThreshold = 10;                        $ truffle(dev)> BlockVoting.new().then(item => instance = item;)      │
-         dynArray01.push(20);                             $ truffle(dev)> web3.eth.getStorageAt(instance.address, 0)      │
+    constructor () public {                         $ truffle(dev)˃ compile                                               │
+         voteThreshold = 10;                        $ truffle(dev)˃ BlockVoting.new().then(item =˃ instance = item;)      │
+         dynArray01.push(20);                             $ truffle(dev)˃ web3.eth.getStorageAt(instance.address, 0)      │
          dynArray01.push(30);                             $ '0x0a' (== 10)                                                │
          dynArray01.push(56);                    ┌────────────────────────────────────────────────────────────────────────┘
          map01[1] =  5;  ←─────────────────┐     ├─ $ truffle(dev)˃ºn = '0000000000000000000000000000000000000000000000000000000000000002'º
@@ -938,7 +957,7 @@ Note: This can be used to pre-fill a hardcoded smart-contract with given status 
 </div>
 
 <div groupv>
-<pre zoom  labels="101,transaction,evm,signature.ecdsa_secp256k1">
+<pre zoom  labels="transaction.101,signature.ecdsa_secp256k1">
 <span title>Transactions</span>
 Transaction
 -------------
@@ -1102,7 +1121,7 @@ Example code:
   - For Contract Accounts verification method in EIP-1271 MUST be used.
 </pre>
 
-<pre zoom labels="101,transaction,gas_price,events,evm,privacy.zksnark,scalability.consensus,"
+<pre zoom labels="101,transaction,evm.gas_price,evm.events,privacy.zksnark,scalability.consensus,"
   id="tx_gas_price_summary">
 <span xsmall>TX Gas Price</span>
 • REFs:
@@ -1267,7 +1286,7 @@ NOTES:
    • zkRollups:                                                        [zksnark]
 </pre>
 
-<pre zoom labels="tool,evm">
+<pre zoom labels="evm.gas_price,transaction.101" id="gas_price_basics">
 <span xsmall>gas price calc</span>
 Rº: WARN:º
 - Extracted from @[https://medium.com/hackernoon/costs-of-a-real-world-ethereum-contract-2033511b3214]
@@ -1344,7 +1363,7 @@ BºLOGS-COST:º
                                           Rº FIX TX cost not included       º
 </pre>
 
-<pre zoom labels="comparative,101,evm">
+<pre zoom labels="comparative,101,evm.101">
 <span xsmall>Calls vs TXs</span>
 Imagine a solidity code similar to:
 
@@ -1399,7 +1418,7 @@ EVM stack.
 
 
 </pre>
-<pre zoom labels="101,transaction,evm">
+<pre zoom labels="transaction.101,evm.101">
 <span xsmall>State transition fun</span>
 APPLY (S, TX) → S'  ← S : initial global state
                     ← S': final   global state
@@ -1427,7 +1446,7 @@ APPLY (S, TX) → S'  ← S : initial global state
   miner.
 </pre>
 
-<pre zoom labels="wallet.101,transaction,evm">
+<pre zoom labels="wallet.101,transaction.signature">
 <span xsmall>Offline/Online TX signing</span>
     OFFLINE TX SIGNING (RECOMENDED)           |    "ON-LINE" TX SIGNING (LESS SECURE, DISCOURAGED)
                                               |
@@ -1572,7 +1591,7 @@ Bº##################º
 
 <div groupv>
 <span title>Ether.Addresses</span>
-<pre zoom labels="evm">
+<pre zoom labels="evm,qa.usability">
 <span xsmall>Issues</span>
 REF: @[https://ethereum.stackexchange.com/questions/267/why-dont-ethereum-addresses-have-checksums]
 Initial Ethereum design didn't have support for address checksum.
@@ -1629,7 +1648,7 @@ Update: EIP55 introduces checksum in Ethereum addresses. (Still optional
 
 </pre>
 
-<pre zoom labels="evm">
+<pre zoom labels="standards.eip/erc,qa.usability">
 <span TODO xsmall>Ethereum Name Service</span>
 @[https://ens.domains/]
 """No more long addresses: ENS eliminates the need to copy - and worse,
@@ -1724,7 +1743,7 @@ such as serving an infrequently changed address for a name.
 
 <div groupv>
 <span title>EWASM</span>
-<pre zoom labels="evm,ewasm,TODO">
+<pre zoom labels="evm.ewasm,TODO">
 <span xsmall>EWASM</span>
 @[https://ewasm.readthedocs.io/en/mkdocs/]
 Ethereum WebAssembly is a proposed redesign of the Ethereum smart
@@ -2618,7 +2637,7 @@ someContractAddress.callcode('function_name');
 
 </pre>
 
-<pre zoom labels="dev_languaje.solidity,events,scalability.solidity,soft_life_cycle.troubleshooting,dev_languaje.java,dev_languaje.js,dev_languaje.python,dev_languaje.c#">
+<pre zoom labels="dev_languaje.solidity,evm.events,scalability.solidity,soft_life_cycle.troubleshooting,dev_languaje.java,dev_languaje.js,dev_languaje.python,dev_languaje.c#">
 <span xsmall>Retrieve events quickly</span>
 - Imagine theºcommon problemº:
   - A given contract emits a given event sparsely, with
@@ -2960,7 +2979,7 @@ function () payable {
 </pre>
 
 <pre bgorange zoom
-   labels="101,dev_languaje.solidity,transaction,evm,diagram,soft_life_cycle.debugging,implementation.besu,events,soft_life_cycle.testing,transaction,dev_framework.web3j,qa.error_control" id="revert_reason">
+   labels="dev_languaje.solidity,transaction,evm.101,diagram,soft_life_cycle.debugging,implementation.besu,evm.events,soft_life_cycle.testing,transaction,dev_framework.web3j,qa.error_control" id="revert_reason">
 <span xsmall>ERROR CONTROL</span>
 @[https://solidity.readthedocs.io/en/v0.4.24/control-structures.html#error-handling-assert-require-revert-and-exceptions]
 
@@ -4373,13 +4392,13 @@ contract Voting {
 <div group bgblue>
 <span title>Libraries,Tokens,...</span><br/>
 <div groupv>
-<pre zoom labels="101,token,TODO">
+<pre zoom labels="101,standards.tokens,TODO">
 <span xsmall TODO>Token taxonomy</span>
 @[https://entethalliance.org/token-taxonomy-initiative/]
 @[https://tokentaxonomy.org/resources/videos/]
 </pre>
 <span title>Asset Tokens</span>
-<pre zoom labels="aaa,token,standards.X_509_Cert,integration.PKI,dev_languaje.solidity,signature.multisignature"
+<pre zoom labels="aaa,standards.tokens,standards.X_509_Cert,integration.PKI,dev_languaje.solidity,signature.multisignature"
   id="universal_token_summary">
 <span title>Universal Token</span>
 @[https://github.com/ConsenSys/UniversalToken]
@@ -4582,7 +4601,7 @@ RºWARNº:
 
 
 
-<pre zoom labels="aaa,token,dev_languaje.solidity" id="ERC_1155_summary">
+<pre zoom labels="aaa,standards.tokens,dev_languaje.solidity" id="ERC_1155_summary">
 <span title>ERC-1155</span>
 @[https://blog.enjincoin.io/erc-1155-the-crypto-item-standard-ac9cf1c5a226]
   - Standard interface for contracts managing multiple token types.
@@ -4737,7 +4756,7 @@ RºWARNº:
 
 </pre>
 
-<pre zoom labels="dev_languaje.solidity,token,TODO">
+<pre zoom labels="dev_languaje.solidity,standards.tokens,TODO">
 <span xsmall>ERC 777: Advanced Token Standard</span>
 @[https://medium.com/coinmonks/erc-777-a-new-advanced-token-standard-c841788ab3cb]
 
@@ -5274,7 +5293,7 @@ Bºstrings, which is a practice that can be confusing and insecure.  º
   hashes.
 </pre>
 
-<pre zoom labels="radar,UX,wallet.metamask,TODO">
+<pre zoom labels="radar,UX,wallet.metamask,evm.gas,transaction,TODO">
 <span xsmall>meta-transactions</span>
 @[https://defirate.com/meta-transactions/]
 In essence, meta transactions allow users to interact with a public
@@ -5332,7 +5351,7 @@ High activity on Github, including:
 - ledgerctl: Python, Library to control Ledger devices
 </pre>
 
-<pre zoom labels="dev_languaje.js,dev_framework.web3_js,code_snippet">
+<pre zoom labels="dev_languaje.js,dev_framework.web3_js">
 <span xsmall>Web3JS API</span>
 Example ussage (works on browser/browser js console,  web3.js v1+):
 
@@ -5389,7 +5408,7 @@ BºCalculate keccak256 (hash/sha3) of N input arguments matching hash in Solidit
 BºConvert input String  to ABI representationº
   web3.eth.abi.encodeParameter("bytes32",web3.utils.fromAscii(ºinputStringº))
 </pre>
-<pre zoom labels="TODO,dev_framework.web3_js,dev_framework.eth js,dev_languaje.js,code_snippet,comparative,">
+<pre zoom labels="TODO,dev_framework.web3_js,dev_framework.eth js,dev_languaje.js,comparative,">
 <span xsmall>web3.js vs eth.js</span>
 https://blog.infura.io/ethereum-javascript-libraries-web3-js-vs-ethers-js-part-i/?utm_medium=www.oficina24x7.com
 Ethereum JavaScript Libraries: web3.js vs. ethers.js (Part I)
@@ -5825,7 +5844,7 @@ truffle-workflow-compile
 truffle
 </pre>
 
-<pre zoom labels="dev_framework.truffle,dev_languaje.solidity,soft_life_cycle.testing,events">
+<pre zoom labels="dev_framework.truffle,dev_languaje.solidity,soft_life_cycle.testing,evm.events">
 <span xsmall>Testing events</span>
 @[https://github.com/trufflesuite/truffle/blob/next/packages/truffle-contract/test/events.js#L118-L143]
 var assert = require("chai").assert;
@@ -6025,7 +6044,7 @@ is easier to work with (like PromiEvents, I’ll talk about this below)
 
 <div groupv>
 <span title>JAVA</span>
-<pre zoom labels="dev_framework.web3j,dev_languaje.java,tool,events">
+<pre zoom labels="dev_framework.web3j,dev_languaje.java,tool,evm.events">
 <span xsmall>Web3J</span>
 @[https://docs.web3j.io/]
 <a href="https://docs.web3j.io/getting_started.html">pom / gradle dependencies</a>
@@ -6186,17 +6205,6 @@ See Also:
 
 </pre>
 
-<pre zoom labels="dev_languaje.java,dev_framework.headlong,rlp,evm,dev_framework.web3j,comparative">
-<span xsmall TODO>Headlong</span>
-@[https://github.com/esaulpaugh/headlong]
-- A Contract ABI and Recursive Length Prefix library in Java for use on the Ethereum network
-
-Contract ABI and Recursive Length Prefix made easy in Java (or Android).
-Everything heavily optimized for maximum throughput (ABI function call encoding
- ºup to 500x faster than a popular competitorº and one function creation plus one
-encode is up to 60x faster ("f(uint,uint32[],bytes10,bytes)", openjdk 11.0.1)).
-</pre>
-
 <span title>C#</span>
 <pre zoom labels="dev_languaje.C#">
 <span xsmall>Nethereum</span>
@@ -6239,7 +6247,7 @@ var TX = await TXManager
  //    toAddress, Web3.Convert.ToWei(1), 2);
 </pre>
 
-<pre zoom labels="dev_languaje.C#,events">
+<pre zoom labels="dev_languaje.C#,evm.events">
 <span xsmall>Handling Events</span>
 @[https://nethereum.readthedocs.io/en/latest/nethereum-events-gettingstarted/]
 - Events ("emit" in solidity code) write data to the transaction receipt logs.
@@ -6438,7 +6446,7 @@ and ABI with a single button press.
 <div group bggreen>
     <span title>Scalability</span><br/>
 <div groupv>
-<pre zoom bgorange labels="consensus,scalability.*,101,architecture,ethereum2,standards.EIP/ERC">
+<pre zoom bgorange labels="scalability.*,101,consensus.ethereum2,standards.EIP/ERC">
 <span xsmall>List of Scaling Solutions:</span>
 - Multisender / Multisend / ...:
 - ERC191 Standard: <!-- @ma -->
@@ -6464,7 +6472,7 @@ and ABI with a single button press.
   - ZK rollup and Validium (Alex Gluchowski @ Matter Labs)
 </pre>
 
-<pre zoom bgorange labels="consensus,scalability.consensus,101,architecture,ethereum2,standards.EIP/ERC">
+<pre zoom bgorange labels="101,scalability.consensus.101,consensus.ethereum2,standards.EIP/ERC">
 <span xsmall>Serenity/Eth v2.0 nomenclature</span>
 - REF: @[https://medium.com/alethio/ethereum-2-0-terms-demystified-8398357429d7]
   2019-08-13
@@ -6636,7 +6644,7 @@ Bºgenesis.jsonº
   }
 </pre>
 
-<pre zoom labels="consensus,comparative,scalability.consensus">
+<pre zoom labels="consensus.ethereum2,comparative,scalability.consensus">
 <span xsmall>Casper PoS (Ethereum 2)</span>
 PoS: Proof-of-Stake:
 @[https://consensys.net/blog/blockchain-explained/what-is-ethereum-2/]
@@ -6729,17 +6737,6 @@ allows for the proper functioning of the Application Blockchain Interface
 (ABCI), the Inter-Blockchain Communication protocol (IBC) as well as the
 varying interactions between the Cosmos hub and zones.
 ....
-</pre>
-
-
-<pre zoom labels="scalability.consensus,TODO">
-<span xsmall TODO>PoA</span>
-PoA: Proof of Authority consensus
-@[https://www.mattbrill.com/2019/02/21/getting-started-with-the-gorli-testnet/]
-Doesn't apply to mainnet, since there can not be "authorities"
-(Probe of stake can be seen as a probe-of-stake based on fair stakes,
- but is more about fair-stakes, providing more authority to those who
- have more interest in keeping the network alive, than onauthority itself)
 </pre>
 
 
@@ -6973,7 +6970,7 @@ Keep an eye out for the next article by Paul Lintilhac, which will give an expos
 Alethio’s recent data science initiatives: the Ponzi Model.
 </pre>
 
-<pre zoom labels="events,integration.data">
+<pre zoom labels="evm.events,integration.data">
 <span xsmall>Eventeum</span>
 @[https://github.com/ConsenSys/eventeum]
 
@@ -7202,14 +7199,13 @@ required to handle duplicate messages gracefully, as each
 instance will broadcast the same events.
 </pre>
 
-<pre zoom labels="architecture,events,integration.data,dev_languaje.java,TODO,">
+<pre zoom labels="evm.events,integration.data,dev_languaje.java,TODO,">
 <span TODO xsmall>Camel Connector</span>
 @[https://github.com/bibryam/camel-web3j]
 @[https://medium.com/@bibryam/enterprise-integration-for-ethereum-fa67a1577d43]
-
 </pre>
 
-<pre zoom labels="scalability.offchain,architecture,comparative,dev_framework.ipfs,infrastructure.storage.offchain,privacy.offchain,scalability.offchain,TODO">
+<pre zoom labels="scalability.offchain,comparative,dev_framework.ipfs,infrastructure.storage.offchain,privacy.offchain,scalability.offchain,TODO">
 <span xsmall TODO>EXTERNAL STORAGE (IPFS,...)</span>
 TODO: Compare with alternative Storage "providers": IPFS , Maidsafe, Storj
 - IPFS is just a protocol like http. It is unmotivated (don't have tokens).
@@ -7256,18 +7252,17 @@ together with the account.
 - Vue front-end, Ethereum / IPFS Backend
 </pre>
 
-<pre zoom labels="integration.*,101,evm,dev_languaje.solidity,TODO">
+<pre zoom labels="integration.*,101,evm.i/o,dev_languaje.solidity,TODO">
 <span xsmall>External Inputs (Oracles)</span>
-The evm and SmartContract by extensions just have access to internal (current-state)
-blockchain data.
-Oracles are used when we need logic that depends of external-to-blockchain events.
-
-Oracles in practices are "trusted" smart-contracts whose internal data/status
-is the result of a list of (N-of-M different) Signatures.
-For example we trust a deployed Oracle that clains that a vehicle with ID:ABCDEF had
-an accident because map( hashOfCAR_ID =˃ carStatus) ddbbStatus is updated
-only after at least N signatures of M trusted signers have been sent claiming
-such accident is true.
+• The evm and SmartContract by extensions just have access to internal (current-state)
+  blockchain data. Oracles are used when we need logic that depends of external-to-blockchain 
+  events, playing the role of "input" devices.
+• Oracles in practices are "trusted" smart-contracts whose internal data/status
+  is the result of a list of (N-of-M different) Signatures.
+• For example we trust a deployed Oracle that clains that a vehicle with ID:ABCDEF had
+  an accident because map( hashOfCAR_ID =˃ carStatus) ddbbStatus is updated
+  only after at least N signatures of M trusted signers have been sent claiming
+  such accident is true.
 
 @[http://ethereumj.io/blog/2015/09/09/friendly-ether-bot/]
 MS.Bletchley Cryplets: @[https://azure.microsoft.com/en-us/blog/cryptletsdd/]
@@ -7336,7 +7331,7 @@ public void configure() throws Exception {
 Custom ethereum client that uploads blockchain data to BigQuery
 </pre>
 
-<pre bgorange zoom labels="integration.data,graphql,architecture,TODO" >
+<pre bgorange zoom labels="integration.data,integration.graphql,architecture,TODO" >
 <span xsmall>GraphQL</span>
 - Extracted from @[https://graphql.org/]
   """GraphQL is a ºquery languageº for APIs and a runtime
@@ -7495,7 +7490,7 @@ curl -X POST -H "Content-Type: application/json" \
  http://localhost:8547/graphql
 </pre>
 
-<pre zoom labels="graphql,dev_framework.the_graph,qa.usability,TODO">
+<pre zoom labels="integration.graphql,dev_framework.the_graph,qa.usability,TODO">
 <span xsmall>The Graph</span>
 @[https://medium.com/intech-conseil-expertise/create-your-graph-node-to-query-complex-data-from-blockchain-via-graphql-6f08fbd494c5]
 By <a href="https://medium.com/@thizy.kevin">Kebin Thizy</a>
@@ -8346,7 +8341,7 @@ Available metrics (use geth monitor for full list)
         pauses: time spent in the garbage collector
 </pre>
 
-<pre zoom labels="implementation.geth,devops,graphql,oracle,soft_life_cycle.monitoring">
+<pre zoom labels="implementation.geth,devops,integration.graphql,evm.i/o,soft_life_cycle.monitoring,wallet.cloud">
 <span xsmall>Release Notes</span>
 <span xsmall>1.9</span>
 @[https://blog.ethereum.org/2019/07/10/geth-v1-9-0/]
@@ -8486,16 +8481,11 @@ GraphQL:
        - On too many wrong PUKs, your card will be bricked and you’ll need to reinstall it.
        - Alternatively you can do the same thing through RPC via multiple personal_openWallet().
 
-ºCLEF (wallets everywhere!)º
-- accounts and networking don't go well together security wise,
-- Geth v1.9.0 ships a standalone signer for the entire Ethereum ecosystem
-  called Clef.
+ºCLEF (wallets everywhere!)º                                     [wallet.cloud]
+- standalone signer for the entire Ethereum ecosystem
 - major features:
-  - remove account management from Geth allowing Geth to
-    be an "insecure" network gateway into Ethereum, fixing
-    the issues when accidentally exposing accounts via RPC
-    (old method is still available for compatibility)
-  - Usable by arbitrary programs (Geth, Parity, Trinity, Metamask, MyCrypto, decentralized apps,...)
+  - remove account management from maybe "insecure" Geth gateway.
+  - Reusable by Geth, Parity, Trinity, Metamask, MyCrypto, decentralized apps,...
     - Clef exposes a deliberately tiny external API via IPC (default) or HTTP,
       to allow signing  requests to Clef. Clef in turn will prompt
       the user for manual confirmation.
@@ -8551,50 +8541,41 @@ GraphQL:
       }
 
 ºLIGHT CLIENTSº
-- Geth v1.9.0 ships a new ultra light client.
-  This mode aims to position itself midway on the security spectrum
-  between a trusted server and a light server, replacing PoW verification
-  with digital signatures from a majority of trusted servers.
-- With enough signatures from independent entities, you could achieve
-  more than enough security for non-critical DApps. That said,
- ºultra light client mode is not really meant for your average node,       º
- ºrather for projects wishing to ship Geth embedded into their own process.º
+- Geth v1.9.0 ships a new ultra light client aiming to be          [consensus.*]
+  (security like) midway between trusted and light enodes.
+-ºreplaces PoW verification with digital signatures from majority-of-trusted enodes:º
+ ºultra light client mode is not really meant for an average node,º
+ ºbut for projects embedding Geth into their own process.º
 
 ºCHECKPOINT ORACLEº
- - Light clients, instead of downloading and verifying each header from
-   the genesis to chain head, use a hard coded checkpoint (shipped within Geth)
-   as a starting point. Of course, this checkpoint contains all the necessary
-   infos to cryptographically verify even past headers, so security wise
-   nothing is lost.
-   Some shortcomings:
-   - hard coded into release binaries: older releases will always start
-     syncing from an older block.
-   - Can NOT be used in private networks.
- - Geth v1.9.0 ships support for an on-chain checkpoint oracle. Instead of
-   relying on hard-coded checkpoints, light clients can reach out to untrusted
-   remote light servers (peer-to-peer, no centralized bs) and ask them to
-   return an updated checkpoint stored within an on-chain smart contract,
-   and cryptographically prove that the returned data was signed by a required
+ - Light clients use a hard coded checkpoint (vs verifying each header from block 0) 
+   as starting point. This checkpoint contains all the necessary
+   info to cryptographically verify even past headers, so security wise
+   nothing is lost. Some shortcomings:
+   -  hard coded into release binaries means older releases will always start
+      syncing from an older block.
+   -RºCan NOT be used in private networks.º
+ -ºGeth v1.9.0 supports for on-chain checkpoint oracle.º
+   light clients can reach out to untrusted remote light enodes and ask them to
+   return an updated on-chain checkpoint stored within an on-chain smart contract,
+   then cryptographically prove that returned data was signed by a required
    number of approved signers!
-   - How does a light client know who's authorized to sign an on-chain checkpoint?
-     - For networks supported out of the box, Geth ships with hard coded checkpoint
-       oracle addresses and lists of authorized signers (so you're trusting the same
-       devs who ship Geth itself).
-     - For private networks, the oracle details can be specified via a config file.
+   - Geth ships with hard coded checkpoint oracle addresses and lists of authorized 
+     signers to let light-enodes know who's authorized the checkpoint.
+   BºPrivate networks can define oracle details via a config file.º
    - checkpoint oracle contract is an especially nasty beast:
      a) it goes out of its way to retain security even in the face of chain reorgs
      b) it needs to support sharing and proving checkpoints to not-yet-synced clients.
      Geth v1.9.0 ships a "checkpoint-admin" tool specifically for this contract.
-     (useful to run your checkpoint oracle in a  private network).
-     $ checkpoint-admin \                      ← query status of deployed contract
-         --rpc ~/.ethereum/rinkeby/geth.ipc \
-         status
+     (useful to run your checkpoint oracle in a private network).
+   $º$ checkpoint-admin \                     º ← query status of deployed contract
+   $º    --rpc ~/.ethereum/rinkeby/geth.ipc \ º   can also be used to deploy/sign checkpoints
+   $º    status                               º
      Oracle =˃ 0xebe8eFA441B9302A0d7eaECc277c09d20D684540
 
      Admin 1 =˃ 0xD9C9Cd5f6779558b6e0eD4e6Acf6b1947E7fA1F3
      Admin 2 =˃ 0x78d1aD571A1A09D60D9BBf25894b44e4C8859595
      ...
-     (can also be used to deploy or sign updated checkpoint)
 
 ºMONITORINGº
 - Metrics collection gathering     exposed metrics:
@@ -8722,15 +8703,6 @@ Warning: We’ve tried our best to squash all the bugs, but as with all major
   drastically reduce the database size.
 
 </pre>
-
-<pre zoom labels="implementation.geth,ibft,consensus,TODO">
-<span xsmall>autonity (IBFT ext)</span>
-@[https://www.autonity.io/]
-geth extension with IBFT consensus.
-</pre>
-
-
-
 
 </div>
 
@@ -9033,7 +9005,7 @@ Youtube Channel          @[https://www.youtube.com/channel/UClC49LtcE4Wuo4POqa4J
   You DO need to delete from the blockchain and create a new private contract
 </pre>
 
-<pre zoom  labels="standards.eea,architecture,consensus,TODO">
+<pre zoom  labels="standards.eea,architecture,consensus.eea,TODO">
 <span TODO xsmall>Supported Consensus</span>
 - Probe of Authority (PoA):
   @[https://github.com/ethereum/EIPs/issues/225]
@@ -9090,7 +9062,7 @@ Then (outside the JS console) start the new geth node with the
 flag --raftjoinexisting RAFTID in addition to --raft
 </pre>
 
-<pre zoom  labels="standards.eea,consensus,privacy.private_tx">
+<pre zoom  labels="standards.eea,consensus.eea,privacy.private_tx">
 <span xsmall>TX Manager</span>
   - Quorum’s Transaction Manager is responsible for Transaction privacy.
      It stores and allows access to encrypted transaction data, exchanges encrypted
@@ -9327,7 +9299,7 @@ $ cat Bº${publicAddres} | | keccak-256sum -x -l | tr -d ' -' | tail -c 41
                    1                 2
 </pre>
 
-<pre zoom labels="standards.eea,wallet.standards,openssl">
+<pre zoom labels="standards.eea,wallet.standards">
 <span TODO xsmall>PKCS-friendly Wallet</span>
 @[https://kobl.one/blog/create-full-ethereum-keypair-and-address/]
 @[https://github.com/maandree/sha3sum] C implementation
@@ -10477,7 +10449,7 @@ OºFast syncº
   --fast-sync-min-peers=integer                     # Minimum peer number before start fast-sync. Default is 5.
 </pre>
 
-<pre zoom labels="implementation.besu,graphql">
+<pre zoom labels="implementation.besu,integration.graphql">
 <span xsmall>Besus GraphQL Schema </span>
 @[https://github.com/hyperledger/besu/blob/master/ethereum/api/src/main/resources/schema.graphqls]
 # Bytes32 is a 32 byte binary string, represented as 0x-prefixed hexadecimal.
@@ -11739,7 +11711,7 @@ Author: Benedikt Bünz
   Morgan's quorum.
 </pre>
 
-<pre zoom labels="101,consensus,TODO">
+<pre zoom labels="101,consensus.ethereum2,TODO">
 <span xsmall>verifiable delay functions</span>
 - core building block for proof stake block chains and
   secure lotteries.
@@ -11974,25 +11946,6 @@ Example ussage of Kafka streams as "micro-esb" to transform Etherum events:
 https://github.com/EthVM/EthVM/tree/develop/apps/processing/kafka-streams/src/main/kotlin/com/ethvm/kafka/streams
 </pre>
 
-<pre zoom labels="evm,qa,">
-<span xsmall>EVM trick</span>
-@[http://martin.swende.se/blog/EVM-Assembly-trick.html#]
-"""I recently discovered a method to do generic proxying of Ethereum calls.
-Skip further down for nitty gritty details, I’ll start this off with some
-basics.
-The problem
-Sometimes, it’s convenient to build contract factories. For example, say you
-want to implement crowdsourcing, or auctions, or games, or DAOs. In those
-cases, instead of having one “Mother” auction which keeps track of active
-auctions (which, in turn keep track of bidders, offers and items), it makes
-sense to implement each auction/crowdfund/game/DAO as it’s own contract.
-
-One problem is that these contracts are quite heavy; creating them may be
-very expensive and the creation of several may be limited by block gas limits
-. To counter this, the library-model can be used instead:
-"""
-</pre>
-
 <pre zoom labels="dev_languaje.solidity,qa,security,TODO">
 <span xsmall>Solidity Security Considerations</span>
 @[http://solidity.readthedocs.io/en/develop/security-considerations.html#security-considerations]
@@ -12120,7 +12073,7 @@ Using the CardContact SmartCard USB HSM in an Ethereum PoA Chain
 - How to do that same in Besu, Parity, ...? 
 </pre>
 
-<pre zoom labels="evm,dev_languaje.solidity,TODO">
+<pre zoom labels="evm.debugging,dev_languaje.solidity,TODO">
 <span xsmall>Deconstructing a Sol. Contract</span>
 @[https://blog.openzeppelin.com/deconstructing-a-solidity-contract-part-i-introduction-832efd2d7737/]
 </pre>
@@ -12156,16 +12109,6 @@ new precompile for the BLS12-381 curve.
 
 - "Alternatives":
   - DOLT: Distributed SQL ddbb on top of Git.
-</pre>
-
-<pre zoom labels="wallet.software,TODO">
-<span xsmall>MY EhterWallet ("MEW")</span>
-@[https://www.myetherwallet.com/]
-
-Ethereum's Original Wallet:
-- free, client-side interface helping you interact with the Ethereum blockchain.
-- Our easy-to-use, open-source platform allows to generate wallets,
-  interact with smart contracts, and much more.
 </pre>
 
 <pre zoom labels="101,standards.EIP/ERC,TODO">
@@ -12254,50 +12197,7 @@ $º$ pip install legions º
 REF: @[https://medium.com/coinmonks/practical-zk-snarks-for-ethereum-140cbddcb55d]
 </pre>
 
-<pre zoom labels="dev_languaje.solidity,rlp,TODO">
-<span xsmall>Solidity RLP</span>
-@[https://github.com/hamdiallam/solidity-rlp]
- Currently support for solidity v0.5.0
-
-The reader contract provides an interface to first take RLP encoded
-bytes and convert them into an internal data structure, RLPItem
-through the function, toRlpItem(bytes). This data structure can then
-be destructured into the desired data types.
-
-import "dev_languaje.solidity-rlp/contracts/RLPReader.sol"
-
-contract SomeContract {
-
-    // optional way to attach library functions to these data types.
-    using RLPReader for RLPReader.RLPItem;
-    using RLPReader for RLPReader.Iterator;
-    using RLPReader for bytes;
-
-    // lets assume that rlpBytes is an encoding of [[1, "nested"], 2, 0x˂Address˃]
-    function someFunctionThatTakesAnEncodedItem(bytes memory rlpBytes) public {
-        RLPReader.RLPItem[] memory ls = rlpBytes.toRlpItem().toList(); // must convert to an rlpItem first!
-
-        RLPReader.RLPItem memory item = ls[0]; // the encoding of [1, "nested"].
-        item.toList()[0].toUint(); // 1
-        string(item.toList()[1].toBytes()); // "nested"
-
-        ls[1].toUint(); // 2
-        ls[2].toAddress(); // 0x˂Address˃
-    }
-
-    // lets assume rlpBytes is an encoding of [["sublist"]]
-    function someFunctionThatDemonstratesIterators(bytes memory rlpBytes) public {
-        RLPReader.Iterator memory iter = rlpBytes.toRlpItem().iterator();
-        RLPReader.Iterator memory subIter = iter.next().iterator();
-
-        // iter.hasNext() == false
-        // string(subIter.next().toBytes()) == "sublist"
-        // subIter.hasNext() == false
-    }
-}
-</pre>
-
-<pre zoom labels="integration.data,dev_languaje.python,events,low_code,TODO">
+<pre zoom labels="integration.data,dev_languaje.python,evm.events,low_code,TODO">
 <span xsmall>ethereum-etl</span>
 RºWARN:º See limitation in Github Project page.
 Export blocks and transactions (Schema, Reference):
@@ -12464,12 +12364,74 @@ SKALE: Standard Kit for Asyncronous LEdgers.
 
 </pre>
 
-<pre zoom labels="use_case.financial.liquidity_provision,protocol,TODO">
+<pre zoom labels="use_case.financial.liquidity_provision,TODO">
 <span title>Uniswap</span>
-- A fully decentralized protocol for automated liquidity provision on EthereumI
+"fully decentralized protocol for automated liquidity provision on Ethereum".
+ Uniswap is a good example of use-case when ethers are controlled by Smart Contracts 
+ (vs externally owned accounts).
+
+• centralized vs de-centralized exchange:
+  centralized exchange (Coinbase,...):
+  - PRE-SETUP: register for an account.
+  - exchange monitors and facilitates transactions.
+  decentralized exchange (Coinbase,...):
+  - PRE-SETUP: Connected crypto wallet to Uniswap's app (no third party involved)
+  - no registration required. 
+  - exchange operates as automated market maker offering various
+    pairs of tokens to trade with prices set using mathematical formulas.
+
+• Uniswap cryptocurrency:
+  - high-risk "investment".
+  - governance token to vote on proposed changes for the exchange.
+  - if the exchange gets more popular, it will likely lead to more
+    people wanting to buy the token.
+
+• Implementation: 
+  - Exchange uses liquidity pools, "drawing" from them when users trade.
+                  └──────┬─────┘ 
+                  ej:
+                  ( crypto1, crypto 2) fund  ← e.g.: (ETH, DAI) pool
+                  ( crypto1, crypto 3) fund 
+                  ( crypto2, crypto 3) fund 
+                  ...
+
+  º##############º
+  º# PRE-SETUP: #º
+  º##############º
+   User_A            → Uniswap_Dapp_S.C: Signed TX "Add liquidity" 
+                                         (Lend equivalent amount of both cryptos to some Uniswap pool)
+   Uniswap_Dapp_S.C  → Uniswap_Dapp_S.C: Add to pool.
+                                          Pay share of the gas fees to user in that pool.
+
+  º##################º
+  º# SWAP Execution #º
+  º##################º
+   User_B            → Uniswap_Dapp_S.C: Signed TX with:
+                                         - amount to trade  : N (owned) Ethers
+                                         - Crytpo to receive: Dai
+
+   Uniswap_Dapp_S.C  → Uniswap_Dapp_S.C: calculate Dai to be received 
+   User_B            ← Uniswap_Dapp_S.C: Dai to be received
+   User_B            → Uniswap_Dapp_S.C: confirm the trade
+   Uniswap_Dapp_S.C  → Uniswap_Dapp_S.C: Pay from internal Ethereum/Dai pool 
+                                         minus transaction (gas) fee, always 
+                                         paid in Ethers. This fee is shared among
+                                         users "feeding" the pool in the "PRESETUP".
+                                         NOTE: Fees in Ethereum depend on the congestion of the network,
+                                               not on the value of the transaction.
+                                             RºUniswap is a poor choice for trading small swap amounts.º
+
+• Alternatives (inspired by Uniswap) include: ( PancakeSwap , SushiSwap , BurgerSwap , Curve , DODO )
+   - One advantage several other exchanges offer is that they run
+     on the Binance Smart Chain, which currently has much lower fees than Ethereum.
+     Particularly succesful is the case of PancakeSwap.
+
+• Options to "invest" in Uniswap include:
+  - buy it through an exchange like any other cryptocurrency (Coinbase, Gemini, Binance, ...)
+  - trade for it on Uniswap exchange.
 </pre>
 
-<pre zoom labels="qa.formal_verification,consensus,ethereum2,TODO,">
+<pre zoom labels="qa.formal_verification,consensus.ethereum2,TODO,">
 <span title>Forma Verification for Eth2.0 (Beacon Chain)</span>
 """ ...With my colleague Joanne Fuller, PhD at ConsenSys, we are 
   delighted to have released the first version of the formal 
@@ -13249,3 +13211,88 @@ $ zos update CounterContract --network local  # ← update CounterContract to ne
 <span title>awesome-quorum</span>
 https://github.com/ConsenSys/awesome-quorum
 </pre>
+
+<pre zoom labels="TODO">
+<span title>@truffle/db</span>
+https://www.trufflesuite.com/docs/truffle/db/
+
+- complete system of record to track information about smart contracts and their development histories. 
+- Information is organized as content-addressed, immutable resources 
+- Use-cases:
+  - reproduce prior builds
+  - single source of truth in development life cycle from source code to deployment.
+- features:
+  - track the continuity of a smart contract as it is implemented.
+    (even in case of  hard-forks). 
+  - Blockchain data and metadata is never forgotten.
+  - GraphQL interface
+  - data persisted to several backend through PouchDB. 
+- Ussage:
+$º$ truffle db serve º ← Starts GraphQL Playground HTTP server.
+</pre>
+
+TODO: recheck transaction subtopics.
+################
+ethereum2, 
+https://ethereum-magicians.org/t/in-one-swoop-the-eth2-0-devs-destroyed-staking/7379
+
+<pre zoom labels="dev_languaje.java,dev_languaje.solidity,dev_framework.headlong,evm.abi,dev_framework.web3j,comparative">
+<span xsmall TODO>Headlong</span>
+@[https://github.com/esaulpaugh/headlong]
+- A Contract ABI and Recursive Length Prefix library in Java for use on the Ethereum network.
+
+Contract ABI and Recursive Length Prefix made easy in Java (or Android).
+Everything heavily optimized for maximum throughput (ABI function call encoding
+ ºup to 500x faster than a popular competitorº and one function creation plus one
+encode is up to 60x faster ("f(uint,uint32[],bytes10,bytes)", openjdk 11.0.1)).
+
+<span xsmall>Solidity RLP</span>
+@[https://github.com/hamdiallam/solidity-rlp]
+ Currently support for solidity v0.5.0
+
+The reader contract provides an interface to first take RLP encoded
+bytes and convert them into an internal data structure, RLPItem
+through the function, toRlpItem(bytes). This data structure can then
+be destructured into the desired data types.
+
+import "dev_languaje.solidity-rlp/contracts/RLPReader.sol"
+
+contract SomeContract {
+
+    // optional way to attach library functions to these data types.
+    using RLPReader for RLPReader.RLPItem;
+    using RLPReader for RLPReader.Iterator;
+    using RLPReader for bytes;
+
+    // lets assume that rlpBytes is an encoding of [[1, "nested"], 2, 0x˂Address˃]
+    function someFunctionThatTakesAnEncodedItem(bytes memory rlpBytes) public {
+        RLPReader.RLPItem[] memory ls = rlpBytes.toRlpItem().toList(); // must convert to an rlpItem first!
+
+        RLPReader.RLPItem memory item = ls[0]; // the encoding of [1, "nested"].
+        item.toList()[0].toUint(); // 1
+        string(item.toList()[1].toBytes()); // "nested"
+
+        ls[1].toUint(); // 2
+        ls[2].toAddress(); // 0x˂Address˃
+    }
+
+    // lets assume rlpBytes is an encoding of [["sublist"]]
+    function someFunctionThatDemonstratesIterators(bytes memory rlpBytes) public {
+        RLPReader.Iterator memory iter = rlpBytes.toRlpItem().iterator();
+        RLPReader.Iterator memory subIter = iter.next().iterator();
+
+        // iter.hasNext() == false
+        // string(subIter.next().toBytes()) == "sublist"
+        // subIter.hasNext() == false
+    }
+}
+</pre>
+
+<pre zoom labels="TODO">
+<span title></span>
+Exploring Ethereum's Data Stores: A Cost and Performance Comparison
+https://www.youtube.com/watch?v=tmRj7cYxxBY
+</pre>
+
+
+-->

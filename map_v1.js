@@ -124,12 +124,14 @@ const SF = {  /* search Form */
       .filter  ( root_topic => { return LM.DDBB.treeOfTopics[root_topic].length != 1 } )
       .forEach ( root_topic      => {
           const root_topic_prefix = root_topic.replace(".*", "")
-          htmlLabels += openDiv + "<div class='labelBlockTitle'>"+ root_topic_prefix +":</div>" 
+          htmlLabels += openDiv + "<div class='labelBlockTitle'>"+ root_topic_prefix +".</div>" 
+          htmlLabels += "<div class='labelPrefixGroup'>"
           LM.DDBB.treeOfTopics[root_topic]
           .sort(SF.generateSorterForRootTopic(root_topic))
           .forEach( topic => {
               htmlLabels += LM.renderLabel(topic, true, false, root_topic_prefix  )
           })
+          htmlLabels += "</div>"
           htmlLabels += "</div>"
     });
     SF.searchForm_labelsDOM.innerHTML = htmlLabels;
@@ -622,7 +624,7 @@ const MB = { // Menu Bar
         searchDiv.setAttribute("id", "upper_bar")
         searchDiv.classList.add("noprint")
         searchDiv.innerHTML = ''
-     + '<img id="idLabelsFilter" class="noprint" src="/labelIcon.svg" />'
+     + '<img id="idLabelsFilter" class="noprint" src="/IT_notes/labelIcon.svg"/>'
      + '<a href="../help.html" class="noprint" style="cursor:help" target="_blank" >❓</a>'
      + '<span blue id="printButton">Print</span>'
      + '<span id="loupe"  blue>🔍︎</span>'

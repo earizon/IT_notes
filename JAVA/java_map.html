@@ -13,13 +13,14 @@
 <body>
     <br/>
     <div style="text-align:center; text-size: 1.5em; padding:0.5rem;">
+This "cheat-sheet with steroids" presents an always-growing set of "TOP Java recipes" well ordered&amp;classified extracted from DZone/InfoQ/Redhat Developrs/Medium/bealdun/ articles, github code, ... as well as author's own experience in different projects. 
+
 <!--
     ⏿ You can also be interested in the <a target="_new" href="../WebTechnologies/map.html">Web Technologies</a>, 
     <a target="_new" href="../General/cryptography_map.html">Cryptography</a> and
     <a target="_new" href="../Architecture/architecture_map.html?topics=enterprise_patterns">Enterprise Patterns</a> maps.☜
 -->
     <br/>
-    
     </div>
 <div groupv>
 <pre zoom labels="resource,TODO">
@@ -59,35 +60,62 @@ https://hg.openjdk.java.net/jdk/jdk
 • Avoid Nulls, prefer final:
 RºWRONG:º
   ========================         
-  int myValue = null; 
+  SomeClass instance = null; 
   if (condition1) {   ← Initialization depends on runtime checks (condition1/2/...).
-      myValue = val1;   We can forget to add some condition wrongly leaving
-  }                     myValue to a false null. (Probably in a later
+      instance = val1;   We can forget to add some condition wrongly leaving
+  }                     instance to a false null. (Probably in a later
   if (condition2) {   ← interaction, weeks or months after first implementatio
-      myValue = val2;   when myValue is not fresh in our memory) 
-  }                    
+      instance = val2;   when instance is not fresh in our memory) 
+  } 
+                      ← At this point we forgot to check for condition3, or maybe 
+                        condition3 didn't apply at code writing, but appear later on
+                        after some unrelated change.
   ...
+  serviceX.functionN(..., instance, ...) ← At this point instance can be undefined
 
 BºRIGHT:º
   ========================
- ºfinalºint myValue;  ← "final" keywords force compiler to check every possible execution
+ ºfinalºint instance;  ← "final" keywords force compiler to check every possible execution
   if (condition1) {     condition and fail to compile is some branch does not initiliaze
-      myValue = val1;   myValue properly.
+      instance = val1;   instance properly.
   }                     - Final values are safer (to and developer mistakes concurent code).
   if (condition2) {     
-      myValue = val2;   - Final values makes JIT happier.
+      instance = val2;   - Final values makes JIT happier.
   }
   ...
+  servX.funcN(instance) ← At this point compiler will abort if there is some 
+                          execution branch where instance rest un-initialized.
  
   See also:
   - Inmmutable Objects are faster (and safer)
   @[https://docs.oracle.com/javase/tutorial/essential/concurrency/immutable.html]
    (A final variable is the simplest example of an immutable object)
 
+• Catch blocks must rethrow if the exception can not be fixed on the catch block.
+  HINT: 99% of times it can NOT be fixed on the catch block.
+
+RºWRONGº                     BºRIGHTº
+  ========================     ========================
+  } catch (IOException e) {    } catch (IOException e) {
+      e.printStackTrace();         throw new RuntimeException(e);
+  }                            }
+
+  The correct "right" code looks weaker, since the exception is propagated ... and that's 
+  a good thing, because the error has not been fixed, but some other piece of code (or maybe 
+  final user) will be notified. In the "wrong" code the code is just hidden.  This will 
+  trigger undefined behaviour, null pointers, nightmares and developer's non-paid extra hours.
+
 • Avoid Strings as much as possible. You are converting an strongly typed 
   language in a weak runtime one.
   If forced to use strings, try to protect them with (Checkers framework) @Fenum("country")
   @[#checker_framework_summary]
+
+• Avoid huge interfaces. Prefer small, decoupled ones, with few exposed methods 
+  decoupled interfaces related to security from storage from cache from ... 
+  
+• Avoid checked exceptions. It was an error in the initial design of the Java language.
+  Each time a checked exception is found convert to a runtime (subclass) exception.
+  More info at: @[https://phauer.com/2015/checked-exceptions-are-evil/]
 </pre>
 
 <pre zoom labels="resource,TODO">
@@ -1947,7 +1975,7 @@ ValueGraph˂N,V˃         An interface for graph- structured data, whose edges h
 
 
 </pre>
-<pre zoom labels="data_structures.101,qa" >
+<pre zoom labels="data_structures.101,qa" id="data_structures_101_summary">
 <span xsmall>Lists</span>
 ºINITIALIZING A LISTº
 final List˂String˃ myList =                  ← final forbid re-asigning the list,
@@ -3099,6 +3127,7 @@ BºWHAT'S NEWº
   - Rules API 2.0: Allow to use intermediate results from other rules.
   
   - JFR Writer is introduced as a new core module.
+
 </pre>
 
 <pre zoom labels="monitoring.101,debugging,troubleshooting,low_code,TODO">
@@ -4067,7 +4096,7 @@ https://spring.io/projects/
 @[https://github.com/spring-projects/spring-framework/wiki/What%27s-New-in-the-Spring-Framework]
 </pre>
 
-<pre zoom labels="spring.101">
+<pre zoom labels="spring.101" id="sprint_donts">
 <span xsmall>Spring DONT's!!!</span>
 - If a interface has a single implementation and is going
   to be instantiated just once in a single line of code,
@@ -8829,33 +8858,33 @@ the following enterprise features:
 
 <span title>JSON</span>
 <pre TODO zoom labels="persistence.JSON,security.TLS/X509,security.aaa,">
-<span xsmall>JSON</span>
+<span xsmall>JSON-P /JSR-374</span>
 - TODO: Patterns of JSON Matching:
   Streaming based, binding based, expression based.
 @[https://dzone.com/articles/patterns-of-reading-json?edition=598293]
 - REF:JSON processing public review
   @[https://www.infoq.com/news/2017/03/json-processing-public-review]
 
-Public review of JSR 374:
-- Java API for JSON Processing (JSON-P) version 1.1 is now open.
-  This version is expected to be included in the release of J2EE 8 
-  and keeps JSON-P current with JSON IETF standards. It includes 
-  support for:
+- JSR 374, API for JSON Processing (JSON-P) version 1.1.
+  - Java 8 streams and lambdas alternative to Gson and Jackson.
+  - expected to be included in J2EE 8 .
+  - compatible with JSON IETF standards. 
+  - It includes support for:
     - JSON Pointer
     - JSON Patch
     - JSON Merge Patch
     - Query and transformation operations
-    - Java 8 streams and lambdas
-- JSON-P (J2EE7+, 2013):
-  - alternative to Gson and Jackson.
   - Designed to parse/generate/query standard JSON documents.
-- JSON-B (J2EE8+, SR-367):
-  - B: stands for  "Binding". Standard binding layer for converting
+<hr/>
+<span title>JSON-B / JSR-367</span>
+  @[https://itsallbinary.com/jackson-vs-gson-vs-json-b-vs-json-p-vs-org-json-vs-jsonpath-java-json-libraries-features-comparison/]
+- B stands for Ojbect binding
+  - Standard binding layer for converting
     Java objects to/from JSON messages,ºdefining a default mapping algorithmº
     for converting existing Java classes to JSON, while enabling developers
     to customize it through annotations. 
 
-- Example:
+- Real World REST APIT Example:
   package com.mycomp.project1;
   
   import java.io.BufferedReader;
@@ -10551,6 +10580,33 @@ Bºseveral modules with specified dependencies.º
 - Java Threads Wait, Notify and NotifyAll Example
 </pre>
 
+<pre zoom labels="async/reactive.io,persistence.fs,TODO">
+<span title>JIMFS</span>
+@[https://github.com/google/jimfs]
+- Jimfs supports almost all the APIs under java.nio.file:
+  - Create/delete/move/Copy  files/dirs.
+  - Read/write files with FileChannel/SeekableByteChannel/InputStream/OutputStream/...
+  - Symbolic links.
+  - Hard links to regular files.
+  - SecureDirectoryStream, for operations relative to an open directory.
+  - Glob and regex path filtering with PathMatcher.
+  - Watching for changes to a directory with a WatchService.
+  - Built-in (file) attribute views that can be supported include
+    "basic", "owner", "posix", "unix", "dos", "acl" and "user".
+- Simple ussage:
+  import com.google.common.jimfs.Configuration;
+  import com.google.common.jimfs.Jimfs;
+  ...
+  
+  // For a simple file system with Unix-style paths and behavior:
+  final FileSystem fs = Jimfs.newFileSystem(Configuration.unix());
+  final Path foo = fs.getPath("/foo");
+  Files.createDirectory(foo);
+  final Path hello = foo.resolve("hello.txt");
+  Files.write(hello, ImmutableList.of("hello world"), StandardCharsets.UTF_8);
+
+
+</pre>
 
 </div>
 </body>
@@ -10652,8 +10708,6 @@ https://www.javacodegeeks.com/2015/02/jpa-tutorial.html
 #########################
 https://www.javacodegeeks.com/spring-batch-tutorial.html
 #########################
-DONT's:
-- Don't use huge interface, but small decoupled ones.
 ######################
 Invoquing sub-processes from java, curl example:
 WARN: non-cross-platform
@@ -10874,11 +10928,28 @@ https://www.infoq.com/news/2021/06/scala-3-overhaul/
 Microsoft Open-Sources GCToolkit to Tap into JVM GC Logs
 https://www.infoq.com/news/2021/09/msft-opensourced-gctoolkit/ 
 
-Besides the API, there are two other modules: the parser and the Vert.x module. The parser module is based on a collection of regular expressions and code written over many years to be considered the most robust GC log parser available. The Vert.x-based messaging backend makes use of two message buses: the first one streams data from a data source. The current implementation streams log lines from the GC log file. The consumers of this bus are the parsers that convert the data from the data source into events that represent either a GC cycle or safe point. These events are published on the second message bus: the event bus. Subscribers on the event bus are then able to be notified and to process events that are of interest to them.
+Besides the API, there are two other modules: the parser and the 
+Vert.x module. The parser module is based on a collection of regular 
+expressions and code written over many years to be considered the 
+most robust GC log parser available. The Vert.x-based messaging 
+backend makes use of two message buses: the first one streams data 
+from a data source. The current implementation streams log lines from 
+the GC log file. The consumers of this bus are the parsers that 
+convert the data from the data source into events that represent 
+either a GC cycle or safe point. These events are published on the 
+second message bus: the event bus. Subscribers on the event bus are 
+then able to be notified and to process events that are of interest 
+to them.
 
-
-
-More importantly, it has long been known that a suboptimal configuration collector will result in an application requiring more CPU and memory, while at the same time, degrading the end user’s experience. In other words, poorly tuned often equates to a more expensive runtime and unhappy users. The challenge is that to optimally tune the GC, one needs to create a delicate balance between several concerns all of which are not easily seen without the assistance of tooling. GCToolKit has been helpful in making this easier.
+More importantly, it has long been known that a suboptimal 
+configuration collector will result in an application requiring more 
+CPU and memory, while at the same time, degrading the end user’s 
+experience. In other words, poorly tuned often equates to a more 
+expensive runtime and unhappy users. The challenge is that to 
+optimally tune the GC, one needs to create a delicate balance between 
+several concerns all of which are not easily seen without the 
+assistance of tooling. GCToolKit has been helpful in making this 
+easier.
 ##########################
 VMware Overhauls Spring 6 & Spring Boot 3 for Another Decade
 https://www.infoq.com/news/2021/09/spring-6-spring-boot-3-overhaul/
@@ -10888,6 +10959,40 @@ https://www.infoq.com/news/2021/09/spring-6-spring-boot-3-overhaul/
 Kotlin: Android Developers Blog: Accelerated Kotlin build times with Kotlin Symbol Processing 1.0
 https://android-developers.googleblog.com/2021/09/accelerated-kotlin-build-times-with.html?m=1
 
+#############################
+java.util.concurrent.locks.ReentrantLock vs synchronized { ... } block
 
+ 1) Another significant difference between ReentrantLock and the 
+synchronized keyword is fairness. The synchronized keyword doesn't 
+support fairness. Any thread can acquire lock once released, no 
+preference can be specified, on the other hand, you can make 
+ReentrantLock fair by specifying fairness property while creating an 
+instance of ReentrantLock. Fairness property provides a lock to the 
+longest waiting thread, in case of contention.
 
+ 2) The second difference between synchronized and Reentrant lock is 
+tryLock() method. ReentrantLock provides a convenient tryLock() 
+method, which acquires lock only if its available or not held by any 
+other thread. This reduces the blocking of thread waiting for lock-in 
+Java applications.
+
+ 3) One more worth noting the difference between ReentrantLock and 
+synchronized keyword in Java is, the ability to interrupt Thread 
+while waiting for Lock. In case of a synchronized keyword, a thread 
+can be blocked waiting for a lock, for an indefinite period of time 
+and there was no way to control that. ReentrantLock provides a method 
+called lockInterruptibly(), which can be used to interrupt thread 
+when it is waiting for lock. Similarly, tryLock() with timeout can be 
+used to timeout if the lock is not available in certain time period.
+####################################
+Modern functional programming in Java:  ¡¡¡@ma!!! 
+@[https://dzone.com/articles/introduction-to-pragmatic-functional-java]
+####################################
+JAVA DONT's
+https://dzone.com/articles/we-should-write-java-code-differently?edition=598293#
+###################
+@[https://www.baeldung.com/java-json-binding-api]
+###################
+TODO: Clean JSON Notes.
+###################
 

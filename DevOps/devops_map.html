@@ -451,26 +451,18 @@ REF:
                                                 $ git notes copy "from" "to"
 </pre>
 
-<pre zoom labels="git.*,TODO">
-<span xsmall>Notes</span>
-@[http://alblue.bandlem.com/2011/11/git-tip-of-week-git-notes.html]
-</pre>
+<pre zoom labels="git,101,TODO">
+<span xsmall>Git Recipes</span>
+$º$ git remote update origin --prune  º ← update local list of remote branches
 
+                                          PRETTY BRANCH PRINT *1
+  $ git log --all --decorate \          ← Alt.1
+    --oneline --graph
+  $ git log --graph --abbrev-commit \   ← Alt.2
+     --decorate --date=relative --all
+ *1: REF @[https://stackoverflow.com/questions/1057564/pretty-git-branch-graphs]
 
-<pre zoom labels="git.*,101">
-<span xsmall>pretty branch print</span>
-@[https://stackoverflow.com/questions/1057564/pretty-git-branch-graphs]
-
-$ git log --all --decorate --oneline --graph
-
-$ git log --graph --abbrev-commit --decorate --date=relative --all
-</pre>
-
-<pre zoom labels="git.*,TODO">
-<span xsmall>Quick-clone</span>
-$ git clone --depth=1 ${URL_to_Git_repo}
-            ^^^^^^^^^
-            "fast clone"
+  $ git clone --depth=1 ${GIT_URL}      ← Quick/fast-clone (--depth=1)
             Create shallow clone with
             history truncated to the
             specified number of commits. 
@@ -486,10 +478,6 @@ $ git clone --depth=1   --branch '1.3.2'   --single-branch ${URL_to_Git_repo}
                         point to branch    Clone only history
                         hash or tag        leading to the tip
                         default to HEAD)   of a single branch
-
-
-
-
 </pre>
 
 <pre zoom labels="git.*,TODO">
@@ -832,263 +820,11 @@ Gerrit does NOT provide:
 - Code Analyzers
 - Style Checkers
 </pre>
-
-<span title>Client implementations</span>
-<pre zoom labels="git.*,dev_language.java,">
-<span xsmall>JGit</span>
-@[https://wiki.eclipse.org/JGit/User_Guide]
-- lightweight, pure Java library implementing the Git version control system
-  - repository access routines
-  - network protocols
-  - core version control algorithms
-- suitable for embedding in any Java application
-
-
-Repository = objects store + refs 
-
-  final FileRepositoryBuilder builder = new FileRepositoryBuilder();
-  final Repository repository = 
-      builder
-     .setGitDir(new File(configRepoPath01))  // ← Set root file path
-     .readEnvironment()                      // ← scan GIT_* env.vars 
-     .findGitDir()                           // ← scan up file system tree
-     .build();
-
-
-Bº┌────────────┐º
-Bº│Plumbing API│º
-Bº└────────────┘º
- AnyObjectId/ObjectId: Represent the SHA-1 (256 in 2.29+) of tag/commit/trees/blobs
-
- final ObjectId head = repository.resolve("HEAD");
-
- final Ref HEAD =        // ← Ref: single object Id representing a tag/commit/tree/blob
-     repository.getRef("refs/heads/master");
-   
- final RevWalk walk01 =                              // ← walks commit graph in order.
-     new RevWalk(repository);
-
- final RevCommit commit =                            // get commit from Hash ID
-     walk01.parseCommit(objectIdOfCommit);
-
- final RevTag tag =                                  // get commit for tag
-     walk01.parseTag(objectIdOfTag);
-
- final RevTree tree =
-     walk01.parseTree(objectIdOfTree);
-
-Bº┌─────────────┐º
-Bº│Porcelain API│º (org.eclipse.jgit.api package)
-Bº└─────────────┘º
-
-  final Git git01 = new Git(db);
-  final AddCommand addCom = git01.add();  // command obj. used to add files to index.
-  addCom.addFilepattern("someDirectory").call();
-
-  final CommitCommand commitCom = git01.commit();    //  git commit
-  commitCom.setMessage("initial commit").call();
-           .setAuthor()....
-           .setCommitter()....
-           .setAll()...
-
-  RevTag tag = git01.tag().setName("tag").call();    //  git tag
-                          .setMessage()
-                          .setTagger()
-                          .setObjectId()
-                          .setForceUpdate()
-                          .setSigned()               ← Rºnot supported yet, throws exceptionº
-
-
-  final Iterable<RevCommit> log =                    // Walks commit graph (porcelain). Ops. available:
-        git01.log().call();                             add(AnyObjectId start), 
-                                                        addRange(AnyObjectId since, AnyObjectId until)
-
-  // TODO: MergeCommand (git-merge)
-
-
-- org.eclipse.jgit.ant ANT TASKS:
-  <taskdef resource="org/eclipse/jgit/ant/ant-tasks.properties">
-      <classpath>
-        <pathelement location="path/to/org.eclipse.jgit.ant-VERSION.jar"/>
-        <pathelement location="path/to/org.eclipse.jgit-VERSION.jar"/>
-        <pathelement location="path/to/jsch-0.1.44-1.jar"/>
-      </classpath>
-  </taskdef>
-
-  - <git-clone 
-         uri="http://egit.eclipse.org/jgit.git" 
-         dest="(opt) destination to clone "
-         bare="(defaults to false)"
-         branch="(defaults to HEAD), initial branch to check out" />
-
-  - <git-init
-         dest="(opt) path where git repo is initialized "
-         bare="(defaults to false)" />
-
-  - <git-checkout
-         src="path/to/repo"
-         branch="origin/experimental" 
-         createbranch="(def:false)" 
-         force="(def:false) true:start-point changed to new start-point if local branch exists" 
-     />
-
- - Ex.  Finding children of a commit
-   PlotWalk revWalk = new PlotWalk(repo());
-   ObjectId rootId = (branch==null)
-                     ? repo().resolve(HEAD)
-                     : branch.getObjectId();
-   RevCommit root = revWalk.parseCommit(rootId);
-   revWalk.markStart(root);
-   PlotCommitList<PlotLane> plotCommitList = 
-                     new PlotCommitList<PlotLane>();
-   plotCommitList.source(revWalk);
-   plotCommitList.fillTo(Integer.MAX_VALUE);
-   return revWalk;
-
-
-BºReducing memory usage with RevWalkº
-  RevWalk and RevCommit are designed to be light-weight, but still consume lot of memory for big repos.
-  Some tips:
-  -ºRestrict walked revision graph to "only needed"º:
-    - Ex: looking for commits
-          in 'refs/heads/master'           ← markStart        () to refs/heads/master
-  not yet in 'refs/remotes/origin/master'  ← markUninteresting() to refs/remotes/origin/master
-                                             └────────┬────────┘
-                                            RevWalk traversal will only parse commits necessary 
-                                            avoiding to  look further back in history.
-
-      final ObjectId 
-              from = repository.resolve("refs/heads/master"         ),
-                to = repository.resolve("refs/remotes/origin/master");
-
-      walk01.markStart(walk.parseCommit(from));
-      walk01.markUninteresting(walk.parseCommit(to));
-
-  -ºDiscard body of a commitº:
-    walk01.setRetainBody(false);   ← Ignore author, committer, message, signature?, ...
-    Useful when computing just merge base between branches or 'git rev-list' like commands.
-
-    - consider also extract any needed data and call ºdispose()º on RevCommit instance.
-      otherwise JGit use a compact internal byte[] UTF-8 representation (vs String UTF-16)
-
-    Ex:
-    ...
-    Set<String> authorEmails = new HashSet<String>();
-    for (RevCommit commit : walk01) {
-        authorEmails.add(
-           commit.getAuthorIdent().getEmailAddress()
-        );
-        commit.dispose();
-    }
-
-BºSubclassing RevWalk/RevCommitº
-  - Subclassing allows to attach additional data to a commit.
-    - use RevWalk→createCommit() method to create new instance of RevCommit subclass. 
-    - Put additional data as fields in RevCommit subclass 
-      (and so avoiding the non-type safe HashMap to translate RevCommit|ObjectId ←→  additional data fields)
-    - Ej:
-      public class ReviewedRevision extends RevCommit {
-      
-          private final Date reviewDate; // ← New field
-          private ReviewedRevision(AnyObjectId id, Date reviewDate) {
-              super(id);
-              this.reviewDate = reviewDate;
-          }
-      
-          public List<String> getReviewedBy() { return getFooterLines("Reviewed-by"); }
-      
-          public Date getReviewDate() { return reviewDate; }
-      
-          public static class Walk extends RevWalk {
-      
-              public Walk(Repository repo) { super(repo); }
-      
-              @Override
-              protected RevCommit createCommit(AnyObjectId id) {
-                  return new ReviewedRevision(id, getReviewDate(id));
-              }
-      
-              private Date getReviewDate(AnyObjectId id) { ... }
-          }
-      }
-
-BºClean up revision walkº
-  - reusing an existing object map is much faster but can consume lot of memory.
-    Speed vs memory consumption must be balanced.
-  - To clean up:
-    for (RevCommit commit : walk01) { ... }
-  Oºwalk01.dispose();º
-
-<hr/>
-BºJGit CookBook Recipes:º TODO:(0)
-@[https://github.com/centic9/jgit-cookbook]
-
-</pre>
-
 </div>
 
 <div group>
     <span title>Non-Classified</span><br/>
 <div groupv>
-<pre zoom labels="gitgit.*,TODO">
-<span xsmall TODO>git-pw</span>
-@[http://jk.ozlabs.org/projects/patchwork/]
-@[https://www.collabora.com/news-and-blog/blog/2019/04/18/quick-hack-git-pw/]
-- git-pw requires patchwork v2.0, since it uses the 
-  new REST API and other improvements, such as understanding
-  the difference between patches, series and cover letters,
-  to know exactly what to try and apply.
-
-- python-based tool that integrates git and patchwork.
-
-  $ pip install --user git-pw
-
-CONFIG:
-  $ git config pw.server https://patchwork.kernel.org/api/1.1
-  $ git config pw.token YOUR_USER_TOKEN_HERE
-
-ºDaily work example: finding and applying seriesº
-
-- Alternative 1: Manually
-  - We could use patchwork web UI search engine for it.
-    - Go to "linux-rockchip" project 
-    - click on _"Show patches with" to access the filter menu.
-    - filter by submitter. 
-
-- Alternative 2: git-pw (REST API wrapper)
-  - $ git-pw --project linux-rockchip series list "dynamically"
-    → ID    Date         Name              Version   Submitter
-    → 95139 a day ago    Add support ...   3         Gaël PORTAY
-    → 93875 3 days ago   Add support ...   2         Gaël PORTAY
-    → 3039  8 months ago Add support ...   1         Enric Balletbo i Serra
-
-
-  - Get some more info:
-    $ git-pw series show 95139
-    → Property    Value
-    → ID          95139
-    → Date        2019-03-21T23:14:35
-    → Name        Add support for drm/rockchip to dynamically control the DDR frequency.
-    → URL         https://patchwork.kernel.org/project/linux-rockchip/list/?series=95139
-    → Submitter   Gaël PORTAY
-    → Project     Rockchip SoC list
-    → Version     3
-    → Received    5 of 5
-    → Complete    True
-    → Cover       10864561 [v3,0/5] Add support ....
-    → Patches     10864575 [v3,1/5] devfreq: rockchip-dfi: Move GRF definitions to a common place.
-    →     10864579 [v3,2/5] : devfreq: rk3399_dmc: Add rockchip, pmu phandle.
-    →     10864589 [v3,3/5] devfreq: rk3399_dmc: Pass ODT and auto power down parameters to TF-A.
-    →     10864591 [v3,4/5] arm64: dts: rk3399: Add dfi and dmc nodes.
-    →     10864585 [v3,5/5] arm64: dts: rockchip: Enable dmc and dfi nodes on gru.
-
-
-  - Applying the entire series (or at least trying to):
-    $ git-pw series apply 95139
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    fetch all the patches in the series, and apply them in the right order.
-</pre>
-
 <pre zoom labels="git.*,1_doc_type.resource">
 <span xsmall>GIT Commit Standard Emojis</span>
 @[https://gist.github.com/parmentf/035de27d6ed1dce0b36a]
@@ -5403,7 +5139,7 @@ BºChat channelsº
 
 
 
-<pre zoom labels="gui,tool,TODO">
+<pre zoom labels="gui,too|stack|framework,TODO">
 <span xsmall>Portainer UI</span>
 (See also LazyDocker)
 - Portainer, an open-source management interface used to manage a 
@@ -6261,7 +5997,7 @@ BºSummaryº
 
 </pre>
 
-<pre zoom labels="containerization.image.build,tool,low_code,TODO" bgorange>
+<pre zoom labels="containerization.image.build,tool|stack|framework,low_code,TODO" bgorange>
 <span xsmall>Dockerize</span>
 @[https://github.com/jwilder/dockerize]
 - utility to simplify running applications in docker containers. 
@@ -7037,7 +6773,7 @@ All major components can be customized programmatically at compile-time
 without forking the project.
 </pre>
 
-<pre zoom labels="containerization.image.registry,tool,TODO,">
+<pre zoom labels="containerization.image.registry,tool|stack|framework,TODO,">
 <span xsmall>Skopeo</span>
 @[https://github.com/containers/skopeo]
 @[https://www.redhat.com/en/blog/skopeo-10-released]
@@ -7054,7 +6790,7 @@ without forking the project.
 @[https://opensource.com/business/15/3/docker-security-tuning]
 </pre>
 
-<pre zoom labels="gui,tool,TODO">
+<pre zoom labels="gui,tool|stack|framework,TODO">
 <span xsmall>LazyDocker</span>
 @[https://github.com/jesseduffield/lazydocker]
 A simple terminal UI for both docker and docker-compose, written in 
@@ -8202,6 +7938,128 @@ http://chuletario.blogspot.com/2011/05/monitoring-uninterruptible-system-calls.h
 DevSecOps: Image scanning in your pipelines using quay.io scanner | Enable Sysadmin
 https://www.redhat.com/sysadmin/using-quayio-scanner 
 #################################
+<pre zoom labels="git.*,TODO">
+<span xsmall TODO>git-pw</span>
+@[http://jk.ozlabs.org/projects/patchwork/]
+@[https://www.collabora.com/news-and-blog/blog/2019/04/18/quick-hack-git-pw/]
+- git-pw requires patchwork v2.0, since it uses the 
+  new REST API and other improvements, such as understanding
+  the difference between patches, series and cover letters,
+  to know exactly what to try and apply.
+
+- python-based tool that integrates git and patchwork.
+
+  $ pip install --user git-pw
+
+CONFIG:
+  $ git config pw.server https://patchwork.kernel.org/api/1.1
+  $ git config pw.token YOUR_USER_TOKEN_HERE
+
+ºDaily work example: finding and applying seriesº
+
+- Alternative 1: Manually
+  - We could use patchwork web UI search engine for it.
+    - Go to "linux-rockchip" project 
+    - click on _"Show patches with" to access the filter menu.
+    - filter by submitter. 
+
+- Alternative 2: git-pw (REST API wrapper)
+  - $ git-pw --project linux-rockchip series list "dynamically"
+    → ID    Date         Name              Version   Submitter
+    → 95139 a day ago    Add support ...   3         Gaël PORTAY
+    → 93875 3 days ago   Add support ...   2         Gaël PORTAY
+    → 3039  8 months ago Add support ...   1         Enric Balletbo i Serra
+
+
+  - Get some more info:
+    $ git-pw series show 95139
+    → Property    Value
+    → ID          95139
+    → Date        2019-03-21T23:14:35
+    → Name        Add support for drm/rockchip to dynamically control the DDR frequency.
+    → URL         https://patchwork.kernel.org/project/linux-rockchip/list/?series=95139
+    → Submitter   Gaël PORTAY
+    → Project     Rockchip SoC list
+    → Version     3
+    → Received    5 of 5
+    → Complete    True
+    → Cover       10864561 [v3,0/5] Add support ....
+    → Patches     10864575 [v3,1/5] devfreq: rockchip-dfi: Move GRF definitions to a common place.
+    →     10864579 [v3,2/5] : devfreq: rk3399_dmc: Add rockchip, pmu phandle.
+    →     10864589 [v3,3/5] devfreq: rk3399_dmc: Pass ODT and auto power down parameters to TF-A.
+    →     10864591 [v3,4/5] arm64: dts: rk3399: Add dfi and dmc nodes.
+    →     10864585 [v3,5/5] arm64: dts: rockchip: Enable dmc and dfi nodes on gru.
+
+
+  - Applying the entire series (or at least trying to):
+    $ git-pw series apply 95139
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    fetch all the patches in the series, and apply them in the right order.
+</pre>
+
+<pre zoom labels="TODO">
+<span title>SaST-scan </span>
+https://github.com/AppThreat/sast-scan
+This repo builds appthreat/sast-scan (and 
+quay.io/appthreat/sast-scan), a container image with a number of 
+bundled open-source static analysis security testing (SAST) tools. 
+This is like a Swiss Army knife for DevSecOps engineers.
+
+- Features
+  - No messy configuration and no server required
+  - Scanning is performed directly in the CI and is extremely quick. Full scan often takes only couple of minutes
+  - Gorgeous HTML reports that you can proudly share with your colleagues, and the security team
+  - Automatic exit code 1 (build breaker) with critical and high vulnerabilities
+  - There are a number of small things that will bring a smile to any DevOps team
+
+   Bundled tools
+   Programming Language    Tools
+   ansible                 ansible-lint
+   apex                    pmd
+   aws                     cfn-lint, cfn_nag
+   bash                    shellcheck
+   bom                     cdxgen
+   credscan                gitleaks
+   depscan                 dep-scan
+   go                      gosec, staticcheck
+   java                    cdxgen, gradle, find-sec-bugs, pmd
+   jsp                     pmd
+   json                    jq, jsondiff, jsonschema
+   kotlin                  detekt
+   kubernetes              kube-score
+   nodejs                  cdxgen, NodeJsScan, eslint, yarn
+   puppet                  puppet-lint
+   plsql                   pmd
+   python                  bandit, cdxgen, pipenv
+   ruby                    cyclonedx-ruby
+   rust                    cdxgen, cargo-audit
+   terraform               tfsec
+   Visual                  Force (vf)   pmd
+   Apache                  Velocity (vm)    pmd
+   yaml                    yamllint
+</pre>
+
+<pre zoom labels="git,TODO">
+<span title>sync all local/remote branches.</span>
+https://stackoverflow.com/questions/27157166/sync-all-branches-with-git
+</pre>
+
+<pre zoom labels="TODO">
+<span title>red-hat-universal-base-images</span>
+https://developers.redhat.com/e-books/red-hat-universal-base-images-ubi
+- Alternative to Alpine Linux??
+</pre>
+
+<pre zoom labels="TODO">
+<span title></span>
+@[http://alblue.bandlem.com/2011/11/git-tip-of-week-git-notes.html]
+</pre>
+
+<pre zoom labels="TODO">
+<span title></span>
+bash local variable:
+https://tldp.org/LDP/abs/html/localvar.html
+</pre>
 
 
 -->

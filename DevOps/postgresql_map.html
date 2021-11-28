@@ -51,12 +51,11 @@
 - M. Wiesmann, F. Pedone, A. Schiper, B. Kemme, and G. Alonso. Understanding replication in databases
   and distributed systems. In Proceedings 20th IEEE International Conference on Distributed Computing
   Systems , pages 464–474, April 2000.
-
 <hr/>
 <span xsmall>Who is Who</span>
 @[https://www.postgresql.org/community/contributors/]
 </pre>
-<pre zoom labels="101,devops,disaster_recovery,aaa" id="postgresql_summary">
+<pre zoom labels="devops.101,devops,security.disaster_recovery,security.aaa" id="postgresql_summary">
 <span xsmall>PostgreSQL 101</span>
 BºCore ENV.VARSº              BºShow DB infoº
   PGPORT                        mydb=˃ SELECT version();
@@ -177,27 +176,35 @@ $º$ dropdb   mydbº ← Remove. RºWARNº: can NOT be undone
          by default
 
 
-BºCreate tableº
+BºCREATE TABLEº
   -- DO $$
   -- BEGIN
   --   EXECUTE 'ALTER DATABASE ' || current_database() || ' SET TIMEZONE TO UTC';
   -- END; $$;
   
   CREATE TABLE IF NOT EXISTS myTable01 (
-    ID         VARCHAR(40)             NOT NULL
+    ID         VARCHAR(40)             NOT NULL           ← or ID serial PRIMARY KEY,
                                       ºCONSTRAINTº
                                        MYTABLE01_PKºPRIMARY KEYº,
-    NAME       VARCHAR(255)            NOT NULL,
+    NAME       VARCHAR(255)            NOT NULL DEFAULT '#UNKNOWN#',
     CREATED_AT TIMESTAMP DEFAULT NOW() NOT NULL,
     PUB_KEY    VARCHAR(88)             NOT NULL UNIQUE,
     PARENT_ID  VARCHAR(40)           RºNULLº
                                        CONSTRAINT
                                           myTable01_FK REFERENCES myTable01(ID),
+    QUANTITY   INTEGER                 NOT NULL CHECK (QUANTITY ˃= 1) DEFAULT 1,
+    RATIO      NUMERIC(5,2)            NOT NULL CHECK (RATIO ˃= 1.5 ) DEFAULT 2,
+    ACTIVE     BOOLEAN                 NOT NULL 
+    CREATED_AT TIMESTAMPTZ             DEFAULT now()
   );
   -- CREATE NEW INDEX
  ºCREATE IF NOT EXISTS INDEXº        ← Create new index
         MYTABLE01_PUBKEY_IDXºONº
            myTable01 (PUB_KEY);
+  -- CREATE COMMENTS
+  COMMENT ON TABLE  myTable01      IS '....'; 
+  COMMENT ON COLUMN myTable01.ID   IS '....'; 
+  COMMENT ON COLUMN myTable01.NAME IS '....'; 
   
   ALTER TABLE myTable01ºADD PRIMARY KEYº(ID); ← Alternative to create PRIMARY KEY
 
@@ -484,7 +491,7 @@ https://www.cybertec-postgresql.com/en/postgresql-network-latency-does-make-a-bi
  º#- SHOW ALL;º
 </pre>
 
-<pre zoom labels="comparative,data_analytics">
+<pre zoom labels="comparative,data.analytics">
 <span xsmall>PSQL vs MSQL comparative for data analytics</span>
 @[https://www.pg-versus-ms.com/]
 PSQL: PostgreSQL's CSV support is very good with RFC4180 support
@@ -706,14 +713,14 @@ Elegant, eh? A custom aggregate is specified in terms of an internal state
     developers and advanced users to develop their own extensions and custom functionality.
 </pre>
 
-<pre zoom labels="data_analytics,TODO">
+<pre zoom labels="data.analytics,TODO">
 <span xsmall>PostgreSQL for Analytics Apps</span>
 @[https://www.infoq.com/vendorcontent/show.action?vcr=4727]
 https://aws.amazon.com/rds/postgresql/
 https://aws.amazon.com/rds/redshift/
 </pre>
 
-<pre zoom labels="data_analytics,TODO">
+<pre zoom labels="data.analytics,TODO">
 <span xsmall>Intelligent Analytics with PostgreSQL</span>
 TODO: (Video) InfoQ: Developing an Intelligent Analytics App with PostgreSQL
 
@@ -728,47 +735,159 @@ TODO: (Video) InfoQ: Developing an Intelligent Analytics App with PostgreSQL
 
 <div group>
     <span title>Non classified</span><br/>
-<pre zoom labels="low_code,API,graphql,TODO" bgorange>
+<pre zoom labels="low_code,security,API,integration.graphql,qa,TODO" bgorange>
 <span xsmall>PostGraphile</span>
-- builds a powerful, extensible and performant GraphQL API from a
-  PostgreSQL schema in seconds; saving you weeks if not months of
-  development time.
+@[https://www.graphile.org/postgraphile/]
+@[https://www.youtube.com/watch?v=eDZO8z1qw3k]
 
-- If you already use PostgreSQL then you understand the value that a
-  strongly typed and well defined schema can bring to application
-  development; GraphQL is the perfect match for this technology when it
-  comes to making your data layer accessible to your frontend
-  application developers (or even API clients). Why duplicate your
-  authorization and business logic in a custom API when you can
-  leverage the tried and tested capabilities built into the worlds most
-  advanced open source database?
+  PSQL   ←····  PostGraphile ····→ GraphQL 
+  Server           Server          API Server
+                   (NodeJS)        auto-generated
+                                   from Schema
 
-- If you are new to GraphQL then we recommend you read through the
-  official introduction to GraphQL here before continuing through the
-  PostGraphile documentation.
-
-- By combining powerful features such as PostgreSQL's role-based
-  grant system and row-level security policies with Graphile Engine's
-  advanced GraphQL look-ahead and plugin expansion technologies,
-  PostGraphile ensures your generated schema is secure, performant and
-  extensible.
-
-Some of the features we offer:
-- Incredible performance - no N+1 query issues
-- Extensibility via schema and server plugins
+- Support for JWT and PSQL ROLE-bases/Row-level access control.
+- Generates optimized SQL from GraphQL queries.
+  generating 1 query when REST will ussally generate "N+1"
 - Auto-discovered relations e.g. userByAuthorId
-- Computed columns allowing easy expansion of your API
-- Custom query procedures enabling arbitrary SQL queries
+- Export also Custom procedures and views as GraphQL.
 - Automatic CRUD mutations e.g. updatePost
 - Custom mutation procedures enabling complex changes to be exposed simply
-- Real-time features powered by LISTEN/NOTIFY and/or logical decoding
+- Real-time features powered by LISTEN/NOTIFY and/or logical decoding + WebSockets.
 
-- The easiest way to get started is with the CLI interface;
- $º$ npx postgraphile -c postgres://user:pass@localhost/mydb \ º
- $º  --watch --enhance-graphiql --dynamic-json                 º
+- Performace: (C⅋P FROM https://www.graphile.org/postgraphile/performance/):
+  On (Digital Ocean) compute-optimised, 4 vCPU, 8GB of RAM, running dockerized 
+  versions of (P.Graphile,PSQL, benchmarking soft) result output was:
 
- (replacing user, pass and mydb with your PostgreSQL username,
-  password and the name of your database)
+  query tracks_media_first_20 {                  ←  SIPLE QUERY:
+    allTracksList(first: 20) { trackId name }      º3250 req/secondº
+  }
+  
+  query albums_tracks_genre_some {               ←  3-LEVEL QUERY
+    allAlbumsList(condition: { artistId: 127 }) {  º1450 req/secondº
+      artistId title
+      tracksByAlbumIdList {
+        trackId name
+        genreByGenreId { name }
+      }
+    }
+  }
+  
+  query prisma_deeplyNested {                       "heavy" query
+    allAlbumsList(condition: { artistId: 127 }) {  º550 req/second         º
+    · albumId title                                ºmaintaining sub-50ms   º
+    · tracksByAlbumIdList {                        º95th percentile latencyº
+    ·   trackId name
+    ·   genreByGenreId { name }                     ← 3level
+    · }
+    · artistByArtistId {                            ← Union
+    ·   albumsByArtistIdList {
+    ·     tracksByAlbumIdList {
+    ·       mediaTypeByMediaTypeId { name }         ← 5 level
+    ·       genreByGenreId { name }                 ← 5 level
+    ·     }
+    ·   }
+    · }
+    }
+  }
+
+
+- PRE-REQUESITES: NodeJS.
+- Install (NodeJS based)
+$º$ npm install db-migrate    º  ← Optional. Schema control.
+$º$ npm install db-migrate-pg º  ← PostgreSQL plugin for db-migrate.
+$º"vim" database.json         º  ← db migrate configuration.
+  {
+   "dev" : {
+    "driver": "pg",
+    "host": "...",
+    "database": "...",
+    }
+  }
+$º$ npx db-migrate create \    º ← Create next files in migrations/sql/:
+$º  create-schema --sql-file   º   %Y%m%d%H%M%S-create-schema-up.sql
+                                   %Y%m%d%H%M%S-create-schema-down.sql
+                                   %Y%m%d%H%M%S-create-schema.js
+
+  $ vim ...sql                   ← Init SQL migration up/down
+
+  ...-create-schema-up.sql        ...-create-schema-down.sql
+  CREATE SCHEMA learn;            DROP SCHEMA learn;
+
+$º$ npx db-migrate up          º ← Apply migration (or 'down' to "remove")
+
+$º$ npx db-migrate create \    º ← creates migrations/sql/
+$º    create-table-person      º   
+
+   ...-create-table-person-up.sql  ...-create-table-person-down.sql
+   CREATE TABLE learn.person (     DROP TABLE learn.person;
+   ...
+   ); 
+   COMMENT ON TABLE learn.person 
+     IS 'Lorem Ipsum ....'
+   COMMENT ON COLUMN learn.person.id 
+     IS 'Prim. unique id...'
+   COMMENT ON COLUMN ...
+     IS '@omit create,update ↩         ← 1st Smart-tags on comments used to add 
+   Lorem Ipsum ...'                      info consumed by postgraphile. In this 
+                                         case it tells Posgraphile to avoid users
+                                         being able to create/update column through
+                                         generated GraphQL API.
+    
+$º$ npm install postgraphile \  º ← Install PostGraphile Server !!!
+$º  @graphile-contrib/pg-simplify-inflector º ← Short generated names in API
+$º                              º 
+
+$º$ vim launch_pggraphile.sh    º ← Launcher script with
+  | npx postgraphile    \           http://...5000/graphql GraphQL API
+  | -c postgres:// ...  \           http://...5000/graphiql Dev/test UI
+  | --schema learn      \         ← Sync only with this schema (sort of
+  |                                 visibility namespace inside PSQL)
+  | --schema learn      \         ← Sync only with this schema (sort of
+  | --append-plugins    \         
+  | @graphile-contrib/pg-simplify-inflector
+  | --watch             \         ← Autorefresh GraphQL API on schema changes
+  |                     \           (avoiding graphile server restart)
+  | --enhance-graphiql  \         ← Shows all GraphQL queries and mutations in UI
+  | --allow-explain     \         ← Show PSQL explain in Dev. (web) UI
+  | --dynamic-json  
+
+     e.g.GraphQL query       e.g. RETURNED RESULT
+ 
+     query PeopleQuery {     {
+       allPeople {           · "data": {
+         nodes {             ·   "people": {
+           id                ·   · "nodes" : [
+           firstName         ·   ·   { "id": 1, "...", ...},
+           lastName          ·   ·   { "id": 2, "...", ...},
+         }                   ·   ·   ...
+       }                     ·   · ]
+     }                       ·   }
+                             · }
+                             }
+     (PeopleQuery, allPeople,}
+      id, firstName, lastName
+      types autogenerated by
+      pg-graphile
+
+
+</pre>
+
+
+<pre zoom labels="low_code,security,API,integration.graphql,qa,TODO" bgorange>
+<span xsmall>graphjin</span>
+@[https://graphjin.com/]
+@[https://github.com/dosco/graphjin]
+• Similar to PostGraphile but written in Go.
+• Fast query/update with simple GraphQL, including deeply nested queries and mutations.
+• Realtime subscriptions to queries to get all related updates over websockets
+• Database schema discovery. Works with Postgres and (distributed) Yugabyte DB.
+• Out of the box support for infinite scroll, threaded comments, activity feed and
+  other common app patterns
+• Full-text search support for search and auto-complete.
+• Authentication support: JWT,Firebase, Rails cookie, others, ..
+• Automatic Persisted Queries to improve network performance.
+• growing community.
+
 </pre>
 
 <pre zoom   labels="tool,qa,TODO" bgorange>
@@ -873,7 +992,7 @@ look at the Kubernetes chapter of the Patroni documentation.
 @[https://www.postgresql.org/docs/current/static/runtime-config-logging.html]
 </pre>
 
-<pre zoom labels="data_analytics,TODO">
+<pre zoom labels="data.analytics,TODO">
 <span xsmall>Regex support</span>
 - fundamental in analytics work involving text processing tasks.
   """  A data analytics tool without regex support is like a bicycle without a
@@ -911,7 +1030,7 @@ RºWARN:º Non-portable to other DDBBs.
                                                                 with at least 10 letters:
 </pre>
 
-<pre zoom labels="data_analytics,real_time,scalability,TODO">
+<pre zoom labels="data.analytics,real_time,scalability,TODO">
 <span xsmall>Citus Sharding Extension</span>
 @[https://github.com/citusdata/citus]
 @[https://www.citusdata.com]
@@ -923,7 +1042,7 @@ real-time analytics workloads
   Configured High-Availability for the coordinator node.
 </pre>
 
-<pre zoom labels="data_analytics,TODO">
+<pre zoom labels="data.analytics,TODO">
 <span xsmall>Wide Column Extension</span>
 - cstore_fdw extension is a columnar store extension for analytics
   use cases where data is loaded in batches.
@@ -933,7 +1052,7 @@ real-time analytics workloads
   for data archive.
 </pre>
 
-<pre zoom labels="data_analytics,TODO">
+<pre zoom labels="data.analytics,TODO">
 <span xsmall>TimescaleDB (Time Series) Extension</span>
 @[https://www.timescale.com/]
 @[https://github.com/timescale/timescaledb]
@@ -1005,7 +1124,7 @@ real-time analytics workloads
 
 </pre>
 
-<pre zoom labels="resources,data_analytics,comparative,qa,TODO">
+<pre zoom labels="resources,data.analytics,comparative,qa,TODO">
 <span xsmall>PostgreSQL vs MSQL doc. comparative</span>
 @[https://www.linkedin.com/pulse/postgresql-vs-ms-sql-server-girish-chander/]
 
@@ -1345,6 +1464,7 @@ BºEx. Install postgis extension:º
   \_ postgres: postgres pgbench [local] UPDATE waiting
   \_ postgres: postgres pgbench [local] UPDATE
 </pre>
+
 <pre zoom labels="architecture,monitoring,diagram,TODO">
 <span xsmall>Deep Dive into psql Statistics</span>
 
@@ -1521,7 +1641,7 @@ general guidelines :
     one generic and abstract event representation for Kafka.
 </pre>
 
-<pre zoom labels="blockchain,TODO">
+<pre zoom labels="architecture.blockchain,TODO">
 <span xsmall>Blockchain on Postgresql</span>
 @[https://arxiv.org/pdf/1903.01919.pdf]
 "Hacking" and Morphing Postgresql into a blockchain
@@ -2281,7 +2401,7 @@ plan. This scenario is best illustrated through an example.
 https://www.enterprisedb.com/blog/postgresql-wal-write-ahead-logging-management-strategy-tradeoffs
 </pre>
 
-<pre zoom labels="data_analytics,graphs,TODO">
+<pre zoom labels="data.analytics,graphs,TODO">
 <span xsmall>Geospatial data</span>
 Gentle introduction to PostGIS:
 https://medium.com/@tjukanov/why-should-you-care-about-postgis-a-gentle-introduction-to-spatial-databases-9eccd26bc42b
@@ -2420,6 +2540,9 @@ processing (HTAP) capabilities.
 https://blog.dalibo.com/2021/06/25/e_maj.html 
 </pre>
 
-
+<pre zoom labels="performance,TODO">
+<span title>Reindex</span>
+https://www.enterprisedb.com/edb-docs/d/postgresql/reference/manual/13.1/sql-reindex.html
+</pre>
 
 -->

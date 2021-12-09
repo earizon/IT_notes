@@ -33,7 +33,7 @@
  @[https://git-blame.blogspot.com/]
 </pre>
 
-<pre zoom labels="git.101,_PM.WiP" id="git_summary">
+<pre zoom labels="git.101,1_doc_type.diagram,_PM.WiP" id="git_summary">
 <span title>"Full Journey"</span>
 Bº#########################################################################º
 Bº# Non-normative Git server setup for N projects with M teams of L users #º
@@ -54,14 +54,15 @@ Bº#########################################################################º
                        franc, carl, ...
     GIT_PROJECT5 ···→ ...
   *1: setup /var/lib/teamA/project01 like:
-  $º$ sudo mkdir -p /var/lib/teamA/project01                               º ← create directory
-  $º$ cd /var/lib/teamA/project01                                          º   
-  $º$ sudo git init --bare                                                 º ← # INIT NEW GIT BARE DIRECTORY !!!!
-                                                                               # (GIT OBJECT DATABASE for commits/trees/blogs, ...)
-                                                                             
-  $º$ sudo find /var/lib/teamA/project01 -exec chown -R nobody:teamA {} \; º ← Fix user owner:group_owner for directory recursively
-  $º$ sudo find /var/lib/teamA/project01 -type d -exec chmod g+rwx {} \;   º ← enable read/write/access permissions for directories
-  $º$ sudo find /var/lib/teamA/project01 -type f -exec chmod g+rw  {} \;   º ← enable read/write        permissions for files
+  $º$ sudo mkdir -p /var/lib/teamA/project01               º ← create directory
+  $º$ cd /var/lib/teamA/project01                          º   
+  $º$ sudo git init --bare                                 º ← INIT NEW GIT BARE DIRECTORY !!!!
+                                                               (GIT OBJECT DATABASE for
+                                                                commits/trees/blogs, ...)
+  $º$ DIR01=/var/lib/teamA/project01                       º 
+  $º$ sudo find ${DIR01} -exec chown -R nobody:teamA {} \; º ← Fix owner:group_owner for dir. recursively
+  $º$ sudo find ${DIR01} -type d -exec chmod g+rwx {} \;   º ← enable read/wr./access perm. for dirs.
+  $º$ sudo find ${DIR01} -type f -exec chmod g+rw  {} \;   º ← enable read/write      perm. for files
 
     Finally add the desired linux-users to the 'teamA' linux-group at will. More info at:
     @[../DevOps/linux_administration_summary.html#linux_users_groups_summary] )
@@ -164,22 +165,25 @@ Bº#############################º
   │  ├─ • release/v2 ····
 <hr/>
 <span xsmall>RECIPES</span>
+                                           ºPLAYING WITH BRANCHESº
   $ git checkout    newBranch             ← swith to local branch (use -b to create if not yet created)
   $ git branch -av                        ←  List (-a)ll existing branches
   $ git branch -d branchToDelete          ← -d: Delete branch
-  
-                                           ºPLAYING WITH BRANCHESº
   $ git checkout --track "remote/branch"  ← Create new tracking branch (TODO)
   $ git checkout v1.4-lw                  ← Move back to (DETACHED) commit. ('git checkout HEAD' to reattach)
+ $ git remote update origin --prune       ← Update local branch to mirror remote branches in 'origin'
   
                                            ºVIEW COMMIT/CHANGES HISTORYº
   $ git log -n 10                         ← -n 10. See only 10 last commits.
   $ git log -p path_to_file               ← See log for file with line change details (-p: Patch applied)
+  $ git log --all --decorate \            ← PRETTY BRANCH PRINT Alt.1
+    --oneline --graph                       REF @[https://stackoverflow.com/questions/1057564/pretty-git-branch-graphs]
+  $ git log --graph --abbrev-commit \     ← PRETTY BRANCH PRINT  Alt.2
+     --decorate --date=relative --all       
 
                                            ºTAGS:º
   $ git tag                               ← List tags
   → v2.1.0-rc.2
-  → v2.1.1
   → ...
   $ git tag -a v1.4 -m "..." 9fceb..      ← Create annotated tag (recomended), stored as FULL OBJECTS.
                                             It contains tag author/mail/date, tagging message (-m).
@@ -200,184 +204,133 @@ Bº#############################º
   → 75509731d28d... refs/tags/v2.1.0-rc.2
   → 8fc0a3af313d... refs/tags/v2.1.1
   → ...
+                                           ºREVERTING CHANGESº
+ $ git reset --hard HEAD~1                ← revert to last-but-one (~1) local commit (Not yet pushed)
+                                            (effectively removing last commit from local history)
+ $ git checkout path/fileN                ← revert file not yet "git-add"ed or removed from FS to last commited ver.
+ $ git checkout HEAD^ -- path/...         ← revert commited file to last-but-one commit version
+ $ git revert ${COMMIT_ID}                ← add new commit cancelling changes in $COMMIT_ID. Previous
+                                            commit is not removed from history. Both are kept on history.
+ $ git clean -n                           ← Discard new "git-added" files. -n == -dry-run, -f to force
+ $ git reset path/fileA                   ← Remove from index file "git-added" by mistake (with 'git add .')
+                                            (probably must be added to .gitignore)
 
-</pre>
+ $ git checkout N -- path1                ← Recover file at commit N (or tag N)
+ $ git checkout branch1 -- path1          ← Recover file from branch1
+                                            origin/branch1 to recover from upstream -vs local- branch.
+ 
 
-<pre zoom labels="git.*,101,1_doc_type.diagram,">
-<span xsmall>Git Plumbings</span>
-  Summary extracted from:
+                                           ºCLONING REMOTESº
+  $ git clone --depth=1  \                ← Quick/fast-clone (--depth=1) with history truncated to last N commits.
+                                           ºVery useful in CI/CD tasks.º
+        --single-branch \                 ← Clone only history leading to tip-of-branch (vs cloning all branches)
+                                            (implicit by previous --depth=... option)
+        --branch '1.3' \                  ← branch to clone (defaults to HEAD)
+        ${GIT_URL}                        To clone submodules shallowly, use also --shallow-submodules.
+<hr/>
+<span xsmall>Plumbings Summary</span>
+• Summary extracted from:
   @[https://alexwlchan.net/a-plumbers-guide-to-git/1-the-git-object-store/]
   @[https://alexwlchan.net/a-plumbers-guide-to-git/2-blobs-and-trees/]
   @[https://alexwlchan.net/a-plumbers-guide-to-git/3-context-from-commits/]
+  @[https://alexwlchan.net/a-plumbers-guide-to-git/4-refs-and-branches/]
 
- ┌── Graphical Summary ────────────────────────────────────────────────────┐
- │                                                                         │
- │Rº.git/refs/heads/masterº···→ Gºcommit id02º ···→  Bºtreeº               │
- │                                └────┬────┘                              │
- │                                     ·                                   │
- │Oº.git/HEADº                         ·                                   │
- │      |                              ·                                   │
- │      v                              v                                   │
- │Rº.git/refs/heads/devº   ···→ Gºcommit id01º ···→  Bºtreeº ····→  Blog   │
- │                                                    └──┬─┘               │
- │                             ·                         ·               · │
- │                             ·                         ·               · │
- │                             ·                         ·               · │
- │                             ·                         v               · │
- │                             ·                     Bºtreeº ····→  Blog · │
- │                             ·                        └········→  Blog · │
- │                             └───────────────────┬─────────────────────┘ │
- │                              Object store is composed of blogs (files), │
- │                              trees (directories) and commit (ordered    │
- │                              history of "important" trees).             │
- └─────────────────────────────────────────────────────────────────────────┘
+$º$ git init º ← creates an initial layout containing (Alternatively $º$git clone ... ª from existing remote repo )
+  ✓.git/objects/, ✓ .git/refs/heads/master, ✓ .git/HEAD (pointing to heads/master initially)
+  ✓.git/description (used by UIs), ✓.git/info/exclude (local/non-commited .gitignore),
+  ✓.git/config, ✓.git/hooks/  
+                                                                                
+   ~/.git/index  ←············  binary file with staging area data (files 'git-added' but not yet commited)
+                                Use (porcelain) $º$ git ls-files º to see indexes files (git blobs)
+        ┌─.git/objects/  ( ºGIT OBJECT STOREº ) ─────────┐      $º$ echo "..." ˃ file1.txt      º
+        │                                                │      $º$ git hash─object ─w file1.txtº          
+┌········→ • /af/3??? •···→ •/a1/12???                   │          └───────────┬────────────────┘
+·       │  │(2nd commit)                      ┌············ save to Object Store┘content─addressable File System.
+·       │  v                                  v          │RºWARNº: Original file name lost. We need to add a mapping
+· ┌··┬···→ • /5g/8... •···→ • /32/1... •┬··→• /a3/7... • │   (file_name,file_attr) ←→ hash to index like: 
+· ·  ·  │   (1st commit)    ┌··········┘├··→• /23/4... • │   $º$ git update-index --add file1.txt (git Plumbing)
+· ·  ·  │                   ·           └···┐            │┌· Finally an snapshot of the index is created like a tree:
+· ·  ·  │                   ·               ·            │·$º$ git write-tree               º .git/index snapshot to tree
+· ·  ·  │                   ├─····························┘  ( /af/9???... tree object will be added to Obj.Store)
+· ·  ·  │                   ·               ·            │ $º$ git cat-file -p ${tree_hash} º
+· ·  ·  │                   ·               ·            │     100644 blob b133......  file1.txt  ← Pointer+file_name to blob  
+· ·  ·  │                   ·               ·            │     040000 tree 8972......  subdir...  ← Pointer+"dirname" to (sub)tree  
+· ·  ·  │                   ·               ·            │     ...                  
+· ·  ·  │                   ·               ·            │     ^^^^^^ ^^^^ ^^^^^^^^^^  ^^^^^^^^^^^^                                         
+· ·  ·  │                   ·               ·            │     file   type content     Name of file                                         
+· ·  ·  │                   ·               ·            │     permis.     address.ID
+· ·  ·  │                   ·               ·            │ ☞KEY-POINT:☜
+· ·  ·  │                   v               v            │BºStarting at a tree, we can rebuild everything it points to  º
+· ·  ·  │                   • /af/9... •┬··→• /12/d... • │BºAll that rest is mapping trees to some "context" in history.º
+· ·  ·  │                               └··→• /34/2... • │ 
+· ·  ·  │  ^^^^^^^^^^^^     ^^^^^^^^^^^^    ^^^^^^^^^^^^ │  Plumbing "workflow" summary: 
+· ·  ·  │    commits          Trees           Blobs      │← Add 1+ Blobs → Update Index → Snapshot to Tree 
+· ·  ·  └────────────────────────────────────────────────┘  → create commit pointing to tree of "historical importance" 
+· ·  └·······················─┬──────────────────────┐        → create friendly refs to commits 
+· · $º$ echo "initial commit" | git commit-tree 321..... º ← create commit pointing to tree of "historical importance"
+· ·     af3...                                             BºUse also flag '-p $previous_commit' to BUILD A LINEAR ORDEREDº
+· ·                                                        BºHISTORY OF COMMITS !!!º
+· ·                                                          
+· · $º$ git cat-file -p af3....                          º -p: show parent of given commit
+· ·   tree 3212f923d36175b185cfa9dcc34ea068dc2a363c   ← Pointer to tree of interest
+· ·   author    Alex Chan ... 1520806168 +0000        ← Context with author/commiter/
+· ·   committer Alex Chan ... 1520806168 +0000          creation time/ ...
+· ·   ...
+· · "DEBUGGING" TIP: Use 'git cat-file -p 12d...' for pretty print ('-t' to display/debug object type)
+· ·
+· └ ~/.git/refs/heads/dev     ←  ~/.git/HEAD (pointer to active ref)
+└·· ~/.git/refs/heads/master af3...  ← Create friendly "master" alias to a commit like:
+                      ^^^^^^         $º$ git update-ref refs/heads/master º ← With plumbing each new commit requires a new
+  Bºrefs in heads/ folder are º      $º$ cat  .git/refs/heads/master      º   git update-ref.
+  BºCOMMONLY CALLED BRANCHS   º        af3... (pointer to commit)
+                                       Now $º$ git cat-file -p master º "==" $º$ git cat-file -p af3...º
 
-BºObject Storeº
+                                     $º$ git rev-parse master             º ← check value of ref
+                                       af3...
 
-  $ git init  ← Creates .git/
-                        objects/     ← Object store for objects, trees and commits
-                        refs/
-                        HEAD         ← pointer to branch
-                        description  ← used by GitWeb
-                        info/exclude ← like .gitignore but non-checked in
-                        config
-                        hooks/
+                                     $º$ git update-ref refs/heads/dev   º ← Create second branch (ref in heads/ folder)
+                                     $º$ git branch                      º 
+                                       dev
+                                     * master ←·························  current branch is determined by (contents of)
+                                     $º$ cat .git/HEAD                   º ~/.git/HEAD. Using plumbing we can change it like
+                                     ref: refs/heads/master                $ git symbolic-ref HEAD refs/heads/dev
+<hr/>
+<span title>merge/rebase/cherry-pick</span>
+• REF:
+@[https://stackoverflow.com/questions/9339429/what-does-cherry-picking-a-commit-with-git-mean]
+@[https://git-scm.com/docs/git-cherry-pick]
 
-  $ echo "..." ˃ animals.txt
-  $ git hash-object -w animals.txt           ← 1 Hash file content,
-  a37f3f668f09c61b7c12e857328f587c311e5d1d     2 Save content to Object store (plumbing)
-  └────────────────┬─────────────────────┘
-  saved to  .git/objects/a3/7f3f668f09c61b7c12e857328f587c311e5d1d
-                         └───────────────────┬───────────────────┘
-                         content-addressable filesystem.
-                       RºWARN:º original File name/path is lost. We need
-                                trees to save them.
-
-  $ git cat-file -p a37f3f668f09c61b7c12e857328f587c311e5d1d
-                 ^^
-                 pretty print
-
-BºBlobs and treesº
-Bº───────────────º
-  Git index: staging area (temporary snapshot) of the repository.
-             - files modified, but not yet saved to the permanent history.
-               ('git add' to add to index, then 'git commit' to take a
-                permanent snapshot using porcelain)
-
-  $ git update-index --add animals.txt  ← Plumbing to save file to .git/index
-                                          content-addressable hash-object
-                                          created automatically if not
-                                          yet done.
-  $ git ls-files                        ← Porcelain git status for verbose view
-  animals.txt
-
-  $ git write-tree                      ← Take permanent snapshot of .git/index
-  dc6b8ea09fb7573a335c5fb953b49b85bb6ca985 to object of typeºtreeº
-  └────────────────┬─────────────────────┘
-  saved to .git/objects/dc/6b8ea09fb7573a335c5fb953b49b85bb6ca985
-
-  $ git cat-file -p dc6b8ea09fb7573a335c5fb953b49b85bb6ca985
-  tree: list of pointers to other objects (one object per row)
-    100644 blob b133......  animals.txt   ← Pointer and "filename" to blob
-
-    040000 tree 8972......  subdirectory  ← Pointer and "dirname"  to (sub)tree
-
-    ^^^^^^ ^^^^ ^^^^^^^     ^^^^^^^^^^^^
-    file   type content     Name of file
-    permis.     addressable
-                ID
-
-  $ git cat-file -t a37f.....             ← output: blob (file path/name ignored)
-  $ git cat-file -t dc6b.....             ← output: tree
-                 ^^
-                show object type
-
-   ☞KEY-POINT:☜
-  BºIf we start at a tree, we can rebuild everything it points to.º
-  BºAll that rest is mapping trees to some "context" in history.º
-
-BºContext from commitsº
-  - We can have many trees to start rebuilding from but just a few
-    of them has historic importance.
-
-  $ echo "initial commit" | git commit-tree $tree_id ← create commit from a tree
-  65b080f1fe43e6e39b72dd79bda4953f7213658b
-  └────────────────┬─────────────────────┘
-  saved to .git/objects/65/b080f1fe43e6e39b72dd79bda4953f7213658b
-
-  $ git cat-file -t 65b...
-  commit
-  $ git cat-file -p 65b...
-  $ git cat-file -p 65b080f1fe43e6e39b72dd79bda4953f7213658b
-  tree 11e2f923d36175b185cfa9dcc34ea068dc2a363c   ← Pointer to tree of interest
-  author    Alex Chan ... 1520806168 +0000        ← Context with author/commiter/
-  committer Alex Chan ... 1520806168 +0000          creation time/ ...
-  ...
-
-  BºBuilding a linear history (ordered list of commits)º:
-  $ git update-index --add ... ← add to index
-  $ git write-tree             ← Take permanent snapshot
-  $ echo "commit message" | \
-    git commit-tree $tree_id \
-  Bº-p $previous_commitº     ← ☞BºAdd commit order!!!º (next to previous one)
-  fd9274...........  ← git cat-file -p will show a line
-                       parent $previous_commit_id
-
-BºRefs and branchesº
-@[https://alexwlchan.net/a-plumbers-guide-to-git/4-refs-and-branches/]
-  $ ls .git/refs
-  heads/ tags/
-
-  $ git update-ref refs/heads/master       ← Create named reference to commit
-  fd9274dbef2276ba8dc501be85a48fbfe6fc3e31   $ cat  .git/refs/heads/master
-                                             fd92...  (pointer to commit)
-
-  Now 'master' is an alias for the fd92... commit ID.
-
-  git cat-file -p master "==" git cat-file -p fd92...
-
-  $ git rev-parse master                   ← check value of ref
-  fd92...
-
- ☞BºA ref in the heads folder is more commonly called a branch.º
-
-  $ git update-index --add ...
-  $ git write-tree
-  $ echo "..." | git commit-tree   ← (Not yet added to master branch)
-                                      branches/refs aren’t automatically
-                                      advanced to point at new commits in
-                                      plumbing.
-  $ git update-ref \                ← update heads/master to point to
-  refs/heads/master $new_commit_id    latest commit.
-  b023d92829d5d076dc31de5cca92cf0bd5ae8f8e
-
-
-  - BºWorking with multiple branchesº
-  $ git update-ref refs/heads/dev    ← Create a second head/ref (==branch)
-  65b0...
-
-  $ git branch
-    dev
-  * master                           ← current branch is determined by the
-                                       contents of .git/HEAD.
-                                       $ cat .git/HEAD.
-                                       ref: refs/heads/master
-
-  $ git symbolic-ref HEAD \          ← HEAD now point to dev ref/branch
-    refs/heads/dev
-
-  'HEAD' reference can be used as a shortcut for "commit hashes".
-
-</pre>
-<pre zoom labels="git.*,_PM.TODO">
-<a xsmall TODO href="https://opensource.com/article/18/11/gitbase">gitbase: Query Git with SQL</a>
-- Gitbase is a Go-powered open source project that allows SQL queries to be run on Git repositories.
+ ┌ INITIAL STATE ──────────────────────────────────────────────────────────                    
+ │ • → • → • → • →H1      ← refs/heads/branch01
+ │         │
+ │         └─→ x → x →H2  ← refs/heads/branch02
+ └────────────────────────────────────────────────────────────────────────                    
+ ┌ MERGE @[https://git-scm.com/docs/git-merge]────────────────────────────
+ │ add changes for other branch as single "M"erge commit 
+ │ $º$ git checkout branch01 ⅋⅋ git merge branch02 º
+ │ • → • → • → • →H1 → M  : M = changes of ( x1+x2+H2 )
+ │         │           ↑    
+ │         └─→ x1→ x2→ H2
+ └────────────────────────────────────────────────────────────────────────                    
+ ┌ REBASE @[https://git-scm.com/docs/git-rebase]──────────────────────────
+ │ "replay" full list of commits to head of branch
+ │ $º$ git checkout branch01 ⅋⅋ git rebase branch02 º
+ │ • → • → • → • →H1 → x → x → H2
+ │         │                
+ │         └─→ x → x → H2
+ └────────────────────────────────────────────────────────────────────────                    
+ ┌ CHERRY-PICK @[https://git-scm.com/docs/git-cherry-pick]────────────────
+ │ "Pick" unique-commits from branch and apply to another branch
+ │ $º$ git checkout branch02 ⅋⅋ git cherry-pick  -x branch02 º
+ │ ··· • → • →H1 → ...                          └┬┘
+ │     │                  • Useful if "source" branch is public, generating
+ │     └─→ • → • →H2 →ºEº   standardized commit message allowing co-workers 
+ │                          to still keep track of commit origin.
+ │                        • Notes attached to the commit do NOT follow the
+ │                          cherry-pick. Use $º$ git notes copy "from" "to" º
+ └────────────────────────────────────────────────────────────────────────                    
 </pre>
 
-<pre zoom labels="git.*,101,_PM.TODO">
-<span xsmall>Revert Changes</span>
-https://www.systutorials.com/2845/how-to-revert-changes-in-git/
-</pre>
 
 <pre zoom labels="git.*,_PM.TODO">
 <span xsmall>Debug Changes grep/bisect/blame </span>
@@ -396,81 +349,10 @@ between the intended and actual state of the system. Tooling can then be
 triggered to update and synchronise the infrastructure to the intended state.
 </pre>
 
-
 </div>
 
 <div groupv>
-<pre zoom labels="git.*,101,1_doc_type.comparative">
-<span xsmall>merge vs rebase vs cherry-pick</span>
-REF:
-@[https://stackoverflow.com/questions/9339429/what-does-cherry-picking-a-commit-with-git-mean]
-@[https://git-scm.com/docs/git-cherry-pick]
 
-
-       A → B → C → D → E → HEAD branch01
-               │
-               └─→ H → I → J      branch02
-       ───────────────────────────────────────────────────────────────────────
-ºMERGE   º"mix" full list of commits
-
-        A → B → C → D → E → HEAD branch01        $ git checkout branch01
-                │             ↑                  $ git merge    branch02
-                └─→ H → I → J ┘  branch02
-       ───────────────────────────────────────────────────────────────────────
-ºREBASE:º"Append" full list of commits to head
-
-    A → B → C → D → E → → H → I → J →         HEAD branch01
-
-                                             $ git checkout branch01
-                                             $ git merge    branch02
-
-──────────────────────────────────────────────────────────────────────────────
-ºCHERRY-PICK:º"Pick unique-commit" from branch and apply to another branch
-
-    A → B → C → D →ºEº→ → HEAD  branch01
-            │                                $ git checkout branch02
-            └─→ H → I → J →ºEº  branch02     $ git cherry-pick -x branch02ºHEAD~2º
-                                                              └┬┘
-                                              - Useful is "source" branch is
-                                                public. Generates
-                                                standardized commit message
-                                                allowing co-workers to still
-                                                keep track of the origin of
-                                                the commit avoiding merge
-                                                conflicts in the future
-                                              - Notes attached to the commit do NOT
-                                                follow the cherry-pick. Use
-                                                $ git notes copy "from" "to"
-</pre>
-
-<pre zoom labels="git,101,_PM.TODO">
-<span xsmall>Git Recipes</span>
-$º$ git remote update origin --prune  º ← update local list of remote branches
-
-                                          PRETTY BRANCH PRINT *1
-  $ git log --all --decorate \          ← Alt.1
-    --oneline --graph
-  $ git log --graph --abbrev-commit \   ← Alt.2
-     --decorate --date=relative --all
- *1: REF @[https://stackoverflow.com/questions/1057564/pretty-git-branch-graphs]
-
-  $ git clone --depth=1 ${GIT_URL}      ← Quick/fast-clone (--depth=1)
-            Create shallow clone with
-            history truncated to the
-            specified number of commits.
-            Implies --single-branch
-            to clone submodules shallowly,
-            use also --shallow-submodules.
-
-
-<span xsmall>Quick-tag-clone</span>
-
-$ git clone --depth=1   --branch '1.3.2'   --single-branch ${URL_to_Git_repo}
-                        ^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^
-                        point to branch    Clone only history
-                        hash or tag        leading to the tip
-                        default to HEAD)   of a single branch
-</pre>
 
 <pre zoom labels="git.*,_PM.TODO">
 <a xsmall href="https://git-lfs.github.com/">Git LFS (Large Files extension)</a>
@@ -7404,7 +7286,9 @@ allow you to test this:
 </div>
 </div>
 
-
+<div group><!-- {{{ -->
+<span title>Unordered / backlog</span><br/>
+</div> <!-- }}} -->
 </body>
 </html>
 
@@ -8056,6 +7940,11 @@ https://stackoverflow.com/questions/27157166/sync-all-branches-with-git
 
 <pre zoom labels="_PM.TODO">
 git 101 recipes: git Comparing diffs: @ma
+</pre>
+
+<pre zoom labels="git.*,_PM.TODO">
+<a xsmall TODO href="https://opensource.com/article/18/11/gitbase">gitbase: Query Git with SQL</a>
+- Gitbase is a Go-powered open source project that allows SQL queries to be run on Git repositories.
 </pre>
 
 

@@ -261,7 +261,7 @@ const ZW = { /* ZOOM Window */
      return result;
   },
   switchLectureMode : function () {
-     const zoomHTML = document.getElementById("zoomHTMLContent").querySelector('pre[zoom]')
+     const zoomHTML = document.getElementById("zoomHTMLContent").querySelector('*[zoom]:first-of-type')
      zoomHTML.classList.remove("lectureMode"+ZW.lectureModePtr)
      ZW.lectureModePtr =  ZW.getNextLectureMode();
      zoomHTML.classList.add("lectureMode"+ZW.lectureModePtr)

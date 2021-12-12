@@ -316,50 +316,47 @@ Permissions │Symbol│      FILE                   │     DIRECTORY          
 </div>
 <div groupv>
 <span title>User Mng</span>
-<pre zoom  labels="security.aaa,1_doc_type.101">
-<span xsmall>Create new user</span>
-$ useradd [options] LOGIN : creates new user with default+specified values
+<pre zoom  labels="security.aaa,1_doc_type.101" id="linux_users_groups_summary">
+<span xsmall>User Management 101</span>
+$º$ useradd -D            º  ← display (D)efault values to apply when creating new uses.
+                               (Default group / HOME, SHELL, ...)
+                               Use next flags to update defaults:
+                               --base-dir BASE_DIR  :  (default to /home) Ignored if --home-dir set
+                               --expiredate EXPIRE_DATE
+                               --inactive INACTIVE  :  day # after pass.expiration before disabling
+                               --gid GROUP: existing group name or ID for initial group (when --no-user-group used)
+                               --shell SHELL
 
-$ useradd -D  #  display default values
-(ex.output)
-  GROUP=100
-  HOME=/home
-  INACTIVE=-1
-  EXPIRE=
-  SHELL=/bin/bash
-  SKEL=/etc/skel
-  CREATE_MAIL_SPOOL=yes
+$º$ addgroup PROJECT01    º ← Best pattern when allowing multi-user access to the linux machine.
+                               Create a new group per project ,then assign permissions to group (vs
+                               to user). This greately simplifies permissions administration in 
+                               multi-user setups.
 
-$ useradd -D [options] # update default values
------ next opts have defaults if not indicated ----------
-  --base-dir BASE_DIR  :  (default to /home) Ignored if --home-dir set
-  --expiredate EXPIRE_DATE
-  --inactive INACTIVE  :  day # after pass.expiration before disabling
-  --gid GROUP: existing group name or ID for initial group (when --no-user-group used)
-  --shell SHELL
---------------------------------------------------------
-  --groups group1,group2,... supplementary groups
-  --skel SKEL_DIR :  skel. dir. to be copied in the user's home directory
-  --key KEY=VALUE : Overrides /etc/login.defs defaults
-                    (UID_MIN, UID_MAX, UMASK, PASS_MAX_DAYS and others).
-                    Example: -K PASS_MAX_DAYS=-1 can be used when creating
-                      system account to turn off password ageing, even though
-                      system account has no password at all.
-  --no-log-init   : Do not add user to lastlog and faillog databases
-  --create-home   : Create the user's home directory if it does not exist.
-                    By default no home directories are created
-  --no-create-home: Do not create the user's home directory if enabled in defaults
-  --no-user-group : Do not create a group. Initial group indicated by --gid
-  --non-unique    : Allow duplicate (non-unique) existing UID in --uid
-  --password PASS : (disabled by default)
-  --system        : Create system account (no aging, uid chosen in
-                     SYS_UID_MIN-SYS_UID_MAX range)
-  --root CHROOTDIR: Apply changes in chrooted directory
-  --uid UID       : numerical value for user's ID.
-  --user-group    : Create group with the same name as user, and use as initial group
-  --selinux-user SEUSER : SELinux user for the user's login
+$º$ useradd alice --shell=/usr/bin/git-shell \ º ← Create user alice.
+$º    --shell=/usr/bin/git-shell             \ º ← upon succesful login alice will be presented with a git shell *1
+$º    --groups PROJECT01,PROJECT02           \ º ← Assign PROJECT01 as default group for alice.
+$º    --password ...                         \ º ← create an initial and strong password (or provide alice with ssh keys.
+$º    --no-user-group                        \ º ← Do NOT create a new group (otherwise indicated by --gid)
+$º    --no-create-home                       \ º ← Do not create the /home/alice directory. (Some sort of 
+                                                   /var/lib/git/PROJECT01 directories already exist with read/write permissions 
+                                                   for PROJECT01, ... groups) 
+*1 By default bash o similar shell is used. git-shell restricts access to just git-related commands and nothing else.
+   Other useful 'useradd' options are:
+   --skel SKEL_DIR :  skel. dir. to be copied in the user's home directory
+   --key KEY=VALUE : Overrides /etc/login.defs defaults
+                     (UID_MIN, UID_MAX, UMASK, PASS_MAX_DAYS and others).
+                     Example: -K PASS_MAX_DAYS=-1 can be used when creating
+                       system account to turn off password ageing, even though
+                       system account has no password at all.
+   --no-log-init   : Do not add user to lastlog and faillog databases
+   --non-unique    : Allow duplicate (non-unique) existing UID in --uid. Most of the times used to 
+                     allow 'root' users with non-root name accounts.
+   --system        : Create system account (no aging, uid chosen in SYS_UID_MIN-SYS_UID_MAX range)
+   --root CHROOTDIR: Apply changes in chrooted directory.
+   --uid UID       : numerical value for user's ID.
+   --user-group    : Create group with the same name as user, and use as initial group
+   --selinux-user SEUSER : SELinux user for the user's login
 </pre>
-
 
 <pre zoom labels="security.aaa,1_doc_type.101">
 <span xsmall>su/sudo: Switch user</span>
@@ -729,6 +726,43 @@ $ ºnice -20 makeº ← Sets make priority to -20
                   -20 is maximum priority   (negative only allowed to root)
                    20 is the minimum priority.
 $ ºrenice 10 "pid"º ← Changes priority of running process.
+</pre>
+
+<pre zoom bgorange labels="job_control.101,1_doc_type.101,monitoring.pipes,monitoring.i/o,profiling.file_system,storage.profiling">
+<span title>pv monit data pipe progress</span>
+
+• pv provides time elasped, %compl., progressbar, throughput, ETA, ...on STDERR.
+• cat /dev/zero | pv | cat ˃ /dev/null  # Check CPU/memory perf.
+• pv file | nc -w 1 somewhere.com 3000  # Check network perf.
+• pv -EE /dev/sda ˃ disk-image.img      # Check disk image (skip errors)
+
+  man pv summary
+OUTPUT MODIFIERS
+  --wait: until first byte has been transferred.
+  --delay-start SEC (before showing info)
+  --size SIZE: Set total size (if piping from STDIN and size is known)
+  --line-mode: (count lines vs counting bytes) 
+               --null for null terminated.
+  --interval SEC: (1 sec by default)
+  --width N / --height N: Assume width / height for terminal
+  --name NAME: Useful with --cursor for "compilcated pipelines"
+               --cursor: Use cursor pos. escape sequences (vs CR)
+  --force: (even if STDOUT is not terminal) 
+
+DATA TRANSFER MODIFIERS
+  --rate-limit RATE
+  --buffer-size BYTES
+  --no-splice: Never  use splice(2). Ussually more efficient way of
+               transferring data from/to pipe than regular read/write.
+               but means that the transfer buffer may not be used.
+               This prevents -A and -T from working.
+  -E/--skip-errors (set twice to only report a read error once per file)
+  --stop-at-size
+  --watchfd PID[:FD]. Wath FIle Descriptor of process PID, and show its
+                      progress. 
+  --remote PID : where PID is an running instance of pv already running. 
+                 Add other commands to such instance.
+                 --pidfile FILE save PID of (first running) pv instance.
 </pre>
 
 <pre zoom bgorange labels="job_control.*,distributed.computing,performance.*,">
@@ -1192,7 +1226,7 @@ See also:
 @[https://github.com/earizon/tigervnc_remote_desktop]
 </pre>
 
-<pre zoom labels="security.aaa,security.remote_access">
+<pre zoom labels="security.aaa,security.remote_access" id="knockd_summary">
 <span xsmall bgorange>Knockd ("Invisible Linux")</span>
 <a href="https://www.maketecheasier.com/make-linux-server-invisible-knockd/">REF(Michael Aboagye @ MakeTechEasier.com)</a>
 UUID: 96493a84-bac4-49a0-b553-a8fee7310c1c

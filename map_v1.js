@@ -437,7 +437,12 @@ const LM = { // Lavel management
   },
   getDomListForLabelPrefix: function (labelKey) {
       const matchingKeys = LM.DDBB.labelMap_key_list
-            .filter((k) => k.startsWith(labelKey.replace(".*","")) )
+            .filter((k) => {
+                const topicDot = labelKey.replace(".*","."),
+                      dotTopic = "."+labelKey.replace(".*","")
+                return k.startsWith(topicDot) || 
+                       k.endsWith  (dotTopic)
+              })
       var result = []
       for (let idx=0; idx<matchingKeys.length; idx++) {
           const key = matchingKeys[idx]
@@ -791,10 +796,10 @@ const SE = { // (S)earch (E)ngine
 
     [document.querySelectorAll('div[group]' ),
      document.querySelectorAll('div[groupv]')].forEach(nodeList => {
-            nodeList.forEach(node => {
-                node.setAttribute("textFound", "false")
-            })
+        nodeList.forEach(node => {
+            node.setAttribute("textFound", "false")
         })
+    })
     // If some label has been selected then choose only those with matching labels
     document.querySelectorAll('*[zoom]').forEach(node => { 
         node.setAttribute("textFound", "false")

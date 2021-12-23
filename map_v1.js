@@ -362,9 +362,9 @@ const LM = { // Lavel management
        topic_list.forEach( (topic) => {
          /* tip1: fix overlapping problems (e.g: "ha" matching . "topicN.(ha)rdaware, ...) 
           * by forcing to match "ha." or ".ha." */
-         const topicDot = topic +"."        /* tip1. fix problem with end-of-string */
          if ( topic.indexOf(prefix +"." ) == 0 ||
-              topic.indexOf( "."+prefix+"." /* tip1 */ ) > 0
+              topic.indexOf( "."+prefix+"." /* tip1 */ ) > 0 ||
+              topic.endsWith("."+prefix)
          ) {
            child_topic_content.push(topic)
          }

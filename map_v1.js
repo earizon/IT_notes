@@ -230,7 +230,7 @@ const ZW = { /* ZOOM Window */
     }
     document.getElementById("divElementLabels").innerHTML = sLabels;
     const zoomHTML = document.getElementById("zoomHTMLContent")
-    zoomHTML.innerHTML = e.outerHTML; 
+    zoomHTML.innerHTML = e.outerHTML.replaceAll("\n\n","<br 1/><br 2/>"); 
     document.getElementById("cellIDPanell").innerHTML=e.id ? ("id:"+e.id ):"";
     zoomHTML.querySelectorAll('.innerSearch').forEach(
       dom => {
@@ -255,7 +255,7 @@ const ZW = { /* ZOOM Window */
     return false;
   },
   lectureModePtr : 0,
-  lecturModeDescriptionList : ["&nbsp;⍈&nbsp;", "&nbsp;⍇&nbsp;", "&nbsp;🕮&nbsp;" ],
+  lecturModeDescriptionList : ["&nbsp;⇶&nbsp;", "&nbsp;⇉&nbsp;", "&nbsp;⇆&NBSp;" ],
   getNextLectureMode : function () {
      let result = (ZW.lectureModePtr+1) % ZW.lecturModeDescriptionList.length;
      return result;

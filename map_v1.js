@@ -169,6 +169,7 @@ const ZW = { /* ZOOM Window */
        +    "<span id='cellNofM'>?</span> "
        + " </div>" 
        + ' <div id="cellIDPanell"></div>'
+       + ' Read Mode: '
        + ' <div id="butSwitchLectureMode" >?</div>'
        + ' <input id="textSizeSlider" type="range" '
        + '   style="width:100px" value="100" min="30" max="250">'
@@ -228,9 +229,12 @@ const ZW = { /* ZOOM Window */
         .filter(e => !!e)
         .forEach(label_i => { sLabels += LM.renderLabel(label_i, true, true ) })
     }
-    document.getElementById("divElementLabels").innerHTML = sLabels;
+    document.getElementById("divElementLabels").innerHTML = sLabels
     const zoomHTML = document.getElementById("zoomHTMLContent")
-    zoomHTML.innerHTML = e.outerHTML.replaceAll("\n\n","<br 1/><br 2/>"); 
+    const regexNewParagraph = new RegExp("\n\b*[^•|-|·|✓|┌|│|├]\(\n\)","g")
+    zoomHTML.innerHTML = e.outerHTML.replaceAll(regexNewParagraph,"<br 2/>")  
+                                    .replaceAll(/\n/g,"<br 1/>")  
+                                                                                       
     document.getElementById("cellIDPanell").innerHTML=e.id ? ("id:"+e.id ):"";
     zoomHTML.querySelectorAll('.innerSearch').forEach(
       dom => {
@@ -255,7 +259,7 @@ const ZW = { /* ZOOM Window */
     return false;
   },
   lectureModePtr : 0,
-  lecturModeDescriptionList : ["&nbsp;⇶&nbsp;", "&nbsp;⇉&nbsp;", "&nbsp;⇆&NBSp;" ],
+  lecturModeDescriptionList : ["&nbsp;⇶&nbsp;", "&nbsp;⇉&nbsp;", "&nbsp;⇆&nbsp;" ],
   getNextLectureMode : function () {
      let result = (ZW.lectureModePtr+1) % ZW.lecturModeDescriptionList.length;
      return result;
@@ -612,9 +616,9 @@ const TPP = {  // (T)ext (P)re (P)rocessor
         H = H.replace(/☝/g, "👆")
         H = H.replace(/☞/g, "👉")
         H = H.replace(/☟/g, "👇")
-        H = H.replace(/[.]\n/g, ".<br/>")   
-        H = H.replace(/[:]\n/g, ":<br/>")   
-        H = H.replace(/\n\s*\n/g, "<br/><br/>")   
+   //   H = H.replace(/[.]\n/g, ".<br/>")   
+   //   H = H.replace(/[:]\n/g, ":<br/>")   
+   //   H = H.replace(/\n\s*\n/g, "<br/><br/>")   
         N.innerHTML = H
         // TODO:(enhancement) Add markdown table parser.
         // REF: https://github.com/blattmann/mdtablesparser/blob/master/js/parser.js

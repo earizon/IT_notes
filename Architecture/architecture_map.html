@@ -452,13 +452,11 @@ https://www.cognitum.eu/Semantics/FluentEditor/
 ºRDBMSº
 ºFeaturesº
 - support E-R data model.
-- table schema defined by the
-  table name and fixed number
-  of attributes and data types.
-- A record (=entity) corresponds
-  to a row in the table.
-- basic operations are defined on
-  the tables/relations:
+- all inserts in a table must match the table schema.
+  (vs dangerous schemales noSQL engines).
+- The minimum insert unit corresponds to a row in a table.
+- The minimum update unit corresponds to a column in a row.
+- basic operations are defined on the tables/relations through SQL:
   - CRUD: Create/Read/Update/Delete
   - set ops: union|intersect|difference
   - subset selection defined by filters
@@ -467,10 +465,9 @@ https://www.cognitum.eu/Semantics/FluentEditor/
     Cartesian_product+selection+projection
   - TX ACID control
   - user management
-- Ops defined in  standard SQL
-ºHistoryº
-- beginning of 1980s
-- Most widely used DBMS
+- ºHistoryº
+  - beginning of 1980s
+  - Most widely used DBMS
 
 ºMain  Examplesº
 - PostgreSQL
@@ -478,7 +475,10 @@ https://www.cognitum.eu/Semantics/FluentEditor/
 - MySQL/MariaDB
   - @[http://myrocks.io/] ← Built on top of key-value RocksDB.
                             optimized for SSD/Memory.
-- SQLite / DQLite
+- SQLite : C Embedded/Server SQL engine.
+  DQLite   DQLite stands for (d)istributed SQLite.
+- H2: Robust Java JVM embedded SQL engine (server mode also supported)
+      that also allows on (RAM) memory only ddbbs.
 - TiDB
   - MySQL compatible
   - RAFT-distributed
@@ -513,13 +513,14 @@ https://www.cognitum.eu/Semantics/FluentEditor/
     to Hadoop
   - JDBC, ODBC, Thrift
 
-- SQL "summary":
-  Beginner:                    Intermediate:AA                                 Advanced:
-   1 What and Why of SQL?       5 LIKE, AND/OR and DISTINCT                     9  JOINT ... UNIONS ...
-   2 Types of SQL               6 NULLs and Dates                              10  OVER ... PARTITION BY ...
-   3 Table, Rows and Colums     7 COUNT, SUM, AVG ... GROUP BY ... HAVING...   11  STRUCT ... UNNEST ..
-   4 SELECT ... FROM ...        8 Alias, Sub-queries and WITH ...AS ..         12  Reguar Expresions
-       WHERE ... ORDER BY ...
+- SQL "SUMMARY":
+  BEGINNER:                 INTERMEDIATE:                          ADVANCED:
+  ========================  ================================       =======================
+  · Types of SQL            · LIKE, AND/OR and DISTINCT            · JOINT ... UNIONS ...
+  · Table, Rows and Colums  · NULLs and Dates                      · OVER ... PARTITION BY ...
+  · SELECT ... FROM ...     · COUNT, SUM, AVG ...                  · STRUCT ... UNNEST ..
+      WHERE ...             · GROUP BY ... HAVING...               · Reguar Expresions
+      ORDER BY ...          · Alias, Sub-queries and WITH ...AS ..
 </pre>
 
 <pre zoom LABELs="db_engine.rdbm,low_code,architecture.event_stream,kafka,sql,TODO">
@@ -3230,6 +3231,31 @@ BºApplication distributed tracing/Monitoring (End-to-End Request Tracing)º
   - See also notes on Spring Cloud Sleuth @[../JAVA/java_map.html] that
     offers an interface to different tracing tech.stacks. (Jaeger,...)
 
+  • Related: https://github.com/dapr/dapr 
+    Dapr: portable, event-driven, runtime for building distributed
+          applications across cloud and edge.  
+  
+    ...by letting Dapr’s sidecar take care of the complex challenges such 
+    as service discovery, message broker integration, encryption, 
+    observability, and secret management, you can focus on business logic 
+    and keep your code simple.
+    ...  usually a developer must add some code to instrument an 
+    application for this purpose send collected data to external 
+    monitoring tool ...  Having to maintain this code adds another
+    burden sometimes requiring understanding the monitoring tools' 
+    APIs, additional SDKs ... different cloud providers offer 
+    different monitoring solutions.
+    • Observability with Dapr:
+    • When building an application which leverages Dapr building blocks 
+      to perform service-to-service calls and pub/sub messaging, Dapr 
+      offers an advantage with respect to distributed tracing. Because this 
+      inter-service communication flows through the Dapr sidecar, the 
+      sidecar is in a unique position to offload the burden of 
+      application-level instrumentation.
+    • Distributed tracing
+      Dapr can be configured to emit tracing data, and because Dapr does so 
+      using widely adopted protocols such as the Zipkin protocol, it can be 
+      easily integrated with multiple monitoring backends.
 
 BºLogging How Toº:
   → Start by adding logs and infra monitoring
@@ -5078,6 +5104,42 @@ Bºoperatorsº for running Apache Kafka on Kubernetes and Red Hat
   when Kafka is running within a platform like Kubernetes but is 
   accessed from outside of that platform.
 </pre>
+
+<pre zoom labels="kafka,devops,_PM.TODO,comparative">
+<span title>KubeMQ: Kafka alternative</span>
+@[https://dzone.com/articles/seamless-migration-from-kafka-to-kubemq?edition=699391]
+• Non free product.
+  · Free for stand alone single pod.
+  · Professional for SMBs: Deploy on up to 20 k8s clusters.
+  · Professional for Dist. product: Corporate license .
+  · Enterprise: Enhanced SLA spport.
+• Kafka monolithic architecture is more suited for on-premise clusters or high-end multi-VM setups. Spinning up a multi-node cluster on a standalone workstation for testing purposes can be a challenge. 
+• KubeMQ messaging service is built from the ground up with Kubernetes in mind:
+  - It is Statless  and Ephemeral.
+  - When config. changes are needed, nodes are shut down and replaced requiring 
+  - Container images is "just" 30MB, suitable for local development.
+   ºzeroº-configuration setup or post-install tweakingº:
+    A 'channel' is the only object developers need to create (forget about 
+    brokers, exchanges, orchestrators ... KubeMQ's Raft replaces ZooKeeper).
+• KubeMQ message delivery patterns include:
+  • Pub/Sub with or without persistence
+  • Request/Reply (synchronous, asynchronous)
+  • At Most Once Delivery
+  • At Least Once Delivery
+  • Streaming patterns
+  • RPC
+  (Comparatively, Kafka only supports Pub/Sub with persistence and streaming. 
+   RPC and Request/Reply patterns are not supported by Kafka at all).
+
+• kubemqctl: cli interface analogous to kubectl.
+• KubeMQ Sources allows to connect to an existing Kafka input topic to simplify 
+  migration from Kafka.
+
+
+
+</pre>
+
+
 </div>
 
 <br/>
@@ -6809,6 +6871,20 @@ https://nsq.io/
   supported libraries for most major languages.
 • Compares to redis / RabitMQ / kafka / pulsar / ...
 </pre>
+
+<pre zoom labels="_PM.TODO">
+<span title>Dapr</span>
+low_code,sidecar
+</pre>
+
+<pre zoom labels="standards,_PM.TODO">
+<span title>OpenTelemetry</span>
+@[https://opentelemetry.io/]
+- Emerging suite of standards for (Cloud Native) Observability.
+- integration with modern observability SaaS providers like
+  Honeycomb, Datadog, Stackdriver, ...
+</pre>
+
 
 
 

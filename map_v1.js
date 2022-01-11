@@ -23,14 +23,18 @@ const SF = {  /* search Form */
     document.getElementById("idLabelSearchAndMode").innerHTML = SF.labelAndOrText[SF.labelANDMode]
     SE.executeSearch()
   },
-  onRegexInputChanged : function () {
+  onSearchInputChanged : function () {
         if (SF.regexInputTimer !== null) {
            clearTimeout(SF.regexInputTimer)
            SF.regexInputTimer = null
         }
+        if (SF.hideFormTimer !== null) {
+           clearTimeout(SF.hideFormTimer)
+           SF.hideFormTimer = null
+        }
+        document.getElementById("searchForm").removeAttribute("resultFound"); 
         SF.regexQuery = this.value
-        SF.regexInputTimer = setTimeout(
-             SE.executeSearch, 1000)
+        SF.regexInputTimer = setTimeout(SE.executeSearch, 1000)
     },
   renderSearchForm : function() {
     const div = document.createElement('div');
@@ -81,13 +85,14 @@ const SF = {  /* search Form */
       swithCaseFullWord .addEventListener('click', ()=>{ SF.fullWordMode  =swithCaseFullWord.checked; } )
 
       const domInputQuery = document.getElementById("inputQuery")
-      domInputQuery.addEventListener("input",  SF.onRegexInputChanged )
+      domInputQuery.addEventListener("input",  SF.onSearchInputChanged )
       domInputQuery.focus()
   
       SF.searchFormDOM = div;
       SF.searchForm_labelsDOM = document.getElementById("searchFormLabels")
   },
   regexInputTimer : null,
+  hideFormTimer : null,
   sorterForRootTopicCache : {},
   generateSorterForRootTopic : function (root) {
       let result = SF.sorterForRootTopicCache[root]
@@ -407,7 +412,7 @@ const LM = { // Lavel management
   onLabelClicked : function (e) {
     const dom = e.target
     const labelKey = dom.value ? dom.value : dom.getAttribute("value")
-    if (!dom.attributes) { // TODO:(0) Use internal DDBB (vs storing in DOM) @ma
+    if (!dom.attributes) { // TODO:(0) Use internal DDBB (vs storing in DOM) @mb
          dom.attributes = { selected : { value : "false" } }
     }
     if (dom.attributes.selected.value == "false") {
@@ -852,7 +857,11 @@ const SE = { // (S)earch (E)ngine
     if (numberOfMatches > 0) {
         sMatchText = numberOfMatches + " found"
         document.getElementById("searchForm").setAttribute("resultFound","true")
-        setTimeout(()=>{ document.getElementById("searchForm").removeAttribute("resultFound") } , 4500 )
+        SF.hideFormTimer = setTimeout(()=> { SF.hideSearchForm() }, 3000 ) // @ma
+        setTimeout(()=>{ 
+          document.getElementById("searchForm").removeAttribute("resultFound") 
+        } , 3500 ) // @ma
+
     }
     document.getElementById("matchNumber").innerHTML = sMatchText
     unhideButton.removeAttribute("hidden","");

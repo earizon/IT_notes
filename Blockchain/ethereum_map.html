@@ -10071,247 +10071,156 @@ scale.
 
 <div groupv>
 <span title>Quorum(JP Morgan)</span>
-<pre zoom labels="implementation.quorum">
-<span xsmall>External Links</span>
-Home Page                @[https://www.goquorum.com]
-WiKi                     @[https://github.com/jpmorganchase/quorum/wiki]
-Quorum Setup Summary     @[https://github.com/jpmorganchase/quorum/wiki/Getting-Set-Up] (WARN: use quorum-maker)
-GitHub                   @[https://github.com/jpmorganchase/quorum/tree/master/docs]
-Quorum-Maker             @[https://github.com/synechron-finlabs/quorum-maker]
-Whitepaper,design,..docs @[https://github.com/jpmorganchase/quorum/tree/master/docs]
-Releases                 @[https://github.com/jpmorganchase/quorum/releases]
-JPMorgan Quorum HomePage @[https://www.jpmorgan.com/country/ES/en/Quorum]
-7 node example           @[https://github.com/jpmorganchase/quorum-examples/tree/master/examples/7nodes]
-Quorum API               @[https://github.com/jpmorganchase/quorum/blob/master/docs/api.md]
-Roadmap                  @[https://github.com/jpmorganchase/quorum/wiki/Product-Roadmap]
-Slack Chat               @[https://go-quorum.slack.com/]
-Official Docker Images   @[https://hub.docker.com/u/quorumengineering/]
-</pre>
-<pre zoom labels="implementation.quorum,privacy.private_tx,consensus">
-<span xsmall>JPMorgan Tessera</span>
-<span xsmall>(EE TX Manager)</span>
-@[https://github.com/jpmorganchase/tessera]
-- Enterprise Implementation of Quorum's transaction manager
-- stateless Java system that is used to enable the encryption,
-  decryption, and distribution of private transactions for Quorum.
+<pre zoom labels="privacy.private_tx,privacy.private_tx.101,diagram,implementation.quorum," id="eea_priv_tx_summary">
+• External Links:
+  • @[https://consensys.net/quorum/]
 
-Each Tessera node:
-  - Generates and maintains a number of private/public key pairs
-  - Self manages and discovers all nodes in the network (i.e. their
-    public keys) by connecting to as few as one other node
-  - Provides Private and Public API interfaces for communication:
-    Private API - This is used for communication with Quorum
-    Public  API - This is used for communication between Tessera
-                  peer nodes
-  - Provides two way SSL using TLS certificates and various trust
-    models like Trust On First Use (TOFU), whitelist, certificate
-    authority, etc.
-  - Supports IP whitelist
-  - Connects to any SQL DB which supports the JDBC client
+• Priv. TX Summary:
+─@[https://raw.githubusercontent.com/jpmorganchase/quorum-docs/master/images/QuorumTransactionProcessing.JPG]
+ P┌====================================================================┐
+ A│                           (9) TxAB-hash Payload?                   │
+ R│                             ┌··················┐   (3,10)          │
+ T│      (1) Private TX AB      ·(2)TXPayloadStore ·   En/De─crypt req.│
+ Y│┌──────•····▷┌───────────────•───┬······▶┌──────▼─•···→┌───────────┐│
+  ││ Dapp │     │ Quorum Node A     ├       │TX Mng A│    │ Enclave A ││
+ A│└──────┘     │                   │◀······••────•──┘←···•───────────┘│
+  │             │                   │    (6) ·    ┃ TX Resp.(4,11)     │
+  │             │  Public  Private  │TX Hash ·    ┃                    │
+  │             │  State    State   │        ·    ┃ (5)                │
+  │             │  ┌────┐   ┌────┐  │◀·······┘    ┃ TXPayloadStore     │
+  │    (8) Block│  ├────┤   ├────┤  │      (12)   ┃ private to A and B │
+  │    with TxAB··▷└────┘   └────┘  │TX Payload   ┃                    │
+  │ notarization│                   │             ┃                    │
+  │         hash└───────────────────┘             ┃                    │
+  │                 △                             ┃                    │
+  │                 ·                             ┃                    │
+  └==== (7) Ethere. · ============================┃====================┘
+        Standard TX ·                             ┃
+ P┌====    Protocol ·=============================┃====================┐
+ A│                 ·       (9) TxAB-hash Payload?┃   (10) En/De─crypt │
+ R│                 ▽          ┌·············┐    ┃  ┐request          │
+ T│             ┌──────────────•────┐       ┌▼────▼──•···→┌───────────┐│
+ Y│             │ Quorum Node B     │       │TX Mng B│    │ Enclave B ││
+  │             │  Public  Private  │       └•───────┘←···•───────────┘│
+ B│             │  State    State   │        ·     Tx Resp.(11)        │
+  │             │  ┌────┐   ┌────┐  │        ·                         │
+  │    (8) Block│  ├────┤   ├────┤  │        ·                         │
+  │    with TxAB··▷└────┘   └────┘  │◀·······┘                         │
+  │ notarization│                   │      (12)                        │
+  │         hash└───────────────────┘TX Payload                        │
+  │                 △                                                  │
+  │                 ·                                                  │
+  └==== (7) Ethere. · =================================================┘
+        Standard TX ·
+ P┌====    Protocol · =================================================┐
+ A│                 ·       (9) TxAB-hash Payload?                     │
+ R│                 ▽          ┌·············┐                         │
+ T│             ┌───────────────────┐       ┌▼───────┐    ┌───────────┐│
+ Y│             │ Quorum Node C     │       │TX Mng C│    │ Enclave C ││
+  │             │  Public  Private  │       └────────┘    └───────────┘│
+ C│             │  State    State  Rº◀·······┘º                        │
+  │             │  ┌────┐   ┌────┐  │Rº        (12)º                   │
+  │    (8) Block│  ├────┤   ├────┤  │RºTX Not Foundº                   │
+  │    with TxAB··▷└────┘   └────┘  │                                  │
+  │ notarization│                   │                                  │
+  │         hash└───────────────────┘                                  │
+  └====================================================================┘
+        △ △ △ △ △ △ △ △ △  ▲ ▲ ▲ ▲ ▲ ▲ ▲ ▲ ▲ ▲ ▲ ▲ ▲ ▲
+        └───────────────┘  └─────────────────────────┘
+          Ethereum standard       EEA PRIVATE TX
+           p2p Protocol         EXTENSION PROTOCOL
 
-<a TODO href="https://github.com/jpmorganchase/tessera/wiki/Interface-&-API">Tessera Wiki</a>
-</pre>
-<pre zoom labels="implementation.quorum,privacy.private_tx,">
-<span xsmall>Constellation</span>
-<span xsmall>secure enclave</span>
-@[https://github.com/jpmorganchase/constellation]
-@[https://github.com/jpmorganchase/quorum/blob/master/docs/privacy.md]
+• TESSERA (Private TX):
+  - Quorum's Transaction Manager Reference implementation.
+  - Each Tessera node:
+    - Generates and maintains a number of private/public key pairs
+    - Self manages and discovers all nodes in the network (i.e. their
+      public keys) by connecting to as few as one other node
+    - Provides Private and Public API interfaces for communication:
+      Private API - This is used for communication with Quorum
+      Public  API - This is used for communication between Tessera
+                    peer nodes
+    - Provides two way SSL using TLS certificates and various trust
+      models like Trust On First Use (TOFU), whitelist, certificate
+      authority, etc.
+    - Supports IP whitelist
+    - Connects to any SQL DB which supports the JDBC client
 
+• CONSTELLATION (secure enclave implemented in Haskell):
   - self-managing, peer-to-peer network of "key server+PGP+MTAs" nodes
-  - Constellation is not blockchain-specific, and potentially applicable
-     in many other types of applications
-  - Constellation's current primary application is to implement the
-    "privacy engine" for Quorum Private transactions (TX with a flag indicating
-    its pretended privacy and the addressable identifier )
+  - not blockchain-specific, potentially applicable in other apps.
   - Hosts a number of Private/Public key pair Curve25519 - NaCl-
   - Automatically discovers other nodes on the network after synchronizing
     with as little as one other host.
-  - Synchronizes a directory of public keys mapped to recipient hosts with
-    other nodes on the network.
-  - Exposes public API allowing other nodes to send encrypted bytestrings to
-    your node, and to synchronize, retrieving information about the nodes
-    that your node knows about.
-  - Exposes a private API which:
-    - Allows you to send a bytestring to one or more public keys, returning
-      a content-addressable identifier. This bytestring is encrypted
-      transparently and efficiently (at symmetric encryption speeds) before
-      being transmitted over the wire to the correct recipient nodes (and only
-      those nodes.) The identifier is a hash digest of the encrypted payload
-      that every receipient node receives. Each recipient node also receives a
-      small blob encrypted for their public key which contains the Master Key
-      for the encrypted payload.
-    - Allows you to receive a decrypted bytestring based on an identifier.
-      Payloads which your node has sent or received can be decrypted and retrieved
-      in this way.
+  - Syncs with peer nodes directory of pub.keys mapped to recipient-hosts with
+  - Public :receive and sync peers encrypted bytestrings and 
+    API     retrieving information about known nodes.
+  - Private:- send bytestring to 1+ pub.keys,ºreturning a º
+    API      ºcontent-addressable identifier.º The bytestring is
+              encrypted transparently (ºsymmetric encryption speedsº)
+              before being transmitted to correct recipient nodes.
+              identifier: hash digest of encrypted-payload, received by
+              every receipient node receives. Each recipient node also 
+              receives a small blob encrypted for their public-key which
+              contains the Master Key for the encrypted payload.
+            - It also allows to receive a decrypted bytestring based on ID.
+            - Exposes management methods for deletion, resync, ...
 
-    - Exposes methods for deletion, resynchronization, and other management functions.
+  - storage backends supported: LevelDB, BerkeleyDB, SQLite as well as
+    directory/maildir-style file storage suitable for FUSE-adapter (S3,...)
 
-  - Supports a number of storage backends including LevelDB, BerkeleyDB, SQLite,
-    and Directory/Maildir-style file storage suitable for use with any FUSE
-    adapter, e.g. for AWS S3.
+  - mutually-authenticated TLS and different trust models including 
+    hybrid CA/tofu (default), tofu (think OpenSSH), and whitelist 
+    (only some set of public keys can connect.)
 
-  - Uses mutually-authenticated TLS with modern settings and various trust
-    models including hybrid CA/tofu (default), tofu (think OpenSSH), and
-    whitelist (only some set of public keys can connect.)
-
-  - Supports access controls like an IP whitelist.
-
-ºINSTALLATIONº
-Pre-Install supporting libraries:
-  Ubuntu : $ apt-get install libdb-dev libleveldb-dev libsodium-dev zlib1g-dev libtinfo-dev
-  Red Hat: $ dnf install libdb-devel leveldb-devel libsodium-devel zlib-devel ncurses-devel
-  MacOS  : $ brew install berkeley-db leveldb libsodium
-
-Install
-  Alt 1: Precompiled binaries:
-  <a href="https://github.com/jpmorganchase/constellation/releases">Release download</a>
-
-  Alt 2: from source
-    - First time only: Install Stack:
-      Linux: $ curl -sSL https://get.haskellstack.org/ | sh
-      MacOS: $ brew install Haskell-stack
-    - First time only: run stack setup to install GHC, the Glasgow Haskell Compiler
-    - Run stack install
-
-Post-install: Generating key pair "node":
-  $  constellation-node --generatekeys=node # generated keys can be locked with passwd
-
-ºRUNNINGº
-- can be run as stand-alone daemon via constellation-node, or
-  imported as a Haskell library, allowing to implement custom
-  storage and encryption logic.
-
-$ constellation-node "path_to_config_file" # or use ENV.VAR
-# More info at <a href="https://github.com/jpmorganchase/quorum/blob/master/private/constellation/node.go">quorum/private/constellation/node.go</a>
-
-ºCONFIGURATION FILE FORMATº
-<a href="https://github.com/jpmorganchase/constellation/blob/master/sample.conf">REF</a>
-url = "http://127.0.0.1:9001/"
-port = 9001
-workdir = "data"
-socket = "constellation.ipc"
-othernodes = ["http://127.0.0.1:9000/"]
-publickeys = ["foo.pub"]
-privatekeys = ["foo.key"]
-alwayssendto = []
-storage = "dir:storage"
-verbosity = 1
-tls = "strict"
-tlsservercert = "tls-server-cert.pem"
-tlsserverchain = []
-tlsserverkey = "tls-server-key.pem"
-tlsservertrust = "tofu"
-tlsknownclients = "tls-known-clients"
-tlsclientcert = "tls-client-cert.pem"
-tlsclientchain = []
-tlsclientkey = "tls-client-key.pem"
-tlsclienttrust = "ca-or-tofu"
-tlsknownservers = "tls-known-servers"
-</pre>
-
-<pre zoom labels="standards.eea,implementation.quorum,privacy.private_tx,">
-<span xsmall>Crux (Constellation alternative)</span>
+• CRUX (Constellation enclave alternative):
 @[https://medium.com/web3labs/announcing-crux-a-secure-enclave-for-quorum-61afbfdb79e4]
-- dropin Constellation replacement
-- secure enclave  written in Golang (Constellation is written in Haskell)
-- <a href="https://github.com/blk-io/quorum-examples">7 nodes example deployment with Crux</a>
-- LevelDB used as storage (same as geth).
-  BerkeleyDB bindings available for compatibility with
-  existing Constellation instance.
+  - dropin Constellation replacement.
+  - secure enclave  written in Golang (Constellation is written in Haskell)
+  - 7 nodes example deployment with Crux:
+  @[https://github.com/blk-io/quorum-examples]
+  - LevelDB used as storage (same as geth).
+    BerkeleyDB bindings available for compatibility with Constellation.
 
-ºBUILDº                                          ºPRE-SETUPº
-$ git clone https://github.com/blk-io/crux.git   generate new keys using:
-$ cd crux                                        $ cruxº--generate-keysº myKey
-$ make setup ⅋⅋ make
-$ ./bin/crux
+  ºBUILDº                                          ºPRE-SETUPº
+  $ git clone https://github.com/blk-io/crux.git   generate new keys using:
+  $ cd crux                                        $ cruxº--generate-keysº myKey
+  $ make setup ⅋⅋ make
+  $ ./bin/crux
 
-ºUSSAGEº
-run it like: (almost identical to Constellation node):
-$ crux --url=http://127.0.0.1:9001/ \          | crux --help reference:
-       --port=9001 --workdir=crux \            |     crux.config              Optional config file
-       --publickeys=tm.pub \                   |     --alwayssendto string    public key List  for nodes to send all transactions to
-       --privatekeys=tm.key \                  |     --berkeleydb             switch to Berkeley DB for compatibility with Constellation data store [experimental]
-       --othernodes=https://127.0.0.1:9001/    |     --generate-keys string   Generate a new keypair
-                                               |     --othernodes string      "Boot nodes" used to discover the network
-                                               |     --port int               The local port to listen on (default -1)
-                                               |     --privatekeys string     Private keys hosted by this node
-                                               |     --publickeys string      Public keys hosted by this node
-                                               |     --socket string          IPC socket to create for access to the Private API (default "crux.ipc")
-                                               |     --storage string         Database storage file name (default "crux.db")
-                                               |     --url string             The URL to advertise to other nodes (reachable by them)
-                                               |     --verbosity int          Verbosity level of logs (default 1)
-                                               |     --workdir string         The folder to put stuff in (default: .) (default ".")
-</pre>
+• ºUSSAGEº: (almost identical to Constellation node):
+$º$ crux --url=http://127.0.0.1:9001/ \      º
+$º      --port=9001 --workdir=crux \         º
+$º      --publickeys=tm.pub \                º
+$º      --privatekeys=tm.key \               º
+$º      --othernodes=https://127.0.0.1:9001/ º
 
-<pre zoom labels="implementation.quorum,implementation.besu,standards.eea,privacy.private_tx,diagram">
-<span xsmall>Priv. TX Seq.</span>
-─@[https://raw.githubusercontent.com/jpmorganchase/quorum─docs/master/images/QuorumTransactionProcessing.JPG]
-                                             TxPayloadRequest
-                                        ┌──────────────────────────────┐
-  ┌─→                                   │                              │           3,10 En/De─cryption
-  │                                     │         2 TXPayloadStore ┌─────────────┐             request ┌───────────┐
-  │   ┌──────┐ 1 Private TX ┌───────────────────┐                  │             ├────────────────────→│           │
-  │   │ Dapp │      AB      │                   ├─────────────────→┼ Transaction │                     │ Enclave A │
- P│   └────────────────────→┼   Quorum Node A   │                  │ Manager A   │                     │           │
- A│                         │                   │                  │             │←────────────────────┴───────────┘
- R│                         │  Public  Private  │←───────────────────────────────┘  4,11 Tx Response
- T│                         │  State    State   │ 6 TX Hash          │       ^
- Y│       8 Block w/Tx AB   │  ┌────┐   ┌────┐  │                    │       │
-  │        ┌──────────────→ │  ├────┤   ├────┤  │                    │       │
- A│        │                │  └────┘   └────┘  │                    │       │
-  │        │                │                   │                    │       │5
-  │        │                └───────────────────┘                    │       │TXPayloadStore
-  │        │                    ^     ^                              │       │
-  │   ┌──────────┐      7 Ether │     │ 12 TxPayloadResp (TX Payload)│       │
-  └─→ │Block 123 │           TX │     └──────────────────────────────┘       │
-      ├───────── │     Standard │                                            │
-      │TxAB      │     Protocol │            9.TxPayloadRequest              │
-      └──────────┘              │          ┌──────────────────────────┐      │
-   ┌─→ │   │                    v          │                          │      v      10 En/De─cryption
-   │   │   │                ┌───────────────────┐                   ┌─v───────────┐           request  ┌───────────┐
-   │   │   │                │                   │                   │             ├───────────────────→│           │
- P │   │   │                │   Quorum Node B   │                   │ Transaction │                    │ Enclave B │
- A │   │   │                │                   │                   │ Manager B   │←───────────────────┤           │
- R │   │   │                │  Public  Private  │                   │             │11.Tx Response      └───────────┘
- T │   │   │                │  State    State   │                   └─────────────┘
- Y │   │   │                │  ┌────┐   ┌────┐  │                     │
-   │   │   └──────────────→ │  ├────┤   ├────┤  │                     │
- B │   │ 8 Block w/Tx AB    │  └────┘   └────┘  │                     │
-   │   │                    │                   │                     │
-   │   │                    └───────────────────┘                     │
-   │   │                       ^       ^                              │
-   │   │               7 Ether │       │ 12 TxPayloadResp (TX Payload)│
-   │   │                    TX │       └──────────────────────────────┘
-   └─→ │              Standard │
-       │              Protocol │             9.TxPayloadRequest
-   ┌─→ │                       │           ┌──────────────────────────┐
-   │   │                       v           │                          │
-   │   │                    ┌───────────────────┐                  ┌─────────────┐                    ┌───────────┐
- P │   │                    │                   │                  │             │                    │           │
- A │   │                    │   Quorum Node C   │                  │ Transaction │                    │ Enclave C │
- R │   │ 8 Block w/Tx AB    │                   │                  │ Manager C   │                    │           │
- T │   └──────────────────→ │  Public  Private  │                  │             │                    └───────────┘
- Y │                        │  State    State   │                  └─────────────┘
-   │                        │  ┌────┐   ┌────┐  │
- C │                        │  ├────┤   ├────┤  │
-   │                        │  └────┘   └────┘  │
-   │                        │                   │
-   │                        └───────────────────┘
-   │                     ^                           ^        ^                          ^
-   └─→                   │                           │        │                          │
-                         └───────────────────────────┘        └──────────────────────────┘
-                             Ethereum standard p2p                  CONSTELLATION
-                                Network Protocol                       NETWORK
+•$º$ crux --help º reference
+ crux.config              Optional config file
+ --alwayssendto string    public key List for nodes to send all transactions to
+ --berkeleydb             switch to Berkeley DB for compatibility 
+ --generate-keys string   Generate a new keypair
+ --othernodes string      "Boot nodes" used to discover the network
+ --port int               The local port to listen on (default -1)
+ --privatekeys string     Private keys hosted by this node
+ --publickeys string      Public keys hosted by this node
+ --socket string          IPC socket access to Private API (default "crux.ipc")
+ --storage string         Database storage file name (default "crux.db")
+ --url string             URL to advertise to other nodes (reachable by them)
+ --verbosity int          Verbosity level (default 1)
+ --workdir string         folder to put stuff in (default: .) (default ".")
 </pre>
 <pre zoom labels="implementation.quorum,tool,devops,low_code">
 <span xsmall>Quorum-Maker</span>
 @[https://github.com/synechron-finlabs/quorum-maker]
-C&amp;P from https://github.com/synechron-finlabs/quorum-maker:
-Synechron's Quorum Maker is a tool that allows users to create and manage Quorum network.
-Manually editing configuration files and creating nodes is a slow and error-prone process.
-Quorum Maker can create any number of nodes of various configurations dynamically with
-reduced user input. This provides a wizard-like interface with a series of questions to
-guide the user when creating nodes. Quorum Maker can create nodes to:
+•
+tool that allows users to create and 
+manage Quorum network.  Manually editing configuration files and 
+creating nodes is a slow and error-prone process.  Quorum Maker can 
+create any number of nodes of various configurations dynamically with 
+reduced user input. This provides a wizard-like interface with a 
+series of questions to guide the user when creating nodes. Quorum 
+Maker can create nodes to:
 
   - run with docker-compose (Raft consensus/Quorum 2.2.0) for easy use in development environments;
     or

@@ -221,18 +221,6 @@ StackExchange Top users:
 @[https://eth.wiki/en/fundamentals/patricia-tree] <!-- @ma -->
 </pre>
 
-<pre bgorange zoom labels="101">
-<span xsmall>wei,ether,.. Units</span>
-wei                         :      1 wei     ← discussion around APIs ...
-gwei(shannon|nanoether|nano):   1^9  weis    ←ºgas pricesº. Ex. web3j default gas price is 22 gwei
-szabo|microether|micro      :   1^3  gweis
-finney|milliether|milli     :   10^6 gweis   ← micropayments
-ether                       :   1^9  gweis   ← main unit
-kether(grand|einstein)      :   1^3  ethers
-mether                      :   1^6  ethers
-gether                      :   1^9  ethers
-tether                      :   1^12 ethers
-</pre>
 <pre zoom zoom labels="101,scalability.evm,scalability.consensus.ethereum2,scalability.layer2,layer2.rollup.optimistic,layer2.rollup.zk,">
 <span xsmall>Network Versions</span>
 • Protocol and Code Updates:
@@ -589,7 +577,7 @@ tether                      :   1^12 ethers
     Diode , Flare , ThunderCore, Callisto, ...
   -------------------------------------------------------------------------------------------------
 </pre>
-<pre zoom labels="standards.tokens,resource,_PM.TODO,">
+<pre zoom labels="standards.tokens,_PM.ext_resource,_PM.TODO,">
 <span title>Related Taxonomies</span>
 Bº##########################º
 Bº# TokenTaxonomyFramework #º
@@ -617,7 +605,7 @@ Bº######################º
 <span title>EVM</span><br/>
 <div groupv>
 
-<pre zoom labels="evm,resource,">
+<pre zoom labels="evm,_PM.ext_resource,">
 <span xsmall>External Refs:</span>
 @[https://github.com/ethereum/yellowpaper]
 @[https://github.com/ethereum/wiki/wiki/Ethereum-Development-Tutorial]
@@ -641,7 +629,7 @@ Bº######################º
   processing state changes is extremely demanding on disk read/writes.
 </pre>
 
-<pre zoom labels="dev_language.solidity,evm.101,diagram" id="evm_accounts_summary">
+<pre zoom labels="dev_language.solidity,evm.101,_doc_has.diagram" id="evm_accounts_summary">
 <span xsmall>Accounts</span>
 @[http://www.ethdocs.org/en/latest/contracts-and-transactions/account-types-gas-and-transactions.html]
  ºAccountº  ← same address space both for contract and normal accounts
@@ -706,7 +694,7 @@ it is possible to send multiple versions of a transaction with the same nonce,
 however, once mined, any subsequent submissions will be rejected.
 </pre>
 
-<pre zoom labels="evm.101,qa.error_control,diagram" id="evm_message_calls">
+<pre zoom labels="evm.101,qa.error_control,_doc_has.diagram" id="evm_message_calls">
 <span xsmall>Message Calls</span>
 (EVM CALL opcode)
 - Contracts can user message calls to call other contracts or send Ether to
@@ -1811,7 +1799,7 @@ network node.                                 |   (but offline clients can also 
 The signed TX is then sent to the network.    |   hacked)
 </pre>
 
-<pre zoom labels="101,evm,persistence.contract_state,persistence.data_structure,qa.usability,dev_language.solidity,soft_life_cycle.troubleshooting,standards.eip/erc,_PM.TODO">
+<pre zoom labels="101,evm,persistence.contract_state,persistence.data_structure,qa.usability,qa.solidity,dev_language.solidity,soft_life_cycle.troubleshooting,standards.eip/erc">
 <span title>EIP-2535 Diamons</span>
 @[https://eips.ethereum.org/EIPS/eip-2535]
 Bº#######################################
@@ -2303,7 +2291,7 @@ variety of benefits, a few of which are listed below:
 <span title>Solidity</span><br/>
 <div groupv>
 
-<pre zoom labels="dev_language.solidity,resource">
+<pre zoom labels="dev_language.solidity,_PM.ext_resource">
 <span xsmall>What's New</span>
 BºSolidity 0.8 Breaking changesº
 @[https://github.com/ethereum/solidity/blob/develop/docs/080-breaking-changes.rst]
@@ -2418,38 +2406,156 @@ BºSolidity 0.6 Breaking changesº
 @[https://blog.ethereum.org/2020/01/29/solidity-0.6-try-catch/]
 </pre>
 
-<pre zoom labels="101,dev_language.solidity,_PM.TODO">
+<pre zoom labels="101,dev_language.solidity,qa.formal_verification">
 <span xsmall>solc (Solidity Compiler)</span>
-ºSolc multiversion Install with svmº (Solidity Version Manager)
+• svm: Solidity compiler Version Manager, similar to Node nvm,..
 @[https://github.com/web3j/svm]
-Usage Ex:<div cli>
-$ svm install 0.6.2
-$ svm use     0.6.2
-</div>
+$º$ svm install 0.6.2 º ← install|uninstall|deactivate
+$º$ svm use     0.6.2 º   use|current
+                          ls|ls-remote
+                          alias|unalias
 
-Available Commands:
-install $version   (Download+install Solc)
-uninstall $version
-use $version       Set $PATH properly
-current            show current
-ls                 List installed ver.
-ls-remote          List remote ver. available
-alias $name $ver   Resolve|update an alias
-unalias $name      Delete alias
-deactivate         Deactivates svm in current
-                   shell
+•ºCOMPILING:º
+$ solc  \
+  --base-path ...              ← default: ./
+  --include-path ...           ← default: ./
+  github.com/.../lib1/=./lib1/ ← (Opt) (src)input path redirect
+  -o outputDirectory \
+  --bin --ast-compact-json \
+
+  --optimize                 ← Don't forget before deploying
+                               opcode is executed ~200 times. 
+                          --optimize-runs=$N
+                           ┌───────────────┘
+                           N=1:    deploy -expensive/exec. +expensive
+                           N=1000: deploy +expensive/exec. -expensive
+                           Affected tunning:
+                           • size of binary search in 'dispatch'
+                           • storage of constants (strings,..)
+  --asm sourceFile.sol
+
+•ºLINKINGº
+  • Replace bytecode placeholders (__$...34 chars...$__) with
+    with actual library addresses, where the 34 chars is the 
+    keccak256("fully-qualified-library-name") 
+    (bytecode will end with some extra metadata:
+     // placeholder -˃ fq-library-name as a hint )
+
+  $ export LIB_MATH="0x...hex-address-of-deployed-lib..."
+  $ export LIB_HEAP="0x...hex-address-of-deployed-lib..."
+  $ solc --libraries \
+    "file.sol:Math=${LIB_MATH} file.sol:Heap=${LIB_HEAP}"
+    ...
+• Using JSON as (STDIN) input: ºRECOMENDED FOR AUTOMATED BUILDSº
+  $ solc --standard-json ... ← return JSON-output on  STDOUT.
+                               Always success. Errors are 
+                               reported through JSON-output
+  (go to offical doc for more details)
+
+• EVM Version --evm-version  (settings.evmVersion JSON) affects
+  compiler output in different ways:
+
+  ────────────────────────────────────────────────────────────
+  homestead  · (oldest version)
+  ────────────────────────────────────────────────────────────
+  tangerine  · Gas cost for access to other accounts 
+    Whistle    increased, relevant for gas estimation and the 
+               optimizer.
+             · All gas sent by default for external calls, 
+               previously a certain amount had to be retained.
+  ────────────────────────────────────────────────────────────
+  spurious   · Gas cost for the exp opcode increased, 
+    Dragon     relevant for gas estimation and the optimizer.
+  ────────────────────────────────────────────────────────────
+  byzantium  · Opcodes returndatacopy, returndatasize and 
+               staticcall are available in assembly.
+             · The staticcall opcode is used when calling 
+               non-library view or pure functions, which 
+               prevents the functions from modifying state at 
+               the EVM level, i.e., even applies when you use 
+               invalid type conversions.
+             · It is possible to access dynamic data returned 
+               from function calls.
+  ────────────────────────────────────────────────────────────
+  constan-   · Opcodes create2`, extcodehash, shl, shr and 
+   tinople     sar are available in assembly.
+             · Shifting operators use shifting opcodes and 
+               thus need less gas.
+  ────────────────────────────────────────────────────────────
+  petersburg · compiler behaves the same way as with constantinople.
+  ────────────────────────────────────────────────────────────
+  istanbul   · Opcodes chainid and selfbalance are available in assembly.
+  ────────────────────────────────────────────────────────────
+  berlin     · Gas costs for SLOAD, *CALL, BALANCE, EXT* and 
+               SELFDESTRUCT increased. The compiler assumes cold 
+               gas costs for such operations. This is relevant 
+               for gas estimation and the optimizer.
+  ────────────────────────────────────────────────────────────
+  london     · (default as of 2022-01)
+             · The block’s base fee (EIP-3198 and EIP-1559) 
+               can be accessed via the global block.basefee or 
+               basefee() in inline assembly.
+  ────────────────────────────────────────────────────────────
+
+• JSON-INPUT:
+  {
+    "language": "Solidity",  ← "Solidity" | "Yul".
+    "sources": {
+      "myFile.sol": {
+        "keccak256": "0x123...",  ← Optional: used to verify retrieved content
+        "urls": [...]             ← Ordered list of bzzr://, ipfs://, FileSystem paths
+      },                            (only FS allowed to commandline interface)
+      "destructible": {
+        "keccak256": "0x234...",  ← Optional
+        "content": "... "         ← Inline contract source code
+      }
+    },
+    {                      ←  Optional "settings":
+      "stopAfter": "parsing",
+      "remappings": [ ":g=/dir" ],
+      "optimizer": {...}   ← active?, runs over opcodes,
+        "details": {...},  ← peephole,inliner,jumpdestRemover,orderLiterals,
+                             deduplicate,cse,constantOptimizer,yul/yulDetails
+      "evmVersion": "byzantium",
+      "viaIR": true,  ← highly EXPERIMENTAL. compile through Yul 
+      "debug": {
+        "revertStrings": "default",   ←  "strip"  : removes all keeping side-effects
+                                         "debug"  : injects compiler-generated reverts.
+                                                    (ABI encoders V1 and V2)
+                                         "verboseDebug":  appends further information 
+        "debugInfo": ["location", "snippet"] // extra debug info to include in ASM/YUL
+      },
+      "metadata": {
+        "useLiteralContent": true,
+        "bytecodeHash": "ipfs"
+      },
+      "libraries": {  ← needed for linkin libraries.
+        "myFile.sol": { "MyLib": "0x123123..." }
+      },                   Enable abi output for all contracts. Compiler output 
+      "outputSelection": { types include:
+        "*": {             abi, ast, devdoc, userdoc, metadata, ir/irOptimized(Yul),
+          "*": [ "abi" ] ← storageLayout(Slots/offsets/types of contract's vars),
+        }                   evm.assembly, evm.bytecode.*, evm.methodIdentifiers
+    }                      ,evm.gasEstimates, ewasm.wast, ewasm.wasm
+    "modelChecker":{...} ← experimental/subject to changes (Formal Probes)
+  }
+
+• JSON-OUTPUT
+  {
+    "errors": [ { ... } ],
+    "sources":   {...} // file-level outputs.
+    "contracts": {...} // detailed contract-level output
+  }
+
+<span title>solidity-upgrade</span>
+ • semi-automatically upgrade contract source code 
 </pre>
 
-
-</pre>
-
-<pre zoom labels="101,dev_language.solidity,_PM.WiP">
-<span xsmall>Learn X in Y min</span>
-Summary from @[https://learnxinyminutes.com/docs/solidity/]
-- statically typed.
-- OOP: a contract ("class")  contains state variables, private/public functions
-
--ºEvent-stream oriented:º
+<pre zoom labels="101,dev_language.solidity,persistence.data_structure,qa,_PM.WiP">
+<span xsmall>Solidity 101</span>
+(Initial version from @[https://learnxinyminutes.com/docs/solidity/] 
+ with "lot of extras")
+•ºEvent-stream oriented:º
   - Clients "outside" the ethereum network send
     ºsigned TXsº to the network.ºEventuallyº those TXs will be
     accepted ("mined") by the consensus and the modified state
@@ -2468,713 +2574,225 @@ Summary from @[https://learnxinyminutes.com/docs/solidity/]
     (Some low level-EVM data can be directly extracted from the
     TX receipt, like the gas spent, hash, ...).
 
-º1. DATA TYPES AND ASSOCIATED METHODSº
-// there are no doubles or floats.
-uint    constant a = 8; // 32 bytes (256bits)
-uint256 constant a = 8; // same effect
- int    constant a = 8; // 32 bytes signed int
- int    constant a = 0x123A1; // hex notation
-
-// All state variables (those outside a function)
-// are by default 'internal' and accessible inside contract
-// and in all contracts that inherit ONLY
-// Need to explicitly set to 'public' to allow external contracts to access
-int256 public a = 8;
-
-// For int and uint, can explicitly set space in steps of 8 up to 256
-// e.g., int8, int16, int24
-uint8 b;
-int64 c;
-uint248 e;
-
-// Be careful that you don't overflow, and protect against attacks that do
-// For example, for an addition, you'd do:
-uint256 c = a + b;
-assert(c ˃= a); // assert tests for internal invariants; require is used for user inputs
-// For more examples of common arithmetic issues, see Zeppelin's SafeMath library
-// https://github.com/OpenZeppelin/zeppelin-solidity/blob/master/contracts/math/SafeMath.sol
-
-
-// No random functions built in, use other contracts for randomness
-
-// Type casting
-int x = int(b);
-
-bool b = true; // or do 'var b = true;' for inferred typing
-
-// Addresses - holds 20 byte/160 bit Ethereum addresses
-// No arithmetic allowed
-address public owner;
-
-// Types of accounts:
-// Contract account: address set on create (func of creator address, num transactions sent)
-// External Account: (person/external entity): address created from public key
-
-// Add 'public' field to indicate publicly/externally accessible
-// a getter is automatically created, but NOT a setter
-
-// All addresses can be sent ether
-owner.transfer(SOME_BALANCE); // fails and reverts on failure
-
-// Can also do a lower level .send call, which returns a false if it failed
-if (owner.send) {} // REMEMBER: wrap send in 'if', as contract addresses have
-// functions executed on send and these can fail
-// Also, make sure to deduct balances BEFORE attempting a send, as there is a risk of a recursive
-// call that can drain the contract
-
-// Can check balance
-owner.balance; // the balance of the owner (user or contract)
-
-
-// Bytes available from 1 to 32
-byte a; // byte is same as bytes1
-bytes2 b;
-bytes32 c;
-
-// Dynamically sized bytes
-bytes m; // A special array, same as byte[] array (but packed tightly)
-// More expensive than byte1-byte32, so use those when possible
-
-// same as bytes, but does not allow length or index access (for now)
-string n = "hello"; // stored in UTF8, note double quotes, not single
-// string utility functions to be added in future
-// prefer bytes32/bytes, as UTF8 uses more storage
-
-// Type inference
-// var does inferred typing based on first assignment,
-// can't be used in functions parameters
-var a = true;
-// use carefully, inference may provide wrong type
-// e.g., an int8, when a counter needs to be int16
-
-// var can be used to assign function to variable
-function a(uint x) returns (uint) {
-    return x * 2;
-}
-var f = a;
-f(22); // call
-
-// by default, all values are set to 0 on instantiation
-
-// Delete can be called on most types
-// (does NOT destroy value, but sets value to 0, the initial value)
-uint x = 5;
-
-
-// Destructuring/Tuples
-(x, y) = (2, 7); // assign/swap multiple values
-
-
-// 2. DATA STRUCTURES
-// Arrays
-bytes32[5] nicknames; // static array
-bytes32[] names; // dynamic array
-uint newLength = names.push("John"); // adding returns new length of the array
-// Length
-names.length; // get length
-names.length = 1; // lengths can be set (for dynamic arrays in storage only)
-
-// multidimensional array
-uint x[][5]; // arr with 5 dynamic array elements (opp order of most languages)
-
-// Dictionaries (any type to any other type)
-mapping (string =˃ uint) public balances;
-balances["charles"] = 1;
-// balances["ada"] result is 0, all non-set key values return zeroes
-// 'public' allows following from another contract
-contractName.balances("charles"); // returns 1
-// 'public' created a getter (but not setter) like the following:
-function balances(string _account) returns (uint balance) {
-    return balances[_account];
-}
-
-// Nested mappings
-mapping (address =˃ mapping (address =˃ uint)) public custodians;
-
-// To delete
-delete balances["John"];
-delete balances; // sets all elements to 0
-
-// Unlike other languages, CANNOT iterate through all elements in
-// mapping, without knowing source keys - can build data structure
-// on top to do this
-
-// Structs
-struct Bank {
-    address owner;
-    uint balance;
-}
-Bank b = Bank({
-    owner: msg.sender,
-    balance: 5
-});
-// or
-Bank c = Bank(msg.sender, 5);
-
-c.balance = 5; // set to new value
-delete b;
-// sets to initial value, set all variables in struct to 0, except mappings
-
-// Enums
-enum State { Created, Locked, Inactive }; // often used for state machine
-State public state; // Declare variable from enum
-state = State.Created;
-// enums can be explicitly converted to ints
-uint createdState = uint(State.Created); //  0
-
-// Data locations: Memory vs. storage vs. calldata - all complex types (arrays,
-// structs) have a data location
-// 'memory' does not persist, 'storage' does
-// Default is 'storage' for local and state variables; 'memory' for func params
-// stack holds small local variables
-
-// for most types, can explicitly set which data location to use
-
-
-// 3. Simple operators
-// Comparisons, bit operators and arithmetic operators are provided
-// exponentiation: **
-// exclusive or: ^
-// bitwise negation: ~
-
-
-// 4. Global Variables of note
-// ** this **
-this; // address of contract
-// often used at end of contract life to transfer remaining balance to party
-this.balance;
-this.someFunction(); // calls func externally via call, not via internal jump
-
-// ** msg - Current message received by the contract ** **
-msg.sender; // address of sender
-msg.value; // amount of ether provided to this contract in wei, the function should be marked "payable"
-msg.data; // bytes, complete call data
-msg.gas; // remaining gas
-
-// ** tx - This transaction **
-tx.origin; // address of sender of the transaction
-tx.gasprice; // gas price of the transaction
-
-// ** block - Information about current block **
-now; // current time (approximately), alias for block.timestamp (uses Unix time)
-// Note that this can be manipulated by miners, so use carefully
-
-block.number; // current block number
-block.difficulty; // current block difficulty
-block.blockhash(1); // returns bytes32, only works for most recent 256 blocks
-block.gasLimit();
-
-// ** storage - Persistent storage hash **
-storage['abc'] = 'def'; // maps 256 bit words to 256 bit words
-
-
-// 4. FUNCTIONS AND MORE
-// A. Functions
-// Simple function
-function increment(uint x) returns (uint) {
-    x += 1;
-    return x;
-}
-
-// Functions can return many arguments, and by specifying returned arguments
-// name don't need to explicitly return
-function increment(uint x, uint y) returns (uint x, uint y) {
-    x += 1;
-    y += 1;
-}
-// Call previous functon
-uint (a,b) = increment(1,1);
-
-// 'view' (alias for 'constant')
-// indicates that function does not/cannot change persistent vars
-// View function execute locally, not on blockchain
-// Noted: constant keyword will soon be deprecated.
-uint y = 1;
-
-function increment(uint x) view returns (uint x) {
-    x += 1;
-    y += 1; // this line would fail
-    // y is a state variable, and can't be changed in a view function
-}
-
-// 'pure' is more strict than 'view' or 'constant', and does not
-// even allow reading of state vars
-// The exact rules are more complicated, so see more about
-// view/pure:
-// http://solidity.readthedocs.io/en/develop/contracts.html#view-functions
-
-// 'Function Visibility specifiers'
-// These can be placed where 'view' is, including:
-// public - visible externally and internally (default for function)
-// external - only visible externally (including a call made with this.)
-// private - only visible in the current contract
-// internal - only visible in current contract, and those deriving from it
-
-// Generally, a good idea to mark each function explicitly
-
-// Functions hoisted - and can assign a function to a variable
-function a() {
-    var z = b;
-    b();
-}
-
-function b() {
-
-}
-
-// All functions that receive ether must be marked 'payable'
-function depositEther() public payable {
-    balances[msg.sender] += msg.value;
-}
-
-
-// Prefer loops to recursion (max call stack depth is 1024)
-// Also, don't setup loops that you haven't bounded,
-// as this can hit the gas limit
-
-// B. Events
-// Events are notify external parties; easy to search and
-// access events from outside blockchain (with lightweight clients)
-// typically declare after contract parameters
-
-// Typically, capitalized - and add Log in front to be explicit and prevent confusion
-// with a function call
-
-// Declare
-event LogSent(address indexed from, address indexed to, uint amount); // note capital first letter
-
-// Call
-LogSent(from, to, amount);
-
-/**
-
-For an external party (a contract or external entity), to watch using
-the Web3 Javascript library:
-
-// The following is Javascript code, not Solidity code
-Coin.LogSent().watch({}, '', function(error, result) {
-    if (!error) {
-        console.log("Coin transfer: " + result.args.amount +
-            " coins were sent from " + result.args.from +
-            " to " + result.args.to + ".");
-        console.log("Balances now:\n" +
-            "Sender: " + Coin.balances.call(result.args.from) +
-            "Receiver: " + Coin.balances.call(result.args.to));
+• NATSPEC COMMENTS
+  /// @title Contract title
+  /// @author Author name
+  contract ... {
+  
+    /// @notice information about what function does;
+    /// @dev Function documentation for developer
+    /// @param someParam Some description of what the param does
+    /// @return Description of the return value
+    function ... {
+
+
+• DATA TYPES / STORAGE:
+  NOTE: In Solidity/Ethereum, contract data structures like maps/arrays can and 
+        ussually are automatically  persisted to permanent storage (on each
+        potential node in the 1000's of nodes network!!!). Temporal storage 
+        in memory/calldata must be indicated explicetely. 
+  • no doubles or floats (Risky in the Accountancy World)
+  • Minimal support for strings, it use is discouraged.
+  uint public constant z        All non-explicitely assigned values return zero.
+                              RºWARNº: 'private' members are still visible/readable 
+                                       to anyone except the Solidity-compiler.
+  uint public constant a = 8; ← 32 bytes (256bits), alt. uint256
+                                or (u)int(8,16,24,...,248,256)
+                                internal visibility by default.  
+                                'public' automatically creates getter (NOT setter)
+  uint immutable x;           ← immutable: Init@constructor, constant from there on.
+  uint256 c = a + b;
+  assert(c ˃= a);             ← Check overflow. TIPO: Use Zeppelin's SafeMath lib
+  bool b = true;              ← boolean, alt(type inferred): var b = true; 
+  address payable owner;      ← 20 byte Ethereum addresses (arithmetic not allowed)
+                                Mark as 'payable' to allow sending ethers.
+  this;                       ← address of current contract
+                                WARN: this.func1() call func. externally.
+                                           func1() call func. internally (faster)
+  owner.transfer("balance");  ← reverts on failure
+  if (owner.send) {}          ← low-level send allows to capture failure..
+                                Make sure to update/decrease internal contract balances
+                                BEFORE attempting a send, to avoid recursive drains.
+  owner.balance;              ← check balance for owner
+  byte1 a;                    ← byte2, byte3, ... bytes32
+
+  bytes m;                    ←  same as byte[] array (but packed tightly in calldata)
+                                 More expensive than byte1-byte32, so use those when possible
+
+  string n = "hello";         ← stored in UTF8, internally same as bytes, BUT does 
+                                NOT allow length/index/push access (202?)
+                                string utility functions  could be added 
+                                prefer bytes32 hash of string when possible
+                                · use bytes(myString).length / bytes(myString)[7] = 'x' to
+                                  access the low-byte-representation of myString
+                              RºWARN:º string[] arrays not allowed.
+
+  var f = someFunction;       ← assign function to variable.
+      f(22);                    ← call func.
+
+  (x, y) = (2, 7);            ← Destructuring/Tuples: assign/swap multiple values
+
+  enum State {                ←ºENUMSº
+     Created,
+     Locked,
+     Inactive 
+  };
+  State public s0 = State.Created;
+  state = State.Created;
+  uint8  i_8_0 = uint8(State.Created);  ← enums can be explicitly converted to ints
+  uint16 i16_0 = uint16(State.Created); ← enums can be explicitly converted to ints
+  State s2 = State(i_8_0)               ← uintXX → enum using enum constructor
+                                          Will raise an assert exception if
+                                          u1 is outside the State bounds.
+
+• DATA LOCATIONS: 
+  • Memory  : intermediate operations.
+  • calldata: input data.
+  • storage : internal state.
+
+• Basic operators: Comparisons, bit operators and arithmetic.
+  WARN: ^  XOR (use '**' for exponentiation)
+
+• Predefined constants (at Tx runtime)
+  msg.sender; ← address of sender (or contract calling our contract)
+  msg.value;  ← weis provided to this contract. function should be "payable"
+  msg.data;   ← bytes, complete call data, used for example for multi-signatures
+                in a single (expensive) transaction.
+  msg.gas;    ← remaining gas
+  
+  tx.origin;  ← signer of TX sent to blockchain
+  tx.gasprice;← gas price of the transaction
+  
+  
+  block.timestamp ← aprox UNIX-current time  (alias: 'now') 
+                    WARN: Can be manipulated by miners
+  block.number;
+  block.difficulty;
+  block.blockhash(1); ← bytes32, only works for most recent 256 blocks
+  block.gasLimit();
+  
+• "Common" pattern: remove function removing storage/code from 
+  current/future blocks (helps thin clients). (Alternatively, de-activate)
+  function remove() {
+    if(msg.sender == creator) { ← creator registered in constructor
+      selfdestruct(creator); 
     }
-}
-**/
+  }
+
+<hr/>
+<span title>Currency Units</span>
+• Currency units: (Useful in public network, not that much in consortium ones)
+     wei : basic unit in solidity code, APIs, ...
+    gwei =  1^9  weis , ºgas pricesº. Ex. web3j default gas price is 22 gwei
+                        alias: shannon|nanoether|nano
+   szabo =  1^3  gweis, alias: |microether|micro
+  finney = 10^6  gweis, micropayments, alias: |milliether|milli
+   ether =  1^9  gweis, main unit
+  kether =  1^3  ethers, alias: (grand|einstein)
+  mether =  1^6  ethers
+  gether =  1^9  ethers
+  tether =  1^12 ethers
+
+• Time units:
+  second : unit-of-time
+  minutes
+  days
+
+<hr/>
+<span title>Data Structures 101</span>
+
+•ºSTRUCTSº
+  struct Bank {               ← DECLARE STRUCT
+      address owner;            ← all vars are "zero-value" by default.
+      uint balance;               except mappings
+  }
+  Bank b = Bank({ owner: msg.sender, balance: 5 });
+  b.balance = 5; 
+  delete b; 
+
+•ºARRAYSº
+  bytes32[5] fixedArray1;     ← STATIC/FIXED-SIZE ARRAY DECLARATION
+             fixedArray[0] = 1; ← Intialization.
+             fixedArray[1] = 2;
+             fixedArray.push(3);← RºError. Not allowed for fixed size arrayº
+
+  bytes32[] memory            ← dynamic array declaration/initialization
+  dnyArray1 = bytes32[](3);   ← Dynamics arrays in memory are NOT really 
+                                dynamics. An given size must be defined at 
+                                initialization to avoid memory overflows.
+                                The only difference with fixed size array is
+                                that they can be used as parameters in functions
+                                receiving an array of undefined size.
+  dynArray1[0] = ...;                 ← By default. values is "Zero".
+  dynArray1[1] = ...;
+  dynArray1.length 
+  uint[] storage              ← Dynamic Size Array declaration
+   dynArray2 = uint[] 
+  dynArray1.length = 1        ← Fails for in-memory  dyn arrays
+  dynArray2.length = 5        ← OK    for in-storage dyn array
+  dynArray1.push(1)           ← Fails? (TODO)
+  dynArray2.push(1)           ← OK, returns new array length
+  uint newLength = dynArray1.push(...); 
+  uint x[][5];                ← 2-dimensional Dyn.array of uint[5]
+  ...
+  var storage x = uint[][5]   ← Fixed-(5)size-array of
+                                dynamic-uint-arrays  (var for type inference)
+  x[2][1]                     ← second uint in third dyn-array
+
+  funcX( [uint(1), 2, 3] );   ← Array Literal expression (not assigned to vars.)
+         └─────────────┘        - type     : memory array of fixed length.
+                                - base type: common type of array elements.
+
+  Array Limitations:º
+  · arrays of arrays not (YET 202?) allowed in external functions
+  · (EVM limitation): dynamic content NOT allowed in external-function return-value
+    Workaround: use large statically-sized arrays
+  · Deleting an element in the array (delete myArray[idx1]) generates gaps over time
+    leading to unpredictable gas costs if a contract itself has to search
+    through those gaps. Can be fixed (See @[#solidity_storage_patterns]
+
+  for ( uint idx=0;           ← ºWALK OVER ARRAYSº 
+     i˂arr.length; idx++) {
+     require(array3[i] ...);
+  }
+
+  ┌────────┬───────────────────────┬───────────────────┬──────────────────────┬────────────────────┐
+  │        │ Admited type          │ Creation          │ Resize               │ Delete             │
+  ├────────┼───────────────────────┼───────────────────┼──────────────────────┼────────────────────┤
+  │Storage │ ºanyº                 │ (just declare it) │- set/reassign .length│ delete myArray;    │
+  │Arrays  │                       │                   │- push(el)            │ myArray.length = 0;│
+  ├────────┼───────────────────────┼───────────────────┼──────────────────────┼────────────────────┤
+  │Memory  │ ºanyº but mapping     │ Use 'new'         │ Not allowed          │                    │
+  │Arrays  │ (ABI comp. for        │ new uint[](7)     │(fix size determined  │                    │
+  │        │  public/extern fun)   │ new bytes(len)    │ at runtime)          │                    │
+  └────────┴───────────────────────┴───────────────────┴──────────────────────┴────────────────────┘
+
+•ºMAPS (DICTIONARIES / HASH-TABLEs)º
+  key-type: almost any type except mapping, dynamic array, contract,enum,struct
+  mapping public             
+     (string =˃ uint) map1;   ← Keys can not be iterated. Manual support needed 
+                                More info: @[#solidity_storage_patterns]
+                                • Care must put to not leave orphaned data
+                                 in the state database, specially in self-destruction
+                                 Code must manually clean mappings by DELETING EACH KEY.
+  map1["charles"] = 1;        ← add/modify key.
+  delete balances["charles"]; ← 
+  contract.map1("charles")    ← 'public' allows 3rd contracts read (not write) it. 
+  map1["non_existing_key"]    ← Returns 0. All non-set values are set to zero 
 
-// Common paradigm for one contract to depend on another (e.g., a
-// contract that depends on current exchange rate provided by another)
+  mapping (                   ← Nested mappings
+     address =˃ mapping (
+        address =˃ uint)) 
+     public custodians;
 
-// C. Modifiers
-// Modifiers validate inputs to functions such as minimal balance or user auth;
-// similar to guard clause in other languages
+• ºMAP WALK-OVERº
+  - PROBLEM: Mappings are virtually initialized:
+    -ºevery possible key exists mapped to zero-byte-reprº
+    - keys are NOT stored in the map.
+    - values are stored at the state-memory address == sha3(key)
 
-// '_' (underscore) often included as last line in body, and indicates
-// function being called should be placed there
-modifier onlyAfter(uint _time) { require (now ˃= _time); _; }
-modifier onlyOwner { require(msg.sender == owner) _; }
-// commonly used with state machines
-modifier onlyIfStateA (State currState) { require(currState == State.A) _; }
+  - Solution: @[#solidity_storage_patterns]
 
-// Append right after function declaration
-function changeOwner(newOwner)
-onlyAfter(someTime)
-onlyOwner()
-onlyIfState(State.A)
-{
-    owner = newOwner;
-}
-
-// underscore can be included before end of body,
-// but explicitly returning will skip, so use carefully
-modifier checkValue(uint amount) {
-    _;
-    if (msg.value ˃ amount) {
-        uint amountToRefund = amount - msg.value;
-        msg.sender.transfer(amountToRefund);
-    }
-}
-
-
-// 6. BRANCHING AND LOOPS
-
-// All basic logic blocks work - including if/else, for, while, break, continue
-// return - but no switch
-
-// Syntax same as javascript, but no type conversion from non-boolean
-// to boolean (comparison operators must be used to get the boolean val)
-
-// For loops that are determined by user behavior, be careful - as contracts have a maximal
-// amount of gas for a block of code - and will fail if that is exceeded
-// For example:
-for(uint x = 0; x < refundAddressList.length; x++) {
-    refundAddressList[x].transfer(SOME_AMOUNT);
-}
-
-// Two errors above:
-// 1. A failure on transfer stops the loop from completing, tying up money
-// 2. This loop could be arbitrarily long (based on the amount of users who need refunds), and
-// therefore may always fail as it exceeds the max gas for a block
-// Instead, you should let people withdraw individually from their subaccount, and mark withdrawn
-// e.g., favor pull payments over push payments
-
-
-// 7. OBJECTS/CONTRACTS
-
-// A. Calling external contract
-contract InfoFeed {
-    function info() payable returns (uint ret)  { return 42; }
-}
-
-contract Consumer {
-    InfoFeed feed; // points to contract on blockchain
-
-    // Set feed to existing contract instance
-    function setFeed(address addr) {
-        // automatically cast, be careful; constructor is not called
-        feed = InfoFeed(addr);
-    }
-
-    // Set feed to new instance of contract
-    function createNewFeed() {
-        feed = new InfoFeed(); // new instance created; constructor called
-    }
-
-    function callFeed() {
-        // final parentheses call contract, can optionally add
-        // custom ether value or gas
-        feed.info.value(10).gas(800)();
-    }
-}
-
-// B. Inheritance
-
-// Order matters, last inherited contract (i.e., 'def') can override parts of
-// previously inherited contracts
-contract MyContract is abc, def("a custom argument to def") {
-
-// Override function
-    function z() {
-        if (msg.sender == owner) {
-            def.z(); // call overridden function from def
-            super.z(); // call immediate parent overridden function
-        }
-    }
-}
-
-// abstract function
-function someAbstractFunction(uint x);
-// cannot be compiled, so used in base/abstract contracts
-// that are then implemented
-
-// C. Import
-
-import "filename";
-import "github.com/ethereum/dapp-bin/library/iterable_mapping.sol";
-
-
-// 8. OTHER KEYWORDS
-
-// A. Selfdestruct
-// selfdestruct current contract, sending funds to address (often creator)
-selfdestruct(SOME_ADDRESS);
-
-// removes storage/code from current/future blocks
-// helps thin clients, but previous data persists in blockchain
-
-// Common pattern, lets owner end the contract and receive remaining funds
-function remove() {
-    if(msg.sender == creator) { // Only let the contract creator do this
-        selfdestruct(creator); // Makes contract inactive, returns funds
-    }
-}
-
-// May want to deactivate contract manually, rather than selfdestruct
-// (ether sent to selfdestructed contract is lost)
-
-
-// 9. CONTRACT DESIGN NOTES
-
-// A. Obfuscation
-// All variables are publicly viewable on blockchain, so anything
-// that is private needs to be obfuscated (e.g., hashed w/secret)
-
-// Steps: 1. Commit to something, 2. Reveal commitment
-keccak256("some_bid_amount", "some secret"); // commit
-
-// call contract's reveal function in the future
-// showing bid plus secret that hashes to SHA3
-reveal(100, "mySecret");
-
-// B. Storage optimization
-// Writing to blockchain can be expensive, as data stored forever; encourages
-// smart ways to use memory (eventually, compilation will be better, but for now
-// benefits to planning data structures - and storing min amount in blockchain)
-
-// Cost can often be high for items like multidimensional arrays
-// (cost is for storing data - not declaring unfilled variables)
-
-// C. Data access in blockchain
-// Cannot restrict human or computer from reading contents of
-// transaction or transaction's state
-
-// While 'private' prevents other *contracts* from reading data
-// directly - any other party can still read data in blockchain
-
-// All data to start of time is stored in blockchain, so
-// anyone can observe all previous data and changes
-
-// D. Cron Job
-// Contracts must be manually called to handle time-based scheduling; can create external
-// code to regularly ping, or provide incentives (ether) for others to
-
-// E. Observer Pattern
-// An Observer Pattern lets you register as a subscriber and
-// register a function which is called by the oracle (note, the oracle pays
-// for this action to be run)
-// Some similarities to subscription in Pub/sub
-
-// This is an abstract contract, both client and server classes import
-// the client should implement
-contract SomeOracleCallback {
-    function oracleCallback(int _value, uint _time, bytes32 info) external;
-}
-
-contract SomeOracle {
-    SomeOracleCallback[] callbacks; // array of all subscribers
-
-    // Register subscriber
-    function addSubscriber(SomeOracleCallback a) {
-        callbacks.push(a);
-    }
-
-    function notify(value, time, info) private {
-        for(uint i = 0;i < callbacks.length; i++) {
-            // all called subscribers must implement the oracleCallback
-            callbacks[i].oracleCallback(value, time, info);
-        }
-    }
-
-    function doSomething() public {
-        // Code to do something
-
-        // Notify all subscribers
-        notify(_value, _time, _info);
-    }
-}
-
-// Now, your client contract can addSubscriber by importing SomeOracleCallback
-// and registering with Some Oracle
-
-// F. State machines
-// see example below for State enum and inState modifier
-
-
-// *** EXAMPLE: A crowdfunding example (broadly similar to Kickstarter) ***
-// ** START EXAMPLE **
-
-// CrowdFunder.sol
-pragma solidity ^0.4.19;
-
-/// @title CrowdFunder
-/// @author nemild
-contract CrowdFunder {
-    // Variables set on create by creator
-    address public creator;
-    address public fundRecipient; // creator may be different than recipient
-    uint public minimumToRaise; // required to tip, else everyone gets refund
-    string campaignUrl;
-    byte constant version = 1;
-
-    // Data structures
-    enum State {
-        Fundraising,
-        ExpiredRefund,
-        Successful
-    }
-    struct Contribution {
-        uint amount;
-        address contributor;
-    }
-
-    // State variables
-    State public state = State.Fundraising; // initialize on create
-    uint public totalRaised;
-    uint public raiseBy;
-    uint public completeAt;
-    Contribution[] contributions;
-
-    event LogFundingReceived(address addr, uint amount, uint currentTotal);
-    event LogWinnerPaid(address winnerAddress);
-
-    modifier inState(State _state) {
-        require(state == _state);
-        _;
-    }
-
-    modifier isCreator() {
-        require(msg.sender == creator);
-        _;
-    }
-
-    // Wait 24 weeks after final contract state before allowing contract destruction
-    modifier atEndOfLifecycle() {
-    require(((state == State.ExpiredRefund || state == State.Successful) &&
-        completeAt + 24 weeks < now));
-        _;
-    }
-
-    function CrowdFunder(
-        uint timeInHoursForFundraising,
-        string _campaignUrl,
-        address _fundRecipient,
-        uint _minimumToRaise)
-        public
-    {
-        creator = msg.sender;
-        fundRecipient = _fundRecipient;
-        campaignUrl = _campaignUrl;
-        minimumToRaise = _minimumToRaise;
-        raiseBy = now + (timeInHoursForFundraising * 1 hours);
-    }
-
-    function contribute()
-    public
-    payable
-    inState(State.Fundraising)
-    returns(uint256 id)
-    {
-        contributions.push(
-            Contribution({
-                amount: msg.value,
-                contributor: msg.sender
-            }) // use array, so can iterate
-        );
-        totalRaised += msg.value;
-
-        LogFundingReceived(msg.sender, msg.value, totalRaised);
-
-        checkIfFundingCompleteOrExpired();
-        return contributions.length - 1; // return id
-    }
-
-    function checkIfFundingCompleteOrExpired()
-    public
-    {
-        if (totalRaised ˃ minimumToRaise) {
-            state = State.Successful;
-            payOut();
-
-            // could incentivize sender who initiated state change here
-        } else if ( now ˃ raiseBy )  {
-            state = State.ExpiredRefund; // backers can now collect refunds by calling getRefund(id)
-        }
-        completeAt = now;
-    }
-
-    function payOut()
-    public
-    inState(State.Successful)
-    {
-        fundRecipient.transfer(this.balance);
-        LogWinnerPaid(fundRecipient);
-    }
-
-    function getRefund(uint256 id)
-    inState(State.ExpiredRefund)
-    public
-    returns(bool)
-    {
-        require(contributions.length ˃ id && id ˃= 0 && contributions[id].amount != 0 );
-
-        uint256 amountToRefund = contributions[id].amount;
-        contributions[id].amount = 0;
-
-        contributions[id].contributor.transfer(amountToRefund);
-
-        return true;
-    }
-
-    function removeContract()
-    public
-    isCreator()
-    atEndOfLifecycle()
-    {
-        selfdestruct(msg.sender);
-        // creator gets all money that hasn't be claimed
-    }
-}
-// ** END EXAMPLE **
-
-// 10. OTHER NATIVE FUNCTIONS
-
-// Currency units
-// Currency is defined using wei, smallest unit of Ether
-uint minAmount = 1 wei;
-uint a = 1 finney; // 1 ether == 1000 finney
-// Other units, see: http://ether.fund/tool/converter
-
-// Time units
-1 == 1 second
-1 minutes == 60 seconds
-
-// Can multiply a variable times unit, as units are not stored in a variable
-uint x = 5;
-(x * 1 days); // 5 days
-
-// Careful about leap seconds/years with equality statements for time
-// (instead, prefer greater than/less than)
-
-// Cryptography
-// All strings passed are concatenated before hash action
-sha3("ab", "cd");
-ripemd160("abc");
-sha256("def");
-
-// 11. SECURITY
-
-// Bugs can be disastrous in Ethereum contracts - and even popular patterns in Solidity,
-// may be found to be antipatterns
-
-// See security links at the end of this doc
-
-// 12. LOW LEVEL FUNCTIONS
-// call - low level, not often used, does not provide type safety
-successBoolean = someContractAddress.call('function_name', 'arg1', 'arg2');
-
-// callcode - Code at target address executed in *context* of calling contract
-// provides library functionality
-someContractAddress.callcode('function_name');
-
-
-// 13. STYLE NOTES
-// Based on Python's PEP8 style guide
-// Full Style guide: http://solidity.readthedocs.io/en/develop/style-guide.html
-
-// Quick summary:
-// 4 spaces for indentation
-// Two lines separate contract declarations (and other top level declarations)
-// Avoid extraneous spaces in parentheses
-// Can omit curly braces for one line statement (if, for, etc)
-// else should be placed on own line
-
-
-// 14. NATSPEC COMMENTS
-// used for documentation, commenting, and external UIs
-
-// Contract natspec - always above contract definition
-/// @title Contract title
-/// @author Author name
-
-// Function natspec
-/// @notice information about what function does; shown when function to execute
-/// @dev Function documentation for developer
-
-// Function parameter/return value natspec
-/// @param someParam Some description of what the param does
-/// @return Description of the return value
 
 </pre>
 
@@ -3242,7 +2860,7 @@ contract MyContract {
 </div>
 
 <div groupv>
-<pre zoom labels="dev_language.solidity,resource">
+<pre zoom labels="dev_language.solidity,_PM.ext_resource">
 <span xsmall>External Links</span>
 @[https://remix.ethereum.org/#]   Online IDE
 @[https://solidity.readthedocs.io/en/latest/solidity-in-depth.html]
@@ -3527,7 +3145,7 @@ function () payable {
 </pre>
 
 <pre bgorange zoom
-   labels="dev_language.solidity,transaction,evm.101,diagram,soft_life_cycle.debugging,implementation.besu,evm.events,soft_life_cycle.testing,transaction,dev_framework.web3j,qa.error_control" id="revert_reason">
+   labels="dev_language.solidity,transaction,evm.101,_doc_has.diagram,soft_life_cycle.debugging,implementation.besu,evm.events,soft_life_cycle.testing,transaction,dev_framework.web3j,qa.error_control" id="revert_reason">
 <span xsmall>ERROR CONTROL</span>
 @[https://solidity.readthedocs.io/en/v0.4.24/control-structures.html#error-handling-assert-require-revert-and-exceptions]
 
@@ -3734,14 +3352,11 @@ Bº#############################º
         revert("ERC1155: transfer to non ERC1155Receiver implementer");
     }
 </pre>
-
-
-
-
 </div>
+
 <div groupv>
 <span title>Storage</span>
-<pre zoom bgorange  labels="101,persistence.data_structure,qa,dev_language.solidity" id="solidity_storage_patterns">
+<pre zoom bgorange  labels="101,persistence.data_structure,qa.solidity,dev_language.solidity" id="solidity_storage_patterns">
 <span xsmall>storage patterns</span>
 @[https://ethereum.stackexchange.com/questions/13167/are-there-well-solved-and-simple-storage-patterns-for-solidity]
 Context:
@@ -3844,386 +3459,48 @@ RºWARNº:
   º*1º REF:
    Rob Hitchens@Medium  @[https://medium.com/@robhitchens/solidity-crud-part-2-ed8d8b4f74ec#.ekc22r5lf]
    Source Code          @[https://bitbucket.org/rhitchens2/soliditycrud/src/83703dcaf4d0c4b0d6adc0377455c4f257aa29a7/contracts/?at=master]
-
 </pre>
 
-<pre zoom bgorange  labels="101,persistence.data_structure,qa,dev_language.solidity">
-<span xsmall>Multikey map how-to:</span>
+<pre zoom bgorange  labels="101,persistence.data_structure,qa.solidity,dev_language.solidity">
+<span xsmall>Composed-keys in maps:</span>
 @[https://ethereum.stackexchange.com/questions/69727/map-multikey-how-to]
 
-BºAlt1: create key like hash of N composing keysº
+•ºAlt1: create key like hash of N input composing keys
+  Use events to trace input requests. e.j:
+  bytes32 hashOfMultiKey = keccak256(abi.encodePacked(key1,key2)); 
+  emit SomeEvent(key1, key2, bytes32 hashOfMultiKey, ...); ← event let observers track keys
 
-  event LogSet(bytes32 key1, bytes32 key2, bytes32 hashedKey);
-  bytes32 hashOfMultiKey = keccak256(abi.encodePacked(key1,key2));
+  RºWARNº: original keys are lost in contract state.
 
-  LogSet event ensure observers have a way to discover all A/B
-  combinations that have ever been used, so it's perfectly reasonable
-  to ask for them in a get() function.
-  RºWARNº:  contract itself wouldn't be able to enumerate them.
-  It would rely on external inputs and then perform the multikey
-  computation.
+•ºAlt2: Map of Mapº:
+  mapping(                         ← allow to search by key1 or (key1,key2)
+    bytes32            /*key1*/ =    More costly but keeps info. 
+      mapping( bytes32 /*key2*/      
+        =˃ bytes32)
+  );
 
-BºAlt2: Map of Mapº
-mapping(
-  bytes32            /*key1*/ =
-    mapping( bytes32 /*key2*/
-      =˃ bytes32)
-);
-// "counter-intuitively" no storage cost
-// is  associated to store a mapping inside
-// a mapping.
-
-Have a look at this library for a way to treat all of your keys as
-members of sets with a remove capability. This would enable support
-of "is A in B?" and "is B in A?" and the ability to logically remove
-members.
-
-https://medium.com/robhitchens/solidity-crud-epilogue-e563e794fde
-https://github.com/rob-Hitchens/UnorderedKeySet
-
-pragma solidity 0.5.1;
-
-import "./HitchensUnorderedKeySet.sol";
-
-contract KeyAKeyB {
-  using HitchensUnorderedKeySetLib for HitchensUnorderedKeySetLib.Set;
-
-  mapping(bytes32 =˃ HitchensUnorderedKeySetLib.Set) bInA; // Key B in A
-  mapping(bytes32 =˃ HitchensUnorderedKeySetLib.Set) aInB; // Key A in B
-
-  mapping(bytes32 =˃ bytes32) public values; // multikey =˃ value;
-
-  event LogSet(bytes32 keyA, bytes32 keyB, bytes32 value);
-  event LogRem(bytes32 keyA, bytes32 keyB);
-
-  function multikey(bytes32 keyA, bytes32 keyB) public pure
-    returns(bytes32) {
-      return keccak256(abi.encodePacked(keyA, keyB));
-  }
-
-  /* When inserting A, B, value, use a compound key to store the
-   * value, and maintain lists of B in A and A in B.
-   * Below follows an update or overwrite pattern.
-   */
-  function set(bytes32 keyA, bytes32 keyB, bytes32 value) public {
-      if(!isBInA(keyA, keyB)) bInA[keyA].insert(keyB);
-      if(!isAInB(keyA, keyB)) aInB[keyB].insert(keyB);
-      values[multikey(keyA, keyB)] = value;
-      emit LogSet(keyA, keyB, value);
-  }
-
-  function get(bytes32 keyA, bytes32 keyB) public view
-    returns(bytes32 value) {
-      // optionally, check B exists in A to differentiate exists
-      // but 0x0 from not stored.
-      // require(bInA[keyA].exists(keyB));
-      return values[multikey(keyA, keyB)];
-  }
-
-  // This remove function will reject removing a key pair that does
-  // not exist
-  function remove(bytes32 keyA, bytes32 keyB) public {
-    bInA[keyA].remove(keyB);
-    aInB[keyB].remove(keyA);
-    delete values[multikey(keyA, keyB)];
-    emit LogRem(keyA, keyB);
-  }
-
-  // Check existance
-  function isBInA(bytes32 keyA, bytes32 keyB) public view
-  returns(bool isIndeed) {
-    return bInA[keyA].exists(keyB);
-  }
-
-  function isAInB(bytes32 keyA, bytes32 keyB) public view
-  returns(bool isIndeed) {
-    return aInB[keyB].exists(keyA);
-  }
-
-  // So clients can enumerate keys, all B in A, and all A in B
-  function countBinA(bytes32 keyA) public view returns(uint) {
-    return bInA[keyA].count();
-  }
-
-  function countAinB(bytes32 keyB) public view returns(uint) {
-    return aInB[keyB].count();
-  }
-
-  function aBAtIndex(bytes32 keyA, uint row) public view
-  returns(bytes32 keyB) {
-    return bInA[keyA].keyAtIndex(row);
-  }
-
-  function bAAtIndex(bytes32 keyB, uint row) public view
-  returns(bytes32 keyA) {
-    return aInB[keyB].keyAtIndex(row);
-  }
-}
-
-This example is probably more ambitious than actually required.
-Hopefully it shows how a variety of concerns can be addressed while
-observing the ideals of strict enforcement of relational integrity
-and fully discoverable internal structure.
-
-Hope it helps.
+  mapping(                         ← allow searchs by key2 or (key2,key1)
+    bytes32            /*key2*/ =    (if key2 is not a subkey of A)
+      mapping( bytes32 /*key1*/      
+        =˃ bytes32)
+  );
 </pre>
 
-
-<pre zoom  labels="101,persistence.data_structure,qa,dev_language.solidity">
-<span xsmall>STRUCTS</span>
-@[https://solidity.readthedocs.io/en/latest/structure-of-a-contract.html#struct-types]
-
-- Starting with Solidity 0.5+ explicit data location (memory, storage, calldata)
-  for all variables of struct, array or mapping types is mandatory. This is also
-  applied to function parameters and return variables.
-
-<span xsmall>Returning</span>
-<span xsmall>Structs</span>
-- REF:
-@[https://medium.com/coinmonks/solidity-tutorial-returning-structs-from-public-functions-e78e48efb378]
-- Solidity (0.4.13, as of this writing), doesn't allow
-  to return a struct from public functions.
-  (allowed by experimental ABIv2)
-
-ºRETURNING ARRAYS OF STRUCTS:                                     │ ºJS Client code:*
-                                                                  │  """Getting data back in this format is, admittedly, a pain to
- pragma solidity ^0.4.13;                                         │  deal with on the frontend:"""
-                                                                  │
- contract Project {                                               │ const people = await project.ºgetPeopleº([ 2, 5 ])
-     struct Person {                                              │       ^^^^^^
-       Gºaddress addrº;                                           │     [
-       Bºuint fundsº;                                             │      ['0xdeadbeef', '0xabcdeff'], // ← Gºaddrsº
-     }                                                            │      [        100 ,        789 ]  // ← Bºfundsº
-                                                                  │     ]
-     Person[] people;                                             │
-                                                                  │       ^^^^^^^^^^^ ,  ^^^^^^^^^^^
-     functionºgetPeopleº(uint[] indexes) public                   │       - struct1 - ,  - struct2 -
-         returns (Gºaddress[]º, Bºuint[]º) {                      │
-         //       ^^^^^^^^^^^^^^^^^                               │ constGºFIELD_ADDR º= 0
-         //       One array for each struct field                 │ constBºFIELD_FUNDSº= 1
-       Gºaddress[] memory addrs = new address[](indexes.length);º │
-       Bºuint[]    memory funds = new uint[](indexes.length);º    │ let peopleStructs = []
-                                                                  │ for (let i = 0; i ˂ numPeople; i++) {
-         for (uint i = 0; i ˂ indexes.length; i++) {              │     const person = {
-             Person storage person = people[indexes[i]];          │         addr:  people[FIELD_ADDR][i],
-             addrs[i] = person.addr;                              │         funds: people[FIELD_FUNDS][i],
-             funds[i] = person.funds;                             │     }
-         }                                                        │     peopleStructs.push(person)
-         return (addrs, funds);                                   │ }
-     }                                                            │
- }                                                                │
-</pre>
-
-<pre zoom  labels="101,persistence.data_structure,qa,dev_language.solidity">
-<span xsmall>enums</span>
-@[https://solidity.readthedocs.io/en/latest/structure-of-a-contract.html#enum-types]
-enum State { Created, Locked, Inactive } // ← Definition
-State  s1 = State.Created                // ← Ussage
-uint8  u1 = uint8 (State.Created)        // ← Explicit uintXX to enum
-uint16 u2 = uint16(State.Created)
-State  s2 = State(u1)                    // ← uintXX to enum using enum constructor
-                                              Will raise an assert exception if
-                                              u1 is outside the State bounds.
-</pre>
-
-<pre zoom  labels="101,persistence.data_structure,qa,dev_language.solidity">
-<span TODO xsmall>Linked List</span>
+<pre zoom  labels="101,persistence.data_structure,qa.solidity,dev_language.solidity">
+<span title>Sorted Linked List</span>
 @[https://github.com/vittominacori/solidity-linked-list]
+• utility library for using sorted linked list data structures.
+• Well maintained as of 2022-01
+• Public methods:
+  listExists | nodeExists | sizeOf
+  get(Node|Adjacent|NextNode|PreviousNode|SortedSpot)
+  insertAfter | insertBefore | remove
+  pushFront | pushBack
+  popFront  | popBack
+  
 
-<span xsmall>EnumerableSet</span>
+• EnumerableSet:
 @[https://docs.openzeppelin.com/contracts/2.x/api/utils#EnumerableSet]
-
-<span xsmall>Arrays</span>
-@[https://solidity.readthedocs.io/en/v0.4.24/types.html#arrays
-Syntax:
-
-uint[100] memory fixedArray;     ← Fixed   Size Array declaration
-          fixedArray[0] = 1;
-          fixedArray[1] = 2;
-          fixedArray.push(3);    ← RºError. Not allowed for fixed size arrayº
-          ...
-uint[] memory dynArray1 = uint[](3) ← Dynamics arrays in memory are NOT really 
-                                      dynamics. An given size must be defined at 
-                                      initialization to avoid memory overflows.
-                                      The only difference with fixed size array is
-                                      that they can be used as parameters in functions
-                                      receiving an array of undefined size.
-dynArray1[0] = ...;                 ← By default. values is "Zero".
-dynArray1[1] = ...;
-dynArray1[2] = ...;
-
-uint[]  storage dynArray2 = uint[] ← Dynamic Size Array declaration
-          dynArray2.push(1 )       ← GºOKº
-          ...
-
-var x          = uint[][5]      ← Fixed-(5)size-array of
-                                  dynamic-uint-arrays  (var for type inference)
-    x[2][1]                     ← second uint in third dyn-array
-
-
- ┌────────┬───────────────────────┬───────────────────┬──────────────────────┬────────────────────┐
- │        │ Admited type          │ Creation          │ Resize               │ Delete             │
- ├────────┼───────────────────────┼───────────────────┼──────────────────────┼────────────────────┤
- │Storage │ ºanyº                 │ (just declare it) │- set/reassign .length│ delete myArray;    │
- │Arrays  │                       │                   │- push(el)            │ myArray.length = 0;│
- ├────────┼───────────────────────┼───────────────────┼──────────────────────┼────────────────────┤
- │Memory  │ ºanyº but mapping     │ Use 'new'         │ Not allowed          │                    │
- │Arrays  │ (ABI comp. for        │ new uint[](7)     │(fix size determined  │                    │
- │        │  public/extern fun)   │ new bytes(len)    │ at runtime)          │                    │
- └────────┴───────────────────────┴───────────────────┴──────────────────────┴────────────────────┘
-ºSpecial arrays(tightly packed in calldata)º
-bytes : byte[]
-
-string: (UTF-8) similar to bytes
-        -  does not YET allow length/index/push access
-        Use use bytes(myString).length / bytes(myString)[7] = 'x' to
-        access the low-byte-representation of myString
-
-- Array Literals expression (not immediately assigned to a variable)
-  - type     : memory array of fixed length.
-  - base type: common type of array elements.
-  ...
-  calledFunction(Oº[uint(1), 2, 3]º);
-
-ºLimitations:º
-  - arrays of arrays not (YET) allowed in external functions
-  - (EVM limitation): dynamic content NOT allowed in external-function return-value
-    - Workaround: use large statically-sized arrays
-  - Deleting an element in the array (delete myArray[idx1]) generates gaps over time
-  - This can lead to unpredictable gas costs if a contract itself has to search
-    through those gaps.
-
-<span xsmall>Walk over</span>
-WARN: ºstring[]  arrays not allowed in solidityº
-bytes32[] storage public namesInUse;
-uint arrayLength = namesInUse.push(1); // Returns 1
-     arrayLength = namesInUse.push(3); //   "     2
-           ^^^^
-           push only allowed for storage arrays, not memory
-assert(arrayLength == namesInUse.length);
-for (uint i = 0; i ˂ namesInUse.length; i++) {
-   require(namesInUse[i] != username);
-}
-</pre>
-<pre zoom  labels="101,persistence.data_structure,qa,dev_language.solidity">
-<span xsmall>Mappings</span>
-@[https://solidity.readthedocs.io/en/v0.4.24/types.html#mappings]
-Syntax:
-
-   mapping(_KeyType =˃ _ValueType) public myMapping; // ← Declatarion
-           ^^^^^^^^
-     almost any type except
-     mapping,dynamic array,
-     contract,enum,struct
-
-   myMapping[key1] = value1;                         // ← add/modify key
-   delete myMapping[key1]                            // ← put myMapping[key] to virt.Zero
-
-
-- Only allowed for state variables (or as storage reference types in internal functions)
-- ºare NOT iterable.º
-
-  - Care must be taken to not leave orphaned data in the state database,
-    particularly after contract-self-destruction =˃
-    - code must manually clean mappings by deleting each key.
-
-<span xsmall>Walk over</span>
-- Mappings are virtually initialized:
-  - ºevery possible key exists mapped to zero-byte-reprº
-  - keys are NOT stored in the map
-    =˃ Code needs the keys to discover/walk-over mappings.
-  - values are stored at the state-memory address == sha3(key)
-
-- Solution 1: Using aux. array to store keys.
-  (memory gaps can arise when deleting the aux-key-array)
- ┌───────────────────────────────────────────┬──────────────────────────────────────────┐
- │ETHEREUM CODE                              │ CLIENT CODE                              │
- ├───────────────────────────────────────────┼──────────────────────────────────────────┤
- │mapping (address =˃ uint) public balances; │ for(i = 0; i ˂ k.size(); i++) {          │
- │address[] public keyList   ;               │   someFunc( k.balances(k.keyList(i)) );  │
- │function size() public returns (uint) {    │ }                                        │
- │    return keyList.length;                 │ Note: k == contract instance             │
- │}                                          └──────────────────────────────────────────┤
- │WARN: delete keyList[idx] can leave gaps                                              │
- └──────────────────────────────────────────────────────────────────────────────────────┘
-- Solution 2: Using Linked List Indexes
- ┌───────────────────────────────────────────┬──────────────────────────────────────────┐
- │ETHEREUM CODE                              │ CLIENT CODE                              │
- ├───────────────────────────────────────────┼──────────────────────────────────────────┤
- │mapping (address =˃ address) ll;           │ var current = k.ll(0);                   │
- │mapping (address =˃ uint) public balances; │ while (current) {                        │
- │function add(address _addr_as_idx) public  │     console.log( k.balances(current) );  │
- │{                                          │     current = k.ll(current);             │
- │    ll[_addr]  = ll[0x0];                  │ }                                        │
- │    ll[0x0]    = _addr;                    └──────────────────────────────────────────┤
- │    balances[_addr] = balance;                                                        │
- │}   ^^                                                                                │
- │ ll will grow as:                                                                     │
- │   STEP 1         → STEP 2         → STEP 3         → STEP 4 ...                      │
- │   0x      addr01 → 0x      addr02 → 0x      addr03 →                                 │
- │                  → addr02  addr01 → addr02  addr01 →                                 │
- │                  →                → addr03  addr02 →                                 │
- │                  →                → addr03  addr02 →                                 │
- │                                                                                      │
- │// Deleting: No gaps but require a search to find parent node                         │
- │function remove(address _addr) {                                                      │
- │      address parent;                                                                 │
- │      // Warning: unbounded gas loop                                                  │
- │      while (llIndex[parent] != _addr) parent = llIndex[parent];                      │
- │      llIndex[parent] = llIndex[ llIndex[parent]];                                    │
- │      delete llIndex[address];                                                        │
- │      delete balances[address];                                                       │
- │  }                                                                                   │
- └──────────────────────────────────────────────────────────────────────────────────────┘
-- Solution 3: Using Double Linked List Indexes
-   - search loops removes at the expense of extra storage slot per indexed element.
-   - a nested bool mapping for bidirectional links where we interpret
-      PREV == false and NEXT == true:
-┌──────────────────────────────────────────────────────────────────────────────────────┐
-│mapping(address =˃ ( mapping(bool =˃ address) ) dllIndex;                             │
-│mapping(address =˃ uint) balances;                                                    │
-│function add(address _addr)                                                           │
-│{                                                                                     │
-│    // Link the new node                                                              │
-│    dllIndex[_addr][PREV] = 0x0;                                                      │
-│    dllIndex[_addr][NEXT] = dllIndex[0x0][NEXT];                                      │
-│                                                                                      │
-│    // Insert the new node                                                            │
-│    dllIndex[dllIndex[0x0][NEXT]][PREV] = _addr;                                      │
-│    dllIndex[0x0][NEXT] = _addr;                                                      │
-│}                                                                                     │
-│                                                                                      │
-│function remove(address _addr)                                                        │
-│{                                                                                     │
-│    // Stitch the neighbours together                                                 │
-│    dllIndex[ dllIndex[_addr][PREV] ][NEXT] = dllIndex[_addr][TRUE];                  │
-│    dllIndex[ dllIndex[_addr][NEXT] ][PREV] = dllIndex[_addr][PREV];                  │
-│                                                                                      │
-│    // Delete state storage                                                           │
-│    delete dllIndex[_addr][PREV];                                                     │
-│    delete dllIndex[_addr][NEXT];                                                     │
-│    delete balances[_addr];                                                           │
-│}                                                                                     │
-└──────────────────────────────────────────────────────────────────────────────────────┘
- - We now have a directly addressable and fully iterable storage structure, which is
-   not just a Double Linked List but a Circular Double Linked List by default
-   with the head at 0x0. This gives us two very desirable properties for free...
-
- - FIFO and FILO Queues
-    First In First Out (FIFO) and First In Last Out (FILO) queues are a very
-    common concept in computing. FIFO can be used for task queues while FILO
-    is also used for memory 'stacks'.
-
- - FIFO's can be used in any contracts that require atomic sequential order
-   processing. Here a new order is simply inserted previous to the head,
-   while the oldest order is simply taken from next to the head. No search
-   loops required.
-
- - If you think these structures might be useful, check out my Circular
-   Double Linked List Index Library which is used by my Intrinsically
-   Tradable Tokens (ITT) contract.
-
-</pre>
 
 <pre zoom  labels="101,persistence.data_structure,qa,dev_language.solidity">
 <span xsmall>Iterable map (arachnid gist)</span>
@@ -4301,13 +3578,14 @@ contract Test {
 }
 </pre>
 
+
+
 </div>
 
 <div groupv>
 <span title>Quality Assurance</span>
-<pre zoom labels="comparative,qa,security,tool,dev_language.solidity">
-<span xsmall>Static/Dyn.</span>
-<span xsmall>code analysis</span>
+<pre zoom labels="comparative,qa,security,dev_language.solidity">
+<span xsmall>Static/Dyn. Code analysis</span>
 by QuillAudits, security Firm
 @[https://blog.quillhash.com/static-and-dynamic-analysis-of-smart-contracts-vulnerabilities/]
 @[https://audits.quillhash.com]
@@ -4562,6 +3840,117 @@ Just fill out the form and we’ll be in touch.
 Name
 Phone/Telegram/Email
 </pre>
+<pre zoom labels="qa.formal_verification,dev_language.solidity,_PM.WiP">
+<span TODO xsmall>FORMAL PROOFs</span>
+• External Links
+  • @[https://github.com/pirapira/eth-isabelle]
+  • @[https://github.com/pirapira/ethereum-formal-verification-overview]
+  • @[https://gitter.im/ethereum/formal-methods]
+  • @[https://en.wikipedia.org/wiki/Logical_harmony]
+    Logical harmony, a name coined by Sir Michael Dummett, is a supposed
+    constraint on the rules of inference (https://en.wikipedia.org/wiki/
+    Rules_of_inference) that can be used in a given logical system(
+    https://en.wikipedia.org/wiki/Logical_system)
+<hr/>
+<span title>SMTChecker</span>
+• SMTChecker formal verification activated by default in Solidity compiler
+   0.8.4+ ('pragma experimental SMTChecker;') in previous versions.
+@[https://github.com/ethereum/solidity/blob/develop/docs/smtchecker.rst]
+• Perform automated mathematical-proof that source code fulfills a
+  certain formal specification.  The specification is still formal 
+  (just as the source code), but usually much simpler.
+
+• other verification targets that SMTChecker checks at compile-time are:
+  - Arithmetic underflow and overflow.
+  - Division by zero.
+  - Trivial conditions and unreachable code.
+  - Popping an empty array.
+  - Out of bounds index access.
+  - Insufficient funds for a transfer.
+
+• // SPDX-License-Identifier: GPL-3.0
+  pragma solidity ˃=0.8.0;
+
+  contract Overflow {
+      uint immutable x;
+      uint immutable y;
+
+      function 
+      add(uint _x, uint _y)
+     ºinternalºpure
+      returns (uint) {
+          return _x + _y;           ←┐•Commenting 'require(...)' will warn:
+      }                              │ ...Overflow, val. larger than 2**256 - 1
+      }                              │   happens here. Counterexample:
+      constructor                    │   x = 1, y = 11579208923731619...639935
+      (uint _x, uint _y) {           │   x + y returns 0
+          (x, y) = (_x, _y);         │   
+      }                              │   ┌ Overflow TX trace ──┐
+                                     │   │ ...                 │
+      function stateAdd()            │   │ Overflow.stateAdd() │
+     ºpublicº view returns (uint) { ←┤   │                     │
+        require(                    ←┘   │ return _x + _y;     │
+          x ˂ type(uint128).max);        │        ^^^^^^^      │
+        require(                         └─────────────────────┘
+          y ˂ type(uint128).max); 
+        return add(x, y);               
+      }                                 
+  }
+
+<span title TODO>Why3 Solidity</span>
+• Why3: platform for deductive program verification with rich language 
+  for specification and programming, called WhyML, relying on
+  external theorem provers, both automated and interactive, to discharge
+  verification conditions. (See the specific section below for the list of
+  supported provers.) Why3 comes with a standard library of logical theories (
+  integer and real arithmetic, Boolean operations, sets and maps, etc.) and
+  basic programming data structures (arrays, queues, hash tables, etc.). A user
+  can write WhyML programs directly and get correct-by-construction OCaml
+  programs through an automated extraction mechanism. WhyML is also used as an
+  intermediate language for the verification of C, Java, or Ada programs. (See
+  Projects using Why3 below.) Why3 can be easily extended with support for new
+  theorem provers. Why3 can be used as a software library, through an OCaml API.
+
+  https://forum.ethereum.org/discussion/3779/formal-verification-for-solidity-contracts
+
+  """
+   We just merged a first pull request that allows Solidity contracts to be
+   formally verified using a toolkit called why3.
+   This means that a computer creates and checks a mathematical proof of
+   assertions about the behaviour of the contract.
+   Only a small subset of Solidity is supported for now, but that makes it
+   already possible to verify a recursive binary search routine on arrays:
+   https://gist.github.com/chriseth/0c671e0dac08c3630f47
+   ...
+   How to use it on the example
+   The solidity compiler (only solc at latest develop for now) can translate the
+   source code into a different programming language which can be understood by
+   why3 (the language is a dialect of ocaml). To do that, call it as ""solc \-\-
+   formal -o /tmp/output_directory/ source.sol"". Furthermore, using special
+   tags in the Solidity comments of the form ""///@why3 ..."" you can formulate
+   assertions and requirements that can be understood by the why3 framework and
+   will be literally inserted into the generated code.
+  """
+
+• toolkit GUI:
+  • why3 itself is only a frontend to the real workhorses: the provers.
+  STEP 1). Install prover """... I tried ""alt-ergo"" (part of Ubuntu 
+    distribution) and Z3 (binaries for most platforms)..."
+
+  STEP 2).
+  $º$ why3 config --detect º← """ it should detect your prover.""" 
+
+  Video Tutorial:
+  https://www.youtube.com/watch?v=Mzh4fyoaBJ0⅋feature=youtu.be⅋list=PL9oaY6Y4QxRZybj86eGItGVApxLXVIXHz
+See also:
+<a TODO href="http://fc17.ifca.ai/wtsc/Defining%20the%20Ethereum%20Virtual%20Machine%20for%20Interactive%20Theorem%20Provers.pdf">Virt.Machine for interactive Theorem Provers</a>
+@[https://chriseth.github.io/notes/talks/formal_devcon2/#/]
+@[http://www.cs.umd.edu/~aseem/solidetherplas.pdf]
+
+
+</pre>
+
+
 
 <pre zoom labels="security,qa,dev_language.solidity">
 <span xsmall>(Py)Slither</span>
@@ -4633,77 +4022,6 @@ See also:
   @[https://github.com/dmuhs/PythX]
 </pre>
 
-<pre zoom labels="tool,qa.formal_verification,dev_language.solidity,_PM.WiP">
-<span TODO xsmall>FORMAL PROOFs</span>
-FORMAL Verification
-https://github.com/pirapira/eth-isabelle
-https://github.com/pirapira/ethereum-formal-verification-overview
-Why3 Solidity
-Why3 is a platform for deductive program verification. It provides a rich
-language for specification and programming, called WhyML, and relies on
-external theorem provers, both automated and interactive, to discharge
-verification conditions. (See the specific section below for the list of
-supported provers.) Why3 comes with a standard library of logical theories (
-integer and real arithmetic, Boolean operations, sets and maps, etc.) and
-basic programming data structures (arrays, queues, hash tables, etc.). A user
-can write WhyML programs directly and get correct-by-construction OCaml
-programs through an automated extraction mechanism. WhyML is also used as an
-intermediate language for the verification of C, Java, or Ada programs. (See
-Projects using Why3 below.) Why3 can be easily extended with support for new
-theorem provers. Why3 can be used as a software library, through an OCaml API.
-
-https://forum.ethereum.org/discussion/3779/formal-verification-for-solidity-contracts
-
-"""
-   We just merged a first pull request that allows Solidity contracts to be
-   formally verified using a toolkit called why3.
-   This means that a computer creates and checks a mathematical proof of
-   assertions about the behaviour of the contract.
-   Only a small subset of Solidity is supported for now, but that makes it
-   already possible to verify a recursive binary search routine on arrays:
-   https://gist.github.com/chriseth/0c671e0dac08c3630f47
-"""
-
-"""
-   How to use it on the example
-   The solidity compiler (only solc at latest develop for now) can translate the
-   source code into a different programming language which can be understood by
-   why3 (the language is a dialect of ocaml). To do that, call it as ""solc \-\-
-   formal -o /tmp/output_directory/ source.sol"". Furthermore, using special
-   tags in the Solidity comments of the form ""///@why3 ..."" you can formulate
-   assertions and requirements that can be understood by the why3 framework and
-   will be literally inserted into the generated code.
-
-
-   start a graphical version of the toolkit and perform the verification.
-
-   How to install why3
-   I am not aware of any binary packages, so you have to download the source
-   from the website.  As why3 itself is only a frontend to the real workhorses,
-   the provers, you need to install a prover. I tried ""alt-ergo"" and Z3 - the
-   first is part of the ubuntu distribution, the second has binaries for most
-   platforms.
-
-   After installing the prover (and making sure it is in the PATH), call ""why3
-   config \-\-detect"" and it should detect your prover. """""""
-
-   Video Tutorial:
-   https://www.youtube.com/watch?v=Mzh4fyoaBJ0⅋feature=youtu.be⅋list=PL9oaY6Y4QxRZybj86eGItGVApxLXVIXHz
-   https://gitter.im/ethereum/formal-methods
-   "https://en.wikipedia.org/wiki/Logical_harmony
-
-   Logical harmony, a name coined by Sir Michael Dummett, is a supposed
-   constraint on the rules of inference (https://en.wikipedia.org/wiki/
-   Rules_of_inference) that can be used in a given logical system(https://en.
-   wikipedia.org/wiki/Logical_system)
-
-See also:
-<a TODO href="http://fc17.ifca.ai/wtsc/Defining%20the%20Ethereum%20Virtual%20Machine%20for%20Interactive%20Theorem%20Provers.pdf">Virt.Machine for interactive Theorem Provers</a>
-@[https://chriseth.github.io/notes/talks/formal_devcon2/#/]
-@[http://www.cs.umd.edu/~aseem/solidetherplas.pdf]
-</pre>
-
-
 <pre zoom labels="qa,dev_language.solidity,security,_PM.TODO">
 <span xsmall>mythril</span>
 @[https://github.com/ConsenSys/mythril/wiki]
@@ -4713,7 +4031,7 @@ See also:
   logic issues and is not equivalent to formal verification.
 </pre>
 
-<pre zoom  labels="qa,security,tool,dev_language.solidity,security,_PM.WiP" bgorange>
+<pre zoom  labels="qa,security.101,dev_language.solidity,security,_PM.WiP" bgorange>
 <span xsmall>Sec.Tool Index</span>
 <span xsmall>(consensys)</span>
 @[https://consensys.github.io/smart-contract-best-practices/security_tools/]
@@ -4907,7 +4225,7 @@ contract Voting {
 </pre>
 
 <span title>Asset Tokens</span>
-<pre zoom labels="aaa,standards.tokens,standards.X_509_Cert,integration.PKI,dev_language.solidity,signature.multisignature"
+<pre zoom labels="security.aaa,standards.tokens,standards.X_509_Cert,integration.PKI,dev_language.solidity,signature.multisignature"
   id="universal_token_summary">
 <span title>Universal Token</span>
 @[https://github.com/ConsenSys/UniversalToken]
@@ -5110,7 +4428,7 @@ RºWARNº:
 
 
 
-<pre zoom labels="aaa,standards.tokens,use_case.nft_marketplace,dev_language.solidity" id="ERC_1155_summary">
+<pre zoom labels="security.aaa,standards.tokens,use_case.nft_marketplace,dev_language.solidity" id="ERC_1155_summary">
 <span title>ERC-1155</span>
 @[https://blog.enjincoin.io/erc-1155-the-crypto-item-standard-ac9cf1c5a226]
   - Standard interface for contracts managing multiple token types.
@@ -5264,7 +4582,7 @@ RºWARNº:
   - @[https://testnets.opensea.io/]  (Rinkeby)
 </pre>
 
-<pre zoom labels="aaa,standards.eip/erc,use_case.nft_marketplace,dev_language.solidity" id="ERC_1155_summary">
+<pre zoom labels="security.aaa,standards.eip/erc,use_case.nft_marketplace,dev_language.solidity" id="ERC_1155_summary">
 <span title>EIP-2981 ("Royalty Payments")</span>
 • Current state (no-standard):
   Artist → MarketPlace: "Do you support royalty payments?"
@@ -5544,13 +4862,13 @@ HACK:  defining the event both in the contract and the library
 See also:
 <a TODO href="https://github.com/bkrem/awesome-solidity#libraries">Awesome Sol.Libs</a>
 </pre>
-<pre zoom labels="tool,qa.auditing,soft_life_cycle.debugging,evm.101,_PM.TODO">
+<pre zoom labels="qa.auditing,soft_life_cycle.debugging,evm.101,_PM.TODO">
 <span xsmall TODO>Decompiling mainnet Contracts</span>
 @[https://www.contract-library.com/]
 - Decompiles most smart contracts deployed on the mainnet to a high level representation.
 </pre>
 
-<pre zoom labels="dev_language.solidity,library">
+<pre zoom labels="dev_language.solidity">
 <span xsmall>Modular-Network Libs</span>
 @[https://github.com/modular-network/ethereum-libraries]
 - ArrayUtilsLib
@@ -5587,7 +4905,7 @@ See also:
   https://remix.ethereum.org/#version=soljson-v0.7.2+commit.51b20bc0.js&optimize=false&gist=65747824fd972fcde14bac5101489032&evmVersion=null
 </pre>
 
-<pre zoom labels="tool,wallet.metamask,dev_language.js,aaa">
+<pre zoom labels="wallet.metamask,dev_language.js,security.aaa">
 <span xsmall>MetaMask Plugin</span>
 
 RºWARN,WARN,WARN:º (Update 2019-12) Metamask management problems:
@@ -5886,7 +5204,7 @@ BºCalculate keccak256 (hash/sha3) of N input arguments matching hash in Solidit
 BºConvert input String  to ABI representationº
   web3.eth.abi.encodeParameter("bytes32",web3.utils.fromAscii(ºinputStringº))
 </pre>
-<pre zoom labels="dev_framework.web3_js,dev_framework.eth js,dev_language.js,comparative,_PM.TODO">
+<pre zoom labels="dev_framework.web3_js,dev_framework.eth js,dev_language.js,_doc_has.comparative,_PM.TODO">
 <span xsmall>web3.js vs eth.js</span>
 https://blog.infura.io/ethereum-javascript-libraries-web3-js-vs-ethers-js-part-i/?utm_medium=www.oficina24x7.com
 Ethereum JavaScript Libraries: web3.js vs. ethers.js (Part I)
@@ -5997,7 +5315,7 @@ Ethers.js: extensive API ref, Good “Getting Started”  ← Winner
 
 <div groupv>
 <span title>Truffle</span>
-<pre zoom labels="dev_framework.truffle,tool,resource,dev_language.solidity,dev_language.js,soft_life_cycle.testing,qa,soft_life_cycle.debugging">
+<pre zoom labels="dev_framework.truffle,_PM.ext_resource,dev_language.solidity,dev_language.js,soft_life_cycle.testing,qa,soft_life_cycle.debugging">
 Slack Channel: @[https://truffle-community.slack.com/join/shared_invite/zt-8wab0bnl-KcugRAqsY9yeNJYcnanfLA]
 <span xsmall>"Full Journey"</span>
 @[https://www.truffleframework.com/]
@@ -6169,7 +5487,7 @@ NOTE: bytecode vs deployedBytecode
 
 </pre>
 
-<pre zoom labels="dev_framework.truffle,dev_language.solidity,library,devops,dev_language.js">
+<pre zoom labels="dev_framework.truffle,dev_language.solidity,devops.smart_contract.migration,dev_language.js">
 <span xsmall>Migrations Explained</span>
 - truffle migrations explained (Linking libraries, ...):
 
@@ -6277,8 +5595,7 @@ QºSaving successful migration to network...º
   Saving artifacts...
 </pre>
 
-
-<pre zoom labels="dev_framework.truffle,devops,">
+<pre zoom labels="dev_framework.truffle,devops.npm,">
 <span xsmall>npm pkgs list</span>
 @[https://github.com/trufflesuite/truffle/tree/develop/packages]
 truffle-artifactor :
@@ -6516,7 +5833,7 @@ is easier to work with (like PromiEvents, I’ll talk about this below)
 
 <div groupv>
 <span title>JAVA</span>
-<pre zoom labels="dev_framework.web3j,dev_language.java,tool,evm.events">
+<pre zoom labels="dev_framework.web3j,dev_language.java,evm.events">
 <span xsmall>Web3J</span>
 @[https://docs.web3j.io/]
 <a href="https://docs.web3j.io/getting_started.html">pom / gradle dependencies</a>
@@ -6951,7 +6268,7 @@ var GºfromToIndextFilterIDº = await OºtransferEventHandlerº.CreateFilterAsyn
 var allNewEventsFromTo   = await OºtransferEventHandlerº.GetFilterChanges(GºfromToIndextFilterIDº);
 </pre>
 
-<pre zoom labels="dev_language.C#,devops">
+<pre zoom labels="dev_language.C#,devops.C#">
 <span xsmall>Nuget packages</span>
 @[https://nethereum.readthedocs.io/en/latest/nugets/]
 - Standalone packages targeting Netstandard 1.1, net451, Netstandard 2.0, Netcoreapp 2.1
@@ -7013,7 +6330,7 @@ Nethereum UI wallet sample      Cross platform wallet example using Nethereum, X
 <span xsmall>web3.py</span>
 @[https://github.com/ethereum/web3.py]
 </pre>
-<pre zoom labels="dev_language.python,soft_life_cycle.testing,qa,tool,_PM.TODO">
+<pre zoom labels="dev_language.python,soft_life_cycle.testing,qa,_PM.TODO">
 <span xsmall>Brownie</span>
 @[https://eth-brownie.readthedocs.io/en/latest/]
 @[https://eth-brownie.readthedocs.io/en/stable/tests-hypothesis-property.html]
@@ -7029,7 +6346,7 @@ See Also:
 @[https://medium.com/coinmonks/effective-smart-contract-testing-developer-revert-comments-c7a6f250df0f]
 </pre>
 
-<pre zoom labels="dev_language.python,low_code,_PM.TODO">
+<pre zoom labels="dev_language.python,_PM.low_code,_PM.TODO">
 <span xsmall>TextUI (Console Prototyping)</span>
 @[https://github.com/kayagoban/shadowlands]
 - Python based, TextUI rapid prototyping platform for Eth apps which breaks
@@ -7087,7 +6404,7 @@ SOLUTION:
     <span title>Scalability</span><br/>
 <div groupv>
 <pre zoom 
-  labels="101,scalability.zkp,privacy.zkp,scalability.layer2,dev_framework.ide,dev_framework.remix,diagram,layer2.rollup.optimistic,layer2.rollup.zk,_PM.WiP,"
+  labels="101,scalability.zkp,privacy.zkp,scalability.layer2,dev_framework.ide,dev_framework.remix,_doc_has.diagram,layer2.rollup.optimistic,layer2.rollup.zk,_PM.WiP,"
   id="layer2_scalability_summary" >
 
 • Layer 1 Scalability Solutions include:
@@ -7357,7 +6674,7 @@ Bºgenesis.jsonº
   }
 </pre>
 
-<pre zoom labels=",comparative,scalability.consensus.ethereum2">
+<pre zoom labels="scalability.consensus.ethereum2,_doc_has.comparative,">
 <span xsmall>Casper PoS (Ethereum 2)</span>
 PoS: Proof-of-Stake:
 @[https://consensys.net/blog/blockchain-explained/what-is-ethereum-2/]
@@ -7523,7 +6840,7 @@ and consensus fidelity.
 @[https://ethresear.ch/t/minimal-viable-plasma/426]
 </pre>
 
-<pre zoom labels="scalability.plasma,comparative,_PM.TODO">
+<pre zoom labels="scalability.plasma,_doc_has.comparative,_PM.TODO">
 <span xsmall TODO>Lead DAO</span>
 @[https://leapdao.org/]
 - More Viable Plasma design with smart contract like functionality.
@@ -7535,7 +6852,7 @@ and consensus fidelity.
 <div group bgyellow>
 <span title>Enterprise Integration</span><br/>
 <div groupv>
-<pre zoom bgorange labels="standards.eea,diagram,integration.*">
+<pre zoom bgorange labels="standards.eea,_doc_has.diagram,integration.*">
   <span xsmall>Integration Layout</span>
 REF: https://medium.com/@bibryam/enterprise-integration-for-ethereum-fa67a1577d43
 ____________________________________________________________________________________________
@@ -7619,7 +6936,7 @@ ________________________________________________________________________________
    Standard RBAC in EEA/Quorum expected for mid/late 2019
 </pre>
 
-<pre zoom labels="qa.auditing,soft_life_cycle.monitoring,security,tool,integration.data">
+<pre zoom labels="qa.auditing,soft_life_cycle.monitoring,security,integration.data">
 <span xsmall>Alethio,Rakr</span>
 <span xsmall>(IA auditing)</span>
 @[https://aleth.io]
@@ -7925,7 +7242,7 @@ instance will broadcast the same events.
 @[https://medium.com/@bibryam/enterprise-integration-for-ethereum-fa67a1577d43]
 </pre>
 
-<pre zoom labels="scalability.offchain,comparative,dev_framework.ipfs,infrastructure.storage.offchain,privacy.offchain,scalability.offchain,_PM.TODO">
+<pre zoom labels="scalability.offchain,_doc_has.comparative,dev_framework.ipfs,infrastructure.storage.offchain,privacy.offchain,scalability.offchain,_PM.TODO">
 <span xsmall TODO>EXTERNAL STORAGE (IPFS,...)</span>
 TODO: Compare with alternative Storage "providers": IPFS , Maidsafe, Storj
 - IPFS is just a protocol like http. It is unmotivated (don't have tokens).
@@ -8045,7 +7362,7 @@ public void configure() throws Exception {
 </pre>
 </div>
 <div groupv>
-<pre zoom labels="integration.data,tool,scalability.offchain,_PM.TODO">
+<pre zoom labels="integration.data,scalability.offchain,_PM.TODO">
 <span xsmall>EtherQuery</span>
 @[https://github.com/Arachnid/etherquery]
 Custom ethereum client that uploads blockchain data to BigQuery
@@ -8210,7 +7527,7 @@ curl -X POST -H "Content-Type: application/json" \
  http://localhost:8547/graphql
 </pre>
 
-<pre zoom labels="integration.graphql,scalability.graph,evm.events,low_code,dev_framework.the_graph,qa.usability,_PM.backlog">
+<pre zoom labels="integration.graphql,scalability.graph,evm.events,_PM.low_code,dev_framework.the_graph,qa.usability,_PM.backlog">
 <span xsmall>TheGraph Protocol</span>
 • "Before The Graph, teams had to develop and operate proprietary 
   indexing servers. This required significant engineering and hardware 
@@ -8504,7 +7821,7 @@ Note: Whenever the Ethereum network has been reseted
 
 <div groupv>
 <span title>Geth</span>
-<pre zoom labels="implementation.geth,devops">
+<pre zoom labels="implementation.geth,devops.network.bootstrap">
 <span xsmall>Setup Node</span>
 <a href="https://github.com/ethereum/go-ethereum">REF</a>
 STEP 1 :                              │STEP 2:             │STEP 3: (optional)
@@ -8553,9 +7870,8 @@ $DATADIR: (← defined by geth --datadir flag)
 
 ºFUll CLI optionsº
 @[https://github.com/ethereum/go-ethereum/wiki/Command-Line-Options]
-</pre>
 
-<pre zoom  labels="implementation.geth,devops">
+<hr/>
 <span xsmall>Basic Admin</span>
 <a href="https://github.com/ethereum/go-ethereum/wiki/Managing-your-accounts">Geth Account Mng</a>
   º(Geth) ACCOUNT "==" private key stored in file protected by passwordº stored under:
@@ -8611,7 +7927,7 @@ $ gethºimportº'filename'         ← Import form binary file
  wnode
 </pre>
 
-<pre zoom labels="implementation.geth,architecture,diagram,_PM.TODO">
+<pre zoom labels="implementation.geth,architecture.geth,_doc_has.diagram,_PM.TODO">
 <span xsmall>Geth Arch</span>
 <a href="https://www.mycryptopedia.com/ethereum-geth-installing-and-running-a-node/">REF</a>
        ┌────────┐              ┌───────┐
@@ -8821,7 +8137,7 @@ BºDATABASEº
   }
 </pre>
 
-<pre zoom labels="implementation.geth,devops,tool">
+<pre zoom labels="implementation.geth,security.secret_mng,">
 <span xsmall>Geth Key Handling</span>
 - Keys are stored under <DATADIR>/keystore(backup regularly)
 - keyfiles format(2017-05): UTC--˂created_at UTC ISO8601˃-˂address hex˃
@@ -8871,7 +8187,7 @@ using account NON-interactively (not connected to a geth node):
    $ KEYLIST="${KEYLIST},e470b1a7d2c9c5c6f03bbaa8fa20db6d404a0c32"
    $ geth --unlock "${KEYLIST}"
 </pre>
-<pre zoom labels="implementation.geth,devops,tool">
+<pre zoom labels="implementation.geth,devops.geth">
 <span xsmall>Geth Console</span>
 @[https://github.com/ethereum/go-ethereum/wiki/JavaScript-Console]
 - JS command line console to control geth.
@@ -8901,7 +8217,7 @@ using account NON-interactively (not connected to a geth node):
 └────────────────────────────────────────┴───────────────────────────────────────────────────
 </pre>
 
-<pre zoom labels="implementation.geth,soft_life_cycle.troubleshooting,devops" >
+<pre zoom labels="implementation.geth,soft_life_cycle.troubleshooting,devops.network.bootstrap" >
 <span xsmall>Config Trouble-shoot</span>
 <a href="https://web3js.readthedocs.io/en/1.0/index.html">Full 1.0 API</a>
 console.dir(eth) does NOT work but all that needed is enter the object name in the prompt
@@ -8967,7 +8283,7 @@ console.dir(eth) does NOT work but all that needed is enter the object name in t
 → }
 </pre>
 
-<pre zoom labels="persistence.blockchain,infrastructure.storage,devops">
+<pre zoom labels="persistence.blockchain,infrastructure.storage,devops.storage">
 <span xsmall>Disk Space</span><!-- disk_space_link  -->
 
 BºSync Mode:º
@@ -9035,11 +8351,6 @@ rºattached to the VM. Better performance can be achieved º
 rºon VMs with real SSDs or actual physical hardware.     º
 </pre>
 
-<pre zoom labels="implementation.quorum,infrastructure.cloud,tool,devops,infrastructure.cloud,_PM.TODO">
-<span xsmall>Running on kubernetes</span>
-@[https://github.com/majd1239/Quarum-Maker-Kubernetes]
-See also: https://github.com/synechron-finlabs/quorum-maker/issues/75
-</pre>
 
 <pre zoom labels="implementation.geth,devops,soft_life_cycle.monitoring">
 <span xsmall>Monitoring &amp; Metrics</span>
@@ -9452,23 +8763,23 @@ Warning: We’ve tried our best to squash all the bugs, but as with all major
 <div group bgbrown>
 <span title>EEA</span><br/>
 <div groupv>
-<pre zoom labels="standards.eea">
-<span xsmall>External Links</span>
-@[https://entethalliance.org/]
-@[https://github.com/EntEthAlliance/]
-Tech.documents           @[https://entethalliance.org/technical-documents/]
-                         - EEA Client Spec
-                         - EEA Off-Chain Trusted Compute Spec
-                         - EEA Architecture Stack
-                         - ....
-Collaboration site       @[https://member.entethalliance.org/communities-all-members60/librarydocuments]
-Youtube Channel          @[https://www.youtube.com/channel/UClC49LtcE4Wuo4POqa4J0bA]
-
-
-</pre>
-
-<pre zoom labels="standards.eea,scalability.consensus,scalability.offchain,integration.*">
+<pre zoom labels="standards.eea,scalability.consensus,scalability.offchain,integration.*,_PM.ext_resource">
   <span xsmall>EEA Summary</span>
+• External resources:
+  • @[https://entethalliance.org/]
+  • @[https://github.com/EntEthAlliance/]
+  • @[https://entethalliance.org/technical-documents/]
+    - EEA Client Spec
+    - EEA Off-Chain Trusted Compute Spec
+    - EEA Architecture Stack
+    - ....
+  • Collaboration site:
+    @[https://member.entethalliance.org/communities-all-members60/librarydocuments]
+  • Youtube Channel:
+    @[https://www.youtube.com/channel/UClC49LtcE4Wuo4POqa4J0bA]
+
+
+
 [P]SMRT-030:Enterprise Ethereum clients MUST support
    smart contracts of at least 24,576bytes in size
 [P]SMRT-040:Enterprise Ethereum clients MUST read and enforce a size limit
@@ -9755,7 +9066,7 @@ var simple = simpleContract.new(42,
 -@[https://github.com/ewasm/benchmarking]
 </pre>
 
-<pre zoom labels="tool,soft_life_cycle.profiling,qa,_PM.TODO">
+<pre zoom labels="soft_life_cycle.profiling,qa,_PM.TODO">
 <span xsmall>Caliper(Benchmarks)</span>
 @[https://github.com/hyperledger/caliper] with support for:
 - blockchain performance benchmark framework.
@@ -9774,7 +9085,7 @@ var simple = simpleContract.new(42,
 
 <div groupv>
 <span title>EEA DevOps</span>
-<pre zoom labels="standards.eea,devops,infrastructure.network,diagram">
+<pre zoom labels="standards.eea,devops,infrastructure.network,_doc_has.diagram">
   <span xsmall>enode HowTo</span>
   <span xsmall></span>
 Extracted from <a href="https://github.com/ethereum/devp2p/blob/master/rlpx.md#network-formation">rlpx.md</a>
@@ -9945,7 +9256,7 @@ private keys. In addition, this would be useful to generate a
 secure Ethereum account completely off chain.
 </pre>
 
-<pre zoom labels="implementation.geth,tool,devops">
+<pre zoom labels="implementation.geth,devops">
 <span xsmall>PUPPETH</span>
 @[https://www.youtube.com/watch?v=T5RcjYPTG9g] ºPUPPETHº For easy deployment of networks
 - Integrated into Geth 1.9+
@@ -9966,7 +9277,7 @@ R*WARN: initial integration (e.g. due to a “bug” in Blockscout, the Puppeth
         the explorer web interface).
 </pre>
 
-<pre zoom labels="wallet.cloud,security,diagram,_PM.TODO">
+<pre zoom labels="wallet.cloud,security,_doc_has.diagram,_PM.TODO">
 <span xsmall>Clef</span>
      @[https://github.com/ethereum/go-ethereum/blob/master/cmd/clef/tutorial.md]
 - Sign TX and data (data "==" swap/swarm).
@@ -10071,7 +9382,7 @@ scale.
 
 <div groupv>
 <span title>Quorum(JP Morgan)</span>
-<pre zoom labels="privacy.private_tx,privacy.private_tx.101,diagram,implementation.quorum," id="eea_priv_tx_summary">
+<pre zoom labels="privacy.private_tx,privacy.private_tx.101,_doc_has.diagram,implementation.quorum,devops,_PM.low_code" id="eea_priv_tx_summary">
 • External Links:
   • @[https://consensys.net/quorum/]
 
@@ -10209,98 +9520,68 @@ $º      --othernodes=https://127.0.0.1:9001/ º
  --url string             URL to advertise to other nodes (reachable by them)
  --verbosity int          Verbosity level (default 1)
  --workdir string         folder to put stuff in (default: .) (default ".")
-</pre>
-<pre zoom labels="implementation.quorum,tool,devops,low_code">
-<span xsmall>Quorum-Maker</span>
+
+• Quorum-Maker:                             [devops][low_code]
 @[https://github.com/synechron-finlabs/quorum-maker]
-•
-tool that allows users to create and 
-manage Quorum network.  Manually editing configuration files and 
-creating nodes is a slow and error-prone process.  Quorum Maker can 
-create any number of nodes of various configurations dynamically with 
-reduced user input. This provides a wizard-like interface with a 
-series of questions to guide the user when creating nodes. Quorum 
-Maker can create nodes to:
-
-  - run with docker-compose (Raft consensus/Quorum 2.2.0) for easy use in development environments;
-    or
-  - nodes to be distributed on separate Linux boxes or cloud instances for a production environment
-    (Raft consensus/Quorum 2.2.0)
-
-ºINSTALL PRE-REQUISITESº
-- install docker-CE ("Long Term Support") as explained in <a href="https://docs.docker.com/install/">https://docs.docker.com/install/</a>
-
-ºINSTALL QUORUM-MAKERº
-root@.../# git clone https://github.com/synechron-finlabs/quorum-maker
-
-ºQUORUM-MAKER USSAGEº
-root@/.../quorum-maker# ./setup.sh º--helpº
-    ....
-    Version 2.6.2 Built on Quorum 2.2.1
-    Utility to setup Quorum Network
+• Automation tool, wizard-like to bootstrap Quorum network of any number of
+   nodes of various configurations dynamically with 
+  reduced user input running on containers or Linux boxes. 
+  • INSTALL PRE-REQUISITES)
+    ✓ docker-CE ("Long Term Support") 
+  • INSTALL)
+    $º$ git clone https://github.com/synechron-finlabs/quorum-maker º
+  • USSAGE)
+    $º$ ./setup.sh --helpº
 
     join      Create a node and Join to existing Network
-    attach    Attach to an existing Quorum Node. The node created hosts only Node Manager
-    dev       Create a development/test network with multiple nodes
+             --oip     IP address of the other(existing) node 
+             --onm     Node Manager port of the other node
+             --tip     IP address of this node (IP of the host machine)
+             --whisper Discovery port of this node
 
-    Options:
+    attach    Attach to existing Quorum Node ..
+              --ip      IP address of existing Quorum
+              --pk      Public Key of existing Constellation
+              --whisper Discovery port of this node
+              --active  Active attachment mode
+              --passive Passive attachment mode
 
-    For create command:
-      -n, --name              Name of the node to be created
-      --ip                    IP address of this node (IP of the host machine)
-      -r, --rpc               RPC port of this node
-      -w, --whisper           Discovery port of this node
-      -c, --constellation     Constellation port of this node
-      --raft                  Raft port of this node
-      --nm                    Node Manager port of this node
-      --ws                    Web Socket port of this node
-      -t, --tessera           Create node with Tessera Support (Optional)
+    create    Options:
+              --ip        IP address of this node (IP of the host machine)
+              --rpc       RPC port of this node
+              --whisper   Discovery port of this node
 
-    E.g.
-    ./setup.sh create -n master --ip 10.0.2.15 -r 22000 -w 22001 -c 22002 --raft 22003 --nm 22004 --ws 22005
+    dev       (Create dev network)
+              --project   Project Name
+              --nodecount Number of nodes to be created
+              --expose    Expose docker container ports (Optional)
+              --tessera   Create node with Tessera Support (Optional)
 
-    For join command:
+    Common Options:
+      --name    Name of the node to be created
+      --constellation     Constellation port of this node
+      --raft    Raft port of this node
+      --nm      Node Manager port of this node
+      --ws      Web Socket port of this node
+      --tessera Create node with Tessera Support (Optional)
+     --rpc     RPC port of this node
 
-      -n, --name              Name of the node to be created
-      --oip                   IP address of the other node (IP of the existing node)
-      --onm                   Node Manager port of the other node
-      --tip                   IP address of this node (IP of the host machine)
-      -r, --rpc               RPC port of this node
-      -w, --whisper           Discovery port of this node
-      -c, --constellation     Constellation port of this node
-      --raft                  Raft port of this node
-      --nm                    Node Manager port of this node
-      --ws                    Web Socket port of this node
-      -t, --tessera           Create node with Tessera Support (Optional)
+    $º$ ./setup.sh create -n master \     º
+    $º  --ip 10.0.2.15 -r 22000 -w 22001 \º
+    $º  -c 22002 --raft 22003 --nm 22004 \º
+    $º  --ws 22005                        º
 
-    E.g.
-    ./setup.sh join -n slave1 --oip 10.0.2.15 --onm 22004 --tip 10.0.2.15 -r 23000 -w 23001 -c 23002 --raft 23003 --nm 23004 --ws 23005
+    $º$ ./setup.sh join -n slave1 --oip 10.0.2.15   \º
+    $º --onm 22004 --tip 10.0.2.15 -r 23000 -w 23001\º
+    $º -c 23002 --raft 23003 --nm 23004 --ws 23005   º
 
-For attach command:
-  -n, --name              Name of the node to be created
-  --ip                    IP address of existing Quorum
-  --pk                    Public Key of existing Constellation
-  -r, --rpc               RPC port of the existing Quorum
-  -w, --whisper           Discovery port of this node
-  -c, --constellation     Constellation port existing node
-  --raft                  Raft port of existing node
-  --nm                    Node Manager port of this node (New Node Manager will be created by this command)
-  --active                Active attachment mode
-  --passive               Passive attachment mode
 
-E.g.
-./setup.sh attach -n slave1 --ip 10.0.2.15 --pk BULeR8JyUWhiuuCMU/HLA0Q5pzkYT+cHII3ZKBey3Bo= -r 22000 --whisper 21000 --constellation 9001 --raft 50401 --nm 11004 --active
+    $º$ ./setup.sh attach -n slave1 --ip 10.0.2.15  \º
+    $º --pk BULe... -r 22000 --whisper 21000        \º
+    $º --constellation 9001 --raft 50401 --nm 11004 \º
+    $º --active                                      º
 
-For dev command:
-  -p, --project           Project Name
-  -n, --nodecount         Number of nodes to be created
-  -e, --expose            Expose docker container ports (Optional)
-  -t, --tessera           Create node with Tessera Support (Optional)
-
-E.g.
-./setup.sh dev -p TestNetwork -n 3
-
--h, --help              Display this help and exit
+    $º$ ./setup.sh dev -p TestNetwork -n 3           º
 </pre>
 
 <pre zoom labels="integration.enterprise_patterns,integration.data,dev_framework.baseline,privacy.ZKP,standards.EIP/ERC,_PM.backlog">
@@ -10410,7 +9691,7 @@ https://medium.com/baselineprotocol/dappsuite-extends-the-salesforce-platform-to
 <div group>
 <span title>EEA-Besu</span><br/>
 <div groupv>
-<pre zoom labels="standards.eea,implementation.besu,resource">
+<pre zoom labels="standards.eea,implementation.besu,_PM.ext_resource">
 <span xsmall>Chat:</span>
 @[https://chat.hyperledger.org/channel/besu]
 
@@ -10421,7 +9702,7 @@ https://medium.com/baselineprotocol/dappsuite-extends-the-salesforce-platform-to
 @[https://github.com/hyperledger/besu/graphs/contributors?from=2019-01-07&to=2019-05-30&type=c]
 </pre>
 
-<pre zoom labels="standards.eea,implementation.besu,architecture,devops,diagram" id="besu_architecture_summary">
+<pre zoom labels="standards.eea,implementation.besu,architecture,devops,_doc_has.diagram" id="besu_architecture_summary">
 (Pegasys Pantheon was renamed to Besu after joining the Hyperledger Fundation)
 <span xsmall>Introduction</span>
 - Java based, using VertX as core framework.
@@ -10685,7 +9966,7 @@ Runner: Network Startup:
 </pre>
 
 <span title>Governance</span>
-<pre zoom labels="standards.eea,implementation.besu,governance,">
+<pre zoom labels="standards.eea,implementation.besu,security.governance,">
 <span xsmall>Onchain Permissioning</span>
 @[https://besu.hyperledger.org/en/stable/Concepts/Permissioning/Onchain-Permissioning/]
 Updated on 2020-03-20
@@ -11767,7 +11048,7 @@ RocksDB statistics (cache,  compression, ...)
 
 </pre>
 
-<pre zoom labels="standards.eea,implementation.besu,aaa,security,devops,_PM.TODO">
+<pre zoom labels="standards.eea,implementation.besu,security.aaa,security,devops,_PM.TODO">
   <span xsmall>Minimum Private network</span>
 <!-- TODO: Update -->
 @[https://docs.pantheon.pegasys.tech/en/stable/Getting-Started/Run-Docker-Image/]
@@ -11826,7 +11107,7 @@ Outdated link: https://docs.pantheon.pegasys.tech/en/stable/Configuring-Pantheon
 
 <div groupv>
 <span title>Kaleido (SaaS Besu)</span>
-<pre zoom labels="infrastructure.cloud.SaaS,dev_framework.kaleido,governance,soft_life_cycle.troubleshooting">
+<pre zoom labels="infrastructure.cloud.SaaS,dev_framework.kaleido,security.governance,soft_life_cycle.troubleshooting">
 <span xsmall>External Links</span>
 -@[https://docs.kaleido.io/getting-started/about-kaleido/]
 -@[https://github.com/kaleido-io/]
@@ -12073,7 +11354,7 @@ truffle(development)˃ Greeter.deployed().then(function(contractInstance) {contr
   and all verifications issued will be available
 </pre>
 
-<pre zoom labels="qa,dev_language.solidity,tool,_PM.radar">
+<pre zoom labels="dev_language.solidity,qa.solidity,_PM.radar">
 <span xsmall>Piet</span>
 @[https://blog.slock.it/analyzing-solidity-smart-contracts-with-piet-6db33a733e79]
 @[https://github.com/slockit/piet]
@@ -12083,8 +11364,8 @@ truffle(development)˃ Greeter.deployed().then(function(contractInstance) {contr
  their relations (inheritance structure,...).
 - Web GUI to read the state, send transactions, or list events
 - create smart contract documentation from NatSpec annotations.
-- support for Solidity source files, Truffle build files, piet container files
-  and GitHub repositories.
+- support for Solidity source files, Truffle build files, piet 
+  container files and GitHub repositories.
 - Can use web3 injected objects ("MetaMask") to interact with a live blockchain.
 
 RºWarning: Piet has not yet undergone in-depth testing and may contain serious bugs.º
@@ -12123,7 +11404,7 @@ Markets for Anyone Anywhere on Anything
 - ...
 </pre>
 
-<pre zoom labels="wallet.mobile,tool,_PM.radar">
+<pre zoom labels="wallet.mobile,_PM.radar">
 <span xsmall>Status: Wallet and IM</span>
 @[https://status.im/]
 @[https://github.com/status-im/status-react]
@@ -12200,7 +11481,7 @@ Author: Benedikt Bünz
   non-intrusive way where old-style transactions can continue to work.
 </pre>
 
-<pre zoom labels="tool,soft_life_cycle.debugging,dev_language.solidity,_PM.radar">
+<pre zoom labels="soft_life_cycle.debugging,dev_language.solidity,_PM.radar">
 <span xsmall>Deth (Ganache alt)</span>
 @[https://github.com/ethereum-ts/deth]
 - Ganache alternative:
@@ -12324,7 +11605,7 @@ the Trusted Compute specification. He also holds several patents.
 @[https://tomislav.tech/2018-02-05-ethereum-keyvault-signing-transactions/]
 </pre>
 
-<pre zoom labels="tool,qa.auditing,integration.*,soft_life_cycle.monitoring,_PM.radar">
+<pre zoom labels="qa.auditing,integration.*,soft_life_cycle.monitoring,_PM.radar">
 <span xsmall>EthVM</span>
 • EthVM is an open-source Blockchain Explorer focused mainly on Ethereum
   (although other networks and forks will be supported over time)
@@ -12348,7 +11629,7 @@ the Trusted Compute specification. He also holds several patents.
 @[http://solidity.readthedocs.io/en/develop/security-considerations.html#security-considerations]
 </pre>
 
-<pre zoom labels="tool,qa,dev_language.solidity,_PM.radar">
+<pre zoom labels="qa.solidity,dev_language.solidity,_PM.radar">
 <span xsmall>Ethereum Package Registry</span>
 
 @[https://www.ethpm.com/]
@@ -12379,7 +11660,7 @@ Please give it a try. We really do want the best for you.
 - How to build server less applications for Mist
 </pre>
 
-<pre zoom labels="tool,dev_language.solidity,_PM.TODO">
+<pre zoom labels="dev_language.solidity,_PM.TODO">
 <span xsmall>Buidler</span>
 @[https://buidler.dev/]
 @[https://www.npmjs.com/package/@nomiclabs/buidler-ethers]
@@ -12406,7 +11687,7 @@ Please give it a try. We really do want the best for you.
 Using the CardContact SmartCard USB HSM in an Ethereum PoA Chain
 </pre>
 
-<pre zoom labels="dev_language.js,tool,_PM.TODO">
+<pre zoom labels="dev_language.js,_PM.TODO">
 <span xsmall>ethpm-js</span>
   <a TODO href='https://github.com/ethpm/ethpm-js'>https://github.com/ethpm/ethpm-js</a>
       Javascript library for publishing and consuming Ethereum packages,
@@ -12522,7 +11803,7 @@ be easy to find with the interactive interface:
 $º$ pip install legions º
 </pre>
 
-<pre zoom labels="integration.data,dev_language.python,evm.events,low_code,_PM.TODO">
+<pre zoom labels="integration.data,dev_language.python,evm.events,_PM.low_code,_PM.TODO">
 <span xsmall>ethereum-etl</span>
 RºWARN:º See limitation in Github Project page.
 Export blocks and transactions (Schema, Reference):
@@ -12564,7 +11845,7 @@ $º  --output traces.csv                                          º
   environments.
 </pre>
 
-<pre zoom labels="use_case.financial.stablecoins,comparative,_PM.TODO">
+<pre zoom labels="use_case.financial.stablecoins,_doc_has.comparative,_PM.TODO">
 <span xsmall>Algorithmic stablecoins</span>
 REF: @[https://frax.finance/whitepaper/]
      @[https://github.com/FraxFinance/frax-truffle/blob/master/test/Frax-Tests.js]
@@ -12910,7 +12191,7 @@ and insurance into decentralization.
 
 <div group> <!-- backlog {{{ -->
 <span title>Non Classified / backlog </span><br/>
-<pre zoom labels="dev_framework.aragon,use_case.financial.DAO,governance,library,_PM.BACKLOG">
+<pre zoom labels="dev_framework.aragon,use_case.financial.DAO,security.governance,_PM.BACKLOG">
 <span xsmall>Aragon OS: Advanced deployment</span>
 @[https://aragon.one/]
 @[https://blog.aragon.one/advanced-solidity-code-deployment-techniques-dc032665f434]
@@ -13116,7 +12397,7 @@ Current Status (updated: June 22, 2019)
        graphical applications, servers and so on ...
 </pre>
 
-<pre zoom  labels="101,persistence.data_structure,qa,dev_language.solidity,diagram,_PM.backlog">
+<pre zoom  labels="101,persistence.data_structure,qa.solidity,dev_language.solidity,_doc_has.diagram,_PM.backlog">
 <span xsmall TODO>SandCastle_SQL</span>
 @[https://pegasys.tech/sandcastle-brings-sql-to-ethereum-smart-contracts/]
 RºWARNº: Doesn't look to be continued.
@@ -13612,50 +12893,10 @@ https://${serviceName}.vault.azure.net`,   // ← sign directly by setting signa
  46
  47     return signedTx;
  48   }
-###################
+#########################
 IPFS at TLDR:
 https://github.com/tldr-pages/tldr/blob/master/pages/common/ipfs.md
-################
-- SMTChecker and Formal Verification
-https://github.com/ethereum/solidity/blob/develop/docs/smtchecker.rst
-- Activated by default in Solidity 0.8.4+
-  - Use ºpragma experimental SMTChecker;º in previous versions.
-Using formal verification it is possible to perform an automated mathematical
-proof that your source code fulfills a certain formal specification.
-The specification is still formal (just as the source code), but usually much
-simpler.
-The other verification targets that the SMTChecker checks at compile time are:
-
-- Arithmetic underflow and overflow.
-- Division by zero.
-- Trivial conditions and unreachable code.
-- Popping an empty array.
-- Out of bounds index access.
-- Insufficient funds for a transfer.
-
-    // SPDX-License-Identifier: GPL-3.0
-    pragma solidity ˃=0.8.0;
-
-    contract Overflow {
-        uint immutable x;
-        uint immutable y;
-
-        function add(uint _x, uint _y)
-       ºinternalºpure returns (uint) {
-            return _x + _y;                              ←┐ If require(...) is commented  SMTChecker will return:
-        }                                                 │ Warning: CHC: Overflow (resulting value larger than 2**256 - 1) happens here.
-                                                          │ Counterexample:
-        constructor(uint _x, uint _y) {                   │ x = 1, y = 11579208923731619...639935
-            (x, y) = (_x, _y);                            │  = 0
-        }                                                 │
-                                                          │ Transaction trace:
-        function stateAdd()ºpublicºview returns (uint) {  │ ...
-            require(x ˂ type(uint128).max);              ←┤ Overflow.stateAdd()
-            require(y ˂ type(uint128).max);              ←┘
-            return add(x, y);                                    return _x + _y;
-        }                                                               ^^^^^^^
-    }
-
+######################### 
 ###################
 https://www.komputing.org/  qa, monitoring, auditing,
 Decentralized Metadata and Source Code Repository
@@ -13921,7 +13162,7 @@ Strato      Haskell Ethereum   BlockApps   Closed-source ←---
 https://polymath.network/
 ###################
 <span xsmall>Open Zepellin</span>
-<pre zoom labels="dev_framework.zepellin,dev_language.solidity,aaa,qa,_PM.TODO">
+<pre zoom labels="dev_framework.zepellin,dev_language.solidity,security.aaa,qa,_PM.TODO">
 <span xsmall>OZ Summary</span>
 WARN: upgradable contracts, the "core" of OZ, looks to be replaced by "Diamon Standard"
 @[https://github.com/OpenZeppelin/]
@@ -14095,7 +13336,7 @@ TODO: recheck transaction subtopics.
 ethereum2, 
 https://ethereum-magicians.org/t/in-one-swoop-the-eth2-0-devs-destroyed-staking/7379
 
-<pre zoom labels="dev_language.java,dev_language.solidity,dev_framework.headlong,evm.abi,dev_framework.web3j,comparative">
+<pre zoom labels="dev_language.java,dev_language.solidity,dev_framework.headlong,evm.abi,dev_framework.web3j,_doc_has.comparative">
 <span xsmall TODO>Headlong</span>
 @[https://github.com/esaulpaugh/headlong]
 - A Contract ABI and Recursive Length Prefix library in Java for use on the Ethereum network.
@@ -14420,7 +13661,14 @@ providing a near term scalable EVM-like chain in layer 2.
     • Pointer to other Data.
 </pre>
 
+<pre zoom labels="implementation.quorum,infrastructure.cloud,devops.k8s,infrastructure.cloud,_PM.TODO">
+<span xsmall>Running on kubernetes</span>
+@[https://github.com/majd1239/Quarum-Maker-Kubernetes]
+See also: https://github.com/synechron-finlabs/quorum-maker/issues/75
+</pre>
 
+zip solidity 101 (enums, structs, functions, ...) (qa.solidity, ...) @ma
 
+dev_lang.solidity → solidity.*
 
 -->

@@ -699,6 +699,11 @@ function pageLoadedEnd() {
       csvLabels = csvLabels.toLowerCase()
   let label_l = (!!csvLabels) ? csvLabels.split(",") : []
   label_l.forEach(label => {
+      const bLabelExists = LM.getDomListForLabelPrefix(label).length > 0
+      if (! bLabelExists) { 
+         alert ("topic:" +label +" has been \n dropped/renamed")
+         return; 
+      }
       LM.onLabelClicked({ target : {value : label} });
   })
   let query = getParameterByName("query")

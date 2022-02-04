@@ -113,8 +113,8 @@ RºWRONGº                     BºRIGHTº
 • Avoid huge interfaces. Prefer small, decoupled ones, with few exposed methods
   decoupled interfaces related to security from storage from cache from ...
 
-• Avoid interfaces that will ever be implemented by a single class, specially if such 
-  class is a data-like one with all inmutable (final) fields. Data classes can be 
+• Avoid interfaces that will ever be implemented by a single class, specially if such
+  class is a data-like one with all inmutable (final) fields. Data classes can be
   considered interfaces on themself since they indicate the contract for the data.
 
 • Avoid checked exceptions. It was an error in the initial design of the Java language.
@@ -273,7 +273,8 @@ RºWRONGº                     BºRIGHTº
 
 - JEP 383: Foreign Memory Access API: (Preview)
   - access "foreign"(outside Java HEAP) memory.
-    Part of Project Panama, trying a better connection with native  (C/Assembler) code.
+    Part of Project Panama, trying a better connection with native
+    (C/Assembler) code.
 <hr/>
 <span xsmall>v.14 2020-03-??</span>
 https://www.infoq.com/news/2019/12/java14-feature-freeze/
@@ -771,22 +772,22 @@ In practical terms, there is only one set of source code for the JDK.
   $º$ ulimit -n                 º ← Ensure at least 131072 file descriptors
   $º$ ulimit -u                 º ← Ensure at least 8192 threads
     └──────────┬────────────────┘
-     Tune current values like: 
+     Tune current values like:
                                             Modify Kernel limits (permanently)
   + sysctl -w vm.max_map_count=524288     ← by adding those lines to º/etc/sysctl.confº
-  + sysctl -w fs.file-max=131072            (or /etc/sysctl.d/99-sonarqube.conf ) 
+  + sysctl -w fs.file-max=131072            (or /etc/sysctl.d/99-sonarqube.conf )
 
   $º$ ulimit -n 131072                  º ← Modify user-limits (temporally)
-  $º$ ulimit -u 8192                    º   (changes lost at system restart) 
+  $º$ ulimit -u 8192                    º   (changes lost at system restart)
 
                                             Modify user limits (permanently):
                                             ===================================
                                             Add next lines to:
   + sonarqube   -   nofile   131072       ← Alt 1: º/etc/security/limits.confº (non SystemD)
-  + sonarqube   -   nproc    8192           
-              
+  + sonarqube   -   nproc    8192
+
     [Service]                             ← Alt 2: SystemD unit definition     (SystemD)
-    ...                                      
+    ...
   + LimitNOFILE=131072                      .
   + LimitNPROC=8192
     ...
@@ -1056,6 +1057,73 @@ Rºthe web application, such as within the Application Server.º
 
 <div groupv>
 <span title>Java lang. 101</span>
+ <pre zoom labels="_PM.TODO">
+<span title>Jabba JDK Vers. Mng</span>
+@[https://github.com/shyiko/jabba]
+• pain-free JDK installing on Linux x86/x86_64/ARMv7+, macOS, Windows x86_64.
+• Support for:
+  · Oracle JDK (latest-version only)
+  · Oracle Server JRE (latest-version only),
+  · Adopt OpenJDK (jabba >=0.8.0 is required)
+        Hotspot
+        Eclipse OpenJ9
+  · Zulu OpenJDK (jabba >=0.3.0 is required)
+  · IBM SDK, Java Technology Edition (jabba >=0.6.0 is required)
+  · GraalVM CE
+  · OpenJDK
+  · OpenJDK Reference Implementation
+  · OpenJDK with Shenandoah GC (jabba >=0.10.0 is required)
+  · Liberica JDK
+  · Amazon Corretto
+
+• INSTALL/UPGRADE:
+$º$ curl -sL https://github.com/shyiko/jabba/raw/master/install.sh | bash º
+$º$. ~/.jabba/jabba.sh                                                    º 
+ 
+   Use $º... | bash --skip-rc º to avoid modifying common rc files.
+   In that case add next lines to .bashrc / ...
+ + export JABBA_VERSION=...
+ + [ -s "$JABBA_HOME/jabba.sh" ] && source "$JABBA_HOME/jabba.sh"
+
+• USAGE
+$º$ jabba ls-remote                 º ←  list available JDK's
+$º$ jabba ls-remote zulu@~1.8.60    º ← Narrow results
+$º$ jabba ls-remote --latest=minor\ º ← semver allowed 
+$º       "*@>=1.6.45 <1.9"          º
+
+$º$ jabba ls                        º ← list all installed JDK's
+$º$ jabba use adopt@1.8             º
+$º$ jabba use zulu@~1.6.97          º
+$º$ echo "1.8" > .jabbarc           º ← switch to JDK in .jabbarc
+                                        It must be a valid YAML file.
+                                        'jdk: 1.8' or simply '1.8' are valid
+$º$ jabba alias default 1.8         º ← set def.java ver. on shell (since 0.2.0)
+                                        automatically used on new terminals
+
+$º$ jabba install 1.15.0                    º ← install Oracle JDK
+$º$ jabba install sjre@1.8                  º ← install Oracle Server JRE
+$º$ jabba install adopt@1.8-0               º ← install Adopt OpenJDK (Hotspot)
+$º$ jabba install adopt-openj9@1.9-0        º ← install Adopt OpenJDK (Eclipse OpenJ9)
+$º$ jabba install zulu@1.8                  º ← install Zulu OpenJDK
+$º$ jabba install ibm@1.8                   º ← install IBM SDK, Java Technology Edition
+$º$ jabba install graalvm@1.0-0             º ← install GraalVM CE
+$º$ jabba install openjdk@1.10-0            º ← install OpenJDK
+$º$ jabba install openjdk-shenandoah@1.10-0 º ← install OpenJDK with Shenandoah GC
+          └──┬──┘
+   everything is installed under ~/.jabba. Removing this directory clean install
+$º$ jabba uninstall zulu@1.6.77             º ← uninstall JDK
+$º$ jabba link system@1.8.72 \              º ← link system JDK
+$º  /usr/lib/jvm/jdk1.8.0_72.jdk            º
+
+• To modify JDK system-wide:
+$º$ sudo update-alternatives --install /usr/bin/java java ${JAVA_HOME%*/}/bin/java 20000   º
+$º$ sudo update-alternatives --install /usr/bin/javac javac ${JAVA_HOME%*/}/bin/javac 20000º
+• To swith among GLOBAL JDK system-wide:
+$º$ sudo update-alternatives --config java º
+
+
+</pre>
+
 <pre zoom labels="java_lang.strings,java_lang.101,_PM.WiP">
 <span xsmall>Strings</span>
   final String
@@ -1743,7 +1811,8 @@ BºMDC How To:º
 
 8. Avoid Java serialization as much as possible
    • Java serialization is also called Rº“the gift that keeps on giving”º.
-     Oracle is planning to eventually remove Java serialization as part of Project Amber.
+     Oracle is planning to eventually remove Java serialization as part 
+     of Project Amber.
 
      If you really need to implement serializable on your domain entities,
      implement its own readObject().
@@ -1831,6 +1900,26 @@ map ( e -˃ e.hashCode())...
 
 // collect all values from the stream
 collect(Collectors.toCollection(TreeSet::new))
+
+• TODO: github.com/jOOQ/jOOL, functional extensions to Java 8.
+  • Context: Pains with checked exceptions and lambdas:
+    http://stackoverflow.com/q/18198176/521799
+    http://stackoverflow.com/q/19757300/521799
+    http://stackoverflow.com/q/14039995/521799
+  • Solution: org.jooq.lambda.Unchecked
+
+    Standard Java 8:                 | Using jooq labmda wrapper:     | Even simpler:
+    ================                 | ==========================     | ===================
+    Arrays                           | Arrays                         | Arrays
+    .stream(dir.listFiles())         | .stream(dir.listFiles())       | .stream(dir.listFiles())
+    .forEach(file -˃ {               | .forEach(                      | .map(Unchecked.function(
+          try {                      |   Unchecked.consumer(file -˃ { |      File::getCanonicalPath))
+      System.out.println(            |     System.out.println(        | .forEach(System.out::println);
+           file.getCanonicalPath()); |       file.getCanonicalPath());
+          } catch (IOException e) {  |   })
+      throw new RuntimeException(e); | );
+          }
+    });
 </pre>
 
 <pre zoom labels="java_lang.functional,qa,async/reactive.*,_PM.WiP">
@@ -3469,15 +3558,14 @@ TODO Concurrent
 -->
 </pre>
 
-<pre zoom labels="concurrency.barrier">
+<pre zoom labels="concurrency.barrier" >
 <span xsmall>CountDownLatch </span>
-• Since JDK 1.5
-
-[java.util.concurrent]
+• (java.util.concurrent) Since JDK 1.5
 @[https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/concurrent/CountDownLatch.html]
-- Object allowing 1+ threads to wait until a 1+ operations are completed in other threads.
+• Object allowing 1+ threads to wait until a
+  1+ operations are completed in other threads.
 
-- example ussage: 
+• example ussages:
   -ºon/off latch or gate:º
     When initialized to "one", parallel processing threads will
     invoke "await" and standby waiting for a "control" thread to
@@ -3491,9 +3579,9 @@ TODO Concurrent
   - Threads calling countDown() can continue processing before count reach 0.
     Only threads invoquing await will wait.
 
-- The first is a start signal that prevents any worker from 
-   proceeding until the driver is ready for them to proceed; The second 
-   is a completion signal that allows the driver to wait until all 
+- The first is a start signal that prevents any worker from
+   proceeding until the driver is ready for them to proceed; The second
+   is a completion signal that allows the driver to wait until all
    workers have completed.
 
   -  Ex. 1:
@@ -3576,32 +3664,31 @@ TODO Concurrent
        }
      }
 
-
 @[https://liakh-aliaksandr.medium.com/java-barrier-synchronizers-countdownlatch-cyclicbarrier-phaser-50eb69724d67]
 </pre>
 
-<pre zoom labels="concurrency.scheduling">
+<pre zoom labels="concurrency.101,concurrency.scheduling,doc_has.diagram">
 <span xsmall>Scheduling: Runnables|Callables Executors</span>
 @[https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/ExecutorService.html]
 • Basic Thread objects
 
    Java 1.0+           Java 1.5+
   ┌────────────┐       (java.util.concurrent)
-  │˂˂Runnable˃˃│       
-  │────────────│       
-  │+run()      │       
-  └────────────┘       
-        △              
-        ┆              
-  ┌────────────┐       ┌───────────────┐   
+  │˂˂Runnable˃˃│
+  │────────────│
+  │+run()      │
+  └────────────┘
+        △
+        ┆
+  ┌────────────┐       ┌───────────────┐
   │Thread      │       │˂˂Callable˂V˃˃˃│
-  │────────────│       │───────────────│   
-  │+run()      │       │+call()        │   
-  │+start()    │       └───────────────┘   
+  │────────────│       │───────────────│
+  │+run()      │       │+call()        │
+  │+start()    │       └───────────────┘
   │+sleep()    │       Complements Thread, returning a result/exception
   │....        │       the "parent" thread triggering the Callable
-  └────────────┘       
-                       
+  └────────────┘
+
 
 • Executor interface ( Java 1.5+):
   REF: https://www.uml-diagrams.org/java-7-concurrent-uml-class-diagram-example.html
@@ -3610,58 +3697,58 @@ TODO Concurrent
                   ThreadFactory, Callable) It can also create a "wrapped" ExecutorService
                   disabling reconfiguration.
   ┌╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶ ˂˂CompletionService˃˃                        │
-  ┆                Executors *0                         △                                    │ 
-  ┆                  ┆┆┆┆      ˂˂Executor˃˃  ←───────┐  ┆                                    │ 
-  ┆   ˂˂Callable˃˃ ←─┘┆┆┆      void execute(Runnable)┆  ┆                                    │ 
-  ┆                   ┆┆┆           △                ┆  ┆                                    │ 
-  ┆ ˂˂ThreadFactory˃˃←┘┆┆           │       ExecutorCompletionService ───┐                   │ 
-  ┆                    ┆┆           │                                    ↓                   │ 
-  ┆                    ┆┆           │                                ˂˂BlockingQueue˃˃       │ 
-  ┆                    ┆└╶╶→ ˂˂ExecutorService˃˃◁╴╴╴╴╴╴╴┐                    │               │ 
-  └→ ˂˂Future˃˃ ←╶╶╶╶╶╶┆╶╶╶╶╶╶╶╶╶┘  △ *1                ┆                    │               │ 
-       △   △           ┆            │             AbstractExecutorSevice     │               │ 
-       ┆   ┆           └╶╶╶╶╶╶→ ˂˂Scheduled─ *2      △   △                   │               │ 
-       ┆   ┆                  ExecutorService˃˃      │   │                   │               │ 
-    ┌╴─┘   └─╴╴╴╴╴┐                 △                │   │                   │               │ 
-  FutureTask     ForkJoin           ┆           ┌────┘   └──────┐            │               │ 
-                 Task    ←╶╶╶╶╶╶┐   ┆     ForkJoinPool      ThreadPool ◇─────┘               │ 
-                 △  △           ┆   ┆    @[./FJP_sum]       Executor   ◇──────┐              │ 
-                 │  │           ┆   ┆           │             △               │              │ 
-           ┌─────┘  └────┐      ┆   ┆           ◇             │          Rejected            │ 
-       Recursive    Recursive   └╶╶╶┆╶╶╶╶╶ ForkJoin           │        ExecutionHandler      │ 
-       Action       Task            ┆      WorkerThread       │                              │ 
-                                    ┆                         │                              │ 
-                                    └╴╴╴╴╴╴╴╴ ScheduledTreadPoolExecutor                     │ 
-                                     ┌────────┴────────────────────────┘                     │ 
-                                     └ Prefered to "old" java.util.timer:                    │ 
-        CyclicBarrier Semaphore        • timer can be sensitive to system clock changes      │ 
- CountDownLatch┆  Phaser ┆   Exchanger • timer has only one execution thread. Long-running   │ 
-    └──────────┴───┬─┴───┴───────┘       task can delay other tasks. Sch.Thre.PoolEx.        │ 
-               TimeUnit enum             can be configured with "N" threads.                 │ 
-                                       • runtime exceptions kill the Timer thread.           │ 
+  ┆                Executors *0                         △                                    │
+  ┆                  ┆┆┆┆      ˂˂Executor˃˃  ←╶╶╶╶╶╶╶┐  ┆                                    │
+  ┆   ˂˂Callable˃˃ ←─┘┆┆┆      void execute(Runnable)┆  ┆                                    │
+  ┆                   ┆┆┆           △                ┆  ┆                                    │
+  ┆ ˂˂ThreadFactory˃˃←┘┆┆           │       ExecutorCompletionService ───┐                   │
+  ┆                    ┆┆           │                                    ↓                   │
+  ┆                    ┆┆           │                                ˂˂BlockingQueue˃˃       │
+  ┆                    ┆└╶╶→ ˂˂ExecutorService˃˃◁╴╴╴╴╴╴╴┐                    │               │
+  └→ ˂˂Future˃˃ ←╶╶╶╶╶╶┆╶╶╶╶╶╶╶╶╶┘  △ *1                ┆                    │               │
+       △   △           ┆            │             AbstractExecutorSevice     │               │
+       ┆   ┆           └╶╶╶╶╶╶→ ˂˂Scheduled─ *2      △   △                   │               │
+       ┆   ┆                  ExecutorService˃˃      │   │                   │               │
+    ┌╴─┘   └─╴╴╴╴╴┐                 △                │   │                   │               │
+  FutureTask     ForkJoin           ┆  1.7+     ┌────┘   └──────┐            │               │
+                 Task    ←╶╶╶╶╶╶┐   ┆  ForkJoinPool       ThreadPoolExecutor ◇               │
+                 △  △           ┆   ┆           │               △            ◇               │
+                 │  │           ┆   ┆           │               │            │               │
+           ┌─────┘  └────┐      ┆   ┆           ◇               │        Rejected            │
+       Recursive    Recursive   └╶╶╶┆╶╶╶╶╶ ForkJoin             │      ExecutionHandler      │
+       Action       Task            ┆      WorkerThread         │                            │
+                                    ┆                           │                            │
+                                    └╴╴╴╴╴╴╴╴ ScheduledTreadPoolExecutor                     │
+                                     ┌────────┴────────────────────────┘                     │
+                                     └ Prefered to "old" java.util.timer:                    │
+                                       • timer can be sensitive to system clock changes      │
+                                       • timer has only one execution thread. Long-running   │
+                                         task can delay other tasks. Sch.Thre.PoolEx.        │
+                                         can be configured with "N" threads.                 │
+                                       • runtime exceptions kill the Timer thread.           │
         CyclicBarrier Semaphore          Sch.Thre.Ex. catches them, allowing to handle       │
- CountDownLatch┆  Phaser ┆   Exchanger   by overriding 'afterExecute' from ThreadPoolExecutor│ 
-    └──────────┴───┬─┴───┴───────┘       Only Task throwing the exception will be canceled.  │
+ CountDownLatch ┆ Phaser ┆   Exchanger   by overriding 'afterExecute' from ThreadPoolExecutor│
+    └───────────┴──┬─┴───┴───────┘       Only Task throwing the exception will be canceled.  │
                TimeUnit enum                                                                 │
 
   *1: ExecutorService:    managed threads collection available to execute tasks
         ˂T˃ List˂Future˂T˃˃ invokeAll(Collection˂? extends Callable˂T˃˃ tasks[,long timeout, TimeUnit unit])
                             Executes given tasks. when ALL complete (or timeout expires), return result.
                       ˂T˃ T invokeAny(Collection˂? extends Callable˂T˃˃ tasks[,long timeout, TimeUnit unit])
-                            Executes given tasks, Returns result of (first?) one completing               
-                            without exception, if any do before the given timeout elapses.                
-                    boolean isShutdown()  : true if this executor has been shut down.                       
-                    boolean isTerminated(): true if all tasks have completed following shut down.           
-                       void shutdown()    : Init clean shutdown.                                            
-             List˂Runnable˃ shutdownNow() : Attempts non─clean shutdown                                     
-                    boolean awaitTermination(long timeout, TimeUnit unit)                                   
-                            · Blocks until ALL tasks have completed (after shutdown request)                
-                              or the timeout occurs, or the current thread is interrupted,                  
-              ˂T˃ Future˂T˃ submit(Callable˂T˃ task): Submit Callable for execution                         
-                  Future˂?˃ submit(Runnable task)   : Submit Runnable for execution                         
-              ˂T˃ Future˂T˃ submit(Runnable task, T result)  
+                            Executes given tasks, Returns result of (first?) one completing
+                            without exception, if any do before the given timeout elapses.
+                    boolean isShutdown()  : true if this executor has been shut down.
+                    boolean isTerminated(): true if all tasks have completed following shut down.
+                       void shutdown()    : Init clean shutdown.
+             List˂Runnable˃ shutdownNow() : Attempts non─clean shutdown
+                    boolean awaitTermination(long timeout, TimeUnit unit)
+                            · Blocks until ALL tasks have completed (after shutdown request)
+                              or the timeout occurs, or the current thread is interrupted,
+              ˂T˃ Future˂T˃ submit(Callable˂T˃ task): Submit Callable for execution
+                  Future˂?˃ submit(Runnable task)   : Submit Runnable for execution
+              ˂T˃ Future˂T˃ submit(Runnable task, T result)
     ussage Alt 1: use an implementation of the interface (ThreadPoolExecutor, ScheduledThreadPoolExecutor)
-                  an Instance.execute(runnableInstance) to add a Runnable task to thread pool. 
+                  an Instance.execute(runnableInstance) to add a Runnable task to thread pool.
     ussage Alt 2: Use factory methods in the 'Executors' class:
                   Executors.newSingleThreadExecutor()
                   Executors.newFixedThreadPool(int numThreads)
@@ -3670,360 +3757,286 @@ TODO Concurrent
                   Executors.newScheduledThreadPool(int size)
 
  *2: ScheduledExecutorService:  schedule tasks periodically/after (absolute/relative) delay/period
-     ˂V˃ ScheduledFuture˂V˃ schedule(Callable˂V˃ callable, long delay, TimeUnit unit)                           
-         ScheduledFuture˂?˃ schedule(Runnable command    , long delay, TimeUnit unit)                           
-                            · Creates + exec ScheduledFuture, enabled after delay.                              
+     ˂V˃ ScheduledFuture˂V˃ schedule(Callable˂V˃ callable, long delay, TimeUnit unit)
+         ScheduledFuture˂?˃ schedule(Runnable command    , long delay, TimeUnit unit)
+                            · Creates + exec ScheduledFuture, enabled after delay.
          ScheduledFuture˂?˃ scheduleAtFixedRate   (Runnable command, long initDelay,
                                                    long period, TimeUnit unit)
-                            schedules after initDelay + n*period (n=0,..)                                     
-                            Executions running longer than period overlap.                               
+                            schedules after initDelay + n*period (n=0,..)
+                            Executions running longer than period overlap.
          ScheduledFuture˂?˃ scheduleWithFixedDelay(Runnable command, long initDelay,
                                                    long delay , TimeUnit unit)
-                            Wait until termination. Then wait for 'delay' until next execution.               
-                            Executions running longer than delay will just "shift/delay" next executions.     
- 
-BºExamplesº:
-ºEx: CallableThreadPoolTestº                                                 ºEx: ThreadPoolTestº
- import java.util.concurrent.Callable;                                       │import java.util.concurrent.ExecutorService;
- import java.util.concurrent.*;                                              │import java.util.concurrent.Executors;
- ...                                    ┌──→public classºMyCallableThreadº   │...
- int numWorkers = 10;                   │  │    implements Callable˂String˃{ │ExecutorService pool =
- ExecutorService pool =                 │  │  MyCallableThread(int id)       │  Executors.newFixedThreadPool(10);
-     Executors.newCachedThreadPool();   │  │  {                              │MyWorker[] workers =
-ºMyCallableThread workers[]º =       ───┘  │    ...                          │  new MyWorker[numWorkers];
-     new MyCallableThread[numWorkers];     │  }                              │for (int i = 0; i ˂ numWorkers; ++i)
- Future futures[] = new Future[numWorkers];│                                 │  pool.execute(new MyWorker(i+1));
-                                           │  public String call() {         │pool.shutdown();
- for (int i = 0; i ˂ numWorkers; ++i) {    │    Thread.sleep(1000));
-    workers[i] = new MyCallableThread(i+1);│    return ""+id;
-    futures[i] = pool.submit(workers[i]);  │  }
- }                                         │}
- for (int i = 0; i ˂ numWorkers; ++i) {
-   try {
-     System.out.println(
-       futures[i].get() + " ended");
-   } catch (InterruptedException ex) {
-     ex.printStackTrace();
-   } catch (ExecutionException ex) {
-     ex.printStackTrace();
-   }
- }
+                            Wait until termination. Then wait for 'delay' until next execution.
+                            Executions running longer than delay will just "shift/delay" next executions.
+
+  • Example: (import java.util.concurrent.*;)
+    ...
+    int numWorkers = 10;                                         EXAMPLE 1: Create Pool of Callables
+                                                                 ===================================
+    ExecutorService pool = Executors.newCachedThreadPool();    ← STEP 1) create new pool
+    MyCallableThread workers[]  =  new MyCallable[numWorkers]; ← allocate array for Callables and Futures
+    Future futures[] = new Future[numWorkers];
+    for (int i = 0; i ˂ numWorkers; ++i) {
+       workers[i] = new MyCallable(i+1);                       ← Initialize array
+       futures[i] = pool.submit(workers[i]);
+    }
+    for (int i = 0; i ˂ numWorkers; ++i) {
+          try {
+      futures[i].get();                                        ← Wait (Blocking) on each future.
+          } catch (InterruptedException ex) { ...
+          } catch (ExecutionException ex) {   ...  }
+    }
+
+                                                                EXAMPLE 2: Create Pool of Workers
+    ExecutorService pool =  Executors.newFixedThreadPool(10);   =================================
+    MyWorker[] workers =  new MyWorker[numWorkers];
+    for (int i = 0; i ˂ numWorkers; ++i)
+      pool.execute(new MyWorker(i+1));                        ← Schedule new worker
+    pool.shutdown();                                          ← Don't Forget
+
+  *3 ForkJoinPool (1.7+)
+     REF: @[http://tutorials.jenkov.com/java-util-concurrent/java-fork-and-join-forkjoinpool.html]
+     • ForkJoinPool scheduler is similar to "ExecutorService" but
+      ºIT MAKES IT EASY FOR TASKS TO RECURSIVELY SPLIT  WORK INTO SMALLER ONESº
+     •ºForkº: Task (=="thread") that "Splits itself" into smaller subtasks, executing concurrently.
+     •ºJoinº: End children tasks (=="threads") and merge results (if any).
+
+                                   ┌Task04··· CPU1 ·········┐end
+                     ┌Task02(fork)º┤º                 ┌────º┴º────┐
+                     │             └Task05··· CPU2 ···┘end º^º    │
+        Task01(fork)º┤º                                    ºjoin ˃├º Task ...CPU1 ...
+                ^    │             ┌Task06··· CPU3 ······┐end ºvº │
+                │    └Task03(fork)º┤º                    └────º┬º─┘
+                │             ^    └Task07··· CPU4 ···········─┘
+                │             │
+                │             │
+              - There is an overhead in forks and maintaing new threads.
+                Forking makes sense only for long running tasks with
+                intensive use of CPU
+              - Task01, 02, 03 ºwaitº for subtasks to finish execution.
+
+     •ºCreating new ForkJoinPoolº
+       ForkJoinPool BºforkJoinPoolº = new ForkJoinPool(4);  Desired level of paralellism
+                                                       └─── (Desired number of threads/CPUs)
+     •ºSubmiting tasks to ForkJoinPool schedulerº is very similar
+       to how it is done in the ExecutorService. We can submit:
+        - QºRecursiveActionº: task not returning any result.
+        - GºRecursiveTask  º: task     returning a   result.
 
 
+     import java.util.ArrayList;                       │import java.util.ArrayList;
+     import java.util.List;                            │import java.util.List;
+     import java.util.concurrent.RecursiveAction;      │import java.util.concurrent.RecursiveTask;
+                                                       │
+     // QºCreating new RecursiveActionº                │// GºCreating new RecursiveTaskº
+     public class QºMyRecursiveActionº                 │public class GºMyRecursiveTaskº
+     extends QºRecursiveActionº {                      │extends GºRecursiveTaskº˂Long˃ {
+       private long workLoad = 0;                      │  private long workLoad = 0;
+       public MyRecursiveAction(long workLoad) {       │
+           this.workLoad = workLoad;                   │  public MyRecursiveTask(long workLoad) {
+       }                                               │      this.workLoad = workLoad;
+                                                       │  }
+       @Override                                       │
+       protected void compute() {                      │  protected Long compute() {
+         if(this.workLoad ˂ 16) {                      │    if(this.workLoad ˂ 16) {
+           // 16 is a ºTunnable Threshold parameterº   │      // 16 is a ºTunnable Threshold parameterº
+           // Do workload in current thread            │      // Process work in current thread
+           return                                      │      return workLoad * 3;
+         }                                             │    }
+         List˂MyRecursiveAction˃ subtasks =            │    List˂MyRecursiveTask˃ subtasks =
+            Arrays.asList                              │       Arrays.asList
+            ( new MyRecursiveAction(this.workLoad / 2),│       ( new MyRecursiveTask(this.workLoad / 2),
+              new MyRecursiveAction(this.workLoad / 2) │         new MyRecursiveTask(this.workLoad / 2)
+            );                                         │       );
+                                                       │
+         for(RecursiveAction subtask : subtasks)       │    for(MyRecursiveTask subtask : subtasks)
+           subtaskOº.fork()º;                          │        subtaskOº.forkº();
+           //       ^^^^^^^                            │        //       ^^^^^^^
+           //   Oºwork split into subtasks to beº      │        //   Oºwork split into subtasks to beº
+           //   Oºscheduled for executionº             │        //   Oºscheduled for executionº
+       }                                               │
+                                                       │    long result = 0;
+     }                                                 │    for(MyRecursiveTask subtask : subtasks) {
+                                                       │        result += subtaskOº.joinº();
+                                                       │    }
+                                                       │    return result;
+                                                       │  }
+                                                       │}
+                                                       │
+      ºUSSAGE:º                                        │ºUSSAGE:º
+     QºMyRecursiveActionºmyRecursiveAction =           │GºMyRecursiveTaskºmyRecursiveTask =
+          new MyRecursiveAction(24);                   │     new MyRecursiveTask(128);
+                                                       │  long mergedResult =
+     BºforkJoinPoolºOº.invoke(myRecursiveAction);º     │BºforkJoinPoolºOº.invoke(myRecursiveTask)º;
+                                                       │  System.out.println("mergedResult = " + mergedResult);
 
-
-</pre>
-</div>
-<div groupv>
-<pre zoom labels="concurrency.101,doc_has.diagram," id="FJP_sum">
-<span xsmall>ForkJoinPool (1.7+)</span>
-REF: @[http://tutorials.jenkov.com/java-util-concurrent/java-fork-and-join-forkjoinpool.html]
-- java.util.concurrent.ForkJoinPool  Scheduler is similar to "ExecutorService"
-   but ☞<i>Bº"it makes it easy for tasks to recursively split  work into smaller ones"º</i>
-
-- Bulding blocks:
-  -ºForkº: Task (=="thread") that "Splits itself" into smaller subtasks,
-           executing concurrently.
-
-  -ºJoinº: End children tasks (=="threads") and merge results (if any).
-
-                              ┌Task04··· CPU1 ·········┐end
-                ┌Task02(fork)º┤º                 ┌────º┴º────┐
-                │             └Task05··· CPU2 ···┘end º^º    │
-   Task01(fork)º┤º                                    ºjoin ˃├º Task ...CPU1 ...
-           ^    │             ┌Task06··· CPU3 ······┐end ºvº │
-           │    └Task03(fork)º┤º                    └────º┬º─┘
-           │             ^    └Task07··· CPU4 ···········─┘
-           │             │
-           │             │
-         - There is an overhead in forks and maintaing new threads.
-           Forking makes sense only for long running tasks with
-           intensive use of CPU
-         - Task01, 02, 03 ºwaitº for subtasks to finish execution.
-
-BºCreating new ForkJoinPoolº
-  ForkJoinPool BºforkJoinPoolº = new ForkJoinPool(4);
-                                               ^
-                                  Desired level of paralellism
-                                 (Desired number of threads/CPUs)
-
-
-BºSubmiting tasks to ForkJoinPool schedulerº
-  (very similar to how it is done in the ExecutorService).
-
-   You can submit two types of tasks:
-   - QºRecursiveActionº: task not returning any result.
-   - GºRecursiveTask  º: task     returning a   result.
-
-
-import java.util.ArrayList;                       │import java.util.ArrayList;
-import java.util.List;                            │import java.util.List;
-import java.util.concurrent.RecursiveAction;      │import java.util.concurrent.RecursiveTask;
-                                                  │
-// QºCreating new RecursiveActionº                │// GºCreating new RecursiveTaskº
-public class QºMyRecursiveActionº                 │public class GºMyRecursiveTaskº
-extends QºRecursiveActionº {                      │extends GºRecursiveTaskº˂Long˃ {
-  private long workLoad = 0;                      │  private long workLoad = 0;
-  public MyRecursiveAction(long workLoad) {       │
-      this.workLoad = workLoad;                   │  public MyRecursiveTask(long workLoad) {
-  }                                               │      this.workLoad = workLoad;
-                                                  │  }
-  @Override                                       │
-  protected void compute() {                      │  protected Long compute() {
-    if(this.workLoad ˂ 16) {                      │    if(this.workLoad ˂ 16) {
-      // 16 is a ºTunnable Threshold parameterº   │      // 16 is a ºTunnable Threshold parameterº
-      // Do workload in current thread            │      // Process work in current thread
-      return                                      │      return workLoad * 3;
-    }                                             │    }
-    List˂MyRecursiveAction˃ subtasks =            │    List˂MyRecursiveTask˃ subtasks =
-       Arrays.asList                              │       Arrays.asList
-       ( new MyRecursiveAction(this.workLoad / 2),│       ( new MyRecursiveTask(this.workLoad / 2),
-         new MyRecursiveAction(this.workLoad / 2) │         new MyRecursiveTask(this.workLoad / 2)
-       );                                         │       );
-                                                  │
-    for(RecursiveAction subtask : subtasks)       │    for(MyRecursiveTask subtask : subtasks)
-      subtaskOº.fork()º;                          │        subtaskOº.forkº();
-      //       ^^^^^^^                            │        //       ^^^^^^^
-      //   Oºwork split into subtasks to beº      │        //   Oºwork split into subtasks to beº
-      //   Oºscheduled for executionº             │        //   Oºscheduled for executionº
-  }                                               │
-                                                  │    long result = 0;
-}                                                 │    for(MyRecursiveTask subtask : subtasks) {
-                                                  │        result += subtaskOº.joinº();
-                                                  │    }
-                                                  │    return result;
-                                                  │  }
-                                                  │}
-                                                  │
- ºUSSAGE:º                                        │ºUSSAGE:º
-QºMyRecursiveActionºmyRecursiveAction =           │GºMyRecursiveTaskºmyRecursiveTask =
-     new MyRecursiveAction(24);                   │     new MyRecursiveTask(128);
-                                                  │  long mergedResult =
-BºforkJoinPoolºOº.invoke(myRecursiveAction);º     │BºforkJoinPoolºOº.invoke(myRecursiveTask)º;
-                                                  │  System.out.println("mergedResult = " + mergedResult);
-
-
--RºForkJoinPool Detractorsº
-  - @[http://coopsoft.com/ar/CalamityArticle.html]
+     •RºForkJoinPool Detractorsº
+      @[http://coopsoft.com/ar/CalamityArticle.html]
 </pre>
 
 <pre zoom labels="async/reactive.101,doc_has.diagram">
 <span xsmall>Completable Future</span>
 @[https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/CompletableFuture.html]
-(Java 8+)
-Esquematically:
+• Future:            (Java 5+) Represent an asynchronous computation result.
+  CompletableFuture: (Java 8+)
+  · Extends Future with methods to combine and handle errors
+  · Extends the CompletionStage interface
+    · Contract for an asynchronous computation step that
+      can be combined with other steps.
+  · About 50 different methods for composing/combining/executing async computations.
 
-        LOCAL SYSTEM
-          ┌───────────────────────────────────────────────────────┐
-          │               ┌·······(RPE Loop)··················┐   │
-          │               ↓                                   ·   │
-          │   ºInput º  Parse    Create      Parse  Create  → ... │
- │INPUT│  │  →ºThreadº:  Data → │Future│  →  Data →│Future│       │
- │DATA │  │    (RPEL)                                             │
-          │                        │                  │           │
-          │┌───────────────────────┘                  │           │
-          ││ ┌────────────────────────────────────────┘           │
-          ││ │ ºI/O   º   External  RºWait   º Handle    |Future| │
-          ││ └→ºThreadº:  Request  →RºResposeº→Respose → .complete│
-          ││                     ↓                                │
-          ││   ºI/O   º          ·               ↑                │
-          │└──→ºThreadº:         ·               ·                │
-          └──────────────────────·───────────────·────────────────┘
-                                 ·               ·
-                                 ·               ·
-                                 ·               ·
-                             ┌───↓───────────────↑─┐
-                             │REMOTE SYSTEM        │
-                             │                     │
-                             └─────────────────────┘
-- A Future that may be explicitly completed (setting its value and status),
+•       ┌ LOCAL SYSTEM (Under Control) ─────────────────────────┐
+        │               ┌·······(RPE Loop)··················┐   │
+        │               ↓                                   │   │
+        │   ºInput º  Parse    Create      Parse  Create  → ... │
+  INPUT ···→ºThreadº:  Data → │Future│  →  Data →│Future│       │
+   DATA │    RPEL Loop                                          │
+        │                        │                  │           │
+        │┌───────────────────────┘                  │           │
+        ││ ┌────────────────────────────────────────┘           │
+        ││ │ ºI/O   º   External  RºWait   º Handle    |Future| │
+        ││ └→ºThreadº:  Request  →RºResposeº→Respose → .complete│
+        ││                     ↓                                │
+        ││   ºI/O   º          ·               ↑                │
+        │└──→ºThreadº:         ·               ·                │
+        └──────────────────────·───────────────·────────────────┘
+                               ·               · Response|RemoteeError
+                               ·               · |Timeout
+                           ┌───↓───────────────↑─┐
+                           │REMOTE SYSTEM        │
+                           │(Out of control)     │
+                           └─────────────────────┘
+• A Future that may be explicitly completed (setting its value and status),
   and may be used as a CompletionStage, supporting dependent functions and
   actions that trigger upon its completion.
-- When two or more threads attempt to complete, completeExceptionally, or
+• When two or more threads attempt to complete, completeExceptionally, or
   cancel a CompletableFuture, only one of them succeeds.
 
-ºBarriers (OºallOf*):
-  CompletableFuture˂Void˃[] future_list
-    = new CompletableFuture[list.size()];
+• ºBarriersº (OºallOfº):
+   CompletableFuture˂Void˃[] future_list = new CompletableFuture[list.size()];
   int idx=0;
   log.info("Connecting plugins ...");
   for (Object el : list) {
     final CompletableFuture˂Void˃
       connectFuture = new CompletableFuture˂˃();
-    asyncMethod(connectFuture);
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    The async Method at some moment must call the
-    complete()
+    asyncMethod(connectFuture);  // ← async Method at some moment must call complete()
     ...
   }
-  return CompletableFuture. OºallOfº(future_list);
+  return CompletableFuture.OºallOfº(future_list);
 
-Extracted from:
-@[http://www.baeldung.com/java-completablefuture]
-In asynchronous computation, actions are represented as callbacks,
-handling errors might occur at any step.
+• Example: Using CompletableFuture as a Simple Future (no-arg constructor)
+  create CompletableFuture instance,
+  launch some computation in another thread,
+  returns Future immediately.
 
-- Future: (Java 5+)
-  -Represent an asynchronous computation
-- CompletableFuture: (Java 8+)
-  - Extends Future with methods to combine and handle errors
-  - Extends the CompletionStage interface
-    - Contract for an asynchronous computation step that
-      can be combined with other steps.
-  - About 50 different methods for composing, combining, executing
-    async computation
+  public Future˂String˃ calculateAsync() throws InterruptedException {
+      Future˂String˃ result = new CompletableFuture˂˃(); // *1 or .
 
-Using CompletableFuture as a Simple Future (no-arg constructor)
+      Executors.newCachedThreadPool().submit(() -˃ {
+          Thread.sleep(500);
+          completableFuture.complete("Hello"); // alt.: completableFuture.cancel(false);
+          return null;
+      });
 
-In the example below we have a method that creates a
-CompletableFuture instance, then spins off some computation in
-another thread and returns the Future immediately.
+      return completableFuture;
+  }
+  *1: when the result of computation is known:
+      Future˂String˃ result = CompletableFuture.completedFuture("Hello");
 
-  1  public Future˂String˃ calculateAsync() throws InterruptedException {
-  2      Future˂String˃ result = new CompletableFuture˂˃();
-  3
-  4      Executors.newCachedThreadPool().submit(() -˃ {
-  5          Thread.sleep(500);
-  6          completableFuture.complete("Hello");
-  7          return null;
-  8      });
-  9
-  10     return completableFuture;
-  11 }
-  Line 2: Alternatively when the result of computation is known:
-          Future<String> result = CompletableFuture.
-             completedFuture("Hello");
+  Future˂String˃ completableFuture = calculateAsync();
+  ...
+  String result = completableFuture.get(); // .get() wait for completion/error
+                                              (ExecutionException|InterruptedException)
+  assertEquals("Hello", result);              until second threads "completes" the future.
 
-  Line 6: Alternatively completableFuture.cancel(false);
-  Line 5: any other mechanism can be used to compute
-
-
-  1 Future<String> completableFuture = calculateAsync();
-  2
-  3 // ...
-  4
-  5 String result = completableFuture.get();
-  6 assertEquals("Hello", result);
-
-Line 5: get() blocks until .complete("...") is called in other thread
-Line 5: get()can raise
-           ExecutionException: error during computation
-           InterruptedException: thread executing method interrupted
-
-4. CompletableFuture with Encapsulated Computation Logic
+• Ex: CompletableFuture with Encapsulated Computation Logic <!-- @ma -->
    (runAsync -˂˂Runnable˃˃-, supplyAsync -˂˂Supplier˃˃-)
+   ˂˂Supplier˃˃: generic functional interface with single method
+                 (zero arguments, returns value)
 
-˂˂Supplier˃˃: generic functional interface with single method
-              (zero arguments, returns value)
+  CompletableFuture˂String˃ future
+    = CompletableFuture.supplyAsync(/* supplier lambda*/ () -˃ "Hello")
+  .thenApply(/* "processor" lambda */ s -˃ s + " World") // ← returns CompletableFuture
+  .thenAccept(/* consumer lambda */
+     s -˃ System.out.println("Computation returned: " + s)).
+  .thenRun(/* Runnable lambda*/ () -˃ System.out.println("Computation finished."));
 
-  1 CompletableFuture˂String˃ future
-  2   = CompletableFuture.supplyAsync(/* supplier lambda*/ () -˃ "Hello")
-  3 .thenApply(/* "processor" lambda */ s -˃ s + " World") // ← returns CompletableFuture
-  4 .thenAccept(/* consumer lambda */
-  5    s -˃ System.out.println("Computation returned: " + s));
-    Line 4: Alternatively (ignrore result)
-    .thenRun(/* Runnable lambda*/ () -˃ System.out.println("Computation finished."));
+• Combining Futures (monadic design pattern in functional languages)
+  CompletableFuture˂String˃ completableFuture
+    = CompletableFuture.supplyAsync(() -˃ "Hello")
+      .thenCompose(
+            s -˃ CompletableFuture.supplyAsync(() -˃ s + " World"));
+  assertEquals("Hello World", completableFuture.get());
 
-5. Combining Futures (monadic design pattern in functional languages)
+• Ex: Execute two independent Futures and do something with their results:
+  CompletableFuture future = CompletableFuture.supplyAsync(() -˃ "Hello")
+      .thenCombine(CompletableFuture.supplyAsync(
+        () -˃ " World"), (s1, s2) -˃ s1 + s2));
 
-  1 CompletableFuture˂String˃ completableFuture
-  2   = CompletableFuture.supplyAsync(() -˃ "Hello")
-  3     .thenCompose(
-  4           s -˃ CompletableFuture.supplyAsync(() -˃ s + " World"));
-  4
-  5 assertEquals("Hello World", completableFuture.get());
+  assertEquals("Hello World", future.get());
 
-6. Execute two independent Futures and do something with their results
+• Ex: Execute two independent Futures and do nothing with result:
+  CompletableFuture future = CompletableFuture.supplyAsync(() -˃ "Hello")
+    .thenAcceptBoth(CompletableFuture.supplyAsync(
+       () -˃ " World"), (s1, s2) -˃ log(s1 + s2));
 
-  1 CompletableFuture future
-  2   = CompletableFuture.supplyAsync(() -˃ "Hello")
-  3     .thenCombine(CompletableFuture.supplyAsync(
-  4       () -˃ " World"), (s1, s2) -˃ s1 + s2));
-  5
-  6 assertEquals("Hello World", future.get());
-
-(Simpler case - nothing to do with resulting value-)
-  2   = CompletableFuture.supplyAsync(() -˃ "Hello")
-  3   .thenAcceptBoth(CompletableFuture.supplyAsync(
-  4      () -˃ " World"), (s1, s2) -˃ log(s1 + s2));
-
-7. Running Multiple Futures in Parallel:
+• Ex: Running Multiple Futures in Parallel:
    -  wait for all to execute and process combined results
 
-  1  CompletableFuture˂String˃ future1
-  2    = CompletableFuture.supplyAsync(() -˃ "Hello");
-  3  CompletableFuture˂String˃ future2
-  4    = CompletableFuture.supplyAsync(() -˃ "Beautiful");
-  5  CompletableFuture˂String˃ future3
-  6    = CompletableFuture.supplyAsync(() -˃ "World");
-  7
-  8  CompletableFuture˂Void˃ combinedFuture
-  9    = CompletableFuture.allOf(future1, future2, future3);
-  10
-  11 // ...
-  12
-  13 combinedFuture.get();
-  14
-  15 String combined = Stream.of(future1, future2, future3)
-  16   .map(CompletableFuture::join)
-  17   .collect(Collectors.joining(" "));
-  18 assertEquals("Hello Beautiful World", combined);
+  CompletableFuture˂String˃ future1
+    = CompletableFuture.supplyAsync(() -˃ "Hello");
+  CompletableFuture˂String˃ future2
+    = CompletableFuture.supplyAsync(() -˃ "Beautiful");
+  CompletableFuture˂String˃ future3
+    = CompletableFuture.supplyAsync(() -˃ "World");
 
-    Line 16: join() is similar to get, but throws unchecked exception
-    if the Future does not complete normally.
+  CompletableFuture˂Void˃ combinedFuture
+    = CompletableFuture.allOf(future1, future2, future3);
 
-8. Handling Errors
+  // ...
 
-   Instead of catching an exception in a syntactic block, the
-CompletableFuture class allows you to handle it in a special handle
-method. This method receives two parameters: a result of a
-computation (if it finished successfully) and the exception thrown
-(if some computation step did not complete normally).
+  combinedFuture.get();
 
+  String combined = Stream.of(future1, future2, future3)
+    .map(CompletableFuture::join)  // ← join(): similar to get, but throws unchecked
+                                                exception if future fails.
+    .collect(Collectors.joining(" "));
+  assertEquals("Hello Beautiful World", combined);
 
+• Handling Errors: <!-- @ma -->
 
-Capture async exception:
+  We can NOT try-catch.
 
-  1  CompletableFuture˂String˃ completableFuture
-  2    =  CompletableFuture.supplyAsync(() -˃ {
-  3        ... if(errorDetected)
-  4               throw new RuntimeException("Computation error!");
-  6        return "Hello ";
-  7    })}).handle((s, t) -˃ s != null ? s : "Hello, Stranger!");
-  8
-  9  assertEquals("Hello, Stranger!", completableFuture.get());
-Alt:
-  1  completableFuture.completeExceptionally(
-  2    new RuntimeException("Calculation failed!"));
-  3  ...
-  4  completableFuture.get(); // ExecutionException
+  CompletableFuture˂String˃ completableFuture
+    =  CompletableFuture.supplyAsync(() -˃ {
+        ...
+        if(errorDetected)
+           throw new RuntimeException("Computation error!");
+        return "Hello ";
+    })
+   .handle( (s, t) -˃ s != null ? s : "Hello, Stranger!"); //
+   // result ┘  └ exception thrown? TODO:
+  assertEquals("Hello, Stranger!", completableFuture.get());
 
-9. Async Methods
- - The methods without the Async postfix run next execution stage
-   using a calling thread.
+  completableFuture.completeExceptionally(          Alternatively. Complete with Error
+    new RuntimeException("Calculation failed!"));
+  ...
+  completableFuture.get();                          ← ExecutionException
 
- - The Async method without the Executor argument runs a step using
-   the common fork/join pool implementation of Executor that is accessed
-   with the ForkJoinPool.commonPool() method.
+• Async Methods
+  - methods without Async-postfix run next execution blocking current thread.
+  - async* without the Executor argument runs a step using the common
+    fork/join pool implementation.
 
- - The Async method with an Executor argument runs a step using the
-   passed Executor.
+  - Ex.: process result of computation with a Function instance
+    CompletableFuture<String> completableFuture
+      = CompletableFuture.supplyAsync(() -˃ "Hello");
 
- Ex.: process result of computation with a Function instance
-  1 CompletableFuture<String> completableFuture
-  2   = CompletableFuture.supplyAsync(() -˃ "Hello");
-  3
-  4 CompletableFuture<String> future = completableFuture
-  5   .thenApplyAsync(s -˃ s + " World");
-  6
-  7 assertEquals("Hello World", future.get());
-
-    Line 5: under the hood the application of a function is wrapped
-    into a ForkJoinTask instance (for more information on the fork/join
-    framework, see the article ?Guide to the Fork/Join Framework in
-    Java?).  This allows to parallelize your computation even more and
-    use system resources more efficiently.
+    CompletableFuture˂String˃ future = completableFuture
+      .thenApplyAsync(s -˃ s + " World"); // lambda is wrapped into ForkJoinTask instance
+    assertEquals("Hello World", future.get());
 </pre>
+
 <pre zoom labels="async/reactive.101,doc_has.comparative,qa">
 <span xsmall>Guava ListenableFuture</span>
 @[https://github.com/google/guava/wiki/ListenableFutureExplained]
@@ -4043,7 +4056,7 @@ Alt:
           ListenableFuture                           │               CompletableFuture
 ─────────────────────────────────────────────────────┼───────────────────────────────────────────────────
                                                      │ It is different from ListenableFuture in that it
-                                                     │ can be completed from any thread that wants it to complete
+                                                     │ can be completed from any thread
 ─────────────────────────────────────────────────────┼───────────────────────────────────────────────────
 ListenableFuture listenable = service.submit(...);   │ CompletableFuture completableFuture =
   Futures.addCallback(listenable,                    │     new CompletableFuture();
@@ -4060,8 +4073,7 @@ ListenableFuture listenable = service.submit(...);   │ CompletableFuture compl
   })                                                 │ set with the parameter value if the task is
                                                      │ not already completed.
 
-  ..."CompletableFuture is dangerous because it exposes ºcompeteº
-     methods."
+  ..."CompletableFuture is dangerous because it exposes ºcompleteº methods."
   ..."CompletableFuture would have been good if it extended Future
      and did not expore toCompletableFuture,... and they could have named
      it something meaningful like ChainableFuture "
@@ -4142,9 +4154,8 @@ Bio
 Ron Pressler is the technical lead for Project Loom, which aims to add delimited
 continuations, fibers and tail-calls to the JVM
 
-<span xsmall>Quasar</span>
-<span xsmall>Java Fibers</span>
-- fast threads for java and Kotlin
+<span xsmall>Quasar(Fibers)</span>
+• fast threads for java and Kotlin
 @[http://docs.paralleluniverse.co/quasar/]
 
 NOTE: To be superseded by Prj. Loom?
@@ -4153,7 +4164,6 @@ My understanding is that Ron is currently busy working for/with Oracle on
 project Loom which should bring "native" Fiber/lightweight continuation
 support directly into JVM without the need of auxiliary library like Quasar.
 </pre>
-
 </div>
 </div>
 
@@ -7414,7 +7424,7 @@ RºPROBLEM:º                                          │BºSOLUTION:º
 • Works from GUI+cli, maven/gradle/eclipse integration.
 • Plugin extension support (just download plugin jar and
   it will be detected and included):
-  • fb-contrib: 
+  • fb-contrib:
   • Security Audits for Java Web applications:
   @[https://find-sec-bugs.github.io/]
     It can detect 141 different vulnerability types with
@@ -7422,9 +7432,9 @@ RºPROBLEM:º                                          │BºSOLUTION:º
 
 • Running SpotBugs.
   · Presetup. Compile java code to classes or jars.
-    SpotBugs runs against compiles class files, using source code 
+    SpotBugs runs against compiles class files, using source code
     as a reference when displaying output.
- 
+
   $ java -jar ../spotbugs.jar ...$SPOTBUG_ OPTIONS ..
 
                              JVM OPTIONS
@@ -7447,7 +7457,7 @@ RºPROBLEM:º                                          │BºSOLUTION:º
                                    also supported to set multiple reports
   -include filter01.xml     ← show only bugs match filter specified.
   -exclude filter02.xml     ← *1
-  -onlyAnalyze com.foo.*,com.bar.* ← Unlike filter, analysis is skipt 
+  -onlyAnalyze com.foo.*,com.bar.* ← Unlike filter, analysis is skipt
                               for any other class type
                               WARN: some detectors may produce inaccurate
                               results
@@ -7460,15 +7470,15 @@ RºPROBLEM:º                                          │BºSOLUTION:º
                             RºNOTEº: It is -html=value while other flags work like
                                      -flag value (without the "=" sign)
                               -html:fancy.xsl=...  (DOM+JS for navigation + CSS)
-                              -html:fancy-hist.xsl=...  fancy.xsl evolution 
+                              -html:fancy-hist.xsl=...  fancy.xsl evolution
                               Other output formats include xml/sarif/emacs/xdocs
   -nested false             ← disable scanning of nested jar (def:enabled)
   -auxclasspath ...         ← It should include all jar/dirs containing classes
                               that are part of the program being analyzed but
                               you do not want to have analyzed for bugs.
   -auxclasspathFromInput    ← Read auxclasspath from STDIN, line by line
-  -auxclasspathFromFile 
-  -analyzeFromFile fileI    ← Read input file list from file line-by-line. 
+  -auxclasspathFromFile
+  -analyzeFromFile fileI    ← Read input file list from file line-by-line.
   -showPlugins              ← listavailable detector plugins.
 
                               OUTPUT CUSTOMIZATION OPTIONS
@@ -7516,43 +7526,43 @@ RºPROBLEM:º                                          │BºSOLUTION:º
   -printConfiguration       ← Print configuration and exit
 
 *1┌── myIncludeOrExcludeFilter.xml ────
-  │                                
+  │
   │ ˂?xml version="1.0" encoding="UTF-8"?˃
   │ ˂FindBugsFilter˃
   │ ˂Match˃
   │   ˂Bug                       match if  pattern and/or code and/or category match
   │     pattern="..."          ← comma-separated list of patterns to match
   │                              ex.: DLS_DEAD_LOCAL_STORE,DM_EXIT,
-  │     code="..."             ← coarse-grained matching comma-sep. list of bug 
+  │     code="..."             ← coarse-grained matching comma-sep. list of bug
   │                              abbreviations(DC,DE,IC,IJU,MS,SIC,URF,UUF,XYZ,...)
   │     category="..."         ← even more coarse-grained :=
-  │                              CORRECTNESS, BAD_PRACTICICE, 
-  │   /˃                         PERFORMANCE, STYLE, MT_CORRECTNESS 
+  │                              CORRECTNESS, BAD_PRACTICICE,
+  │   /˃                         PERFORMANCE, STYLE, MT_CORRECTNESS
   │                                 (M)ulti(T)hreaded ┘
   │
-  │ 
-  │   ˂Confidence value="1"/˃  ← 1 match high-confidence warnings, 
+  │
+  │   ˂Confidence value="1"/˃  ← 1 match high-confidence warnings,
   │                              2 match normal-confidence warnings
   │                              3 match low-confidence warnings
-  │ 
+  │
   │    ˂Rank value="1" /˃     ←  1  to 4 : scariest
   │                              5  to 9 : scary
   │                             10 to 14: troubling
   │                             15 to 20: concern
-  │ 
-  │   ˂Package name="~.."/˃ ← name/regex. Nested packages are NOT included 
+  │
+  │   ˂Package name="~.."/˃ ← name/regex. Nested packages are NOT included
   │   ˂Class   name="~.. /˃ ← name/regex. NOTE: Some bug instances relate to
   │                                       2+ classes.
   │   ˂Source  name="..."/˃ ← name/regex.  match warnings associated to source file.
   │                           └────┬────┘
   │                         regex if prefixed by ~
-  │  
+  │
   │   ˂Method
   │    name="funcXXX"
   │    params="int,..."
   │    returns="void"
   │   /˃
-  │ 
+  │
   │   ˂Field name="..." /˃   ← type=... instead of name can also be used
   │   ˂Local name="..." /˃
   │   ˂Type  name="..." /˃
@@ -7564,7 +7574,7 @@ RºPROBLEM:º                                          │BºSOLUTION:º
   │
   │ ˂/FindBugsFilter˃
   └────────────────────────────────────────────
-  
+
 
 
 • See examples at:
@@ -7583,9 +7593,9 @@ RºPROBLEM:º                                          │BºSOLUTION:º
 
 • Ussage @[http://www.jutils.com/uguide.html]
 $º$ lint4j \                          º
-$º   -sourcepath src/main \           º ← analyze source 
+$º   -sourcepath src/main \           º ← analyze source
 $º   -classpath lib/bcel.jar:... \    º
-$º   -exclude "packagename"   \       º ← package or package-prefix 
+$º   -exclude "packagename"   \       º ← package or package-prefix
 $º   "com.jutils.lint4j.*"            º
 $º                                    º
 $º$ lint4j -sourcepath .../log4j.jar  º ← analyze binary
@@ -7593,7 +7603,7 @@ $º    "org.apache.*"                  º
 $º                                    º
 $º$ lint4j  \                         º
 $º   -sourcepath ./build/log4j.jar    º ← analyze 2 package in jar
-$º   org.apache.log4j \               º  
+$º   org.apache.log4j \               º
 $º   org.apache.log4j.spi             º
 $º                                    º
 $º$ lint4j \                          º
@@ -7602,7 +7612,7 @@ $º              com/.../CalssJ.java   º
 
 </pre>
 
-<pre zoom 
+<pre zoom
   labels="qa.101,_PM.low_code,concurrency.101,_PM.troubleshooting,scalability.profiling,_PM.WiP"
   id="sonarqube_summary" >
 <span xsmall>SonarQube</span>
@@ -7615,40 +7625,40 @@ $º              com/.../CalssJ.java   º
 
   ┌── SERVER SIDE: ────────────────────────────────
   │
-  │• LAUNCH SERVER INSTANCE                        
-  │  ======================                        
-  │$º$ docker run -d --name sonarqube               \ º 
-  │$º  -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true    \ º 
-  │$º  -v $(pwd)/sonarqube_data:/opt/sonarqube/data \ º 
-  │$º  -p 9000:9000 sonarqube:latest             º 
-  │                                                
-  │• Create a new project through the web console  
-  │  and annotate the 40-random-chars TOKEN.       
-  │  (Needed by client-side sonar-scanner).        
+  │• LAUNCH SERVER INSTANCE
+  │  ======================
+  │$º$ docker run -d --name sonarqube               \ º
+  │$º  -e SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true    \ º
+  │$º  -v $(pwd)/sonarqube_data:/opt/sonarqube/data \ º
+  │$º  -p 9000:9000 sonarqube:latest             º
+  │
+  │• Create a new project through the web console
+  │  and annotate the 40-random-chars TOKEN.
+  │  (Needed by client-side sonar-scanner).
   └─────────────────────────────────────────────────
-                                                  
+
   ┌─ CLIENT SIDE: ──────────────────────────────────
-  │                                                          
+  │
   │• 1) PROJECT_SRC_ROOT
   │  ┌ └ sonar-project.properties ─┐
   │  │sonar.projectKey=my:project  ← Required
   │  │                             │
   │  │#sonar.projectName=...       ← def:project key
   │  │#sonar.projectVersion=1.0    ← def:'not provided'
-  │  │sonar.sources=src/java/      ← relative to 
+  │  │sonar.sources=src/java/      ← relative to
   │  │                             │ sonar-project.properties
   │  │#sonar.sourceEncoding=UTF-8  │
   │  │sonar.java.binaries=./build/ ← compiled *class dir.
   │  │sonar.java.libraries=...     ← ex: /lib/*.jar,./plugins/lib/*jar
   │  └─────────────────────────────┘
-  │                    
+  │
   │• 2) launch client scanner like
   │  2.alt1) using mvn plugin:
   │    $º$ mvn clean verify sonar:sonar \       º
-  │    $º    -Dsonar.projectKey=test2 \         º    
+  │    $º    -Dsonar.projectKey=test2 \         º
   │    $º    -Dsonar.host.url=http://...:9000 \ º
-  │    $º    -Dsonar.login=$PROJECT_TOKEN       º  
-  │                                                          
+  │    $º    -Dsonar.login=$PROJECT_TOKEN       º
+  │
   │  2.alt2) using docker
   │    $º $ docker run \                        º
   │    $º   --rm \                              º
@@ -7658,7 +7668,7 @@ $º              com/.../CalssJ.java   º
   │    $º   sonarsource/sonar-scanner-cli       º
   └─────────────────────────────────────────────────
 
-• See original source for more info about 
+• See original source for more info about
    SonarScanner Troubleshooting recipes, advanced docker config,
    running,ºcaching scanner filesº,  usng self-signed certs:
 @[https://docs.sonarqube.org/latest/analysis/scan/sonarscanner/]
@@ -7739,7 +7749,9 @@ Tag⅋ Parameter         | Usage                               | Applies to     
 -----------------------+-------------------------------------+-------------------------+-------
 </pre>
 
-<pre zoom labels="qa.testing.101,_PM.WiP">
+<pre zoom id="testing_summary"
+  labels="101.qa.101,_doc_has.comparative,_PM.WiP" >
+
 <span title>Junit</span>
 • (test scoped) dependencies:
    org.junit.jupiter:junit-jupiter-api:${junit_version}
@@ -7896,6 +7908,95 @@ Tag⅋ Parameter         | Usage                               | Applies to     
 
   // and many more assertions:
   // iterable, stream, array, map, dates, path, file, numbers, predicate, optional ...
+
+<hr/>
+<span title>Property Testing</span>
+• A property testing is just something like:
+
+  for all (x, y, ...)
+  such as precondition(x, y, ...) holds
+  property(x, y, ...) is true
+
+  It checks that a function/program/whatever is under test 
+  abides by a property.  Most of the time, properties do not
+  have to go into too much details about the output, they 
+  just have to check for useful characteristics that must be
+  seen in the output.
+
+• Property based testing has become quite famous in the functional 
+  world. Mainly introduced by QuickCheck framework in Haskell, it 
+  suggests another way to test software. IT TARGETS ALL THE SCOPE 
+  COVERED BY EXAMPLE BASED TESTING: (UNIT TESTS TO INTEGRATION TESTS).
+
+• Available automated test technics:
+ @[https://medium.com/criteo-engineering/introduction-to-property-based-testing-f5236229d237]
+
+          △ • Random
+     full ┆   - Fuzzing
+       △  ┆   - Monkey testing
+       ┆  ┆ 
+    Input ┆ • Static Analysis
+    scope ┆   - Mem. leaks        • Example based
+  covered ┆   - Unitialized mem.    - Unit tests
+       ┆  ┆   - Nulls.              - QA test
+       ▽  ┆   - Threading issues    - UI tests
+   partial┆   - ...
+         ─┼─╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶╶▷
+            Low  ← Feature compliance →    High 
+                                          
+
+• Extracted from @[https://en.wikipedia.org/wiki/QuickCheck]. 
+  List of Java libs for property testing :
+  "FunctionalJava's QuickCheck module". FunctionalJava.  2015-08-14
+  "Quickcheck for Java". Quickcheck.dev.java.net.        2011-12-09
+  "JCheck". JCheck.                                      2011-12-09
+  "junit-quickcheck". junit-quickcheck.                  2013-07-03
+  "jqwik for the JUnit5 Platform". jqwik.                2017-06-19
+  "Quick Theories property tests Java 8"                 2017-10-30
+  "jetCheck prop.-based tests    Java 8" (JetBrains)     2018-07-10
+
+
+• e.g. test using 'jqwik': 
+  """ fizzBuzz() must return "Fizz" 
+      for every divisible-by-3 input """
+  →  PRECONDITION: Consider inputs in [1 ... 100] divisible by 3
+  → POSTCONDITION: fizzBuzz() returns "Fizz"
+
+  import java.util.*;
+  import java.util.stream.*;
+  import net.jqwik.api.*;
+  
+  class FizzBuzzTests {
+  
+      String fizzBuzz(int i) {               // ← function to test
+         boolean div3 = (i % 3 == 0),
+                 div5 = (i % 5 == 0);
+         if (div3⅋⅋ div5) return "FizzBuzz";
+         if (div3) return "Fizz";
+         if (div5) return "Buzz"
+         return String.valueOf(i);
+      }
+  
+      @Provide
+      Arbitrary˂Integer˃ divisibleBy3() {    // ← Precondition
+        return Arbitraries.integers()        //   input to function 
+          .between(1, 100)                   //   divides by 3.
+          .filter(i -˃ i % 3 == 0);
+      }
+  
+      final List˂String˃ IN_OUT = 
+        IntStream.range(1, 100)
+          .mapToObj((int i) -˃ )
+          .collect(Collectors.toList());
+  
+      @Property                              // ← Test to execute
+      boolean divBy3_starts_with_Fizz( 
+        @ForAll("divisibleBy3") int i) {     // ← "inject" precondition 
+        return IN_OUT
+               .get(i - 1)
+               .startsWith("Fizz");          // ← check Postcondition
+      }
+  }
 </pre>
 
 <pre zoom labels="qa.testing,cloud.aws,devops,_PM.backlog">
@@ -8095,7 +8196,7 @@ optional.filter( s -˃ s.startsWith("RebelLabs"));    // ← return empty Option
 <div groupv>
 <span title>Maven</span><br/>
 <pre zoom
-   labels="DevOps.maven.101,devops.101,qa.*,devops,_PM.troubleshooting,_PM.WiP" 
+   labels="DevOps.maven.101,devops.101,qa.*,devops,_PM.troubleshooting,_PM.WiP"
    id="mvn_summary" >
 <span xsmall>MVN Summary</span>
 • External Links
@@ -8316,11 +8417,11 @@ Rºup to 100 times slower than gradle buildsº.
   │   ...                                     @[https://maven.apache.org/pom.html#Properties]
   │   ˂junit.ver˃3.8.1˂/junit.ver˃              ← Best pattern. Group all dependency versions in properties
   │   ˂guava.ver˃21.0˂/guava.ver˃                 (in parent pom if parent─children apply)
-  │   ˂......ver˃19.2˂/guava.ver˃             
+  │   ˂......ver˃19.2˂/guava.ver˃
   │   ···
   │   ˂maven.compiler.source˃1.8˂/maven.compiler.source˃ ← Best pattern. Group plugin params in properties.
   │   ˂maven.compiler.target˃1.8˂/maven.compiler.target˃
-  │   ... 
+  │   ...
   │ ˂/properties˃
   └ ˂dependencies˃
 
@@ -8387,7 +8488,7 @@ Rºup to 100 times slower than gradle buildsº.
   ˂/modules˃                      │   ˂/dependency˃...
                                   │ ˂/dependecies˃
 
- 
+
   ˂dependencyManagement˃            ←  *1
     ˂dependencies˃
       ˂dependency˃
@@ -8400,19 +8501,19 @@ Rºup to 100 times slower than gradle buildsº.
   ˂/dependencyManagement˃
 
 
-• best practice: Try to avoid using parent inherited properties in children. 
-                 Modifyint the parent can break children. 
- 
+• best practice: Try to avoid using parent inherited properties in children.
+                 Modifyint the parent can break children.
+
 *1: best-practice: use this section to define all dependency versions,
     but do not set a scope here so that all dependencies have scope
     compile by default (or set to compile).
-  
-  
+
+
   - Use the pluginmanagement section of parent pom to define versions for
     ºallº plugins that your build uses, even standard maven plugins like
     maven-compile-plugin and maven-source-plugin. This way your build will
     not suddenly behave differently when a new version of a plugin is released.
-  
+
   - When using a parent POM not located in the directory directly above
     the current POM define an empty relativePath element in your parent section.
 
@@ -8617,7 +8718,7 @@ $º$  cat artifact01-1.4.7-javadoc.jar *1 | gpg2 -ab -o artifact01-1.4.7-javadoc
     to happen if the starting ˂project˃ tag is ºNOTº on a single
     line.
     The only things that should be different are:
-    ˂version˃ and ˂scm˃ elements. Anyother must be manually updated 
+    ˂version˃ and ˂scm˃ elements. Anyother must be manually updated
     from original pom.xml.
 
 $º$ mvn deploy          º← Deploy snapshot (to be staged)
@@ -8626,8 +8727,8 @@ $ºmvn release:clean     º← Prepare for  release
 $º$ mvn release:prepare\º← Dry run. Check output is OK.
 $º  -DdryRun=true       º  -DautoVersionSubmodules=true can save time
                            in multi-module projects
-$ºmvn release:prepare   º← Exec. release.  new tag will automatically 
-                           be created and checked in git (or svn,...) 
+$ºmvn release:prepare   º← Exec. release.  new tag will automatically
+                           be created and checked in git (or svn,...)
 $ºmvn release:perform   º← Stage release for a vote. release will
                            automatically be added to temp staging dir.
 </pre>
@@ -9389,7 +9490,7 @@ the following enterprise features:
 • JDK 14: JFR Event Streaming
 • JDK 15: Reimplement Datagram Socker API
           Hidden Classes
-  
+
 • JDK 16: Elastic metaspace
          ºAlpine Linux portº
 
@@ -9398,11 +9499,11 @@ the following enterprise features:
 <pre zoom labels="java_lang.functional,java_lang.101,_PM.TODO">
 <span title>Monads in Java</span>
 @[https://dzone.com/articles/what-is-a-monad-basic-theory-for-a-java-developer?edition=672394]
-• two of the most commonly known Java 8 features are monad 
+• two of the most commonly known Java 8 features are monad
   implementations, namely Stream and Optional
-• Monad is a concept:  we can view it as a wrapper which puts our 
-  value in some context and allows us to perform operations on the 
-  value. In this context, the output of an operation at any step is the 
+• Monad is a concept:  we can view it as a wrapper which puts our
+  value in some context and allows us to perform operations on the
+  value. In this context, the output of an operation at any step is the
   input to the operation at the next step.
 </pre>
 <pre zoom labels="async/reactive.101,_PM.TODO">
@@ -9432,7 +9533,7 @@ the following enterprise features:
 <pre zoom labels="concurrency.101,_PM.TODO">
 <span title>Amdahl's law</span>
 • Amdahl's law provides a formula to compute the theoretical maximum
-  speed up by providing multiple processors to an application. 
+  speed up by providing multiple processors to an application.
 • theoretical speedup is computed by S(n) = 1 / (B + (1-B)/n) where n
   denotes the number of processors and B the fraction of the program
   that cannot be executed in parallel. When n converges against
@@ -9445,12 +9546,12 @@ the following enterprise features:
 
 <pre zoom labels="concurrency.101,_PM.TODO">
 <span title>Sub-processes</span>
-• Concurrency can be greately simplified by using OS processes 
+• Concurrency can be greately simplified by using OS processes
   (vs in-process threads).  This automatically avoid many/most of the problems
   with thread concurrency.
 • When context switching among OS process is not an issue multi-process
   architecture is a safer and easier approach.
-  Note for example how all modern web browser have switched to a 
+  Note for example how all modern web browser have switched to a
   multi-process (one per-tab) approach to gain estability and safety.
 
 • Invoquing sub-processes from java, curl example:
@@ -9465,8 +9566,8 @@ the following enterprise features:
 
 <pre zoom labels="architecture.distributed,qa.error_control,_PM.TODO">
 <span title>Resilience4j</span>
-• higher-order functions (decorators) to enhance any functional interface, 
-  lambda expression or method reference with a Circuit Breaker, Rate 
+• higher-order functions (decorators) to enhance any functional interface,
+  lambda expression or method reference with a Circuit Breaker, Rate
   Limiter, Retry or Bulkhead.
 • more than one decorator on any functional interface, lambda or method ref
   can be stacked.
@@ -9590,21 +9691,21 @@ Panache focuses on making your entities trivial and fun to write in Quarkus.
 
 • Spring Batch or Quartz frameworks force to implement custom interfaces and
   they add a lot of overhead whereas I just want to run some long-running
-  tasks in the background. JobRunr solves all of this by just 
-  accepting any Java 8 lambda, analyzing it and storing the job 
-  information in a SQL or NoSQL database. You can schedule these jobs 
-  to be executed as soon as possible, somewhere in the future or in a 
+  tasks in the background. JobRunr solves all of this by just
+  accepting any Java 8 lambda, analyzing it and storing the job
+  information in a SQL or NoSQL database. You can schedule these jobs
+  to be executed as soon as possible, somewhere in the future or in a
   recurring manner using Cron expressions.
 
 • Dehuysser: I would like to highlight three things:
-  • JobRunr does some magic with ASM (which is also used by Spring, 
-    Hibernate and a lot of other frameworks) to analyze the job lambda. 
-    By using ASM, I really learned a lot about the JVM bytecode, which is 
+  • JobRunr does some magic with ASM (which is also used by Spring,
+    Hibernate and a lot of other frameworks) to analyze the job lambda.
+    By using ASM, I really learned a lot about the JVM bytecode, which is
     not as difficult as I imagined.
-  • As JobRunr performs bytecode analysis, it also participates in 
-    the Oracle Quality Outreach program. This means JobRunr is tested 
-    against upcoming releases of the JVM. This helps me to make sure that 
-    it will continue working on newer Java releases and also helps the 
+  • As JobRunr performs bytecode analysis, it also participates in
+    the Oracle Quality Outreach program. This means JobRunr is tested
+    against upcoming releases of the JVM. This helps me to make sure that
+    it will continue working on newer Java releases and also helps the
     Java community as bugs in the JVM itself are caught earlier.
   • For users that need support or extra features, there is also JobRunr Pro.
     Adding extra features like queues with different priorities (high priority
@@ -10044,7 +10145,7 @@ https://docs.oracle.com/javase/tutorial/essential/concurrency/immutable.html
   - NIO framework library
   - client server framework library, or
   - a networking socket library
-  
+
 • Apache MINA comes with many subprojects :
   - Asyncweb : An HTTP server build on top of MINA asynchronous framework
   - FtpServer : A FTP server
@@ -10823,7 +10924,7 @@ AmadeusITGroup/HttpSessionReplacer: Store JEE Servlet HttpSessions in Redis
   · target/classes/META-INF/dekorate/kubernetes.json
 
 • Integration with Jib to generate OCI images is also available.
-  
+
 </pre>
 <pre zoom labels="_PM.TODO,standards.jee.servlets,_PM.backlog">
 <span title>Servlet servers Arch</span>
@@ -10847,7 +10948,7 @@ embedded servers usually comprise two logical components:
 @[https://www.yourkit.com/java/profiler/features/]
 • Yourkit: commercial (non OOSS) profiler with advanced features
 • Tight integration with your IDE
-• "Smart what if"  allows to evaluate performance gains of supposed optimizations 
+• "Smart what if"  allows to evaluate performance gains of supposed optimizations
   without re-profiling the application.
 • CPU call tree
 • Flame graphs
@@ -10873,8 +10974,8 @@ embedded servers usually comprise two logical components:
   It is possible to combine thread states with HTTP requests and SQL queries to get
   the full picture how the requests are processed by your applications.
 
-• Exception profiling: Massive exception throwing is a common but often hidden 
-  performance problem. 
+• Exception profiling: Massive exception throwing is a common but often hidden
+  performance problem.
 
 •ºDeobfuscate the code on the fly restoring original class, method and field names of º
  ºapplications obfuscated with ProGuard, yGuard, Zelix KlassMaster, Allatori, and other º
@@ -10884,10 +10985,10 @@ embedded servers usually comprise two logical components:
 
 • Extensible API to create custom probes.
 
-• Command line support. (UI free). 
+• Command line support. (UI free).
 
 • free licenses for non-commercial open source projects.
-  Special offers for educational and scientific organizations. 
+  Special offers for educational and scientific organizations.
 </pre>
 <pre zoom labels="devops.gradle,_PM.backlog">
 <span title>Gradle Summary</span>
@@ -10940,7 +11041,7 @@ REF: @[https://docs.gradle.org/current/userguide/gradle_wrapper.html]
   - run a project with provided Wrapper
     ...
   - upgrade the Wrapper to new Gradle version when desired.
-  
+
   - ºCustomizing the wrapperº
     - built-in wrapper task exposes numerous options
     to bend the runtime behavior to your needs.
@@ -10948,14 +11049,14 @@ REF: @[https://docs.gradle.org/current/userguide/gradle_wrapper.html]
     build.tasks.wrapper {
       distributionType = Wrapper.DistributionType.ALL
     }
-  
+
   - HTTP Basic Authentication (RºWARNº: use only with TLS connections)
     alt 1: ENV.VARS:
     systemProp.gradle.wrapperUser=username
     systemProp.gradle.wrapperPassword=password
     alt 2: gradle/wrapper/gradle-wrapper.properties
     distributionUrl=https://username:password@somehost/path/to/gradle-distribution.zip
-  
+
   - ºVerifying downloadº
     @gradle/wrapper/gradle-wrapper.properties:
     distributionSha256Sum=371cb9fbebbe9880d147f59bab36d61eee122854ef8c9ee1ecf12b82368bcf10
@@ -10981,7 +11082,7 @@ REF: @[https://docs.gradle.org/current/userguide/gradle_wrapper.html]
          }
          getDependencies().add('compile', fileTree(dir: libSaveDir, include: libName))
      }
-  
+
     2) the following code to your dependencies declaration:
      dependencies {
          /* ... */
@@ -10991,13 +11092,13 @@ REF: @[https://docs.gradle.org/current/userguide/gradle_wrapper.html]
          def url = "https://github.com/FlamingTuri/multi-module-deployer/releases/download/v$version/$libName"
          downloadLibFromUrl(libSaveDir, libName, url)
      }
-  
+
   └ Usage example
-  
+
     import multi.module.deployer.MultiModuleDeployer;
     import multi.module.deployer.moduleconfig.ModuleConfig;
     import multi.module.deployer.moduleconfig.ModuleConfigFactory;
-  
+
     public class App {
       public static void main(String[] args) {
           MultiModuleDeployer multiModuleDeployer = new MultiModuleDeployer();
@@ -11008,22 +11109,22 @@ REF: @[https://docs.gradle.org/current/userguide/gradle_wrapper.html]
             ModuleConfigFactory.httpModuleConfig(linuxCmd, windowsCmd, 8080, "localhost", "/api/...");
           // adds the first configuration to the deployment list
           multiModuleDeployer.add(firstModuleConfig);
-  
+
           // commands to run the second module
           linuxCmd = "linux commands to deploy second module";
           windowsCmd = "windows commands to deploy second module";
           ModuleConfig secondModuleConfig = ModuleConfigFactory.httpModuleConfig(linuxCmd, windowsCmd, 3000, "localhost", "/api/...");
-  
+
           // adds the second configuration to the deployment list
           // it will be started only after the first one is "ended"
           multiModuleDeployer.add(secondModuleConfig);
-  
+
           // deploys the modules
           multiModuleDeployer.deploy();
       }
     }
 
-• What's New 
+• What's New
 - Gradle v6:
 @[https://www.infoq.com/news/2020/01/gradle-releases-version-6/]
 </pre>
@@ -11065,6 +11166,8 @@ REF: @[http://tribe.ow2.org/]
   effortless deployment and management of micro-services and serverless apps,
   with superior performance. (Includes CRaSH shell)
 </pre>
+
+
 
 </div><!-- }}} -->
 </body>
@@ -11149,7 +11252,11 @@ https://www.infoq.com/news/2021/08/java-news-roundup-aug02-2021/
 Is Java 17 a Glass Half Full?
 https://www.infoq.com/news/2021/07/java-17-glass/
 
-Overall, the features present in Java 17 are broadly following the expected pattern, as InfoQ previously reported on. The unfortunate truth is that of the major projects that have been the major areas of JDK development in the last three years (Loom, Valhalla, Amber and Panama) - none are complete as of the release of Java 17.
+Overall, the features present in Java 17 are broadly following the 
+expected pattern, as InfoQ previously reported on. The unfortunate 
+truth is that of the major projects that have been the major areas of 
+JDK development in the last three years (Loom, Valhalla, Amber and 
+Panama) - none are complete as of the release of Java 17.
 
 This means that the feature set of Java 17 will be more modest than many developers hoped.
 
@@ -11244,7 +11351,7 @@ https://dzone.com/articles/we-should-write-java-code-differently?edition=598293#
 ######################################
 - Complete who to write files in Guava: TODO:
 ######################################
-maven: 
+maven:
 • aborted compilation of a multi-module (like AbsisParentPom)
   can be restarted (from the last failed module) with '--resume-from' option like:
 $º$ mvn --resume-from=com.myCompany.myModule:MyArtifact \ º
@@ -11264,7 +11371,7 @@ $º  $ clean install -P myProfile -DskipTests=true         º
 <span xsmall>Kryo serialization lib</span>
 - Object graph serialization library:
  @[https://github.com/EsotericSoftware/kryo]
- Kryo is a fast and efficient binary object graph serialization
+Kryo is a fast and efficient binary object graph serialization
 framework for Java. The goals of the project are high speed, low
 size, and an easy to use API. The project is useful any time objects
 need to be persisted, whether to a file, database, or over the
@@ -11285,11 +11392,15 @@ object.
 @[https://docs.sonarqube.org/latest/requirements/requirements/]
 https://en.wikipedia.org/wiki/Seccomp
 http://people.apache.org/~rmuir/es-coverage/post-query-refactoring/org.elasticsearch.bootstrap/Seccomp.java.html
-seccomp filter  Non-portable linux/amd64 only security protection, preventing non 
+seccomp filter  Non-portable linux/amd64 only security protection, preventing non
                 authorized calls to kernel.
 
 
-By default, Elasticsearch uses seccomp filter. On most distribution this feature is activated in the kernel, however on distributions like Red Hat Linux 6 this feature is deactivated. If you are using a distribution without this feature and you cannot upgrade to a newer version with seccomp activated, you have to explicitly deactivate this security layer by updating sonar.search.javaAdditionalOpts in $SONARQUBEHOME/conf/sonar.properties_:
+By default, Elasticsearch uses seccomp filter. On most distribution
+this feature is activated in the kernel. If  distributions without
+this featur you have to explicitly deactivate this security layer
+by updating sonar.search.javaAdditionalOpts in
+$SONARQUBEHOME/conf/sonar.properties_:
 
 sonar.search.javaAdditionalOpts=-Dbootstrap.system_call_filter=false
 
@@ -11302,17 +11413,6 @@ If your kernel has seccomp, you will see:
 CONFIG_HAVE_ARCH_SECCOMP_FILTER=y
 CONFIG_SECCOMP_FILTER=y
 CONFIG_SECCOMP=y
-
-For more detail, see the Elasticsearch documentation.
-Fonts
-
-Generating Executive Reports requires that fonts be installed on the server hosting SonarQube. On Windows servers, this is a given. However, this is not always the case for Linux servers.
-
-The following should be ensured:
-
-    Fontconfig is installed on the server hosting SonarQube
-    A package of FreeType fonts is installed on the SonarQube server. The exact packages available will vary by distribution, but a commonly used package is libfreetype6
-
 </pre>
 ##############################################
 <pre zoom labels="qa.testing.101,_PM.TODO">
@@ -11327,15 +11427,72 @@ TODO: Compact monitoring notes: jcmd, Visual Recorder,  CRaSH shell
 ##################################
 https://eclipse-ee4j.github.io/jakartaee-tutorial/ @ma
 https://www.uml-diagrams.org/java-ejb-uml-profile-diagram-example.html
-https://www.uml-diagrams.org/java-ejb-state-machine-diagram-example.html 
+https://www.uml-diagrams.org/java-ejb-state-machine-diagram-example.html
 ###########################
 https://www.uml-diagrms.org/java-7-api-uml-package-diagram-example.html
 https://www.uml-diagrams.org/examples/java-servlet-25-api-package-diagram-example.html
 https://www.uml-diagrams.org/examples/java-servlet-30-api-package-diagram-example.html
-https://www.uml-diagrams.org/java-thread-uml-state-machine-diagram-example.html 
+https://www.uml-diagrams.org/java-thread-uml-state-machine-diagram-example.html
 ###########################
-https://www.uml-diagrams.org/tomcat-server-uml-composite-structure-diagram-example.html 
-https://www.uml-diagrams.org/web-application-clusters-uml-deployment-diagram-example.html 
+https://www.uml-diagrams.org/tomcat-server-uml-composite-structure-diagram-example.html
+https://www.uml-diagrams.org/web-application-clusters-uml-deployment-diagram-example.html
 ###########################
+https://github.com/google/re2j  
+linear time regular expression matching in Java  
+If you use regular expression patterns with a high degree of 
+alternation, your code may run faster with RE2/J. In the worst case, 
+the java.util.regex matcher may run forever, or exceed the available 
+stack space and fail; this will never happen with RE2/J.
+##########################
+weekly Inside Java Newscast:
+https://www.youtube.com/playlist?list=PLX8CzqL3ArzX8ZzPNjBgji7rznFFiOr58
+Who-is-Who:
+https://nipafx.dev/nicolai-parlog/
+Java developer advocate at Oracle
 
-    
+plans for Java in 2022.
+https://www.youtube.com/watch?v=4Y3LijiBxRA
+focus on the four main Java projects:
+· https://openjdk.java.net/projects/amber
+· https://openjdk.java.net/projects/loom
+· https://openjdk.java.net/projects/panama/
+· https://openjdk.java.net/projects/valhalla
+  The goal of Project Valhalla is to explore and incubate advanced 
+  Java VM and Language feature candidates such as:
+  · Value types
+  · Generic specialization
+  · Enhanced volatiles
+  · and possibly othe related topics, such as reified generics
+
+• https://openjdk.java.net/jeps/0
+
+##################################
+• Testing add notes:    @ma
+  • mockito, 
+    https://github.com/mockito/mockito/wiki/Features-And-Motivations
+    "...Mockito has very slim API, almost no time is needed to start mocking. 
+      There is only one kind of mock, there is only one way of creating 
+      mocks. Just remember that stubbing goes before execution, 
+      verifications of interactions go afterwards... "
+
+
+
+• Add notes on JUnit parameterized tests.
+  https://junit.org/junit5/docs/current/user-guide/#writing-tests-parameterized-tests
+
+
+
+
+####################################
+https://www.infoq.com/news/2022/01/apple-gcgc-java/
+https://github.com/apple/GCGC
+
+• Apple has open-sourced GCGC, a tool for Java Garbage Collector (GC) 
+  logs visualization based on Python 3 and pandas.
+• GCGC uses a Jupyter notebook to analyze and visualize GC log files. A 
+  notebook is provided for the analysis and it generates plots and 
+  tables from collected GC information.
+
+
+
+

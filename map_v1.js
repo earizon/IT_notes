@@ -124,6 +124,12 @@ const SF = {  /* search Form */
     .filter  ( root_topic => { return LM.DDBB.treeOfTopics[root_topic].length == 1 } )
     .forEach ( root_topic => { htmlLabels += LM.renderLabel(root_topic, false, true, "prefixIgnoredForTrue" )} );
     htmlLabels += "</div>"
+    if ( Object.keys(LM.DDBB.treeOfTopics).length > 0 ) {
+      htmlLabels += openDiv
+                    + "<div class='labelBlockTitle' >(axis)topic.</div>" 
+                    + "<div class='labelPrefixGroup'>&nbsp;&nbsp;&nbsp;&nbsp;(coordinate)subtopic</div>"
+                    + "</div>"
+    }
     // Render topics with    children "packed" in their own group
     Object.keys(LM.DDBB.treeOfTopics).sort()
       .filter  ( root_topic => { return LM.DDBB.treeOfTopics[root_topic].length != 1 } )

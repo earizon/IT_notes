@@ -15,17 +15,17 @@
 <div groupv>
 <pre zoom labels="1_doc_type.resource" id="external_links">
 <span xsmall>External Links</span>
-<a href="http://www.linuxfromscratch.org/">Linux From Scratch</a>
-<a href="https://linux.die.net/man/">[Man Pages]</a>,
-<a href="https://linux.die.net/Linux-CLI/">[Command-line Tools  Summary]</a>,
-<a href="https://en.wikipedia.org/wiki/Linux_Standard_Base">[Linux Standard Base]</a>,
-<a href="https://docs.fedoraproject.org/en-US/fedora/f29/system-administrators-guide/">Fedora Sys.Admin.Guide</a>
-<a href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/">RedHat Enterprise Linux official Doc</a>
-</pre>
-<pre zoom labels="1_doc_type.resource">
+• @[https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/Documentation/]
+• @[http://www.linuxfromscratch.org/]
+• @[https://linux.die.net/man/]
+• @[https://linux.die.net/Linux-CLI/]
+• @[https://en.wikipedia.org/wiki/Linux_Standard_Base]
+• @[https://docs.fedoraproject.org/en-US/fedora/f34/system-administrators-guide/]
+• @[https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/]
+
+<hr/>
 <span xsmall>Who-is-Who</span>
   (Forcibly incomplete but still quite pertinent list of core people and companies)
-
 - Linus Torvalds:
   - He loves C++ and Microkernels, author of a Unix like
      hobbie project for x86. Nothing serious.
@@ -75,6 +75,7 @@
   (netfilter, iptables) and the Filesystem Hierarchy Standard.
 - Many, many others.
 </pre>
+
 <pre zoom labels="1_doc_type.101">
 <span xsmall>Linux Basics</span>
 - Linux itself is just an OS kernel in charge of sharing the (limited) hardware
@@ -7813,4 +7814,46 @@ auditing
 https://github.com/asciinema/asciinema/wiki/Recording-tmux-session
 _________________________
 https://github.com/gpakosz/.tmux
+______________________________
+https://github.com/cilium/ebpf
+______________________________
+https://stackoverflow.com/search?q=user:20713+[linux]
+______________________________
+https://stackoverflow.com/questions/1009577/selecting-a-linux-i-o-scheduler/1010562#1010562
+https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/Documentation/block/switching-sched.rst
+As documented in 
+/usr/src/linux/Documentation/block/switching-sched.txt, the I/O 
+scheduler on any particular block device can be changed at runtime. 
+There may be some latency as the previous scheduler's requests are 
+all flushed before bringing the new scheduler into use, but it can be 
+changed without problems even while the device is under heavy use.
+
+# cat /sys/block/hda/queue/scheduler
+noop deadline [cfq]
+# echo anticipatory > /sys/block/hda/queue/scheduler
+# cat /sys/block/hda/queue/scheduler
+noop [deadline] cfq
+
+Ideally, there would be a single scheduler to satisfy all needs. It 
+doesn't seem to exist yet. The kernel often doesn't have enough 
+knowledge to choose the best scheduler for your workload:
+
+· noop is often the best choice for memory-backed block devices 
+  (e.g. ramdisks) and other non-rotational media (flash) where trying 
+  to reschedule I/O is a waste of resources
+· deadline is a lightweight scheduler which tries to put a hard 
+  limit on latency
+· cfq tries to maintain system-wide fairness of I/O bandwidth
+
+The default was anticipatory for a long time, and it received a lot 
+of tuning, but was removed in 2.6.33 (early 2010). cfq became the 
+default some while ago, as its performance is reasonable and fairness 
+is a good goal for multi-user systems (and even single-user 
+desktops). For some scenarios -- databases are often used as 
+examples, as they tend to already have their own peculiar scheduling 
+and access patterns, and are often the most important service (so who 
+cares about fairness?) -- anticipatory has a long history of being 
+tunable for best performance on these workloads, and deadline very 
+quickly passes all requests through to the underlying device.
+
 </pre>

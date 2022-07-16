@@ -190,6 +190,22 @@ Bº#############################º
   $ git log --graph --abbrev-commit \     ← PRETTY BRANCH PRINT  Alt.2
      --decorate --date=relative --all
 
+
+                                           ºUPDATE ALL REMOTE BRANCHES TO LOCAL REPOº
+  (REF: https://stackoverflow.com/questions/10312521/how-to-fetch-all-git-branches=
+  for remote in `git branch -r`;             # ← add remote branches on server NOT yet tracked locally
+     do git branch \                         #   (pull only applies to already tracked branches)
+        --track ${remote#origin/} $remote; 
+  done
+
+  $ git fetch --all                            # ← == git remote update.
+                                               #    updates local copies of remote branches
+                                               #    probably unneeded?. pull already does it.
+                                               #    It is always SAFE BUT ...
+                                               #    - It will NOT update local branches (tracking remote branches)
+                                               #    - It will NOT create local branches (tracking remote branches)
+  $ git pull --all                             # ← Finally update all tracked branches.
+
                                            ºTAGS:º
   $ git tag                               ← List tags
   → v2.1.0-rc.2
@@ -1130,7 +1146,7 @@ BºManual Summaryº:
 <span xsmall bgorange>Reference Script</span>
 Source: @[https://github.com/earizon/utility_shell_scripts/blob/master/scriptTemplate.sh]
 
-Bº#!/bin/bashº
+  #!/bin/bash 
 
   OUTPUT="$(basename $0).$(whoami).log"     # ← $("command") takes command STDOUT as effective value
                                             #   $(whoami) will avoid collisions  among
@@ -1138,11 +1154,13 @@ Bº#!/bin/bashº
                                             #   same directory and serves as audit trail.
                                             #   This happens frequently in DevOps when
                                             #   executing in sudo/non-sudo contexts.
- ºexecº3˃⅋1   # Copy current STDOUT to ⅋3
- ºexecº4˃⅋2   # Copy current STDERR to ⅋4
- ºechoº"Cloning STDOUT/STDERR to ${OUTPUT}"
- ºexecº⅋˃ ˃(tee -a "$OUTPUT") # Redirect to STDOUT and file <a target="_new" href="https://unix.stackexchange.com/questions/145651/using-exec-and-tee-to-redirect-logs-to-stdout-and-a-log-file-in-the-same-time">REF:</a>
- ºexecº2˃⅋1
+  if [ ! -d LOGS ] ; then mkdir LOGS ; fi   # opinionated. Save to LOGS 
+  ln -sf ${OUTPUT} link_last_log            # opinionated. Improve UX, create link to latest log 
+  exec 3˃⅋1   # Copy current STDOUT to ⅋3
+  exec 4˃⅋2   # Copy current STDERR to ⅋4
+  echo "Cloning STDOUT/STDERR to ${OUTPUT}"
+  exec ⅋˃ ˃(tee -a "$OUTPUT") # Redirect to STDOUT and file <a target="_new" href="https://unix.stackexchange.com/questions/145651/using-exec-and-tee-to-redirect-logs-to-stdout-and-a-log-file-in-the-same-time">REF:</a>
+  exec 2˃⅋1
   echo "message logged to file ⅋ console"
 
   GLOBAL_EXIT_STATUS=0
@@ -1255,26 +1273,7 @@ ${parameter:offset:length}
   If parameter is '@', an indexed array subscripted by '@' or '*', or an
   associative array name, the results differ as described below.
 <hr/>
-<span xsmall>Parse arguments</span>
-#Oº$#º number of arguments
-while [Oº$#º -gt 0 ]; do
-  echo $1
-  case "$1" in
-    -l|--list)
-      echo "list arg"
-      shift 1  # ºconsume arg         ← Oº$# = $#-1º
-      ;;
-    -p|--port)
-      export PORT="${2}:"
-      echo "port: $PORT"
-      shift 2  # ºconsume arg+valueº  ← Oº$# = $#-2º
-      ;;
-    *)
-      echo "non-recognised option"
-      shift 1  # ºconsume argº        ← Oº$# = $#-1º
-  esac
-done
-jj
+
 <span xsmall>Temporal Files</span>
 TMP_FIL=$(mktemp)
 TMP_DIR=$(mktemp --directory)
@@ -2680,9 +2679,11 @@ See also:
     (Alternatives include Monit, Datadog, Nagios, Zabbix, ...)
 
 •ºApplication Monitoringº:
+  · OpenTelemetry: replaces OpenTracing and OpenCensus.
+    Cloud Native Foundation projects. 
+    It also serves as ¿front-end? for Jaeger and others.
   · Jaeger, New Relic: (Very opinionated)
-    (Alternatives include AppDynamics, Instana, OpenTracing)
-    
+  (Other alternatives include AppDynamics, Instana, ...)
 
 • Log Management: (Opinionated)
   · Elastic Stack
@@ -7729,5 +7730,13 @@ Bash syntax Sugar. Check hostname match -[0-9] or exit. Otherwise asing match to
 ###########################
 Shrunk node_modules (from 700MB to 104MB)
 https://tsh.io/blog/reduce-node-modules-for-better-performance/
+#######################
+
+https://github.com/smallstep/certificates
+ 
+An online SSH Certificate Authority
+•   Delegate SSH authentication to step-ca by using SSH certificates instead of public keys and authorized_keys files
+•   For user certificates, connect SSH to your single sign-on provider, to improve security with short-lived certificates and MFA (or other security policies) via any OAuth OIDC provider.
+•   For host certificates, improve security, eliminate TOFU warnings, and set up automated host certificate renewal
 
 -->

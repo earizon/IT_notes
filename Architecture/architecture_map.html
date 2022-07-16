@@ -72,10 +72,196 @@ Local               Consistent prefix   Consistent prefix
                                                   most general 
 
 </pre>
- 
+<span title>CSV</span>
+<pre zoom labels="db_engine.wide_column,_PM.low_code,_PM.TODO">
+<span title>csvkit</span>
+• csvkit: suite of command-line tools for converting to and working with CSV.
+• By default, it sniffs CSV formats to deduces whether commas/tabs/spaces 
+  delimit fields, performs type inference (converts text to numbers, dates,
+  booleans, etc.). 
+  The inference system can be tunned.
+
+ $º$ in2csv data.xls ˃ data.csv   º ← Convert Excel → CSV
+                                   
+ $º$ in2csv data.json ˃ data.csv  º ← Convert JSON → CSV
+                                   
+ $º$ csvcut -n data.csv           º ← Print column names
+                                   
+ $º$ csvcut -c col_a,col_c \      º ← Select a subset of columns
+ $º    data.csv ˃ new.csv         º
+                                   
+ $º$ csvcut -c col_c,col_a \      º ← Reorder cols:
+ $º    data.csv ˃ new.csv         º
+                                   
+ $º$ csvgrep -c phone_number \    º ← Find rows with matching cells:
+ $º    -r "555-555-\d{4}" \       º
+ $º    data.csv ˃ new.csv         º
+                                   
+ $º$ csvjson data.csv ˃ data.json º ← Convert to JSON
+                                   
+ $º$ csvstat data.csv             º ← Generate summary statistics
+                                   
+ $º$ SQL=""                       º
+ $º$ SQL="${SQL} SELECT name"     º
+ $º$ SQL="${SQL}   FROM  data "   º
+ $º$ SQL="${SQL}   WHERE age ˃ 30 º"
+ $º$ csvsql --query "${SQL}" \    º← Query with SQL
+ $º      data.csv ˃ new.csv       º
+                                   
+                                   
+ $º$ csvsql \                     º← IMPORT INTO PostgreSQL
+ $º    --db postgresql:///... \   º
+ $º    --insert data.csv          º
+                                   
+ $º$ sql2csv \                    º← EXPORT FROM PostgreSQL
+ $º    --db postgresql:///.. \    º
+ $º    --query "select * from data" \ º
+ $º     ˃ new.csv                 º
+
+</pre>
+
 </div>
 
 <div groupv>
+<span title>RDBMS</span>
+<pre zoom labels="db_engine.rdbm,data.analytics.sql,_doc_has.comparative">
+<span xsmall>RDBMS</span>
+ºRDBMSº
+ºFeaturesº
+- support E-R data model.
+- all inserts in a table must match the table schema.
+  (vs dangerous schemales noSQL engines).
+- The minimum insert unit corresponds to a row in a table.
+- The minimum update unit corresponds to a column in a row.
+- basic operations are defined on the tables/relations through SQL:
+  - CRUD: Create/Read/Update/Delete
+  - set ops: union|intersect|difference
+  - subset selection defined by filters
+  - Projection of subset of table columns
+  - JOIN: combination of:
+    Cartesian_product+selection+projection
+  - TX ACID control
+  - user management
+- ºHistoryº
+  - beginning of 1980s
+  - Most widely used DBMS
+
+ºMain  Examplesº
+- PostgreSQL
+- Oracle
+- MySQL/MariaDB
+  - @[http://myrocks.io/] ← Built on top of key-value RocksDB.
+                            optimized for SSD/Memory.
+- SQLite : C Embedded/Server SQL engine.
+  DQLite   DQLite stands for (d)istributed SQLite.
+- H2: Robust Java JVM embedded SQL engine (server mode also supported)
+      that also allows on (RAM) memory only ddbbs.
+- TiDB
+  - MySQL compatible
+  - RAFT-distributed
+  - Rust/go written
+  - Features:
+    - "infinite" horizontal scalability
+    - strong consistency
+    - HA
+- SQL Server
+- DB2
+- Hive (https://db-engines.com/en/system/Hive)
+  - Home: https://hive.apache.org/
+  - RºWARNº: No Foreign keys, NO ACID
+  -ºEventual Consistencyº
+  - data warehouse software facilitates reading, 
+    writing, and managing large datasets residing in 
+    distributed storage using SQL.  (Hadoop,...)
+  - 2.0+ support Spark as execution engine.
+  - Implemented in Java
+  - supports analysis of large datasets
+    stored in Hadoop's HDFS and
+    compatible file systems such as
+    Amazon S2 filesystem.
+  - SQL-like DML and DDL statements
+    Traditional SQL queries implemented in
+    MapReduce Java API to  execute SQL apps:
+    - necessary SQL abstraction provided to
+      integrate SQL-like queries (HiveQL) into
+      the underlying Java without the need
+      for low-level queries.
+  - Hive aids portability of SQL-based apps
+    to Hadoop
+  - JDBC, ODBC, Thrift
+
+- SQL "SUMMARY":
+  BEGINNER:                 INTERMEDIATE:                          ADVANCED:
+  ========================  ================================       =======================
+  · Types of SQL            · LIKE, AND/OR and DISTINCT            · JOINT ... UNIONS ...
+  · Table, Rows and Colums  · NULLs and Dates                      · OVER ... PARTITION BY ...
+  · SELECT ... FROM ...     · COUNT, SUM, AVG ...                  · STRUCT ... UNNEST ..
+      WHERE ...             · GROUP BY ... HAVING...               · Reguar Expresions
+      ORDER BY ...          · Alias, Sub-queries and WITH ...AS ..
+</pre>
+
+<pre zoom LABELs="db_engine.rdbm,_PM.low_code,architecture.event_stream,kafka,data.analytics.sql,_PM.TODO">
+<span xsmall>Materialize: Stream 2 PSQL</span>
+@[https://github.com/MaterializeInc/materialize]
+- Streaming database for real-time applications, accepting input data from
+  Kafka, CSV files, ... to query them using SQL.
+- ask questions about live data
+- Refreshed answers in millisecs.
+- Designed to help interactively explore streaming data.
+- perform data warehousing analytics against live relational data.
+- increase the freshness and reduce the load of dashboards/monitoring tasks.
+
+- provide correct/consistent answers with minimal latency.
+  (vs approximate answers/eventual consistency).
+- recast SQL92 queries as dataflows.
+- Support for a large fraction of PostgreSQL, and are actively working 
+  to support builting PostgreSQL functions.
+</pre>
+
+<pre zoom labels="db_engine.rdbm.sqlite,storage.distributed,architecture.embedded,_doc_has.comparative" >
+<span xsmall>dqlite.io</span>
+@[https://dqlite.io/]
+• Dqlite (“distributed SQLite”) extends SQLite across a cluster of machines, with
+  automatic failover and high-availability to keep your application running. It
+  uses C-Raft, an optimised Raft implementation in C, to gain high-performance
+  transactional consensus and fault tolerance while preserving SQlite’s
+  outstanding efficiency and tiny footprint.
+</pre>
+
+<pre zoom labels="db_engine.rdbm,qa.documentation,data.analytics.sql,_PM.low_code,_doc_has.comparative">
+<span xsmall>SchemaSpy</span>
+@[http://schemaspy.org/]
+• SchemaSpy is generates database to HTML documentation,
+  including Entity Relationship diagrams. 
+
+• Basic ussage:
+
+  INPUT       PROCESSING          OUTPUT
+  =========   =============       =================
+  running  →  schemaspy         → html report with:
+  ddbb        (+graphviz)         - table/view/columns 
+              └────┬────┘         - constrains/routines summary and stats.
+                   ·              -ºE/R diagram.º
+                   ·              - Orphan tables.
+                   ·              -ºanomalies.º
+                   · 
+    ┌──────────────┴─────────────────────┐
+      (JDK and graphviz pre-installed)
+   $º $ java -jar schemaspy-6.1.0.jar   \ º
+   $º       -t pgsql                    \ º
+   $º       -dp postgresjdb.jar         \ º
+   $º       -h $DDBB_HOST               \ º
+   $º       -p $DDBB_PORT               \ º
+   $º       -u $DDBB_USER               \ º
+   $º       -p $PASS                    \ º
+   $º       -o $OUTPUT_HTML_REPORT_DIR    º
+
+<hr/>
+<span xsmall>SchemaCrawler (TODO)</span>
+- "Unix friendly" generating mermaid diagram output.
+</pre>
+
+<span title>Graph_DBMS</span>
 <pre zoom  labels="db_engine.graph_db,_doc_has.comparative">
 <span xsmall>Graph DBMS</span>
 - represent data in graph structures of nodes (entities) and edges(relations).
@@ -388,200 +574,7 @@ https://www.cognitum.eu/Semantics/FluentEditor/
 </div>
 
 <div groupv>
-<pre zoom labels="db_engine.rdf,_doc_has.comparative">
-<span xsmall>RDF stores</span>
-@[https://db-engines.com/en/article/RDF+Stores]
-@[https://en.wikipedia.org/wiki/Resource_Description_Framework]
-- Resource Description Framework stores
-  ºdescribes information in triplets:º
- º(subject,predicate,object)º
-- Originally used for describing
-  IT-resources-metadata.
-- Today often used in semantic web.
-- RDS is a subclass of graph DBMS:
-  (subject,predicate,object)
-   ^          ^      ^
-   node      edge   node
-  but it offer specific methods
-  beyond general graph DBMS ones. Ex:
-  SPARQL, SQL-like query lang. for
-  RDF data, supported by most
-  RDF stores.
-
-ºExamplesº
-- MarkLogic
-- Jena
-- Virtuoso
-- Amazon Neptune
-- GraphDB
-- Apache Rya:
-</pre>
-<pre zoom labels="db_engine.rdf,qa.standards,_PM.TODO">
-<span xsmall>JSON-LD</span>
-- format for mapping JSON data into the RDF semantic graph model, as defined by [JSON-LD]. 
-
-@[https://en.wikipedia.org/wiki/JSON-LD
-</pre>
-
-<pre zoom labels="db_engine.rdf.rya,big_data.spark,_PM.TODO">
-<span xsmall>Apache Rya</span>
-@[https://searchdatamanagement.techtarget.com/news/252472464/Apache-Rya-matures-open-source-triple-store-database]
-· Started by Adina Crainiceanu, associate professor of computer science at
-  the U.S.  Naval Academy. Initial research paper published in 2012
-· scalable cloud-based RDF triple store that supports fast-and-easy access to 
-  data through SPARQL queries.
-  built on top of Apache Accumulo®. (MongoDB back-end also implemented). 
-· Rya uses novel storage methods, indexing schemes, and query 
-  processing techniques thatºscale to billions of triples across º
- ºmultiple nodes.º
-
-· Rya's users include U.S. Navy (autonomous drones,...). 
-
-</pre>
-</div>
-
-
-
-<div groupv>
-<pre zoom labels="db_engine.rdbm,data.analytics.sql,_doc_has.comparative">
-<span xsmall>RDBMS</span>
-ºRDBMSº
-ºFeaturesº
-- support E-R data model.
-- all inserts in a table must match the table schema.
-  (vs dangerous schemales noSQL engines).
-- The minimum insert unit corresponds to a row in a table.
-- The minimum update unit corresponds to a column in a row.
-- basic operations are defined on the tables/relations through SQL:
-  - CRUD: Create/Read/Update/Delete
-  - set ops: union|intersect|difference
-  - subset selection defined by filters
-  - Projection of subset of table columns
-  - JOIN: combination of:
-    Cartesian_product+selection+projection
-  - TX ACID control
-  - user management
-- ºHistoryº
-  - beginning of 1980s
-  - Most widely used DBMS
-
-ºMain  Examplesº
-- PostgreSQL
-- Oracle
-- MySQL/MariaDB
-  - @[http://myrocks.io/] ← Built on top of key-value RocksDB.
-                            optimized for SSD/Memory.
-- SQLite : C Embedded/Server SQL engine.
-  DQLite   DQLite stands for (d)istributed SQLite.
-- H2: Robust Java JVM embedded SQL engine (server mode also supported)
-      that also allows on (RAM) memory only ddbbs.
-- TiDB
-  - MySQL compatible
-  - RAFT-distributed
-  - Rust/go written
-  - Features:
-    - "infinite" horizontal scalability
-    - strong consistency
-    - HA
-- SQL Server
-- DB2
-- Hive (https://db-engines.com/en/system/Hive)
-  - Home: https://hive.apache.org/
-  - RºWARNº: No Foreign keys, NO ACID
-  -ºEventual Consistencyº
-  - data warehouse software facilitates reading, 
-    writing, and managing large datasets residing in 
-    distributed storage using SQL.  (Hadoop,...)
-  - 2.0+ support Spark as execution engine.
-  - Implemented in Java
-  - supports analysis of large datasets
-    stored in Hadoop's HDFS and
-    compatible file systems such as
-    Amazon S2 filesystem.
-  - SQL-like DML and DDL statements
-    Traditional SQL queries implemented in
-    MapReduce Java API to  execute SQL apps:
-    - necessary SQL abstraction provided to
-      integrate SQL-like queries (HiveQL) into
-      the underlying Java without the need
-      for low-level queries.
-  - Hive aids portability of SQL-based apps
-    to Hadoop
-  - JDBC, ODBC, Thrift
-
-- SQL "SUMMARY":
-  BEGINNER:                 INTERMEDIATE:                          ADVANCED:
-  ========================  ================================       =======================
-  · Types of SQL            · LIKE, AND/OR and DISTINCT            · JOINT ... UNIONS ...
-  · Table, Rows and Colums  · NULLs and Dates                      · OVER ... PARTITION BY ...
-  · SELECT ... FROM ...     · COUNT, SUM, AVG ...                  · STRUCT ... UNNEST ..
-      WHERE ...             · GROUP BY ... HAVING...               · Reguar Expresions
-      ORDER BY ...          · Alias, Sub-queries and WITH ...AS ..
-</pre>
-
-<pre zoom LABELs="db_engine.rdbm,_PM.low_code,architecture.event_stream,kafka,data.analytics.sql,_PM.TODO">
-<span xsmall>Materialize: Stream 2 PSQL</span>
-@[https://github.com/MaterializeInc/materialize]
-- Streaming database for real-time applications, accepting input data from
-  Kafka, CSV files, ... to query them using SQL.
-- ask questions about live data
-- Refreshed answers in millisecs.
-- Designed to help interactively explore streaming data.
-- perform data warehousing analytics against live relational data.
-- increase the freshness and reduce the load of dashboards/monitoring tasks.
-
-- provide correct/consistent answers with minimal latency.
-  (vs approximate answers/eventual consistency).
-- recast SQL92 queries as dataflows.
-- Support for a large fraction of PostgreSQL, and are actively working 
-  to support builting PostgreSQL functions.
-</pre>
-
-<pre zoom labels="db_engine.rdbm.sqlite,storage.distributed,architecture.embedded,_doc_has.comparative" >
-<span xsmall>dqlite.io</span>
-@[https://dqlite.io/]
-• Dqlite (“distributed SQLite”) extends SQLite across a cluster of machines, with
-  automatic failover and high-availability to keep your application running. It
-  uses C-Raft, an optimised Raft implementation in C, to gain high-performance
-  transactional consensus and fault tolerance while preserving SQlite’s
-  outstanding efficiency and tiny footprint.
-</pre>
-
-<pre zoom labels="db_engine.rdbm,qa.documentation,data.analytics.sql,_PM.low_code,_doc_has.comparative">
-<span xsmall>SchemaSpy</span>
-@[http://schemaspy.org/]
-• SchemaSpy is generates database to HTML documentation,
-  including Entity Relationship diagrams. 
-
-• Basic ussage:
-
-  INPUT       PROCESSING          OUTPUT
-  =========   =============       =================
-  running  →  schemaspy         → html report with:
-  ddbb        (+graphviz)         - table/view/columns 
-              └────┬────┘         - constrains/routines summary and stats.
-                   ·              -ºE/R diagram.º
-                   ·              - Orphan tables.
-                   ·              -ºanomalies.º
-                   · 
-    ┌──────────────┴─────────────────────┐
-      (JDK and graphviz pre-installed)
-   $º $ java -jar schemaspy-6.1.0.jar   \ º
-   $º       -t pgsql                    \ º
-   $º       -dp postgresjdb.jar         \ º
-   $º       -h $DDBB_HOST               \ º
-   $º       -p $DDBB_PORT               \ º
-   $º       -u $DDBB_USER               \ º
-   $º       -p $PASS                    \ º
-   $º       -o $OUTPUT_HTML_REPORT_DIR    º
-
-<hr/>
-<span xsmall>SchemaCrawler (TODO)</span>
-- "Unix friendly" generating mermaid diagram output.
-</pre>
-</div>
-
-<div groupv>
+<span title>KEY_VALUE</span>
 <pre zoom labels="db_engine.key_value,_doc_has.comparative">
 <span xsmall>KEY-VALUE</span>
 ºKEY-VALUE STORESº
@@ -736,10 +729,58 @@ BºA block, once written to storage, is never modified.º
        quorum size small for lower write latency.
 </pre>
 
+<span title>RDF</span>
+<pre zoom labels="db_engine.rdf,_doc_has.comparative">
+<span xsmall>RDF stores</span>
+@[https://db-engines.com/en/article/RDF+Stores]
+@[https://en.wikipedia.org/wiki/Resource_Description_Framework]
+- Resource Description Framework stores
+  ºdescribes information in triplets:º
+ º(subject,predicate,object)º
+- Originally used for describing
+  IT-resources-metadata.
+- Today often used in semantic web.
+- RDS is a subclass of graph DBMS:
+  (subject,predicate,object)
+   ^          ^      ^
+   node      edge   node
+  but it offer specific methods
+  beyond general graph DBMS ones. Ex:
+  SPARQL, SQL-like query lang. for
+  RDF data, supported by most
+  RDF stores.
 
-</div>
+ºExamplesº
+- MarkLogic
+- Jena
+- Virtuoso
+- Amazon Neptune
+- GraphDB
+- Apache Rya:
+</pre>
+<pre zoom labels="db_engine.rdf,qa.standards,_PM.TODO">
+<span xsmall>JSON-LD</span>
+- format for mapping JSON data into the RDF semantic graph model, as defined by [JSON-LD]. 
 
-<div groupv>
+@[https://en.wikipedia.org/wiki/JSON-LD
+</pre>
+
+<pre zoom labels="db_engine.rdf.rya,big_data.spark,_PM.TODO">
+<span xsmall>Apache Rya</span>
+@[https://searchdatamanagement.techtarget.com/news/252472464/Apache-Rya-matures-open-source-triple-store-database]
+· Started by Adina Crainiceanu, associate professor of computer science at
+  the U.S.  Naval Academy. Initial research paper published in 2012
+· scalable cloud-based RDF triple store that supports fast-and-easy access to 
+  data through SPARQL queries.
+  built on top of Apache Accumulo®. (MongoDB back-end also implemented). 
+· Rya uses novel storage methods, indexing schemes, and query 
+  processing techniques thatºscale to billions of triples across º
+ ºmultiple nodes.º
+
+· Rya's users include U.S. Navy (autonomous drones,...). 
+</pre>
+
+<span title>Search</span>
 <pre zoom labels="db_engine.search,_doc_has.comparative">
 <span xsmall>Search</span>
 - "NoSQL" DBMS for search of content
@@ -778,9 +819,7 @@ BºA block, once written to storage, is never modified.º
     Hawk will watch models and update
     the graph incrementally on change.
 </pre>
-</div>
-
-<div groupv>
+<span title>Time_Series</span>
 <pre zoom labels="db_engine.timeseries,_doc_has.comparative">
 <span xsmall>Time Series</span>
 - Managing time series data
@@ -906,12 +945,7 @@ M3DB: (Uber) OOSS distributed timeseries database
   and then evenly disperse the replicas across separate 
   failure domains.
 </pre>
-
-</div>
-
-
-
-<div groupv>
+<span title>Service_Registry</span>
 <pre zoom labels="db_engine.service_registry,_doc_has.comparative">
 <span xsmall>Service Registry</span>
  ºand Discoveryº
@@ -1068,11 +1102,10 @@ Physical view:
   rather than v2's slower per-request authentication.
 
 </pre>
-
 </div>
 
-<DIV groupv >
-
+<div groupv>
+<span title>Wide_Column Stores</span>
 <pre zoom labels="db_engine.wide_column.101,db_engine.wide_column.cassandra,big_data.spark,Kafka,elk,db_engine.wide_column.hbase,_doc_has.comparative,cloud.cosmosdb,cloud.spanner">
 <span xsmall>Wide Column Stores</span>
 (also called extensible record stores)
@@ -1415,9 +1448,7 @@ guarantees come in a range of flavours; but they are bunched under a
 category called NoSQL databases.
 </pre>
 
-</div>
-
-<div groupv>
+<span title>Document_Stores</span>
 <pre zoom labels="db_engine.document_store,_doc_has.comparative">
 <span xsmall>Document Stores</span>
 - also called document-oriented DBMS
@@ -1556,11 +1587,7 @@ BºIndexesº
   application is back online, keeping the user's data in sync no matter 
   where they next login..."
 </pre>
-
-
-</div>
-
-<div groupv>
+<span title>Data(log)_collect</span>
 <pre zoom labels="db_engine.log_collect,_doc_has.comparative">
 <span xsmall>Data(log) collect</span>
 ºFluentDº                                     |ºLogstashº
@@ -1609,10 +1636,8 @@ See also: Spring cloud Sleuth: @[../JAVA/java_map.html#spring_cloud_summary]
   - <a href=https://pypi.org/project/logreduce/">logreduce@pypi</a>
   - Quiet log noise with Python and machine learning
 </pre>
-</div>
 
-<div groupv>
-
+<span title>Event_Stream_Arch.</span>
 <pre zoom labels="architecture.event_stream">
 <span xsmall TODO>Event Stream Architectures</span>
 Distributed (<a href="https://martinfowler.com/eaaDev/EventSourcing.html">Event</a>) Stream Processors
@@ -6183,6 +6208,17 @@ make effective use of the level of parallelism in this environment.
   
 </pre>
 
+
+<pre zoom labels="db_engine.search,_PM.low_code">
+<span title>Search UI:</span>
+https://github.com/ProjectOpenSea/search-ui
+https://www.elastic.co/enterprise-search/search-ui?size=n_6_n
+
+• React Library for the fast development of modern, engaging search experiences
+  quickly without re-inventing the wheel.
+• Use it with Elastic App Search or Elastic Site Search to have a 
+  search experience up and running in minutes.
+</pre>
 
 
 

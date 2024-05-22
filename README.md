@@ -1,3 +1,10 @@
+WARN: This project has been superseded by [TXT World Domination].<br/>
+The new version defaults to markdown (vs HTML). With all the goodies, 
+but much faster and confortable to use.
+* GitHub project: <https://github.com/earizon/txt_world_domination>
+* GitHub Pages: <https://earizon.github.io/txt_world_domination>
+
+(https://github.com/earizon/txt_world_domination)
 > Please support the project by simply putting a Github star. 
 Share this library with friends on Reddit, Twitter, Facebook or 
 everywhere else you can.

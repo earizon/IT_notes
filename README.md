@@ -1,6 +1,6 @@
-WARN: This project has been superseded by [TXT World Domination].<br/>
+WARN: This project has been superseded by "TXT World Domination".<br/>
 The new version defaults to markdown (vs HTML). With all the goodies, 
-but much faster and confortable to use.
+but much faster and confortable to use for everyone.
 * GitHub project: <https://github.com/earizon/txt_world_domination>
 * GitHub Pages: <https://earizon.github.io/txt_world_domination>
 
